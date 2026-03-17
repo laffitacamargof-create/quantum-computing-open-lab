@@ -1,0 +1,1609 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>QCOL — Arquitecto Cuántico</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=JetBrains+Mono:wght@400;500;600&family=Exo+2:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ══════════════════════════════════════════════════
+   QCOL ARQUITECTO v4 — Funcional y visual
+   Circuito estilo IBM · Drag & Drop real
+══════════════════════════════════════════════════ */
+:root {
+  --bg:#0a0e1a; --bg2:#0d1220; --bg3:#111827; --bg4:#090d18;
+  --p:#131b2e;  --p2:#1a2540;  --p3:#1e2d4a;
+  --bd:#1e3058; --bd2:#254070;
+  --bl:#0088ff; --bl2:#00aaff; --cy:#00ffdd;
+  --gr:#00ff88; --yw:#ffd700;  --rd:#ff4466; --pu:#bd93f9;
+  --tx:#e2ecff; --tx2:#aabcda; --mu:#4a6a9a; --mu2:#2a3a5a;
+  /* Gate colors (IBM-inspired) */
+  --gh: #1a5fb4;  /* H  — blue */
+  --gx: #a51d2d;  /* X  — red */
+  --gy: #613583;  /* Y  — purple */
+  --gz: #1c71d8;  /* Z  — cyan */
+  --gs: #c64600;  /* S  — orange */
+  --gt: #26a269;  /* T  — green */
+  --gr2:#0077c2;  /* Rx — teal */
+  --gry:#005f6a;  /* Ry */
+  --grz:#5e35b1;  /* Rz */
+  --gcx:#00838f;  /* CX — teal */
+  --gm: #6d4c41;  /* M  — brown */
+  /* Syntax */
+  --kw:#ff79c6; --fn:#50fa7b; --st:#f1fa8c;
+  --nm:#bd93f9; --cm:#636e8a; --cl:#8be9fd;
+  --orb:'Orbitron',monospace;
+  --mono:'JetBrains Mono',monospace;
+  --ex:'Exo 2',sans-serif;
+}
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+html, body { height:100%; overflow:hidden; }
+body { background:var(--bg); color:var(--tx); font-family:var(--ex); user-select:none; }
+
+/* ── NOTIFICATION ── */
+.notif {
+  position:fixed; top:.7rem; right:.7rem; z-index:9999;
+  padding:.55rem 1rem; background:rgba(10,14,26,.97);
+  border:1px solid var(--cy); border-radius:8px;
+  font-family:var(--orb); font-size:.6rem; color:var(--cy);
+  transform:translateX(130%); transition:transform .3s;
+  backdrop-filter:blur(20px); max-width:270px;
+  pointer-events:none;
+}
+.notif.show { transform:translateX(0); }
+
+/* ══════════════════════════════════════════
+   HEADER / TITLEBAR
+══════════════════════════════════════════ */
+.titlebar {
+  height:36px; display:flex; align-items:center; gap:0;
+  background:#080c14; border-bottom:1px solid var(--bd);
+  flex-shrink:0;
+}
+.tb-brand {
+  display:flex; align-items:center; gap:.5rem;
+  padding:0 1rem; height:100%;
+  border-right:1px solid var(--bd);
+}
+.tb-q { font-family:var(--orb); font-size:.78rem; font-weight:900;
+  color:var(--cy); text-shadow:0 0 10px rgba(0,255,221,.4); }
+.tb-col { font-family:var(--orb); font-size:.78rem; font-weight:900; color:var(--bl2); }
+.tb-title { font-family:var(--orb); font-size:.52rem; color:var(--mu);
+  letter-spacing:.06em; margin-left:.5rem; }
+.tb-right { margin-left:auto; display:flex; align-items:center;
+  gap:.45rem; padding:0 .85rem; }
+.badge {
+  padding:.18rem .52rem; border-radius:4px;
+  font-family:var(--orb); font-size:.46rem; letter-spacing:.04em;
+}
+.badge-eng-off { background:rgba(74,106,154,.1); border:1px solid rgba(74,106,154,.25); color:var(--mu); }
+.badge-eng-on  { background:rgba(0,255,136,.07); border:1px solid rgba(0,255,136,.4);
+  color:var(--gr); animation:blink 2.5s infinite; }
+@keyframes blink { 0%,100%{border-color:rgba(0,255,136,.4);}50%{border-color:rgba(0,255,136,.9);box-shadow:0 0 8px rgba(0,255,136,.2);} }
+.user-chip {
+  display:flex; align-items:center; gap:.3rem;
+  padding:.18rem .52rem; background:rgba(0,136,255,.1);
+  border:1px solid rgba(0,136,255,.25); border-radius:12px;
+  font-family:var(--orb); font-size:.48rem; color:var(--bl2);
+  cursor:pointer;
+}
+.u-dot { width:5px; height:5px; border-radius:50%; background:var(--mu); }
+.u-dot.on { background:var(--gr); }
+
+/* ══════════════════════════════════════════
+   MAIN TOOLBAR
+══════════════════════════════════════════ */
+.toolbar {
+  height:42px; display:flex; align-items:center; gap:.35rem;
+  padding:0 .9rem; background:var(--bg2);
+  border-bottom:1px solid var(--bd); flex-shrink:0;
+  overflow-x:auto;
+}
+.toolbar::-webkit-scrollbar { height:2px; }
+.toolbar::-webkit-scrollbar-thumb { background:var(--bd2); }
+
+/* RUN button */
+.btn-run {
+  display:flex; align-items:center; gap:.4rem;
+  padding:.32rem 1.1rem; border:none; border-radius:6px;
+  background:linear-gradient(135deg, #005599, var(--bl));
+  color:#fff; font-family:var(--orb); font-size:.62rem;
+  cursor:pointer; transition:all .2s;
+  box-shadow:0 2px 12px rgba(0,136,255,.35);
+  letter-spacing:.04em; flex-shrink:0;
+}
+.btn-run:hover { transform:translateY(-1px); box-shadow:0 4px 18px rgba(0,136,255,.55); }
+.btn-run:disabled { opacity:.4; cursor:not-allowed; transform:none; box-shadow:none; }
+
+/* Small buttons */
+.bsm {
+  display:flex; align-items:center; gap:.25rem;
+  padding:.28rem .65rem; background:transparent;
+  border:1px solid var(--bd2); border-radius:5px;
+  color:var(--mu); font-family:var(--orb); font-size:.52rem;
+  cursor:pointer; transition:all .2s; white-space:nowrap;
+  flex-shrink:0;
+}
+.bsm:hover { border-color:var(--bl2); color:var(--bl2); background:rgba(0,136,255,.06); }
+.bsm.danger { border-color:rgba(255,68,102,.3); color:#ff8899; }
+.bsm.danger:hover { background:rgba(255,68,102,.1); }
+
+/* Separator */
+.sep { width:1px; height:22px; background:var(--bd); flex-shrink:0; margin:0 .1rem; }
+
+/* Mode switch (Circuito / Código) */
+.mode-sw {
+  display:flex; border:1px solid var(--bd2); border-radius:6px;
+  overflow:hidden; flex-shrink:0;
+}
+.mode-btn {
+  padding:.28rem .75rem; background:transparent; border:none;
+  color:var(--mu); font-family:var(--orb); font-size:.52rem;
+  cursor:pointer; transition:all .2s; white-space:nowrap;
+}
+.mode-btn.on { background:var(--bl); color:#fff; }
+
+/* Lib selector */
+.lib-sel { display:flex; gap:.2rem; flex-shrink:0; }
+.lib-btn {
+  padding:.26rem .6rem; background:transparent;
+  border:1px solid var(--bd); border-radius:4px;
+  color:var(--mu); font-family:var(--mono); font-size:.54rem;
+  cursor:pointer; transition:all .2s;
+}
+.lib-btn.on { border-color:var(--bl); color:var(--bl2); background:rgba(0,136,255,.1); }
+.lib-btn:hover:not(.on) { color:var(--tx2); background:rgba(255,255,255,.04); }
+
+/* Spinner */
+.spin { display:inline-block; width:11px; height:11px;
+  border:2px solid rgba(255,255,255,.25); border-top-color:#fff;
+  border-radius:50%; animation:rot .7s linear infinite; }
+@keyframes rot { to { transform:rotate(360deg); } }
+
+/* ══════════════════════════════════════════
+   BODY LAYOUT
+══════════════════════════════════════════ */
+.body-layout {
+  display:flex; height:calc(100vh - 78px);
+  overflow:hidden;
+}
+
+/* ── PALETTE (left sidebar) ── */
+.palette {
+  width:168px; flex-shrink:0;
+  background:var(--p); border-right:1px solid var(--bd);
+  display:flex; flex-direction:column; overflow:hidden;
+}
+.palette-hdr {
+  padding:.5rem .75rem; background:var(--bg2);
+  border-bottom:1px solid var(--bd);
+  font-family:var(--orb); font-size:.54rem; color:var(--bl2);
+  letter-spacing:.08em; flex-shrink:0;
+}
+.palette-body { flex:1; overflow-y:auto; padding:.4rem .45rem; }
+.palette-body::-webkit-scrollbar { width:3px; }
+.palette-body::-webkit-scrollbar-thumb { background:var(--bd2); }
+.pal-sec-lbl {
+  font-family:var(--orb); font-size:.44rem; color:var(--mu);
+  letter-spacing:.12em; margin:.35rem 0 .32rem;
+  padding-left:.32rem; border-left:2px solid var(--bl);
+}
+.pal-grid { display:grid; grid-template-columns:1fr 1fr; gap:.22rem; margin-bottom:.3rem; }
+
+/* GATE in palette — draggable */
+.pal-gate {
+  border-radius:6px; padding:.38rem .2rem;
+  text-align:center; cursor:grab;
+  transition:all .18s;
+  border:1px solid rgba(255,255,255,.06);
+  position:relative; overflow:hidden;
+}
+.pal-gate:active { cursor:grabbing; }
+.pal-gate:hover { transform:scale(1.06); filter:brightness(1.15); }
+.pal-gate.dragging-src { opacity:.35; }
+.pal-gate-sym {
+  display:block; font-family:var(--mono);
+  font-weight:700; font-size:.68rem; margin-bottom:.1rem;
+}
+.pal-gate-lbl { font-family:var(--orb); font-size:.42rem; color:rgba(255,255,255,.55); }
+
+/* ── CENTER: CIRCUIT + CODE ── */
+.center-area {
+  display:flex; flex-direction:column; flex:1; min-width:0; overflow:hidden;
+}
+
+/* ───────────────────────────────────────
+   CIRCUIT CANVAS — IBM STYLE
+─────────────────────────────────────── */
+#circuit-section {
+  display:flex; flex-direction:column;
+  background:var(--bg4);
+  border-bottom:1px solid var(--bd);
+  flex-shrink:0;
+  /* height adjustable via JS resize */
+  min-height:120px;
+}
+.circuit-header {
+  display:flex; align-items:center; gap:.5rem;
+  padding:.38rem .9rem; background:var(--bg2);
+  border-bottom:1px solid var(--bd); flex-shrink:0;
+}
+.circuit-title { font-family:var(--orb); font-size:.56rem; color:var(--bl2); letter-spacing:.06em; }
+.qcount-badge {
+  padding:.12rem .42rem; background:rgba(0,136,255,.1);
+  border:1px solid rgba(0,136,255,.25); border-radius:4px;
+  font-family:var(--mono); font-size:.54rem; color:var(--bl2);
+}
+.circuit-scroll { flex:1; overflow:auto; padding:.75rem 1rem .75rem; }
+.circuit-scroll::-webkit-scrollbar { width:5px; height:5px; }
+.circuit-scroll::-webkit-scrollbar-thumb { background:var(--bd2); border-radius:3px; }
+
+/* Qubit row */
+.q-row { display:flex; align-items:center; height:56px; position:relative; }
+.q-label {
+  width:44px; min-width:44px; text-align:right;
+  font-family:var(--mono); font-size:.6rem; color:var(--cy);
+  padding-right:.55rem; flex-shrink:0;
+}
+.q-ket {
+  width:30px; min-width:30px; height:22px;
+  border:1px solid rgba(0,255,136,.3); border-radius:4px;
+  background:rgba(0,255,136,.06);
+  display:flex; align-items:center; justify-content:center;
+  font-family:var(--mono); font-size:.52rem; color:var(--gr);
+  flex-shrink:0; margin-right:.5rem;
+}
+/* The wire */
+.q-wire {
+  flex:1; position:relative; height:56px;
+  display:flex; align-items:center;
+  min-width:260px;
+}
+/* Horizontal wire line */
+.q-wire::before {
+  content:''; position:absolute; left:0; right:0; top:50%;
+  height:1.5px;
+  background:linear-gradient(90deg, rgba(0,136,255,.7), rgba(0,136,255,.3));
+  transform:translateY(-50%);
+  pointer-events:none;
+}
+/* Drop-hover glow */
+.q-wire.dh::before {
+  background:linear-gradient(90deg, var(--cy), rgba(0,255,221,.5));
+  box-shadow:0 0 8px rgba(0,255,221,.35);
+}
+.q-wire.dh { background:rgba(0,255,221,.03); border-radius:4px; }
+
+/* Drop hint text */
+.wire-hint {
+  position:absolute; left:.4rem;
+  font-family:var(--orb); font-size:.38rem;
+  color:rgba(0,136,255,.28); pointer-events:none;
+  user-select:none;
+}
+
+/* Classic register row */
+.c-row { display:flex; align-items:center; height:28px; }
+.c-label {
+  width:44px; min-width:44px; text-align:right;
+  font-family:var(--mono); font-size:.56rem; color:var(--mu);
+  padding-right:.55rem; flex-shrink:0;
+}
+.c-ket {
+  width:30px; min-width:30px; height:18px;
+  border:1px solid var(--bd2); border-radius:3px;
+  background:rgba(74,106,154,.08);
+  display:flex; align-items:center; justify-content:center;
+  font-family:var(--mono); font-size:.48rem; color:var(--mu);
+  flex-shrink:0; margin-right:.5rem;
+}
+.c-wire-double {
+  flex:1; height:14px; position:relative; min-width:260px;
+}
+.c-wire-double::before,
+.c-wire-double::after {
+  content:''; position:absolute; left:0; right:0; height:1px;
+  background:rgba(74,106,154,.35);
+}
+.c-wire-double::before { top:3px; }
+.c-wire-double::after  { top:7px; }
+
+/* ─── PLACED GATE on wire ─── */
+.placed-gate {
+  position:absolute; top:50%; transform:translateY(-50%);
+  z-index:5; cursor:pointer;
+}
+.placed-gate:hover .pg-del { opacity:1; }
+
+/* Gate box (IBM style) */
+.pg-box {
+  width:38px; height:38px; border-radius:5px;
+  display:flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  border:1.5px solid rgba(255,255,255,.15);
+  box-shadow:0 2px 8px rgba(0,0,0,.45),
+             inset 0 1px 0 rgba(255,255,255,.12);
+  transition:all .18s; position:relative;
+  overflow:hidden;
+}
+.pg-box::before {
+  content:''; position:absolute; inset:0;
+  background:linear-gradient(175deg, rgba(255,255,255,.12) 0%, transparent 55%);
+  border-radius:4px;
+}
+.placed-gate:hover .pg-box {
+  filter:brightness(1.2);
+  box-shadow:0 2px 14px rgba(0,0,0,.5), 0 0 12px var(--gate-glow, rgba(0,136,255,.4));
+}
+.pg-sym {
+  font-family:var(--mono); font-weight:700; font-size:.62rem;
+  color:#fff; z-index:1;
+}
+/* Delete X */
+.pg-del {
+  position:absolute; top:-7px; right:-7px;
+  width:15px; height:15px; border-radius:50%;
+  background:var(--rd); border:none; color:#fff;
+  font-size:.45rem; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  opacity:0; transition:opacity .18s; z-index:6;
+}
+
+/* CNOT special */
+.pg-ctrl-dot {
+  width:10px; height:10px; border-radius:50%;
+  background:var(--cy);
+  box-shadow:0 0 7px var(--cy), 0 0 14px rgba(0,255,221,.3);
+}
+.pg-ctrl-line {
+  position:absolute; left:50%; transform:translateX(-50%);
+  width:2px; background:rgba(0,255,221,.45);
+  z-index:4;
+}
+.pg-tgt {
+  width:36px; height:36px; border-radius:50%;
+  border:2.5px solid var(--cy);
+  background:rgba(0,255,221,.06);
+  display:flex; align-items:center; justify-content:center;
+  box-shadow:0 0 8px rgba(0,255,221,.2);
+}
+.pg-tgt-cross { font-size:1.1rem; color:var(--cy); font-weight:300; line-height:1; }
+
+/* Measure gate special */
+.pg-meas { flex-direction:column; gap:1px; }
+.pg-meas-arc { width:18px; height:9px; border:2px solid var(--yw); border-bottom:none; border-radius:9px 9px 0 0; }
+.pg-meas-arr { color:var(--yw); font-size:.55rem; margin-top:1px; }
+
+/* Barrier */
+.pg-barrier {
+  position:absolute; top:0; bottom:0; width:2px;
+  background:repeating-linear-gradient(180deg,
+    var(--mu2) 0,var(--mu2) 5px,transparent 5px,transparent 10px);
+  pointer-events:none; opacity:.6;
+}
+
+/* Resize handle between circuit and code */
+.resize-h {
+  height:5px; background:var(--bd); cursor:row-resize; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+  transition:background .2s;
+}
+.resize-h:hover, .resize-h.dragging { background:var(--bl); }
+.resize-h::after { content:'···'; color:var(--bd2); font-size:.5rem; }
+
+/* ─── CODE EDITOR ─── */
+#code-section {
+  display:flex; flex-direction:column; flex:1; min-height:0; overflow:hidden;
+}
+.code-hdr {
+  display:flex; align-items:center; gap:.4rem;
+  padding:.38rem .9rem; background:var(--bg2);
+  border-bottom:1px solid var(--bd); flex-shrink:0;
+}
+.code-hdr-title { font-family:var(--orb); font-size:.54rem; color:var(--mu); display:flex; align-items:center; gap:.32rem; }
+.editor-body { display:flex; flex:1; overflow:hidden; min-height:0; }
+.lnums {
+  width:42px; flex-shrink:0; background:#080c14;
+  border-right:1px solid var(--bd2); padding:.72rem 0;
+  font-family:var(--mono); font-size:.67rem; line-height:1.72;
+  color:var(--mu2); text-align:right; overflow:hidden;
+  user-select:none;
+}
+.lnums div { padding-right:.5rem; height:1.72em; }
+.editor-inner { flex:1; position:relative; overflow:hidden; background:var(--bg3); }
+.syn-lay {
+  position:absolute; inset:0; padding:.72rem .85rem;
+  font-family:var(--mono); font-size:.68rem; line-height:1.72;
+  pointer-events:none; z-index:1; overflow:hidden;
+  white-space:pre; background:var(--bg3); color:var(--tx2); tab-size:4;
+}
+.code-ta {
+  position:absolute; inset:0;
+  background:transparent; color:transparent;
+  caret-color:var(--cy);
+  padding:.72rem .85rem;
+  font-family:var(--mono); font-size:.68rem;
+  border:none; outline:none; resize:none;
+  line-height:1.72; z-index:2;
+  white-space:pre; overflow:auto; tab-size:4;
+  user-select:text;
+}
+.code-ta::-webkit-scrollbar { width:6px; height:6px; }
+.code-ta::-webkit-scrollbar-thumb { background:var(--bd2); border-radius:3px; }
+/* Syntax colors */
+.kw { color:var(--kw); font-weight:600; }
+.fn { color:var(--fn); }
+.st { color:var(--st); }
+.nm { color:var(--nm); }
+.cm { color:var(--cm); font-style:italic; }
+.cl { color:var(--cl); }
+
+/* Status bar */
+.statusbar {
+  height:24px; display:flex; align-items:center; gap:.75rem;
+  padding:0 .9rem; background:#080c14;
+  border-top:1px solid var(--bd); flex-shrink:0;
+  font-family:var(--mono); font-size:.56rem; color:var(--mu);
+}
+.sb-dot { width:5px; height:5px; border-radius:50%; }
+.idle { background:var(--mu); }
+.run  { background:var(--gr); animation:blink 2s infinite; }
+.err  { background:var(--rd); }
+.sb-r { margin-left:auto; display:flex; gap:.7rem; }
+
+/* ── RESIZE DIVIDER (vertical) ── */
+.resize-v {
+  width:5px; background:var(--bd); cursor:col-resize; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+  transition:background .2s;
+}
+.resize-v:hover, .resize-v.dragging { background:var(--bl); }
+.resize-v::after { content:'⋮'; color:var(--bd2); font-size:.55rem; }
+
+/* ── RIGHT PANEL ── */
+.right-panel {
+  display:flex; flex-direction:column;
+  background:var(--p); border-left:1px solid var(--bd);
+  flex-shrink:0;
+  /* width set by JS */
+}
+.rtabs {
+  display:flex; background:#080c14;
+  border-bottom:1px solid var(--bd); flex-shrink:0;
+}
+.rtab {
+  flex:1; padding:.42rem .3rem; background:transparent; border:none;
+  color:var(--mu); font-family:var(--orb); font-size:.48rem;
+  cursor:pointer; transition:all .2s;
+  border-bottom:2px solid transparent;
+  display:flex; align-items:center; justify-content:center; gap:.25rem;
+}
+.rtab.on { color:var(--bl2); border-bottom-color:var(--bl2); background:rgba(0,136,255,.05); }
+
+/* OUTPUT */
+.output-panel { flex:1; display:flex; flex-direction:column; min-height:0; }
+.out-hdr {
+  display:flex; align-items:center; gap:.4rem;
+  padding:.35rem .75rem; background:#080c14;
+  border-bottom:1px solid var(--bd);
+  font-family:var(--orb); font-size:.5rem; color:var(--mu); flex-shrink:0;
+}
+.out-body {
+  flex:1; padding:.72rem .8rem; background:var(--bg4);
+  font-family:var(--mono); font-size:.67rem; color:var(--tx2);
+  line-height:1.78; overflow-y:auto; white-space:pre-wrap;
+}
+.out-body::-webkit-scrollbar { width:5px; }
+.out-body::-webkit-scrollbar-thumb { background:var(--bd2); border-radius:3px; }
+.ok  { color:#39d353; }
+.er  { color:#ff6080; }
+.inf { color:#58a6ff; }
+.wa  { color:#d29922; }
+.pb  { color:#bd93f9; }
+.out-bar {
+  padding:.38rem .75rem; background:#080c14;
+  border-top:1px solid var(--bd);
+  display:flex; gap:.35rem; align-items:center; flex-shrink:0;
+}
+.ost { font-family:var(--orb); font-size:.48rem; margin-left:auto; }
+
+/* BLOCH */
+.bloch-panel {
+  flex:1; display:flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  gap:.5rem; padding:.7rem; background:var(--bg4); min-height:0;
+}
+.bloch-lbl { font-family:var(--orb); font-size:.54rem; color:var(--mu); }
+.bloch-st  { font-family:var(--mono); font-size:.74rem; color:var(--cy); }
+.bloch-ang { font-family:var(--mono); font-size:.58rem; color:var(--mu); }
+.gate-btns { display:flex; gap:.25rem; flex-wrap:wrap; justify-content:center; }
+.gb {
+  padding:.2rem .5rem; background:var(--p2);
+  border:1px solid var(--bd2); border-radius:4px;
+  color:var(--bl2); font-family:var(--mono); font-size:.52rem;
+  cursor:pointer; transition:all .2s; font-weight:600;
+}
+.gb:hover { background:var(--p3); border-color:var(--bl); color:var(--cy); }
+.gb.rst { border-color:rgba(255,68,102,.3); color:var(--rd); }
+
+/* SAVE */
+.save-panel { flex:1; display:flex; flex-direction:column; padding:.7rem; gap:.5rem; background:var(--p); overflow-y:auto; }
+.save-panel::-webkit-scrollbar { width:3px; }
+.save-panel::-webkit-scrollbar-thumb { background:var(--bd2); }
+.save-sec { background:var(--p2); border:1px solid var(--bd); border-radius:8px; padding:.72rem; }
+.save-title { font-family:var(--orb); font-size:.58rem; color:var(--bl2); margin-bottom:.55rem; }
+.fg { margin-bottom:.6rem; }
+.fl { font-family:var(--orb); font-size:.48rem; color:var(--mu); letter-spacing:.1em; display:block; margin-bottom:.2rem; }
+.fi {
+  width:100%; background:rgba(0,0,0,.4); border:1px solid var(--bd2);
+  border-radius:6px; padding:.42rem .7rem; color:var(--tx);
+  font-family:var(--mono); font-size:.7rem; outline:none;
+}
+.fi:focus { border-color:var(--bl2); }
+.fi::placeholder { color:var(--mu); }
+.ci {
+  display:flex; align-items:center; gap:.4rem;
+  padding:.36rem .58rem; background:rgba(0,0,0,.3);
+  border:1px solid var(--bd); border-radius:6px;
+  margin-bottom:.3rem; cursor:pointer; transition:all .2s;
+}
+.ci:hover { border-color:var(--bl); background:rgba(0,136,255,.05); }
+.ci-name { font-family:var(--mono); font-size:.6rem; color:var(--tx); flex:1; }
+.ci-lib { font-family:var(--orb); font-size:.42rem; color:var(--mu); background:rgba(0,136,255,.1); padding:.07rem .26rem; border-radius:3px; }
+.ci-del { background:transparent; border:none; color:var(--rd); cursor:pointer; font-size:.65rem; opacity:.4; }
+.ci-del:hover { opacity:1; }
+.no-login { text-align:center; padding:1.5rem .5rem; color:var(--mu); font-size:.68rem; line-height:1.65; }
+.btn-li { padding:.35rem .8rem; background:linear-gradient(135deg,#003388,var(--bl)); border:none; border-radius:6px; color:#fff; font-family:var(--orb); font-size:.55rem; cursor:pointer; margin-top:.5rem; }
+
+@media(max-width:760px) {
+  .palette { display:none; }
+  .right-panel { width:100%!important; }
+  .body-layout { flex-direction:column; }
+  .resize-v { display:none; }
+}
+</style>
+</head>
+<body>
+<div class="notif" id="notif"></div>
+
+<!-- ══ HEADER ══ -->
+<div class="titlebar">
+  <div class="tb-brand">
+    <svg width="20" height="20" viewBox="0 0 40 40" fill="none">
+      <line x1="2" y1="14" x2="38" y2="14" stroke="#003a7a" stroke-width="1.5" stroke-dasharray="3 2"/>
+      <line x1="2" y1="26" x2="38" y2="26" stroke="#003a7a" stroke-width="1.5" stroke-dasharray="3 2"/>
+      <rect x="5" y="10" width="8" height="8" rx="2" fill="rgba(0,136,255,.2)" stroke="#0088ff" stroke-width="1.5"/>
+      <text x="9" y="16" text-anchor="middle" font-family="monospace" font-size="5" fill="#00ccff" font-weight="bold">H</text>
+      <circle cx="9" cy="26" r="2.5" fill="#00ffdd"/>
+      <line x1="9" y1="18" x2="9" y2="23.5" stroke="#00ffdd" stroke-width="1.2"/>
+      <circle cx="9" cy="26" r="2.5" fill="none" stroke="#00ffdd" stroke-width="1.2"/>
+      <line x1="6.5" y1="26" x2="11.5" y2="26" stroke="#00ffdd" stroke-width="1.2"/>
+      <g transform="translate(24,14) scale(1.08)">
+        <circle cx="6" cy="6" r="3.5" fill="none" stroke="#00ccff" stroke-width="1.8"/>
+        <path d="M6 0v2M6 10v2M0 6h2M10 6h2M1.8 1.8l1.4 1.4M8.8 8.8l1.4 1.4M1.8 10.2l1.4-1.4M8.8 3.2l1.4-1.4" stroke="#00ccff" stroke-width="1.3" stroke-linecap="round"/>
+      </g>
+    </svg>
+    <span><span class="tb-q">Q</span><span class="tb-col">COL</span></span>
+    <span class="tb-title">⚙️ Arquitecto Cuántico</span>
+  </div>
+  <div class="tb-right">
+    <div class="badge badge-eng-off" id="eng-badge">● SIN MOTOR</div>
+    <div class="user-chip" id="user-chip" onclick="postCore('QCOL_LOGIN')">
+      <div class="u-dot" id="udot"></div>
+      <span id="uname">Invitado</span>
+    </div>
+  </div>
+</div>
+
+<!-- ══ TOOLBAR ══ -->
+<div class="toolbar">
+  <!-- Run -->
+  <button class="btn-run" id="btn-run" onclick="runCode()">
+    <span>▶</span> EJECUTAR
+  </button>
+  <!-- Circuit to code -->
+  <button class="bsm" onclick="genCode()" title="Generar código desde el circuito visual">⟳ CÓDIGO</button>
+  <!-- Open in Colab -->
+  <button class="bsm" onclick="openColab()" title="Abrir en Google Colab con todas las librerías preinstaladas">🚀 COLAB</button>
+  <div class="sep"></div>
+  <!-- Library -->
+  <span style="font-family:var(--orb);font-size:.48rem;color:var(--mu);flex-shrink:0;">LIB:</span>
+  <div class="lib-sel">
+    <button class="lib-btn on" id="lb-qiskit" onclick="setLib('qiskit',this)">Qiskit</button>
+    <button class="lib-btn" id="lb-cirq" onclick="setLib('cirq',this)">Cirq</button>
+  </div>
+  <div class="sep"></div>
+  <!-- Circuit controls -->
+  <button class="bsm" onclick="addQubit()">＋ Qubit</button>
+  <button class="bsm" id="btn-remq" onclick="removeQubit()">－ Qubit</button>
+  <button class="bsm danger" onclick="clearCircuit()">🗑 Limpiar</button>
+  <div class="sep"></div>
+  <!-- View mode -->
+  <div class="mode-sw">
+    <button class="mode-btn on" id="m-circ" onclick="setMode('circ')">⚛ Circuito</button>
+    <button class="mode-btn" id="m-code" onclick="setMode('code')">{ } Código</button>
+  </div>
+</div>
+
+<!-- ══ BODY ══ -->
+<div class="body-layout">
+
+  <!-- PALETTE -->
+  <div class="palette" id="palette">
+    <div class="palette-hdr">🔲 PUERTAS</div>
+    <div class="palette-body">
+      <div class="pal-sec-lbl">1 QUBIT</div>
+      <div class="pal-grid" id="pal-1q"></div>
+      <div class="pal-sec-lbl">2 QUBITS</div>
+      <div class="pal-grid" id="pal-2q"></div>
+      <div class="pal-sec-lbl">3 QUBITS</div>
+      <div class="pal-grid" id="pal-3q"></div>
+      <div class="pal-sec-lbl">MEDICIÓN</div>
+      <div class="pal-grid" id="pal-meas"></div>
+      <div class="pal-sec-lbl">ESPECIAL</div>
+      <div class="pal-grid" id="pal-spec"></div>
+    </div>
+  </div>
+
+  <!-- CENTER -->
+  <div class="center-area">
+
+    <!-- CIRCUIT SECTION -->
+    <div id="circuit-section" style="height:220px;">
+      <div class="circuit-header">
+        <span class="circuit-title">⚛ CIRCUITO CUÁNTICO</span>
+        <span class="qcount-badge" id="qcount-badge">2 qubits · 0 puertas</span>
+        <span style="font-family:var(--orb);font-size:.46rem;color:var(--mu);margin-left:auto;">
+          Arrastra puertas de la izquierda al cable del qubit
+        </span>
+      </div>
+      <div class="circuit-scroll" id="circuit-canvas">
+        <!-- rendered by JS -->
+      </div>
+    </div>
+
+    <!-- RESIZE HANDLE (circuit ↔ code) -->
+    <div class="resize-h" id="resize-h" onmousedown="startResH(event)"></div>
+
+    <!-- CODE SECTION -->
+    <div id="code-section">
+      <div class="code-hdr">
+        <div class="code-hdr-title">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
+            <rect x="3" y="3" width="18" height="18" rx="3" stroke="#4a6a9a" stroke-width="1.5"/>
+            <path d="M9 9l3 3-3 3M13 15h4" stroke="#4a6a9a" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+          EDITOR PYTHON
+        </div>
+        <button class="bsm" style="margin-left:auto;font-size:.5rem;" onclick="copyCode()">COPIAR</button>
+        <button class="bsm" style="font-size:.5rem;" onclick="clearCode()">LIMPIAR</button>
+      </div>
+      <div class="editor-body">
+        <div class="lnums" id="lnums"></div>
+        <div class="editor-inner">
+          <div class="syn-lay" id="syn-lay"></div>
+          <textarea class="code-ta" id="code-ta"
+            spellcheck="false" autocorrect="off" autocapitalize="off"
+            oninput="onEdit()" onscroll="syncSc()"
+            onkeydown="onKey(event)" onkeyup="updCur()" onclick="updCur()"
+          ></textarea>
+        </div>
+      </div>
+      <div class="statusbar">
+        <div class="sb-dot idle" id="sb-dot"></div>
+        <span id="sb-txt">Listo</span>
+        <span>⚛ <span id="sb-lib">Qiskit</span></span>
+        <div class="sb-r">
+          <span id="sb-circ">2 qubits · 0 puertas</span>
+          <span id="sb-cur">Ln 1, Col 1</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- VERTICAL RESIZE -->
+  <div class="resize-v" id="resize-v"
+    onmousedown="startResV(event)"
+    ontouchstart="startResTouchV(event)"></div>
+
+  <!-- RIGHT PANEL -->
+  <div class="right-panel" id="right-panel" style="width:300px;">
+    <div class="rtabs">
+      <button class="rtab on" id="rt-out"   onclick="rTab('out')">📤 OUTPUT</button>
+      <button class="rtab"    id="rt-bloch" onclick="rTab('bloch')">🌐 BLOCH</button>
+      <button class="rtab"    id="rt-save"  onclick="rTab('save')">💾 GUARDAR</button>
+    </div>
+
+    <!-- OUTPUT -->
+    <div class="output-panel" id="p-out">
+      <div class="out-hdr">
+        TERMINAL / OUTPUT
+        <span id="out-elapsed" style="margin-left:auto;font-size:.48rem;"></span>
+      </div>
+      <div class="out-body" id="out-body">
+<span class="inf">╔═══════════════════════════════════╗
+║  QCOL — Arquitecto Cuántico v4    ║
+╚═══════════════════════════════════╝
+
+</span><span class="inf"># Cómo usar:
+# 1. Arrastra puertas al cable del qubit
+# 2. O escribe código directamente
+# 3. ▶ EJECUTAR → resultado aquí
+# 4. 🚀 COLAB → abre con Qiskit real
+#
+# Sin motor: simulación local
+# Con motor: Qiskit real en la nube</span>
+      </div>
+      <div class="out-bar">
+        <button class="bsm" style="font-size:.5rem;" onclick="document.getElementById('out-body').innerHTML='<span class=inf># Limpiado</span>'">LIMPIAR</button>
+        <button class="btn-run" style="font-size:.5rem;padding:.25rem .7rem;" onclick="runCode()">▶ EJECUTAR</button>
+        <span class="ost" id="ost" style="color:var(--mu);">● LISTO</span>
+      </div>
+    </div>
+
+    <!-- BLOCH SPHERE -->
+    <div class="bloch-panel" id="p-bloch" style="display:none;">
+      <div class="bloch-lbl">ESFERA DE BLOCH — q[0]</div>
+      <canvas id="bloch-cv" width="210" height="210"
+        style="border-radius:9px;border:1px solid var(--bd2);box-shadow:0 0 20px rgba(0,136,255,.1);"></canvas>
+      <div class="bloch-st" id="b-st">|ψ⟩ = |0⟩</div>
+      <div class="bloch-ang" id="b-ang">θ = 0°  |  φ = 0°</div>
+      <div class="gate-btns">
+        <button class="gb" onclick="applyG('H')">H</button>
+        <button class="gb" onclick="applyG('X')">X</button>
+        <button class="gb" onclick="applyG('Y')">Y</button>
+        <button class="gb" onclick="applyG('Z')">Z</button>
+        <button class="gb" onclick="applyG('S')">S</button>
+        <button class="gb" onclick="applyG('T')">T</button>
+        <button class="gb" onclick="applyG('RX')">Rx</button>
+        <button class="gb" onclick="applyG('RY')">Ry</button>
+        <button class="gb" onclick="applyG('RZ')">Rz</button>
+        <button class="gb rst" onclick="resetB()">⟳ RESET</button>
+      </div>
+    </div>
+
+    <!-- SAVE -->
+    <div class="save-panel" id="p-save" style="display:none;">
+      <div class="save-sec">
+        <div class="save-title">💾 Guardar circuito</div>
+        <div class="fg"><label class="fl">NOMBRE</label>
+          <input class="fi" id="save-name" placeholder="mi_circuito"></div>
+        <div style="display:flex;gap:.35rem;flex-wrap:wrap;">
+          <button class="bsm" style="font-size:.5rem;" onclick="saveCircuit()">💾 En cuenta</button>
+          <button class="bsm" style="font-size:.5rem;" onclick="dlPy()">📥 .py</button>
+          <button class="bsm" style="font-size:.5rem;" onclick="dlNb()">📥 .ipynb</button>
+        </div>
+      </div>
+      <div class="save-sec">
+        <div class="save-title">📂 Mis circuitos</div>
+        <div id="circ-list"></div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- end body-layout -->
+
+<script>
+// ════════════════════════════════════════════════════
+// QCOL ARQUITECTO v4 — Quantum Circuit IDE
+// Circuit visual (IBM-style) + Code Editor + Bloch
+// ════════════════════════════════════════════════════
+
+// ── STATE ──────────────────────────────────────────
+let curUser=null, engineURL='', engineOK=false, running=false;
+let curLib='qiskit', curMode='circ';
+let blochSt={th:0,ph:0};
+
+// Circuit data
+let circuit={qubits:2, gates:[]};
+// dragGate: gate being dragged from palette
+let dragGate=null;
+
+// ── CORE COMMUNICATION ─────────────────────────────
+function postCore(t,d={}){ window.parent.postMessage({type:t,...d},'*'); }
+function notify(msg,dur=3000){
+  const n=document.getElementById('notif');
+  n.textContent=msg; n.classList.add('show');
+  clearTimeout(n._t); n._t=setTimeout(()=>n.classList.remove('show'),dur);
+}
+window.addEventListener('message',e=>{
+  const d=e.data; if(!d?.type) return;
+  if(d.type==='QCOL_CONFIG'){
+    engineURL=localStorage.getItem('qcol_colab_url')||'';
+    if(engineURL) checkEngine();
+  }
+  if(d.type==='QCOL_USER_UPDATE'){
+    curUser=d.user; updateUserBadge(); renderSaveList();
+  }
+});
+postCore('QCOL_GET_CONFIG');
+
+function updateUserBadge(){
+  const dot=document.getElementById('udot'),nm=document.getElementById('uname');
+  if(curUser){ dot.className='u-dot on'; nm.textContent=curUser.name.split(' ')[0]; }
+  else{ dot.className='u-dot'; nm.textContent='Invitado'; }
+}
+
+async function checkEngine(){
+  if(!engineURL) return;
+  try{
+    const r=await fetch(engineURL+'/health',{signal:AbortSignal.timeout(5000)});
+    if(r.ok){ engineOK=true; const b=document.getElementById('eng-badge'); b.textContent='● MOTOR ACTIVO'; b.className='badge badge-eng-on'; }
+  }catch(e){ engineOK=false; }
+}
+
+// ── GATE DEFINITIONS ────────────────────────────────
+const GATE_DEFS = {
+  '1q':[
+    {id:'H',  sym:'H',  bg:'#1a5fb4', glow:'rgba(26,95,180,.5)',  code_q:'qc.h({q})',        code_c:'cirq.H({q})',             desc:'Hadamard — superposición'},
+    {id:'X',  sym:'X',  bg:'#a51d2d', glow:'rgba(165,29,45,.5)',   code_q:'qc.x({q})',        code_c:'cirq.X({q})',             desc:'Pauli-X — NOT cuántico'},
+    {id:'Y',  sym:'Y',  bg:'#613583', glow:'rgba(97,53,131,.5)',   code_q:'qc.y({q})',        code_c:'cirq.Y({q})',             desc:'Pauli-Y'},
+    {id:'Z',  sym:'Z',  bg:'#1c71d8', glow:'rgba(28,113,216,.5)',  code_q:'qc.z({q})',        code_c:'cirq.Z({q})',             desc:'Pauli-Z — fase π'},
+    {id:'S',  sym:'S',  bg:'#c64600', glow:'rgba(198,70,0,.5)',    code_q:'qc.s({q})',        code_c:'cirq.S({q})',             desc:'Fase π/2'},
+    {id:'T',  sym:'T',  bg:'#26a269', glow:'rgba(38,162,105,.5)',  code_q:'qc.t({q})',        code_c:'cirq.T({q})',             desc:'Fase π/4'},
+    {id:'Rx', sym:'Rx', bg:'#0077c2', glow:'rgba(0,119,194,.5)',   code_q:'qc.rx(pi/4,{q})', code_c:'cirq.rx(rads=pi/4)({q})', desc:'Rotación X π/4'},
+    {id:'Ry', sym:'Ry', bg:'#005f6a', glow:'rgba(0,95,106,.5)',    code_q:'qc.ry(pi/4,{q})', code_c:'cirq.ry(rads=pi/4)({q})', desc:'Rotación Y π/4'},
+    {id:'Rz', sym:'Rz', bg:'#5e35b1', glow:'rgba(94,53,177,.5)',   code_q:'qc.rz(pi/4,{q})', code_c:'cirq.rz(rads=pi/4)({q})', desc:'Rotación Z π/4'},
+    {id:'SX', sym:'√X', bg:'#a51d2d', glow:'rgba(165,29,45,.4)',   code_q:'qc.sx({q})',       code_c:'cirq.X({q})**0.5',        desc:'Raíz de X'},
+    {id:'I',  sym:'I',  bg:'#3d4a5c', glow:'rgba(61,74,92,.4)',    code_q:'qc.id({q})',       code_c:'cirq.I({q})',             desc:'Identidad'},
+  ],
+  '2q':[
+    {id:'CX',  sym:'CX',  bg:'#00838f', glow:'rgba(0,131,143,.5)', code_q:'qc.cx({q},{q1})',   code_c:'cirq.CNOT({q},{q1})',      desc:'CNOT',    multi:true},
+    {id:'CZ',  sym:'CZ',  bg:'#00695c', glow:'rgba(0,105,92,.5)',  code_q:'qc.cz({q},{q1})',   code_c:'cirq.CZ({q},{q1})',        desc:'Ctrl-Z',  multi:true},
+    {id:'SWAP',sym:'SWP', bg:'#1565c0', glow:'rgba(21,101,192,.5)',code_q:'qc.swap({q},{q1})', code_c:'cirq.SWAP({q},{q1})',      desc:'SWAP',    multi:true},
+    {id:'CH',  sym:'CH',  bg:'#1a5fb4', glow:'rgba(26,95,180,.4)', code_q:'qc.ch({q},{q1})',   code_c:'cirq.H({q1}).controlled_by({q})', desc:'Ctrl-H', multi:true},
+    {id:'CY',  sym:'CY',  bg:'#613583', glow:'rgba(97,53,131,.4)', code_q:'qc.cy({q},{q1})',   code_c:'cirq.Y({q1}).controlled_by({q})', desc:'Ctrl-Y', multi:true},
+    {id:'CP',  sym:'CP',  bg:'#5e35b1', glow:'rgba(94,53,177,.4)', code_q:'qc.cp(pi/4,{q},{q1})', code_c:'cirq.CZPowGate(exponent=0.5)({q},{q1})', desc:'Ctrl-Fase', multi:true},
+  ],
+  '3q':[
+    {id:'CCX', sym:'CCX', bg:'#005f6a', glow:'rgba(0,95,106,.5)',  code_q:'qc.ccx({q},{q1},2)',   code_c:'cirq.TOFFOLI({q},{q1},q[2])', desc:'Toffoli', multi:true},
+    {id:'CSW', sym:'CSW', bg:'#1565c0', glow:'rgba(21,101,192,.4)',code_q:'qc.cswap({q},{q1},2)', code_c:'cirq.FREDKIN({q},{q1},q[2])', desc:'Fredkin', multi:true},
+  ],
+  'meas':[
+    {id:'M',   sym:'M',   bg:'#6d4c41', glow:'rgba(255,215,0,.35)', code_q:'qc.measure({q},{q})', code_c:'cirq.measure({q})', desc:'Medir'},
+    {id:'RST', sym:'RST', bg:'#37474f', glow:'rgba(74,106,154,.4)',  code_q:'qc.reset({q})',       code_c:'# reset',           desc:'Reset |0⟩'},
+    {id:'BAR', sym:'|||', bg:'#263238', glow:'rgba(74,106,154,.3)',  code_q:'qc.barrier()',         code_c:'# barrier',         desc:'Barrera'},
+  ],
+  'spec':[
+    {id:'|0⟩', sym:'|0⟩', bg:'#1a5fb4', glow:'rgba(26,95,180,.4)', code_q:'# q[{q}] = |0⟩',    code_c:'# q = |0⟩',    desc:'Estado base'},
+    {id:'|1⟩', sym:'|1⟩', bg:'#a51d2d', glow:'rgba(165,29,45,.4)', code_q:'qc.x({q})  # |1⟩',  code_c:'cirq.X({q})',   desc:'Estado excitado'},
+    {id:'|+⟩', sym:'|+⟩', bg:'#1a5fb4', glow:'rgba(26,95,180,.4)', code_q:'qc.h({q})  # |+⟩',  code_c:'cirq.H({q})',   desc:'Superposición'},
+  ],
+};
+
+// ── BUILD PALETTE ───────────────────────────────────
+function buildPalette(){
+  Object.entries({'1q':'pal-1q','2q':'pal-2q','3q':'pal-3q','meas':'pal-meas','spec':'pal-spec'}).forEach(([cat,id])=>{
+    const el=document.getElementById(id);if(!el)return;
+    el.innerHTML=GATE_DEFS[cat].map(g=>`
+      <div class="pal-gate" draggable="true"
+        style="background:${g.bg};"
+        title="${g.desc}"
+        data-gid="${g.id}"
+        onmousedown="onPalMouseDown('${g.id}')"
+        ondragstart="onPalDragStart(event,'${g.id}')">
+        <span class="pal-gate-sym">${g.sym}</span>
+        <span class="pal-gate-lbl">${g.id.length>3?g.id.substring(0,3):g.id}</span>
+      </div>`).join('');
+  });
+}
+
+// ── DRAG FROM PALETTE ────────────────────────────────
+function onPalMouseDown(gid){ dragGate=gid; }
+function onPalDragStart(e,gid){
+  dragGate=gid;
+  e.dataTransfer.effectAllowed='copy';
+  e.dataTransfer.setData('text/plain',gid);
+  // Style source
+  document.querySelectorAll('.pal-gate').forEach(pg=>{
+    if(pg.dataset.gid===gid) pg.classList.add('dragging-src');
+  });
+}
+document.addEventListener('dragend',()=>{
+  dragGate=null;
+  document.querySelectorAll('.pal-gate').forEach(pg=>pg.classList.remove('dragging-src'));
+  document.querySelectorAll('.q-wire').forEach(w=>w.classList.remove('dh'));
+});
+
+// ── WIRE DROP HANDLERS ────────────────────────────────
+function wireDragEnter(e,q){ e.preventDefault(); }
+function wireDragOver(e,q){
+  e.preventDefault(); e.stopPropagation();
+  e.dataTransfer.dropEffect='copy';
+  document.querySelectorAll('.q-wire').forEach(w=>w.classList.remove('dh'));
+  document.getElementById('wire-'+q)?.classList.add('dh');
+}
+function wireDragLeave(e,q){
+  if(!e.currentTarget.contains(e.relatedTarget))
+    document.getElementById('wire-'+q)?.classList.remove('dh');
+}
+function wireDrop(e,q){
+  e.preventDefault(); e.stopPropagation();
+  document.querySelectorAll('.q-wire').forEach(w=>w.classList.remove('dh'));
+  const gid=dragGate||e.dataTransfer.getData('text/plain');
+  if(!gid){notify('No se detectó la puerta — intenta de nuevo');return;}
+  placeGate(gid,q);
+  dragGate=null;
+}
+
+// ── PLACE GATE ─────────────────────────────────────────
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).substr(2,5); }
+
+function findDef(id){
+  for(const cat of Object.values(GATE_DEFS)){
+    const g=cat.find(x=>x.id===id); if(g) return g;
+  }
+  return null;
+}
+
+function placeGate(gid,q){
+  const def=findDef(gid);
+  if(!def){ notify('Puerta no encontrada'); return; }
+
+  let q2=q+1<circuit.qubits?q+1:q-1;
+
+  if(def.multi){
+    if(circuit.qubits<2){notify('Necesitas al menos 2 qubits para '+gid);return;}
+    if(q2<0||q2>=circuit.qubits){notify('No hay qubit destino para '+gid);return;}
+    circuit.gates.push({id:gid,q,q2,def,uid:uid()});
+  } else {
+    circuit.gates.push({id:gid,q,def,uid:uid()});
+  }
+  renderCircuit();
+  genCode();
+  notify(`${gid} → q[${q}]`);
+}
+
+function removeGate(uid_){
+  circuit.gates=circuit.gates.filter(g=>g.uid!==uid_);
+  renderCircuit(); genCode();
+}
+
+function addQubit(){
+  if(circuit.qubits>=10){notify('Máximo 10 qubits');return;}
+  circuit.qubits++; renderCircuit();
+  notify(`${circuit.qubits} qubits`);
+}
+function removeQubit(){
+  if(circuit.qubits<=1){notify('Mínimo 1 qubit');return;}
+  // Remove gates on last qubit
+  circuit.gates=circuit.gates.filter(g=>g.q<circuit.qubits-1&&(g.q2===undefined||g.q2<circuit.qubits-1));
+  circuit.qubits--; renderCircuit(); genCode();
+}
+function clearCircuit(){
+  circuit={qubits:circuit.qubits,gates:[]};
+  renderCircuit(); genCode();
+  notify('Circuito limpiado');
+}
+
+// ── RENDER CIRCUIT (IBM-style) ────────────────────────
+const STEP=52;  // px per gate column
+
+function renderCircuit(){
+  const canvas=document.getElementById('circuit-canvas');
+  if(!canvas) return;
+
+  // Assign columns (track per-qubit depth)
+  const depth=Array(circuit.qubits).fill(0);
+  const placed=circuit.gates.map(g=>{
+    let col;
+    if(g.q2!==undefined){
+      col=Math.max(depth[g.q],depth[g.q2]);
+      depth[g.q]=col+1; depth[g.q2]=col+1;
+    } else {
+      col=depth[g.q]; depth[g.q]++;
+    }
+    return {...g,col};
+  });
+
+  const totalCols=Math.max(...depth,1);
+  const wireW=totalCols*STEP+80;
+
+  let html=`<div style="position:relative;min-width:${wireW}px;">`;
+
+  // ─── QUBIT WIRES ───
+  for(let q=0;q<circuit.qubits;q++){
+    // Build gate elements for this qubit
+    let ghtml='';
+
+    placed.forEach(g=>{
+      if(g.q!==q && g.q2!==q) return;
+      const left=g.col*STEP+4;
+      const def=g.def;
+      const bg=def.bg||'#1a5fb4';
+      const glow=def.glow||'rgba(0,136,255,.4)';
+
+      if(g.id==='BAR'){
+        if(g.q===q) ghtml+=`<div class="pg-barrier" style="left:${left+10}px;"></div>`;
+        return;
+      }
+
+      if(g.id==='M'){
+        if(g.q===q){
+          ghtml+=`<div class="placed-gate" style="left:${left}px;" title="Medir — doble click para eliminar">
+            <div class="pg-box pg-meas" style="background:${bg};--gate-glow:${glow};" onclick="removeGate('${g.uid}')">
+              <div class="pg-meas-arc"></div>
+              <div class="pg-meas-arr">↑</div>
+            </div>
+            <button class="pg-del" onclick="event.stopPropagation();removeGate('${g.uid}')">✕</button>
+          </div>`;
+        }
+        return;
+      }
+
+      if((g.id==='CX'||g.id==='CNOT') && g.q2!==undefined){
+        if(g.q===q){
+          // Control: filled dot
+          const dy=(g.q2-g.q)*56;
+          ghtml+=`
+            <div class="placed-gate" style="left:${left+9}px;z-index:5;" title="CNOT Ctrl">
+              <div style="width:20px;height:56px;display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;" onclick="removeGate('${g.uid}')">
+                <div class="pg-ctrl-dot"></div>
+                <div class="pg-ctrl-line" style="${dy>0?'top:28px;height:'+dy+'px;':'bottom:28px;height:'+Math.abs(dy)+'px;'}"></div>
+              </div>
+              <button class="pg-del" onclick="event.stopPropagation();removeGate('${g.uid}')">✕</button>
+            </div>`;
+        } else {
+          // Target: circle ⊕
+          ghtml+=`
+            <div class="placed-gate" style="left:${left}px;" title="CNOT Target">
+              <div class="pg-tgt" onclick="removeGate('${g.uid}')">
+                <span class="pg-tgt-cross">⊕</span>
+              </div>
+              <button class="pg-del" onclick="event.stopPropagation();removeGate('${g.uid}')">✕</button>
+            </div>`;
+        }
+        return;
+      }
+
+      if(g.q===q){
+        // Standard gate box
+        ghtml+=`
+          <div class="placed-gate" style="left:${left}px;" title="${def.desc} — click eliminar">
+            <div class="pg-box" style="background:${bg};--gate-glow:${glow};" onclick="removeGate('${g.uid}')">
+              <span class="pg-sym">${def.sym.length>3?def.sym.substring(0,3):def.sym}</span>
+            </div>
+            <button class="pg-del" onclick="event.stopPropagation();removeGate('${g.uid}')">✕</button>
+          </div>`;
+      }
+    });
+
+    const hasGates=placed.filter(g=>g.q===q).length>0;
+    html+=`
+      <div class="q-row">
+        <div class="q-label">q[${q}]</div>
+        <div class="q-ket">|0⟩</div>
+        <div class="q-wire" id="wire-${q}"
+          style="min-width:${wireW-74}px;"
+          ondragenter="wireDragEnter(event,${q})"
+          ondragover="wireDragOver(event,${q})"
+          ondragleave="wireDragLeave(event,${q})"
+          ondrop="wireDrop(event,${q})">
+          ${ghtml}
+          ${!hasGates?`<div class="wire-hint">↙ arrastra aquí</div>`:''}
+        </div>
+      </div>`;
+  }
+
+  // ─── CLASSICAL WIRES ───
+  for(let c=0;c<circuit.qubits;c++){
+    html+=`<div class="c-row">
+      <div class="c-label">c[${c}]</div>
+      <div class="c-ket">0</div>
+      <div class="c-wire-double" style="min-width:${wireW-74}px;"></div>
+    </div>`;
+  }
+
+  html+=`</div>`;
+  canvas.innerHTML=html;
+
+  // Update counters
+  const ng=circuit.gates.length;
+  const info=`${circuit.qubits} qubit${circuit.qubits>1?'s':''} · ${ng} puerta${ng!==1?'s':''}`;
+  document.getElementById('qcount-badge').textContent=info;
+  document.getElementById('sb-circ').textContent=info;
+}
+
+// ── GENERATE CODE FROM CIRCUIT ────────────────────────
+function genCode(){
+  const n=circuit.qubits;
+  const isQ=curLib==='qiskit';
+  const hasM=circuit.gates.some(g=>g.id==='M');
+  let code='';
+
+  if(isQ){
+    code=`from qiskit import QuantumCircuit\nfrom numpy import pi\n\n`;
+    code+=`# QCOL — Circuito generado automáticamente\n`;
+    code+=`qc = QuantumCircuit(${n}${hasM?', '+n:''})\n\n`;
+    if(circuit.gates.length===0){code+='# Arrastra puertas al circuito\n';}
+    else{
+      circuit.gates.forEach(g=>{
+        let line=g.def.code_q
+          .replace(/\{q\}/g,String(g.q))
+          .replace(/\{q1\}/g,String(g.q2??Math.min(g.q+1,n-1)));
+        code+=line+'  # '+g.def.desc+'\n';
+      });
+      code+=`\nprint(qc.draw(output='text'))`;
+    }
+  } else {
+    // Cirq
+    code=`import cirq\nimport numpy as np\nfrom numpy import pi\n\n`;
+    code+=`# QCOL — Circuito Cirq generado automáticamente\n`;
+    code+=`q = cirq.LineQubit.range(${n})\n\n`;
+    if(circuit.gates.length===0){code+='# Arrastra puertas al circuito\n';}
+    else{
+      code+=`circuit = cirq.Circuit([\n`;
+      circuit.gates.forEach(g=>{
+        let line='    '+g.def.code_c
+          .replace(/\{q\}/g,'q['+g.q+']')
+          .replace(/\{q1\}/g,'q['+(g.q2??Math.min(g.q+1,n-1))+']');
+        code+=line+',\n';
+      });
+      code+=`])\n\nprint(circuit)`;
+    }
+  }
+
+  const ta=document.getElementById('code-ta');
+  ta.value=code; onEdit();
+}
+
+// ── MODE SWITCH ───────────────────────────────────────
+function setMode(m){
+  curMode=m;
+  document.getElementById('m-circ').classList.toggle('on',m==='circ');
+  document.getElementById('m-code').classList.toggle('on',m==='code');
+  const cs=document.getElementById('circuit-section');
+  const pal=document.getElementById('palette');
+  const rh=document.getElementById('resize-h');
+  if(m==='circ'){
+    cs.style.display='flex'; pal.style.display='flex'; rh.style.display='flex';
+  } else {
+    cs.style.display='none'; pal.style.display='none'; rh.style.display='none';
+  }
+}
+
+// ── LIBRARY SWITCH ────────────────────────────────────
+const LIB_EXAMPLES={
+  qiskit:`from qiskit import QuantumCircuit
+from numpy import pi
+
+# Estado Bell |Φ⁺⟩
+qc = QuantumCircuit(2, 2)
+qc.h(0)
+qc.cx(0, 1)
+qc.measure([0, 1], [0, 1])
+print(qc.draw(output='text'))
+print("\\n|Φ⁺⟩ = (|00⟩ + |11⟩) / √2")`,
+
+  cirq:`import cirq
+
+# Estado Bell |Φ⁺⟩ con Cirq
+q0, q1 = cirq.LineQubit.range(2)
+circuit = cirq.Circuit(
+    cirq.H(q0),
+    cirq.CNOT(q0, q1),
+    cirq.measure(q0, q1, key='resultado')
+)
+print(circuit)
+sim = cirq.Simulator()
+result = sim.run(circuit, repetitions=100)
+print("Resultados:", result)`,
+};
+
+function setLib(lib,el){
+  curLib=lib;
+  document.querySelectorAll('.lib-btn').forEach(b=>b.classList.remove('on'));
+  el.classList.add('on');
+  document.getElementById('sb-lib').textContent=lib.charAt(0).toUpperCase()+lib.slice(1);
+  // Clear circuit and load example
+  circuit.gates=[];
+  renderCircuit();
+  document.getElementById('code-ta').value=LIB_EXAMPLES[lib]||LIB_EXAMPLES.qiskit;
+  onEdit();
+  notify('Librería: '+lib);
+}
+
+// ── OPEN IN COLAB ─────────────────────────────────────
+function openColab(){
+  const code=encodeURIComponent(document.getElementById('code-ta').value);
+  const lib=curLib;
+
+  // Build a Colab notebook URL with the code pre-loaded
+  // Using the "open in colab" pattern with a template notebook
+  const ghUser='laffitacamargof-create';
+  const ghRepo='quantum-computing-open-lab';
+
+  // The notebook template has all libraries pre-installed
+  const colabURL=`https://colab.research.google.com/github/${ghUser}/${ghRepo}/blob/main/notebooks/QCOL_Template_${lib}.ipynb`;
+
+  // Also show the install cell so user can run
+  notify(`🚀 Abriendo Google Colab con ${lib} preinstalado...`,4000);
+  window.open(colabURL,'_blank');
+
+  // Also prompt to download current code
+  setTimeout(()=>{
+    if(confirm(`¿Descargar tu código actual como .ipynb para subirlo a Colab?\n\nHaz clic en OK para descargar.`)){
+      dlNb();
+    }
+  },800);
+}
+
+// ── EXECUTION ─────────────────────────────────────────
+function setRunSt(s,msg){
+  const dot=document.getElementById('sb-dot');
+  const stxt=document.getElementById('sb-txt');
+  const ost=document.getElementById('ost');
+  dot.className='sb-dot '+(s==='run'?'run':s==='err'?'err':'idle');
+  if(stxt) stxt.textContent=msg;
+  if(ost){ ost.textContent='● '+msg.toUpperCase(); ost.style.color=s==='run'?'#ffaa00':s==='err'?'var(--rd)':'var(--gr)'; }
+}
+
+async function runCode(){
+  if(running) return;
+  const code=document.getElementById('code-ta').value.trim();
+  if(!code){notify('Escribe código primero');return;}
+  running=true; setRunSt('run','Ejecutando...');
+  const btn=document.getElementById('btn-run');
+  btn.disabled=true; btn.innerHTML='<span class="spin"></span> EJECUTANDO';
+  rTab('out');
+  const t0=Date.now();
+  const out=document.getElementById('out-body');
+  out.innerHTML=`<span class="inf">Procesando · ${curLib}...\n</span>`;
+
+  if(engineOK&&engineURL){
+    // ── MOTOR REAL ──
+    try{
+      const res=await fetch(engineURL+'/run',{
+        method:'POST',headers:{'Content-Type':'application/json'},mode:'cors',
+        body:JSON.stringify({code,lib:curLib}),
+        signal:AbortSignal.timeout(45000)
+      });
+      const d=await res.json();
+      const el=((Date.now()-t0)/1000).toFixed(2);
+      document.getElementById('out-elapsed').textContent=el+'s';
+      if(d.success){
+        out.innerHTML=`<span class="inf">╔════════════════════════════╗\n║  Motor · ${el}s\n╚════════════════════════════╝\n\n</span>`;
+        out.innerHTML+=`<span class="ok">${escH(d.output)}</span>`;
+        if(d.bloch?.probabilities){
+          out.innerHTML+=`\n<span class="inf">══ Probabilidades ══\n</span>`;
+          Object.entries(d.bloch.probabilities).sort((a,b)=>b[1]-a[1]).forEach(([s,p])=>{
+            const bar='█'.repeat(Math.round(p*20));
+            out.innerHTML+=`<span class="pb">|${s}⟩: ${(p*100).toFixed(1).padStart(5)}%  ${bar}\n</span>`;
+          });
+        }
+        if(d.bloch?.counts){
+          const tot=Object.values(d.bloch.counts).reduce((a,b)=>a+b,0);
+          out.innerHTML+=`\n<span class="inf">══ Mediciones (${tot} shots) ══\n</span>`;
+          Object.entries(d.bloch.counts).sort((a,b)=>b[1]-a[1]).forEach(([s,c])=>{
+            const bar='█'.repeat(Math.round(c/tot*20));
+            out.innerHTML+=`<span class="pb">|${s}⟩: ${c} shots  ${bar}\n</span>`;
+          });
+        }
+        out.innerHTML+=`\n<span class="ok">✅ Completado en ${el}s</span>`;
+        setRunSt('idle','Listo'); animateBloch(code);
+      } else {
+        out.innerHTML+=`<span class="er">❌ Error:\n${escH(d.output)}</span>`;
+        setRunSt('err','Error');
+      }
+    } catch(e){
+      out.innerHTML+=`<span class="er">❌ ${e.name==='TimeoutError'?'Tiempo agotado (45s)':e.message}</span>`;
+      setRunSt('err','Error'); engineOK=false;
+    }
+  } else {
+    // ── SIMULACIÓN LOCAL ──
+    await new Promise(r=>setTimeout(r,650));
+    const el=((Date.now()-t0)/1000).toFixed(2);
+    const hasH=/\.h\(|Hadamard|cirq\.H/.test(code);
+    const hasCX=/\.cx\(|CNOT|cirq\.CNOT/.test(code);
+    const hasX=/\.x\(|cirq\.X/.test(code);
+    let st='',eq='',probs=[];
+    if(hasH&&hasCX){ st='Bell |Φ⁺⟩'; eq='(|00⟩+|11⟩)/√2'; probs=[['00','50.0'],['11','50.0']]; }
+    else if(hasH){ st='Superposición'; eq='(|0⟩+|1⟩)/√2'; probs=[['0','50.0'],['1','50.0']]; }
+    else if(hasX){ st='|1⟩'; eq='Excitado'; probs=[['1','100.0']]; }
+    else { st='|0⟩'; eq='Base'; probs=[['0','100.0']]; }
+
+    out.innerHTML=`<span class="inf">╔════════════════════════════════╗
+║  Simulación local · ${el}s
+╚════════════════════════════════╝
+
+</span><span class="ok">Estado final: ${st}
+|ψ⟩ = ${eq}
+
+</span><span class="inf">══ Probabilidades (simuladas) ══
+</span>`;
+    probs.forEach(([s,p])=>{
+      const bar='█'.repeat(parseInt(p/5)||1);
+      out.innerHTML+=`<span class="pb">|${s}⟩: ${p.padStart(6)}%  ${bar}\n</span>`;
+    });
+    out.innerHTML+=`\n<span class="ok">✅ Simulación completada en ${el}s</span>
+<span class="wa">
+💡 Para Qiskit/Cirq real:
+   Panel Fundador → Motor → Configurar URL
+   O usa 🚀 COLAB para abrirlo directamente</span>`;
+    document.getElementById('out-elapsed').textContent=el+'s';
+    setRunSt('idle','Listo (sim.)'); animateBloch(code);
+  }
+  running=false; btn.disabled=false; btn.innerHTML='<span>▶</span> EJECUTAR';
+  out.scrollTop=out.scrollHeight;
+}
+
+function escH(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+// ── SYNTAX HIGHLIGHT ──────────────────────────────────
+function highlight(code){
+  let h=code.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  h=h.replace(/(#[^\n]*)/g,'<span class="cm">$1</span>');
+  h=h.replace(/("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')/g,m=>m.includes('class=')?m:`<span class="st">${m}</span>`);
+  ['from','import','as','def','class','return','if','elif','else','for','while','in','not','and','or','True','False','None','with','pass','try','except','finally','raise','yield','lambda'].forEach(k=>{
+    h=h.replace(new RegExp(`(?<![\\w])(${k})(?![\\w])`,'g'),(m,w)=>m.includes('class=')?m:`<span class="kw">${w}</span>`);
+  });
+  ['QuantumCircuit','Statevector','AerSimulator','Simulator','LineQubit','GridQubit','Circuit'].forEach(k=>{
+    h=h.replace(new RegExp(`(?<![\\w])(${k})(?![\\w])`,'g'),(m,w)=>m.includes('class=')?m:`<span class="cl">${w}</span>`);
+  });
+  h=h.replace(/(?<![\\w.])(\d+\.?\d*(?:e[+-]?\d+)?)(?![\\w])/g,(m,n)=>`<span class="nm">${n}</span>`);
+  h=h.replace(/\b(pi|np|qml|qt|cirq|qc)\b/g,m=>`<span class="nm">${m}</span>`);
+  h=h.replace(/\b([a-zA-Z_]\w*)\s*(?=\()/g,(m,fn)=>m.includes('class=')?m:`<span class="fn">${fn}</span>`);
+  return h;
+}
+function onEdit(){
+  const ta=document.getElementById('code-ta'),sl=document.getElementById('syn-lay');
+  const ln=document.getElementById('lnums');
+  if(sl) sl.innerHTML=highlight(ta.value)+'\n';
+  if(ln){const l=ta.value.split('\n');ln.innerHTML=l.map((_,i)=>`<div>${i+1}</div>`).join('');}
+}
+function syncSc(){
+  const ta=document.getElementById('code-ta'),sl=document.getElementById('syn-lay'),ln=document.getElementById('lnums');
+  if(sl){sl.scrollTop=ta.scrollTop;sl.scrollLeft=ta.scrollLeft;}
+  if(ln) ln.scrollTop=ta.scrollTop;
+}
+function updCur(){
+  const ta=document.getElementById('code-ta');
+  const txt=ta.value.substring(0,ta.selectionStart);
+  const lines=txt.split('\n');
+  document.getElementById('sb-cur').textContent=`Ln ${lines.length}, Col ${lines[lines.length-1].length+1}`;
+}
+function onKey(e){
+  if(e.key==='Tab'){
+    e.preventDefault();
+    const ta=e.target,s=ta.selectionStart;
+    if(e.shiftKey){
+      const l=ta.value.lastIndexOf('\n',s-1);
+      if(ta.value.substring(l+1,l+5)==='    '){ta.value=ta.value.substring(0,l+1)+ta.value.substring(l+5);ta.selectionStart=ta.selectionEnd=s-4;}
+    } else {
+      ta.value=ta.value.substring(0,s)+'    '+ta.value.substring(ta.selectionEnd);
+      ta.selectionStart=ta.selectionEnd=s+4;
+    }
+    onEdit();
+  }
+  if((e.ctrlKey||e.metaKey)&&e.key==='s'){e.preventDefault();saveCircuit();}
+  if((e.ctrlKey||e.metaKey)&&e.key==='r'){e.preventDefault();runCode();}
+}
+function clearCode(){document.getElementById('code-ta').value='from qiskit import QuantumCircuit\nfrom numpy import pi\n\nqc = QuantumCircuit(2)\n';onEdit();}
+function copyCode(){navigator.clipboard.writeText(document.getElementById('code-ta').value).then(()=>notify('Código copiado ✅'));}
+
+// ── TABS ──────────────────────────────────────────────
+function rTab(t){
+  ['out','bloch','save'].forEach(x=>{
+    document.getElementById('p-'+x).style.display='none';
+    document.getElementById('rt-'+x).classList.remove('on');
+  });
+  document.getElementById('p-'+t).style.display='flex';
+  document.getElementById('p-'+t).style.flexDirection='column';
+  document.getElementById('rt-'+t).classList.add('on');
+  if(t==='bloch') setTimeout(drawBloch,50);
+  if(t==='save') renderSaveList();
+}
+
+// ── BLOCH SPHERE ──────────────────────────────────────
+function drawBloch(){
+  const cv=document.getElementById('bloch-cv');if(!cv)return;
+  const ctx=cv.getContext('2d'),W=cv.width,H=cv.height,cx=W/2,cy=H/2,r=85;
+  ctx.clearRect(0,0,W,H);
+  const gr=ctx.createRadialGradient(cx,cy,0,cx,cy,r);
+  gr.addColorStop(0,'#0d1628');gr.addColorStop(1,'#090d18');
+  ctx.fillStyle=gr;ctx.fillRect(0,0,W,H);
+  // Grid circles
+  ctx.strokeStyle='rgba(0,136,255,.07)';ctx.lineWidth=.7;
+  for(let i=1;i<5;i++){ctx.beginPath();ctx.ellipse(cx,cy,r*Math.sin(i*Math.PI/5),r*Math.sin(i*Math.PI/5)*.27,0,0,Math.PI*2);ctx.stroke();}
+  // Sphere
+  ctx.shadowColor='rgba(0,136,255,.12)';ctx.shadowBlur=8;
+  ctx.strokeStyle='rgba(0,136,255,.22)';ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.stroke();ctx.shadowBlur=0;
+  // Equator
+  ctx.strokeStyle='rgba(0,200,255,.15)';ctx.lineWidth=1;
+  ctx.beginPath();ctx.ellipse(cx,cy,r,r*.27,0,0,Math.PI*2);ctx.stroke();
+  // Axes
+  ctx.strokeStyle='rgba(0,136,255,.15)';
+  ctx.beginPath();ctx.moveTo(cx,cy-r);ctx.lineTo(cx,cy+r);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(cx-r,cy);ctx.lineTo(cx+r,cy);ctx.stroke();
+  // Labels
+  ctx.fillStyle='rgba(0,255,221,.85)';ctx.font='bold 10px monospace';
+  ctx.fillText('|0⟩',cx+4,cy-r-7);
+  ctx.fillStyle='rgba(0,255,221,.6)';ctx.fillText('|1⟩',cx+4,cy+r+14);
+  // Vector
+  const th=blochSt.th,ph=blochSt.ph;
+  const vx=r*Math.sin(th)*Math.cos(ph),vy=-r*Math.cos(th),vz=r*Math.sin(th)*Math.sin(ph)*.27;
+  ctx.strokeStyle='rgba(0,255,221,.12)';ctx.lineWidth=1;ctx.setLineDash([3,3]);
+  ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+vx,cy+vz);ctx.stroke();ctx.setLineDash([]);
+  ctx.shadowColor='#00ffdd';ctx.shadowBlur=10;
+  ctx.strokeStyle='#00ffdd';ctx.lineWidth=2.5;
+  ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+vx,cy+vy);ctx.stroke();ctx.shadowBlur=0;
+  const ang=Math.atan2(cy+vy-cy,cx+vx-cx);
+  ctx.fillStyle='#00ffdd';ctx.shadowColor='#00ffdd';ctx.shadowBlur=6;
+  ctx.beginPath();ctx.moveTo(cx+vx,cy+vy);
+  ctx.lineTo(cx+vx-8*Math.cos(ang-.42),cy+vy-8*Math.sin(ang-.42));
+  ctx.lineTo(cx+vx-8*Math.cos(ang+.42),cy+vy-8*Math.sin(ang+.42));
+  ctx.closePath();ctx.fill();ctx.shadowBlur=0;
+  ctx.fillStyle='#00ffdd';ctx.shadowColor='#00ffdd';ctx.shadowBlur=12;
+  ctx.beginPath();ctx.arc(cx+vx,cy+vy,4,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;
+  ctx.fillStyle='rgba(0,136,255,.35)';ctx.beginPath();ctx.arc(cx,cy,2.5,0,Math.PI*2);ctx.fill();
+  const td=Math.round(th*180/Math.PI),pd=Math.round(ph*180/Math.PI);
+  let sn=th<.05?'|0⟩':th>Math.PI-.05?'|1⟩':Math.abs(th-Math.PI/2)<.08&&ph<.08?'|+⟩':Math.abs(th-Math.PI/2)<.08&&Math.abs(ph-Math.PI)<.08?'|−⟩':'superposición';
+  document.getElementById('b-st').textContent='|ψ⟩ = '+sn;
+  document.getElementById('b-ang').textContent=`θ=${td}° | φ=${pd}°`;
+}
+function applyG(g){
+  switch(g){
+    case'X':blochSt.th=Math.PI-blochSt.th;break;
+    case'Y':blochSt.th=Math.PI-blochSt.th;blochSt.ph=(blochSt.ph+Math.PI)%(2*Math.PI);break;
+    case'Z':blochSt.ph=(blochSt.ph+Math.PI)%(2*Math.PI);break;
+    case'H':blochSt.th<.06?(blochSt.th=Math.PI/2,blochSt.ph=0):blochSt.th>Math.PI-.06?(blochSt.th=Math.PI/2,blochSt.ph=Math.PI):(blochSt.th=Math.PI/2);break;
+    case'S':blochSt.ph=(blochSt.ph+Math.PI/2)%(2*Math.PI);break;
+    case'T':blochSt.ph=(blochSt.ph+Math.PI/4)%(2*Math.PI);break;
+    case'RX':blochSt.th=(blochSt.th+Math.PI/4)%(2*Math.PI);break;
+    case'RY':blochSt.th=(blochSt.th+Math.PI/4)%(2*Math.PI);blochSt.ph=(blochSt.ph+Math.PI/8)%(2*Math.PI);break;
+    case'RZ':blochSt.ph=(blochSt.ph+Math.PI/4)%(2*Math.PI);break;
+  }
+  drawBloch();
+}
+function resetB(){blochSt={th:0,ph:0};drawBloch();}
+function animateBloch(code){
+  resetB();const seq=[];
+  if(/\.x\(\s*0|cirq\.X/.test(code)) seq.push('X');
+  if(/\.h\(\s*0|cirq\.H/.test(code)) seq.push('H');
+  if(/\.y\(\s*0|cirq\.Y/.test(code)) seq.push('Y');
+  if(/\.z\(\s*0|cirq\.Z/.test(code)) seq.push('Z');
+  if(/\.s\(\s*0|cirq\.S/.test(code)) seq.push('S');
+  if(/\.t\(\s*0|cirq\.T/.test(code)) seq.push('T');
+  if(/\.rx\(/.test(code)) seq.push('RX');
+  if(/\.ry\(/.test(code)) seq.push('RY');
+  if(/\.rz\(/.test(code)) seq.push('RZ');
+  let d=200;seq.forEach(g=>{setTimeout(()=>applyG(g),d);d+=320;});
+  if(seq.length>0) setTimeout(()=>rTab('bloch'),d+200);
+}
+
+// ── SAVE / LOAD CIRCUITS ──────────────────────────────
+function saveCircuit(){
+  if(!curUser){notify('Inicia sesión para guardar circuitos');postCore('QCOL_LOGIN');return;}
+  const name=(document.getElementById('save-name').value.trim()||'circuito_'+Date.now());
+  const code=document.getElementById('code-ta').value;
+  const key='qcol_circuits_'+curUser.username;
+  const all=JSON.parse(localStorage.getItem(key)||'[]');
+  const idx=all.findIndex(c=>c.name===name);
+  const entry={name,code,lib:curLib,circ:JSON.stringify(circuit),date:new Date().toLocaleDateString()};
+  if(idx>=0) all[idx]=entry; else all.unshift(entry);
+  localStorage.setItem(key,JSON.stringify(all.slice(0,100)));
+  notify('✅ Guardado: '+name);
+  renderSaveList();
+}
+function renderSaveList(){
+  const list=document.getElementById('circ-list');if(!list)return;
+  if(!curUser){
+    list.innerHTML=`<div class="no-login">Inicia sesión para guardar y ver tus circuitos<br>
+      <button class="btn-li" onclick="postCore('QCOL_LOGIN')">INICIAR SESIÓN</button></div>`;
+    return;
+  }
+  const key='qcol_circuits_'+curUser.username;
+  const all=JSON.parse(localStorage.getItem(key)||'[]');
+  if(all.length===0){list.innerHTML='<div style="text-align:center;color:var(--mu);font-size:.62rem;padding:.7rem;opacity:.6;">Sin circuitos guardados</div>';return;}
+  list.innerHTML=all.map((c,i)=>`<div class="ci" onclick="loadCircuit(${i})">
+    <span class="ci-name">${c.name}</span>
+    <span class="ci-lib">${c.lib||'qiskit'}</span>
+    <button class="ci-del" onclick="event.stopPropagation();delCircuit(${i})">✕</button>
+  </div>`).join('');
+}
+function loadCircuit(i){
+  const key='qcol_circuits_'+curUser.username;
+  const c=JSON.parse(localStorage.getItem(key)||'[]')[i];if(!c)return;
+  document.getElementById('code-ta').value=c.code;
+  document.getElementById('save-name').value=c.name;
+  if(c.circ){try{const cc=JSON.parse(c.circ);circuit=cc;renderCircuit();}catch(e){}}
+  onEdit(); rTab('out');
+  notify('Cargado: '+c.name);
+}
+function delCircuit(i){
+  const key='qcol_circuits_'+curUser.username;
+  const all=JSON.parse(localStorage.getItem(key)||'[]');
+  all.splice(i,1);localStorage.setItem(key,JSON.stringify(all));
+  renderSaveList(); notify('Eliminado');
+}
+function dlPy(){
+  const code=document.getElementById('code-ta').value;
+  const name=document.getElementById('save-name').value.trim()||'qcol_circuito';
+  const blob=new Blob([code],{type:'text/plain'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download=name.replace(/\.py$/,'')+'.py';a.click();
+  notify('📥 '+a.download);
+}
+function dlNb(){
+  const code=document.getElementById('code-ta').value;
+  const name=document.getElementById('save-name').value.trim()||'qcol_circuito';
+  const lib=curLib;
+  const installLine=lib==='qiskit'
+    ?'!pip install qiskit qiskit-aer matplotlib -q'
+    :'!pip install cirq matplotlib -q';
+  const nb={nbformat:4,nbformat_minor:5,
+    metadata:{kernelspec:{display_name:'Python 3',language:'python',name:'python3'}},
+    cells:[
+      {cell_type:'markdown',source:[`# ${name}\n\nGenerado por QCOL Arquitecto Cuántico\n\nLibrería: **${lib}**`],metadata:{}},
+      {cell_type:'code',source:[installLine],metadata:{},outputs:[],execution_count:null},
+      {cell_type:'code',source:[code],metadata:{},outputs:[],execution_count:null},
+    ]};
+  const blob=new Blob([JSON.stringify(nb,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download=name.replace(/\.ipynb$/,'')+'.ipynb';a.click();
+  notify('📥 '+a.download+' — Súbelo a Colab');
+}
+
+// ── RESIZE PANELS ─────────────────────────────────────
+// Horizontal: circuit vs code
+let resH=false,startY=0,startHVal=0;
+function startResH(e){
+  resH=true;startY=e.clientY;
+  const cs=document.getElementById('circuit-section');
+  startHVal=cs.getBoundingClientRect().height;
+  document.getElementById('resize-h').classList.add('dragging');
+  document.addEventListener('mousemove',doResH);
+  document.addEventListener('mouseup',stopRes);
+  e.preventDefault();
+}
+function doResH(e){
+  if(!resH)return;
+  const cs=document.getElementById('circuit-section');
+  const nh=Math.max(80,Math.min(window.innerHeight*.65,startHVal+(e.clientY-startY)));
+  cs.style.height=nh+'px';
+}
+// Vertical: editor vs right panel
+let resV=false,startX=0,startW=0;
+function startResV(e){
+  resV=true;startX=e.clientX;
+  const rp=document.getElementById('right-panel');
+  startW=rp.getBoundingClientRect().width;
+  document.getElementById('resize-v').classList.add('dragging');
+  document.addEventListener('mousemove',doResV);
+  document.addEventListener('mouseup',stopRes);
+  e.preventDefault();
+}
+function startResTouchV(e){
+  const t=e.touches[0];resV=true;startX=t.clientX;
+  const rp=document.getElementById('right-panel');startW=rp.getBoundingClientRect().width;
+  document.addEventListener('touchmove',doResTouchV);document.addEventListener('touchend',stopRes);
+}
+function doResV(e){
+  if(!resV)return;
+  const rp=document.getElementById('right-panel');
+  const wa=document.getElementById('body-layout');  // get container but use window
+  const nw=Math.max(220,Math.min(window.innerWidth-300,startW+(startX-e.clientX)));
+  rp.style.width=nw+'px';rp.style.flex='none';
+}
+function doResTouchV(e){doResV({clientX:e.touches[0].clientX});}
+function stopRes(){
+  resH=false;resV=false;
+  document.getElementById('resize-h')?.classList.remove('dragging');
+  document.getElementById('resize-v')?.classList.remove('dragging');
+  document.removeEventListener('mousemove',doResH);
+  document.removeEventListener('mousemove',doResV);
+  document.removeEventListener('mouseup',stopRes);
+  document.removeEventListener('touchmove',doResTouchV);
+  document.removeEventListener('touchend',stopRes);
+}
+
+// ── INIT ──────────────────────────────────────────────
+buildPalette();
+renderCircuit();
+document.getElementById('code-ta').value=LIB_EXAMPLES.qiskit;
+onEdit();
+drawBloch();
+</script>
+</body>
+</html>

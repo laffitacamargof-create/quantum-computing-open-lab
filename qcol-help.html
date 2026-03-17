@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QCOL Ayuda</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=JetBrains+Mono:wght@400;500&family=Exo+2:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#010608;--s:#071220;--s2:#0c1c30;--b:#0d2a4a;--b2:#1a3a5c;--bl:#0088ff;--bl2:#00ccff;--gr:#00ff88;--gd:#ffd700;--rd:#ff4466;--tx:#ddeeff;--mu:#4a7a9b;--orb:'Orbitron',monospace;--mono:'JetBrains Mono',monospace;--exo:'Exo 2',sans-serif;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--tx);font-family:var(--exo);min-height:100vh;padding:1.5rem;}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,136,255,.03)1px,transparent 1px),linear-gradient(90deg,rgba(0,136,255,.03)1px,transparent 1px);background-size:40px 40px;pointer-events:none;}
+.wrap{max-width:780px;margin:0 auto;}
+.hdr{font-family:var(--orb);font-size:1rem;color:var(--bl2);margin-bottom:1.5rem;padding-bottom:.75rem;border-bottom:1px solid var(--b);}
+.card{background:var(--s);border:1px solid var(--b);border-radius:12px;padding:1.1rem;margin-bottom:.85rem;transition:all .3s;}
+.card:hover{border-color:rgba(0,136,255,.3);}
+.q{font-family:var(--orb);font-size:.7rem;color:var(--bl2);margin-bottom:.45rem;display:flex;align-items:center;gap:.4rem;}
+.a{font-size:.7rem;color:var(--mu);line-height:1.75;}
+.a code{font-family:var(--mono);font-size:.65rem;color:var(--gr);background:rgba(0,0,0,.3);padding:.1rem .32rem;border-radius:3px;}
+.a strong{color:var(--bl2);}
+.sec-title{font-family:var(--orb);font-size:.78rem;color:var(--bl2);margin:1.5rem 0 .85rem;letter-spacing:.06em;padding-bottom:.4rem;border-bottom:1px solid var(--b);}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="hdr">❓ AYUDA — QCOL Quantum Computing Open Lab</div>
+
+<div class="sec-title">🌐 USO GENERAL</div>
+
+<div class="card">
+  <div class="q">🚀 ¿Cómo uso el ecosistema?</div>
+  <div class="a">Abre <code>index.html</code> en cualquier navegador. Verás el menú principal con todos los módulos disponibles. No necesitas instalar nada.</div>
+</div>
+
+<div class="card">
+  <div class="q">👤 ¿Cómo creo una cuenta?</div>
+  <div class="a">Clic en <strong>ENTRAR</strong> → <strong>Crear cuenta</strong>. Llena tu nombre, usuario y contraseña. Tu cuenta guarda tus circuitos creados en el Arquitecto.</div>
+</div>
+
+<div class="card">
+  <div class="q">👑 ¿Qué es la Cuenta Fundador?</div>
+  <div class="a">Es el panel de control total del ecosistema. Permite configurar el motor de ejecución, la IA, GitHub, gestionar usuarios y agregar/eliminar contenido. Accede con la contraseña del fundador.</div>
+</div>
+
+<div class="sec-title">⚙️ ARQUITECTO CUÁNTICO</div>
+
+<div class="card">
+  <div class="q">⚙️ ¿Qué puede hacer el Arquitecto?</div>
+  <div class="a">Escribir y ejecutar código cuántico en <strong>Qiskit, Cirq, PennyLane o QuTiP</strong>. Visualizar estados cuánticos en la esfera de Bloch. Guardar circuitos en tu cuenta. Descargar código como .py.</div>
+</div>
+
+<div class="card">
+  <div class="q">🌐 ¿Cómo funciona la esfera de Bloch?</div>
+  <div class="a">Visualiza el estado de un qubit:<br>
+    • Polo norte = <code>|0⟩</code> (θ=0°)<br>
+    • Polo sur = <code>|1⟩</code> (θ=180°)<br>
+    • Ecuador = superposición<br>
+    • φ = fase relativa<br>
+    Los botones H, X, Y, Z aplican puertas y mueven el vector.</div>
+</div>
+
+<div class="card">
+  <div class="q">💾 ¿Cómo guardo mis circuitos?</div>
+  <div class="a">Pestaña <strong>💾 GUARDAR</strong> en el Arquitecto → escribe un nombre → <strong>Guardar en cuenta</strong>. Necesitas sesión activa. Tus circuitos aparecen en <strong>Mi Cuenta</strong>.</div>
+</div>
+
+<div class="sec-title">📂 PROYECTOS Y LIBRERÍA</div>
+
+<div class="card">
+  <div class="q">📂 ¿Cómo ejecuto un proyecto?</div>
+  <div class="a">Ve a <strong>Proyectos</strong> → encuentra el notebook → clic en <strong>▶ EJECUTAR</strong>. Se abrirá en el Arquitecto donde puedes ejecutarlo y modificarlo (sin guardar los cambios en el original).</div>
+</div>
+
+<div class="card">
+  <div class="q">📚 ¿Cómo agrego contenido a la Librería?</div>
+  <div class="a">Solo administradores y fundador pueden agregar contenido. Entrá como administrador → aparece la barra dorada → <strong>+ AGREGAR RECURSO</strong>. Puedes agregar PDFs, videos o notebooks.</div>
+</div>
+
+<div class="sec-title">🔧 ADMINISTRACIÓN</div>
+
+<div class="card">
+  <div class="q">🔧 ¿Cómo activo el motor de ejecución real?</div>
+  <div class="a">Panel Fundador → pestaña <strong>🚀 Motor</strong> → sigue las instrucciones para configurar el motor → pega la URL → <strong>PROBAR</strong>. Cuando el motor esté activo verás <strong>● MOTOR</strong> en la barra del Arquitecto.</div>
+</div>
+
+<div class="card">
+  <div class="q">🤖 ¿Cómo activo la IA real?</div>
+  <div class="a">Panel Fundador → pestaña <strong>🤖 IA</strong> → elige proveedor → pega tu API key → <strong>Guardar</strong>. Groq es gratuito y funciona sin restricciones geográficas.</div>
+</div>
+
+<div class="card">
+  <div class="q">🧩 ¿Cómo actualizo un módulo?</div>
+  <div class="a">Cada módulo es un archivo HTML independiente. Para actualizarlo: descarga el nuevo archivo del módulo → súbelo a GitHub reemplazando el antiguo. El ecosistema lo carga automáticamente sin tocar los demás módulos.</div>
+</div>
+
+<div class="card">
+  <div class="q">➕ ¿Cómo creo un módulo nuevo?</div>
+  <div class="a">Panel Fundador → pestaña <strong>🧩 Módulos</strong> → sección <strong>Agregar módulo</strong>. Define el nombre, el archivo HTML y el icono. El módulo aparecerá en el menú principal automáticamente cuando subas el archivo a GitHub.</div>
+</div>
+
+<div style="text-align:center;padding:2rem 0;color:var(--mu);font-size:.65rem;">
+  QCOL v2.1 · Creado por <span style="color:var(--bl2);">Franci Laffita Camargo</span> · Estudiante de Física Nuclear
+</div>
+</div>
+<script>
+function postCore(t,d={}){window.parent.postMessage({type:t,...d},'*');}
+postCore('QCOL_GET_CONFIG');
+</script>
+</body>
+</html>

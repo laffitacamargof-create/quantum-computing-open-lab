@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QCOL Mi Cuenta</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=JetBrains+Mono:wght@400;500&family=Exo+2:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#010608;--s:#071220;--s2:#0c1c30;--b:#0d2a4a;--b2:#1a3a5c;--bl:#0088ff;--bl2:#00ccff;--gr:#00ff88;--gd:#ffd700;--rd:#ff4466;--tx:#ddeeff;--mu:#4a7a9b;--orb:'Orbitron',monospace;--mono:'JetBrains Mono',monospace;--exo:'Exo 2',sans-serif;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--tx);font-family:var(--exo);min-height:100vh;padding:1.5rem;}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,136,255,.03)1px,transparent 1px),linear-gradient(90deg,rgba(0,136,255,.03)1px,transparent 1px);background-size:40px 40px;pointer-events:none;}
+.notif{position:fixed;top:.8rem;right:.8rem;z-index:999;padding:.55rem 1rem;background:rgba(4,14,28,.97);border:1px solid var(--bl2);border-radius:8px;font-family:var(--orb);font-size:.6rem;color:var(--bl2);transform:translateX(130%);transition:transform .3s;}
+.notif.show{transform:translateX(0);}
+.wrap{max-width:860px;margin:0 auto;}
+.tabs{display:flex;gap:0;border-bottom:1px solid var(--b);margin-bottom:1.2rem;overflow-x:auto;}
+.tab{padding:.5rem 1rem;background:transparent;border:none;color:var(--mu);font-family:var(--orb);font-size:.58rem;cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;transition:all .2s;}
+.tab.on{color:var(--bl2);border-bottom-color:var(--bl2);}
+.panel{display:none;}.panel.on{display:block;}
+.sec{background:var(--s);border:1px solid var(--b);border-radius:12px;padding:1.2rem;margin-bottom:1rem;}
+.sec-title{font-family:var(--orb);font-size:.7rem;color:var(--bl2);margin-bottom:.85rem;padding-bottom:.45rem;border-bottom:1px solid var(--b);}
+.profile-row{display:flex;align-items:center;gap:1.2rem;margin-bottom:1rem;}
+.avatar{width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,#003388,var(--bl));border:2px solid var(--bl2);display:flex;align-items:center;justify-content:center;font-family:var(--orb);font-size:1.2rem;color:#fff;flex-shrink:0;}
+.profile-name{font-family:var(--orb);font-size:.88rem;color:var(--tx);margin-bottom:.25rem;}
+.profile-role{font-family:var(--orb);font-size:.58rem;padding:.12rem .42rem;border-radius:4px;}
+.role-f{background:rgba(255,215,0,.15);color:var(--gd);border:1px solid rgba(255,215,0,.3);}
+.role-a{background:rgba(0,136,255,.15);color:var(--bl2);border:1px solid rgba(0,136,255,.3);}
+.role-u{background:rgba(74,122,155,.1);color:var(--mu);border:1px solid rgba(74,122,155,.3);}
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:.7rem;margin-bottom:1rem;}
+.stat{background:var(--s2);border:1px solid var(--b);border-radius:9px;padding:.85rem;text-align:center;}
+.stat-num{font-family:var(--orb);font-size:1.4rem;color:var(--bl2);display:block;margin-bottom:.2rem;}
+.stat-label{font-size:.58rem;color:var(--mu);}
+.circuit-list{display:flex;flex-direction:column;gap:.4rem;}
+.ci-item{display:flex;align-items:center;gap:.55rem;padding:.45rem .75rem;background:rgba(0,0,0,.2);border:1px solid var(--b);border-radius:7px;cursor:pointer;transition:all .2s;}
+.ci-item:hover{border-color:var(--bl);background:rgba(0,136,255,.05);}
+.ci-name{font-family:var(--mono);font-size:.65rem;color:var(--tx);flex:1;}
+.ci-lib{font-family:var(--orb);font-size:.48rem;color:var(--mu);background:rgba(0,136,255,.1);padding:.1rem .32rem;border-radius:3px;}
+.ci-date{font-size:.52rem;color:var(--mu);}
+.ci-del{background:transparent;border:none;color:#ff8899;cursor:pointer;font-size:.7rem;}
+.no-login{text-align:center;padding:2.5rem 1rem;color:var(--mu);}
+.no-login-icon{font-size:2.5rem;margin-bottom:.8rem;display:block;opacity:.4;}
+.no-login-title{font-family:var(--orb);font-size:.82rem;margin-bottom:.5rem;}
+.btn{padding:.42rem .9rem;border:none;border-radius:7px;font-family:var(--orb);font-size:.6rem;cursor:pointer;transition:all .2s;margin-top:.7rem;}
+.btn-pri{background:linear-gradient(135deg,#003388,var(--bl));color:#fff;}
+.fg{margin-bottom:.75rem;}
+.fl{font-family:var(--orb);font-size:.52rem;color:var(--mu);letter-spacing:.1em;display:block;margin-bottom:.24rem;}
+.fi{width:100%;background:rgba(0,0,0,.4);border:1px solid var(--b2);border-radius:7px;padding:.5rem .8rem;color:var(--tx);font-family:var(--exo);font-size:.78rem;outline:none;}
+.fi:focus{border-color:rgba(0,136,255,.7);}
+</style>
+</head>
+<body>
+<div class="notif" id="notif"></div>
+<div class="wrap">
+  <div class="tabs">
+    <button class="tab on" onclick="showTab('profile',this)">👤 Perfil</button>
+    <button class="tab" onclick="showTab('circuits',this)">⚛ Mis Circuitos</button>
+    <button class="tab" onclick="showTab('history',this)">📋 Historial IA</button>
+    <button class="tab" onclick="showTab('settings',this)">⚙️ Configuración</button>
+  </div>
+
+  <div class="panel on" id="tab-profile">
+    <div id="profile-content"></div>
+  </div>
+  <div class="panel" id="tab-circuits">
+    <div class="sec">
+      <div class="sec-title">⚛ Mis circuitos guardados</div>
+      <div id="circuits-list"></div>
+    </div>
+  </div>
+  <div class="panel" id="tab-history">
+    <div class="sec">
+      <div class="sec-title">📋 Historial de conversaciones con IA</div>
+      <div id="history-content" style="font-size:.7rem;color:var(--mu);line-height:1.7;">El historial de IA se guarda localmente. Inicia sesión para ver conversaciones anteriores.</div>
+    </div>
+  </div>
+  <div class="panel" id="tab-settings">
+    <div class="sec">
+      <div class="sec-title">⚙️ Cambiar contraseña</div>
+      <div class="fg"><label class="fl">CONTRASEÑA ACTUAL</label><input class="fi" id="cp-cur" type="password"></div>
+      <div class="fg"><label class="fl">NUEVA CONTRASEÑA</label><input class="fi" id="cp-new" type="password"></div>
+      <div class="fg"><label class="fl">CONFIRMAR</label><input class="fi" id="cp-conf" type="password"></div>
+      <button class="btn btn-pri" onclick="changePass()">💾 Cambiar contraseña</button>
+    </div>
+    <div class="sec">
+      <div class="sec-title">🗑 Datos de cuenta</div>
+      <div style="font-size:.7rem;color:var(--mu);margin-bottom:.8rem;">Eliminar todos tus circuitos guardados e historial de IA.</div>
+      <button class="btn" style="background:rgba(255,68,102,.1);border:1px solid rgba(255,68,102,.3);color:#ff8899;" onclick="clearMyData()">🗑 Borrar mis datos</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let curUser=null;
+function postCore(t,d={}){window.parent.postMessage({type:t,...d},'*');}
+function notify(msg){const n=document.getElementById('notif');n.textContent=msg;n.classList.add('show');clearTimeout(n._t);n._t=setTimeout(()=>n.classList.remove('show'),3000);}
+window.addEventListener('message',e=>{
+  const d=e.data;if(!d?.type)return;
+  if(d.type==='QCOL_USER_UPDATE'){curUser=d.user;renderProfile();renderCircuits();}
+});
+postCore('QCOL_GET_CONFIG');
+function showTab(id,el){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('on'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
+  document.getElementById('tab-'+id).classList.add('on');
+  el.classList.add('on');
+  if(id==='circuits')renderCircuits();
+}
+function renderProfile(){
+  const c=document.getElementById('profile-content');
+  if(!curUser){
+    c.innerHTML=`<div class="no-login">
+      <span class="no-login-icon">👤</span>
+      <div class="no-login-title">Sin sesión activa</div>
+      <div style="font-size:.72rem;max-width:300px;margin:0 auto;line-height:1.7;">Inicia sesión para acceder a tu perfil, circuitos guardados e historial.</div>
+      <button class="btn btn-pri" onclick="postCore('QCOL_LOGIN')">INICIAR SESIÓN</button>
+    </div>`;return;
+  }
+  const ini=curUser.name.split(' ').map(n=>n[0]).join('').substring(0,2).toUpperCase();
+  const roleCls=curUser.role==='founder'?'role-f':curUser.role==='admin'?'role-a':'role-u';
+  const roleLabel=curUser.role==='founder'?'👑 FUNDADOR':curUser.role==='admin'?'🔑 ADMIN':'👤 USUARIO';
+  const circuits=JSON.parse(localStorage.getItem('qcol_circuits_'+curUser.username)||'[]');
+  c.innerHTML=`<div class="sec">
+    <div class="sec-title">👤 Mi perfil</div>
+    <div class="profile-row">
+      <div class="avatar">${ini}</div>
+      <div>
+        <div class="profile-name">${curUser.name}</div>
+        <div style="font-family:var(--mono);font-size:.62rem;color:var(--mu);margin-bottom:.35rem;">@${curUser.username}</div>
+        <span class="profile-role ${roleCls}">${roleLabel}</span>
+      </div>
+    </div>
+    <div class="stat-grid">
+      <div class="stat"><span class="stat-num">${circuits.length}</span><div class="stat-label">Circuitos guardados</div></div>
+      <div class="stat"><span class="stat-num">${curUser.canUpload?'✅':'❌'}</span><div class="stat-label">Permiso subida</div></div>
+      <div class="stat"><span class="stat-num">${curUser.joined||'—'}</span><div class="stat-label">Registro</div></div>
+    </div>
+    <button class="btn btn-pri" onclick="postCore('QCOL_LOGOUT')">Cerrar sesión</button>
+  </div>`;
+}
+function renderCircuits(){
+  if(!curUser){
+    document.getElementById('circuits-list').innerHTML='<div style="text-align:center;color:var(--mu);font-size:.7rem;padding:1rem;">Inicia sesión para ver tus circuitos</div>';return;
+  }
+  const key='qcol_circuits_'+curUser.username;
+  const circuits=JSON.parse(localStorage.getItem(key)||'[]');
+  if(circuits.length===0){
+    document.getElementById('circuits-list').innerHTML='<div style="text-align:center;color:var(--mu);font-size:.7rem;padding:1rem;opacity:.7;">Sin circuitos guardados. Crea uno en el Arquitecto.</div>';return;
+  }
+  document.getElementById('circuits-list').innerHTML='<div class="circuit-list">'+
+    circuits.map((c,i)=>`<div class="ci-item">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" stroke="#00ccff" stroke-width="1.5"/><polyline points="14 2 14 8 20 8" stroke="#00ccff" stroke-width="1.5"/></svg>
+      <span class="ci-name">${c.name}</span>
+      <span class="ci-lib">${c.lib||'qiskit'}</span>
+      <span class="ci-date">${c.date||''}</span>
+      <button class="ci-del" onclick="delCircuit(${i})">✕</button>
+    </div>`).join('')+'</div>';
+}
+function delCircuit(i){
+  if(!curUser)return;const key='qcol_circuits_'+curUser.username;
+  const c=JSON.parse(localStorage.getItem(key)||'[]');c.splice(i,1);
+  localStorage.setItem(key,JSON.stringify(c));renderCircuits();renderProfile();notify('Circuito eliminado');
+}
+function changePass(){
+  if(!curUser){notify('Sin sesión');return;}
+  const cur=document.getElementById('cp-cur').value,nw=document.getElementById('cp-new').value,conf=document.getElementById('cp-conf').value;
+  if(!cur||!nw){notify('Completa los campos');return;}
+  if(nw!==conf){notify('Las contraseñas no coinciden');return;}
+  const users=JSON.parse(localStorage.getItem('qcol_users')||'[]');
+  const u=users.find(x=>x.username===curUser.username);
+  if(!u||u.password!==cur){notify('Contraseña actual incorrecta');return;}
+  u.password=nw;localStorage.setItem('qcol_users',JSON.stringify(users));
+  notify('✅ Contraseña actualizada');['cp-cur','cp-new','cp-conf'].forEach(k=>document.getElementById(k).value='');
+}
+function clearMyData(){
+  if(!curUser||!confirm('¿Borrar todos tus datos guardados?'))return;
+  localStorage.removeItem('qcol_circuits_'+curUser.username);
+  renderProfile();renderCircuits();notify('Datos eliminados');
+}
+renderProfile();
+</script>
+</body>
+</html>
