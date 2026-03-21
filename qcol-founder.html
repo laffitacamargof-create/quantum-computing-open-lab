@@ -655,26 +655,51 @@ function saveUsersFn(u) { localStorage.setItem('qcol_users', JSON.stringify(u));
 // ══ COLAB ══
 async function testColab() {
   const url = document.getElementById('colab-url').value.trim().replace(/\/$/,'');
-  if (!url) { notify('Ingresa la URL'); return; }
+  if (!url) { notify('Ingresa la URL del motor'); return; }
   document.getElementById('colab-dot').className = 'sdot warn';
-  document.getElementById('colab-status').textContent = 'Probando...';
+  document.getElementById('colab-status').textContent = 'Conectando...';
   addColabLog('Conectando a: ' + url);
-  try {
-    const res = await fetch(url + '/health', { signal: AbortSignal.timeout(10000) });
-    if (res.ok) {
-      const d = await res.json();
-      document.getElementById('colab-dot').className = 'sdot ok';
-      document.getElementById('colab-status').textContent = '✅ Conectado — ' + d.engine;
-      document.getElementById('colab-sub').textContent = d.libs?.join(', ') || '';
-      addColabLog('✅ Motor activo: ' + d.engine);
-      notify('✅ Motor Render conectado');
-      addSysLog('Motor Render conectado: ' + url, 'ok');
-    } else throw new Error('HTTP ' + res.status);
-  } catch(e) {
-    document.getElementById('colab-dot').className = 'sdot err';
-    document.getElementById('colab-status').textContent = '❌ Error: ' + e.message;
-    addColabLog('❌ Error: ' + e.message);
-    notify('❌ ' + e.message);
+  notify('⏳ Conectando al motor... puede tardar 30s si estaba dormido');
+
+  // Intentar hasta 3 veces con 30s cada intento
+  for (let intento = 1; intento <= 3; intento++) {
+    try {
+      document.getElementById('colab-status').textContent =
+        intento === 1 ? 'Conectando...' : `Reintento ${intento}/3 — despertando motor...`;
+      addColabLog(`Intento ${intento}/3...`);
+
+      const res = await fetch(url + '/health', {
+        signal: AbortSignal.timeout(30000),
+        mode: 'cors'
+      });
+
+      if (res.ok) {
+        const d = await res.json();
+        document.getElementById('colab-dot').className = 'sdot ok';
+        document.getElementById('colab-status').textContent = '✅ Motor activo — ' + (d.engine || 'QCOL');
+        document.getElementById('colab-sub').textContent = (d.libs || []).join(', ');
+        addColabLog('✅ Conectado: ' + (d.engine || 'QCOL'));
+        notify('✅ Motor Render conectado y activo');
+        addSysLog('Motor conectado: ' + url, 'ok');
+        // Guardar automáticamente
+        localStorage.setItem('qcol_colab_url', url);
+        postToCore('QCOL_SAVE', { key: 'qcol_colab_url', val: url });
+        return;
+      } else {
+        throw new Error('HTTP ' + res.status);
+      }
+    } catch(e) {
+      addColabLog('Intento ' + intento + ' fallido: ' + e.message);
+      if (intento < 3) {
+        // Esperar 5 segundos antes del siguiente intento
+        await new Promise(r => setTimeout(r, 5000));
+      } else {
+        document.getElementById('colab-dot').className = 'sdot err';
+        document.getElementById('colab-status').textContent = '❌ No se pudo conectar';
+        addColabLog('❌ Error final: ' + e.message);
+        notify('❌ Motor no responde. Verifica en Render que el deploy fue exitoso.');
+      }
+    }
   }
 }
 
