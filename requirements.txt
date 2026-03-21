@@ -1,6 +1,6 @@
 flask
 flask-cors
-qiskit
-qiskit-aer
+qiskit==0.45.3
+qiskit-aer==0.13.3
 numpy
 gunicorn
