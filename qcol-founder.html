@@ -105,7 +105,7 @@ textarea.fi{resize:vertical;min-height:70px;line-height:1.6;}
 
 <div class="tabs">
   <button class="tab active" onclick="showTab('modules')">🧩 Módulos</button>
-  <button class="tab" onclick="showTab('colab')">🤗 Motor HuggingFace</button>
+  <button class="tab" onclick="showTab('colab')">🤗 Compilador HuggingFace</button>
   <button class="tab" onclick="showTab('github')">⬡ GitHub</button>
   <button class="tab" onclick="showTab('ai')">🤖 IA</button>
   <button class="tab" onclick="showTab('users')">👥 Usuarios</button>
@@ -206,12 +206,12 @@ textarea.fi{resize:vertical;min-height:70px;line-height:1.6;}
   </div>
 </div>
 
-<!-- ════════════ MOTOR HUGGINGFACE ════════════ -->
+<!-- ════════════ COMPILADOR HUGGINGFACE ════════════ -->
 <div class="panel" id="tab-colab">
   <div class="sec">
-    <div class="sec-title">🤗 Motor de Ejecución — HuggingFace GPU</div>
+    <div class="sec-title">🤗 Compilador Cuántico — HuggingFace GPU</div>
     <div class="alert alert-info">
-      El Arquitecto usa <strong>HuggingFace Spaces</strong> como motor permanente con GPU.
+      El Arquitecto usa <strong>HuggingFace Spaces</strong> como compilador permanente con GPU.
       Qiskit, Cirq, QuTiP y PennyLane disponibles. Configura la URL una sola vez.
     </div>
     <div class="status-row">
@@ -220,13 +220,13 @@ textarea.fi{resize:vertical;min-height:70px;line-height:1.6;}
       <div class="ssub" id="colab-sub">—</div>
     </div>
     <div class="fg">
-      <label class="fl">URL DEL MOTOR EN HUGGINGFACE</label>
+      <label class="fl">URL DEL COMPILADOR EN HUGGINGFACE</label>
       <div style="display:flex;gap:.4rem;">
-        <input class="fi" id="colab-url" placeholder="https://[usuario]-qcol-motor.hf.space">
+        <input class="fi" id="colab-url" placeholder="https://[usuario]-qcol-compilador.hf.space">
         <button class="btn btn-ok" onclick="testColab()" style="white-space:nowrap;">🧪 PROBAR</button>
       </div>
       <div style="font-size:.58rem;color:var(--mu);margin-top:.28rem;">
-        Ejemplo: <code style="color:var(--gr);">https://laffitacamargo-qcol-motor.hf.space</code>
+        Ejemplo: <code style="color:var(--gr);">https://laffitacamargo-qcol-compilador.hf.space</code>
       </div>
     </div>
     <div class="logbox" id="colab-log">— Log de conexión —</div>
@@ -237,7 +237,7 @@ textarea.fi{resize:vertical;min-height:70px;line-height:1.6;}
   </div>
 
   <div class="sec">
-    <div class="sec-title">🚀 Cómo montar el motor en HuggingFace — paso a paso</div>
+    <div class="sec-title">🚀 Cómo montar el compilador en HuggingFace — paso a paso</div>
     <div class="alert alert-ok">✅ HuggingFace es gratis, sin tarjeta, con GPU disponible.</div>
     <div style="font-size:.68rem;color:var(--mu);line-height:2;margin-bottom:.8rem;">
       <strong style="color:var(--bl2);">PASO 1 — Crear cuenta</strong><br>
@@ -245,7 +245,7 @@ textarea.fi{resize:vertical;min-height:70px;line-height:1.6;}
     </div>
     <div style="font-size:.68rem;color:var(--mu);line-height:2;margin-bottom:.8rem;">
       <strong style="color:var(--bl2);">PASO 2 — Crear Space</strong><br>
-      New Space → SDK: <strong>Docker</strong> → Name: <code style="color:var(--gr);">qcol-motor</code> → Public
+      New Space → SDK: <strong>Docker</strong> → Name: <code style="color:var(--gr);">qcol-compilador</code> → Public
     </div>
     <div style="font-size:.68rem;color:var(--mu);line-height:2;margin-bottom:.8rem;">
       <strong style="color:var(--bl2);">PASO 3 — Subir 4 archivos al Space</strong><br>
@@ -260,16 +260,16 @@ textarea.fi{resize:vertical;min-height:70px;line-height:1.6;}
     </div>
     <div style="font-size:.68rem;color:var(--mu);line-height:2;">
       <strong style="color:var(--bl2);">PASO 5 — Pegar la URL arriba y probar</strong><br>
-      Tu URL: <code style="color:var(--gr);">https://[usuario]-qcol-motor.hf.space</code>
+      Tu URL: <code style="color:var(--gr);">https://[usuario]-qcol-compilador.hf.space</code>
     </div>
     <div class="btn-row" style="margin-top:.8rem;">
       <button class="btn btn-sec" onclick="window.open('https://huggingface.co/new-space','_blank')">🤗 Crear Space ↗</button>
-      <button class="btn btn-ok" onclick="testColab()">🧪 Probar motor</button>
+      <button class="btn btn-ok" onclick="testColab()">🧪 Probar compilador</button>
     </div>
   </div>
 
   <div class="sec">
-    <div class="sec-title">📦 Librerías disponibles en el motor</div>
+    <div class="sec-title">📦 Librerías disponibles en el compilador</div>
     <div class="grid2">
       <div style="background:rgba(0,0,0,.2);border:1px solid var(--b);border-radius:8px;padding:.85rem;">
         <div style="font-family:var(--orb);font-size:.62rem;color:var(--bl2);margin-bottom:.4rem;">⚛ Qiskit + Aer</div>
@@ -552,7 +552,7 @@ textarea.fi{resize:vertical;min-height:70px;line-height:1.6;}
     <div class="sec-title">💾 Backup y Restore</div>
     <div class="grid2">
       <div>
-        <div style="font-size:.66rem;color:var(--mu);margin-bottom:.7rem;">Exporta toda la configuración: motor, GitHub, IA, usuarios y proyectos en un archivo JSON.</div>
+        <div style="font-size:.66rem;color:var(--mu);margin-bottom:.7rem;">Exporta toda la configuración: compilador, GitHub, IA, usuarios y proyectos en un archivo JSON.</div>
         <div class="btn-row">
           <button class="btn btn-pri" onclick="exportAll()">📤 Exportar todo</button>
           <button class="btn btn-sec" onclick="document.getElementById('import-file').click()">📥 Importar backup</button>
@@ -581,8 +581,8 @@ textarea.fi{resize:vertical;min-height:70px;line-height:1.6;}
       En tu repositorio: Settings → Pages → Source: "Deploy from a branch" → Branch: main → Save
     </div>
     <div style="font-size:.68rem;color:var(--mu);line-height:1.9;margin-bottom:1rem;">
-      <strong style="color:var(--bl2); font-family:var(--orb);">PASO 3 — Motor HuggingFace</strong><br>
-      Ve a la pestaña <strong>🤗 Motor HuggingFace</strong> → sigue los pasos → pega tu URL del Space.
+      <strong style="color:var(--bl2); font-family:var(--orb);">PASO 3 — Compilador HuggingFace</strong><br>
+      Ve a la pestaña <strong>🤗 Compilador HuggingFace</strong> → sigue los pasos → pega tu URL del Space.
     </div>
     <div style="font-size:.68rem;color:var(--mu);line-height:1.9;margin-bottom:1rem;">
       <strong style="color:var(--bl2); font-family:var(--orb);">PASO 4 — Configurar IA (opcional)</strong><br>
@@ -628,7 +628,7 @@ textarea.fi{resize:vertical;min-height:70px;line-height:1.6;}
   <div class="sec">
     <div class="sec-title">⚙️ Regulación de Servidores</div>
     <div class="alert alert-info">
-      Controla el uso de los motores HuggingFace. Los límites se guardan en GitHub.
+      Controla el uso de los compiladores HuggingFace. Los límites se guardan en GitHub.
     </div>
     <div class="grid2">
       <div>
@@ -650,7 +650,7 @@ textarea.fi{resize:vertical;min-height:70px;line-height:1.6;}
           <input class="fi" id="mon-max-time" type="number" min="10" max="120" value="60" style="width:100px;">
         </div>
         <div class="fg">
-          <label class="fl">MODO DEL MOTOR</label>
+          <label class="fl">MODO DEL COMPILADOR</label>
           <select class="fi" id="mon-mode" style="width:180px;">
             <option value="open">Abierto — todos los usuarios</option>
             <option value="users">Solo usuarios registrados</option>
@@ -667,10 +667,10 @@ textarea.fi{resize:vertical;min-height:70px;line-height:1.6;}
         </div>
       </div>
       <div>
-        <div class="sec-title" style="font-size:.62rem;margin-bottom:.5rem;">ESTADO ACTUAL DEL MOTOR</div>
+        <div class="sec-title" style="font-size:.62rem;margin-bottom:.5rem;">ESTADO ACTUAL DEL COMPILADOR</div>
         <div style="background:rgba(0,0,0,.2);border:1px solid var(--b);border-radius:8px;padding:.85rem;">
           <div style="display:flex;justify-content:space-between;margin-bottom:.5rem;">
-            <span style="font-size:.62rem;color:var(--mu);">Motor:</span>
+            <span style="font-size:.62rem;color:var(--mu);">Compilador:</span>
             <span style="font-size:.62rem;color:var(--gr);" id="mon-engine-url">—</span>
           </div>
           <div style="display:flex;justify-content:space-between;margin-bottom:.5rem;">
@@ -843,9 +843,9 @@ async function testColab() {
       document.getElementById('colab-dot').className = 'sdot ok';
       document.getElementById('colab-status').textContent = '✅ Conectado — ' + d.engine;
       document.getElementById('colab-sub').textContent = d.libs?.join(', ') || '';
-      addColabLog('✅ Motor activo: ' + d.engine);
-      notify('✅ Motor HuggingFace conectado');
-      addSysLog('Motor HuggingFace: ' + url, 'ok');
+      addColabLog('✅ Compilador activo: ' + d.engine);
+      notify('✅ Compilador HuggingFace conectado');
+      addSysLog('Compilador HuggingFace: ' + url, 'ok');
     } else throw new Error('HTTP ' + res.status);
   } catch(e) {
     document.getElementById('colab-dot').className = 'sdot err';
@@ -859,8 +859,8 @@ function saveColab() {
   const url = document.getElementById('colab-url').value.trim();
   localStorage.setItem('qcol_colab_url', url);
   postToCore('QCOL_SAVE_CONFIG', { key: 'colab_url', value: url });
-  notify('✅ URL del motor guardada');
-  addSysLog('Motor HuggingFace URL guardada', 'ok');
+  notify('✅ URL del compilador guardada');
+  addSysLog('Compilador HuggingFace URL guardada', 'ok');
 }
 
 // copyColabCode removed - using HuggingFace
@@ -1276,7 +1276,7 @@ function saveMonitorConfig(){
   const st  = document.getElementById('mon-status');
   if(dot) dot.className='sdot ok';
   if(st)  st.textContent='✅ Límites guardados';
-  notify('✅ Límites del motor guardados');
+  notify('✅ Límites del compilador guardados');
   addSysLog('Monitor: límites actualizados','ok');
   syncMonitorToGitHub();
 }

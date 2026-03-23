@@ -620,7 +620,7 @@ body { background:var(--bg); color:var(--tx); font-family:var(--ex); user-select
     <span class="tb-title">⚙️ Arquitecto Cuántico</span>
   </div>
   <div class="tb-right">
-    <div class="badge badge-eng-off" id="eng-badge">● SIN MOTOR</div>
+    <div class="badge badge-eng-off" id="eng-badge">● SIN COMPILADOR</div>
     <div class="user-chip" id="user-chip" onclick="postCore('QCOL_LOGIN')">
       <div class="u-dot" id="udot"></div>
       <span id="uname">Invitado</span>
@@ -763,10 +763,10 @@ body { background:var(--bg); color:var(--tx); font-family:var(--ex); user-select
 # 1. Arrastra puertas al cable del qubit
 # 2. O escribe código directamente
 # 3. ▶ EJECUTAR → resultado aquí
-# 4. 🤗 HF GPU → ejecutar con motor real
+# 4. 🤗 HF GPU → ejecutar con compilador real
 #
-# Sin motor: simulación local
-# Con motor: Qiskit real en HuggingFace</span>
+# Sin compilador: simulación local
+# Con compilador: Qiskit real en HuggingFace</span>
       </div>
       <div class="out-bar">
         <button class="bsm" style="font-size:.5rem;" onclick="document.getElementById('out-body').innerHTML='<span class=inf># Limpiado</span>'">LIMPIAR</button>
@@ -884,7 +884,7 @@ async function checkEngine(){
     if(ok){
       engineOK=true;
       const b=document.getElementById('eng-badge');
-      b.textContent=isHF?'● GPU A100':'● MOTOR ACTIVO';
+      b.textContent=isHF?'● GPU A100':'● COMPILADOR ACTIVO';
       b.className='badge badge-eng-on';
     }
   }catch(e){ engineOK=false; }
@@ -1348,7 +1348,7 @@ function setLib(lib,el){
 function openHF(){
   const engineURL=localStorage.getItem('qcol_colab_url')||'';
   if(!engineURL){
-    notify('Configura el motor HuggingFace en el panel de Configuración');
+    notify('Configura el compilador HuggingFace en el panel de Configuración');
     return;
   }
   // Descargar el código como .ipynb para subir a HF Space
@@ -1379,7 +1379,7 @@ async function runCode(){
   out.innerHTML=`<span class="inf">Procesando · ${curLib}...\n</span>`;
 
   if(engineOK&&engineURL){
-    // ── MOTOR REAL — detecta HuggingFace o Flask ──
+    // ── COMPILADOR REAL — detecta HuggingFace o Flask ──
     const isHF = engineURL.includes('hf.space') || engineURL.includes('huggingface');
     try{
       let res, d;
@@ -1409,7 +1409,7 @@ async function runCode(){
       const el=((Date.now()-t0)/1000).toFixed(2);
       document.getElementById('out-elapsed').textContent=el+'s';
       if(d.success){
-        out.innerHTML=`<span class="inf">╔════════════════════════════╗\n║  Motor · ${el}s${isHF?' · GPU A100':''}\n╚════════════════════════════╝\n\n</span>`;
+        out.innerHTML=`<span class="inf">╔════════════════════════════╗\n║  Compilador · ${el}s${isHF?' · GPU A100':''}\n╚════════════════════════════╝\n\n</span>`;
         out.innerHTML+=`<span class="ok">${escH(d.output)}</span>`;
         if(d.bloch?.probabilities){
           out.innerHTML+=`\n<span class="inf">══ Probabilidades ══\n</span>`;
@@ -1466,8 +1466,8 @@ async function runCode(){
     out.innerHTML+=`\n<span class="ok">✅ Simulación completada en ${el}s</span>
 <span class="wa">
 💡 Para Qiskit/Cirq real:
-   Configuración → Motor HuggingFace → URL
-   O usa 🤗 HF GPU para ejecutar con motor</span>`;
+   Configuración → Compilador HuggingFace → URL
+   O usa 🤗 HF GPU para ejecutar con compilador</span>`;
     document.getElementById('out-elapsed').textContent=el+'s';
     setRunSt('idle','Listo (sim.)'); animateBloch(code);
     logMonitorRun({success:true, lib:curLib, qubits:circuit.qubits, time:parseFloat(el), simulated:true});

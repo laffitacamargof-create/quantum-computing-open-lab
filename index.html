@@ -284,7 +284,7 @@ body::before{content:'';position:fixed;inset:0;
     </div>
   </div>
   <div class="hdr-right">
-    <div id="hdr-engine-badge" style="display:none;padding:.22rem .55rem;background:rgba(0,255,136,.08);border:1px solid rgba(0,255,136,.3);border-radius:4px;font-family:var(--orb);font-size:.46rem;color:var(--gr);">● MOTOR</div>
+    <div id="hdr-engine-badge" style="display:none;padding:.22rem .55rem;background:rgba(0,255,136,.08);border:1px solid rgba(0,255,136,.3);border-radius:4px;font-family:var(--orb);font-size:.46rem;color:var(--gr);">● COMPILADOR</div>
     <button class="hbtn ai-btn" onclick="QCOL.toggleAI()">⚛ IA</button>
     <div id="hdr-user-area">
       <button class="hbtn" onclick="QCOL.openAuth('login')">ENTRAR</button>
@@ -437,7 +437,7 @@ body::before{content:'';position:fixed;inset:0;
         </svg>
         ⚙️ ARQUITECTO CUÁNTICO
       </div>
-      <div id="arch-badge" style="display:none;padding:.22rem .5rem;background:rgba(0,255,136,.08);border:1px solid rgba(0,255,136,.3);border-radius:4px;font-family:var(--orb);font-size:.46rem;color:var(--gr);">● MOTOR</div>
+      <div id="arch-badge" style="display:none;padding:.22rem .5rem;background:rgba(0,255,136,.08);border:1px solid rgba(0,255,136,.3);border-radius:4px;font-family:var(--orb);font-size:.46rem;color:var(--gr);">● COMPILADOR</div>
       <button class="hbtn ai-btn" style="margin-left:auto;" onclick="QCOL.toggleAI()">⚛ IA</button>
     </div>
     <div class="module-iframe-wrap" id="architect-wrap">
@@ -607,7 +607,7 @@ const QCOL = (() => {
         type: 'QCOL_CONFIG',
         user: curUser,
         version: VERSION,
-        // Los módulos solo saben que tienen un "motor" sin nombre
+        // Los módulos solo saben que tienen un "compilador" sin nombre
         engineReady: !!localStorage.getItem('qcol_colab_url'),
         ghUser: (JSON.parse(localStorage.getItem('qcol_gh')||'{}').user)||'laffitacamargof-create',
         ghRepo: (JSON.parse(localStorage.getItem('qcol_gh')||'{}').repo)||'quantum-computing-open-lab',
@@ -1014,7 +1014,7 @@ const QCOL = (() => {
     msgs.appendChild(d); msgs.scrollTop = msgs.scrollHeight;
   }
 
-  // ── MOTOR ──
+  // ── COMPILADOR ──
   async function checkEngine() {
     const url = localStorage.getItem('qcol_colab_url');
     if (!url) return;

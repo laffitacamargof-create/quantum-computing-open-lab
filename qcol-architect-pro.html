@@ -2,246 +2,370 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>QCOL — Arquitecto Profesional</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=JetBrains+Mono:wght@400;500;600&family=Exo+2:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
 :root{
-  --bg:#0a0e1a;--bg2:#0d1220;--bg3:#111827;
-  --p:#131b2e;--p2:#1a2540;--p3:#1e2d4a;
+  --bg:#0a0e1a;--bg2:#0d1117;--bg3:#0d1220;
+  --p:#111827;--p2:#1a2540;
   --bd:#1e3058;--bd2:#254070;
   --bl:#0088ff;--bl2:#00aaff;--cy:#00ffdd;
-  --gr:#00ff88;--yw:#ffd700;--rd:#ff4466;--pu:#bd93f9;--or:#ff9944;
+  --gr:#00ff88;--yw:#ffd700;--rd:#ff4466;--pu:#bd93f9;
   --tx:#e2ecff;--tx2:#aabcda;--mu:#4a6a9a;--mu2:#2a3a5a;
   --kw:#ff79c6;--fn:#50fa7b;--st:#f1fa8c;--nm:#bd93f9;--cm:#636e8a;--cl:#8be9fd;
   --orb:'Orbitron',monospace;--mono:'JetBrains Mono',monospace;--ex:'Exo 2',sans-serif;
+  --cell-run:#0088ff;
 }
 *{margin:0;padding:0;box-sizing:border-box;}
-html,body{height:100%;overflow:hidden;}
-body{background:var(--bg);color:var(--tx);font-family:var(--ex);}
+html,body{height:100%;background:var(--bg);color:var(--tx);font-family:var(--ex);}
+body{display:flex;flex-direction:column;overflow:hidden;}
 
-.notif{position:fixed;top:.7rem;right:.7rem;z-index:9999;padding:.55rem 1rem;
+/* ── NOTIF ── */
+.notif{position:fixed;top:.7rem;right:.7rem;z-index:9999;padding:.5rem .9rem;
   background:rgba(10,14,26,.97);border:1px solid var(--cy);border-radius:8px;
-  font-family:var(--orb);font-size:.6rem;color:var(--cy);
-  transform:translateX(130%);transition:transform .3s;}
+  font-family:var(--orb);font-size:.58rem;color:var(--cy);
+  transform:translateX(130%);transition:transform .3s;pointer-events:none;}
 .notif.show{transform:translateX(0);}
 
-/* ACCESS DENIED */
+/* ── ACCESS DENIED ── */
 .access-denied{display:none;position:fixed;inset:0;background:var(--bg);
   flex-direction:column;align-items:center;justify-content:center;z-index:100;
   text-align:center;gap:1.2rem;}
 .access-denied.show{display:flex;}
-.denied-icon{font-size:3.5rem;opacity:.4;}
-.denied-title{font-family:var(--orb);font-size:1.1rem;color:var(--rd);}
-.denied-desc{font-size:.78rem;color:var(--mu);max-width:380px;line-height:1.75;}
-.btn-login{padding:.52rem 1.2rem;background:linear-gradient(135deg,#003388,var(--bl));
-  border:none;border-radius:8px;color:#fff;font-family:var(--orb);font-size:.68rem;cursor:pointer;}
+.denied-icon{font-size:3rem;opacity:.4;}
+.denied-title{font-family:var(--orb);font-size:1rem;color:var(--rd);}
+.denied-desc{font-size:.75rem;color:var(--mu);max-width:340px;line-height:1.7;}
+.btn-back{padding:.48rem 1.1rem;background:linear-gradient(135deg,#003388,var(--bl));
+  border:none;border-radius:8px;color:#fff;font-family:var(--orb);font-size:.65rem;cursor:pointer;}
 
-/* TITLE BAR */
-.titlebar{height:34px;display:flex;align-items:center;
-  background:#0a0714;border-bottom:1px solid rgba(189,147,249,.2);flex-shrink:0;}
-.tb-logo{display:flex;align-items:center;gap:.45rem;padding:0 .9rem;
-  border-right:1px solid rgba(189,147,249,.2);height:100%;}
-.tb-logo span{font-family:var(--orb);font-size:.62rem;font-weight:700;}
-.tb-q{color:var(--cy);}.tb-c{color:var(--bl2);}
-.tb-sub{font-family:var(--orb);font-size:.5rem;color:var(--pu);margin-left:.3rem;letter-spacing:.04em;}
-.tb-right{margin-left:auto;display:flex;align-items:center;gap:.4rem;padding:0 .75rem;}
-.admin-badge{padding:.18rem .52rem;border-radius:4px;font-family:var(--orb);font-size:.46rem;
-  background:rgba(189,147,249,.1);border:1px solid rgba(189,147,249,.3);color:var(--pu);}
-.engine-badge{padding:.18rem .52rem;border-radius:4px;font-family:var(--orb);font-size:.46rem;}
-.eng-off{background:rgba(74,106,154,.1);border:1px solid rgba(74,106,154,.25);color:var(--mu);}
-.eng-on{background:rgba(0,255,136,.07);border:1px solid rgba(0,255,136,.35);color:var(--gr);animation:peng 2.5s infinite;}
-@keyframes peng{0%,100%{border-color:rgba(0,255,136,.35);}50%{border-color:rgba(0,255,136,.8);}}
-.user-pill{display:flex;align-items:center;gap:.3rem;padding:.18rem .52rem;
-  background:rgba(189,147,249,.1);border:1px solid rgba(189,147,249,.25);border-radius:12px;
-  font-family:var(--orb);font-size:.48rem;color:var(--pu);}
+/* ── TOP BAR — mínima ── */
+.topbar{
+  height:38px;display:flex;align-items:center;gap:.5rem;
+  padding:0 .8rem;background:#080b14;
+  border-bottom:1px solid rgba(189,147,249,.18);flex-shrink:0;
+  position:relative;z-index:10;
+}
+.tb-logo{display:flex;align-items:center;gap:.35rem;margin-right:.5rem;}
+.tb-q{font-family:var(--orb);font-size:.72rem;font-weight:900;color:var(--cy);}
+.tb-pro{font-family:var(--orb);font-size:.48rem;color:var(--pu);letter-spacing:.06em;}
+.tb-sep{width:1px;height:18px;background:var(--bd);flex-shrink:0;}
+/* Notebook name editable */
+.nb-name-inp{
+  background:transparent;border:none;outline:none;
+  font-family:var(--mono);font-size:.72rem;color:var(--tx);
+  min-width:80px;max-width:220px;padding:.1rem .3rem;
+  border-radius:4px;cursor:text;
+}
+.nb-name-inp:focus{background:rgba(255,255,255,.05);color:var(--cy);}
+.nb-name-inp::placeholder{color:var(--mu);}
+/* Top buttons */
+.tb-right{margin-left:auto;display:flex;align-items:center;gap:.3rem;}
+.tbtn{
+  display:flex;align-items:center;gap:.3rem;
+  padding:.25rem .6rem;background:transparent;
+  border:1px solid var(--bd2);border-radius:5px;
+  color:var(--mu);font-family:var(--orb);font-size:.48rem;
+  cursor:pointer;transition:all .15s;white-space:nowrap;
+}
+.tbtn:hover{border-color:var(--bl2);color:var(--bl2);background:rgba(0,136,255,.06);}
+.tbtn.run{background:linear-gradient(135deg,#003388,var(--bl));border-color:var(--bl);color:#fff;}
+.tbtn.run:hover{box-shadow:0 2px 10px rgba(0,136,255,.4);}
+.tbtn.run-all{background:linear-gradient(135deg,#004400,#00aa44);border-color:#00aa44;color:#fff;}
+.tbtn.pub{background:linear-gradient(135deg,#3a0075,var(--pu));border-color:var(--pu);color:#fff;}
+.eng-pill{
+  padding:.2rem .5rem;border-radius:12px;font-family:var(--orb);font-size:.44rem;
+  background:rgba(74,106,154,.1);border:1px solid rgba(74,106,154,.25);color:var(--mu);
+}
+.eng-pill.on{background:rgba(0,255,136,.07);border-color:rgba(0,255,136,.35);color:var(--gr);
+  animation:puls 2.5s infinite;}
+@keyframes puls{0%,100%{border-color:rgba(0,255,136,.35);}50%{border-color:rgba(0,255,136,.8);}}
+.user-pill{padding:.2rem .5rem;border-radius:12px;font-family:var(--orb);font-size:.46rem;
+  background:rgba(189,147,249,.08);border:1px solid rgba(189,147,249,.2);color:var(--pu);}
+.admin-pill{padding:.2rem .5rem;border-radius:12px;font-family:var(--orb);font-size:.44rem;
+  background:rgba(255,215,0,.06);border:1px solid rgba(255,215,0,.2);color:var(--yw);}
 
-/* IDE */
-.ide{display:flex;flex-direction:column;height:calc(100vh - 34px);}
+/* ── SECONDARY BAR — tabs ── */
+.secbar{
+  height:32px;display:flex;align-items:stretch;
+  background:#080b14;border-bottom:1px solid var(--bd);flex-shrink:0;
+  padding:0 .5rem;gap:.1rem;
+}
+.stab{
+  display:flex;align-items:center;gap:.3rem;padding:0 .75rem;
+  background:transparent;border:none;color:var(--mu);
+  font-family:var(--orb);font-size:.48rem;cursor:pointer;
+  border-bottom:2px solid transparent;transition:all .15s;
+}
+.stab.on{color:var(--pu);border-bottom-color:var(--pu);}
+.stab:hover:not(.on){color:var(--tx2);}
+.secbar-right{margin-left:auto;display:flex;align-items:center;gap:.3rem;padding:0 .3rem;}
 
-/* MODE BAR — two main functions */
-.mode-bar{display:flex;align-items:stretch;background:#0a0714;
-  border-bottom:1px solid rgba(189,147,249,.2);flex-shrink:0;height:44px;}
-.mode-btn{display:flex;align-items:center;gap:.5rem;padding:0 1.4rem;
-  background:transparent;border:none;color:var(--mu);font-family:var(--orb);
-  font-size:.62rem;cursor:pointer;transition:all .2s;border-bottom:3px solid transparent;
-  letter-spacing:.04em;white-space:nowrap;}
-.mode-btn.on{color:var(--pu);border-bottom-color:var(--pu);background:rgba(189,147,249,.06);}
-.mode-btn:hover:not(.on){color:var(--tx2);background:rgba(255,255,255,.03);}
-.mode-icon{font-size:.95rem;}
-.mode-sep{width:1px;background:rgba(189,147,249,.15);margin:.6rem 0;}
-.mode-right{margin-left:auto;display:flex;align-items:center;gap:.4rem;padding:0 .85rem;}
-.btn-pub{display:flex;align-items:center;gap:.4rem;padding:.32rem .9rem;
-  background:linear-gradient(135deg,#4a0a8a,var(--pu));border:none;border-radius:6px;
-  color:#fff;font-family:var(--orb);font-size:.58rem;cursor:pointer;
-  transition:all .2s;box-shadow:0 2px 10px rgba(189,147,249,.3);}
-.btn-pub:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(189,147,249,.5);}
-.btn-run{display:flex;align-items:center;gap:.35rem;padding:.32rem .85rem;
-  background:linear-gradient(135deg,#0055bb,var(--bl));border:none;border-radius:6px;
-  color:#fff;font-family:var(--orb);font-size:.58rem;cursor:pointer;transition:all .2s;}
-.btn-run:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(0,136,255,.4);}
-.btn-run:disabled{opacity:.4;cursor:not-allowed;transform:none;}
-.bsm{padding:.28rem .62rem;background:transparent;border:1px solid var(--bd2);border-radius:5px;
-  color:var(--mu);font-family:var(--orb);font-size:.52rem;cursor:pointer;transition:all .2s;white-space:nowrap;}
-.bsm:hover{border-color:var(--bl2);color:var(--bl2);background:rgba(0,136,255,.06);}
-.sep{width:1px;height:20px;background:var(--bd);margin:0 .15rem;flex-shrink:0;}
-.spin{display:inline-block;width:11px;height:11px;border:2px solid rgba(255,255,255,.25);border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite;}
+/* ── MAIN AREA ── */
+.main{flex:1;overflow:hidden;display:flex;min-height:0;}
+
+/* ── NOTEBOOK VIEW — estilo Colab ── */
+#view-notebook{
+  flex:1;display:flex;flex-direction:column;overflow:hidden;
+  background:var(--bg);
+}
+.nb-scroll{
+  flex:1;overflow-y:auto;padding:.8rem 0;
+}
+.nb-scroll::-webkit-scrollbar{width:5px;}
+.nb-scroll::-webkit-scrollbar-thumb{background:var(--bd2);border-radius:3px;}
+
+/* ── CELDA — estilo Colab ── */
+.nb-cell{
+  display:flex;margin:.2rem auto;
+  width:min(900px,96%);
+  position:relative;
+  border-radius:8px;
+  border:1px solid transparent;
+  transition:border-color .15s;
+}
+.nb-cell:hover{border-color:rgba(189,147,249,.15);}
+.nb-cell.active{border-color:rgba(189,147,249,.4);}
+.nb-cell.running{border-color:rgba(0,136,255,.5);}
+
+/* Número de celda / botón ejecutar */
+.cell-gutter{
+  width:52px;flex-shrink:0;display:flex;flex-direction:column;
+  align-items:center;padding:.6rem .3rem 0;
+  gap:.3rem;
+}
+.cell-num{
+  font-family:var(--mono);font-size:.6rem;color:var(--mu);
+  min-width:22px;text-align:center;
+}
+.cell-run-btn{
+  width:26px;height:26px;border-radius:50%;
+  background:transparent;border:1px solid var(--bd2);
+  color:var(--mu);font-size:.7rem;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:all .2s;flex-shrink:0;
+}
+.nb-cell.active .cell-run-btn{border-color:var(--bl2);color:var(--bl2);}
+.cell-run-btn:hover{background:rgba(0,136,255,.15);border-color:var(--bl);color:var(--bl2);transform:scale(1.1);}
+.cell-run-btn.spinning{border-color:var(--gr);color:var(--gr);animation:sp .7s linear infinite;}
 @keyframes sp{to{transform:rotate(360deg);}}
 
-/* ── FUNCTION 1: NOTEBOOK EDITOR ── */
-#fn-notebook{display:flex;flex:1;overflow:hidden;min-height:0;}
+/* Contenido de la celda */
+.cell-body{
+  flex:1;display:flex;flex-direction:column;
+  min-width:0;padding:.4rem 0;
+}
 
-/* NOTEBOOK LEFT: cell list + meta */
-.nb-sidebar{width:240px;flex-shrink:0;background:var(--p);border-right:1px solid var(--bd);
-  display:flex;flex-direction:column;overflow:hidden;}
-.nb-sidebar::-webkit-scrollbar{width:3px;}
-.nb-sidebar-hdr{padding:.6rem .8rem;background:#0a0714;border-bottom:1px solid rgba(189,147,249,.2);
-  font-family:var(--orb);font-size:.58rem;color:var(--pu);letter-spacing:.08em;}
-.nb-meta{padding:.7rem .8rem;border-bottom:1px solid var(--bd);}
-.nb-label{font-family:var(--orb);font-size:.5rem;color:var(--mu);letter-spacing:.08em;
-  display:block;margin-bottom:.22rem;}
-.nb-input{width:100%;background:rgba(0,0,0,.4);border:1px solid var(--bd2);border-radius:6px;
-  padding:.42rem .65rem;color:var(--tx);font-family:var(--mono);font-size:.68rem;outline:none;
-  margin-bottom:.5rem;}
-.nb-input:focus{border-color:var(--pu);}
-select.nb-input{cursor:pointer;}
-textarea.nb-input{resize:vertical;min-height:55px;line-height:1.5;}
-.nb-cells-hdr{display:flex;align-items:center;padding:.5rem .8rem;
-  font-family:var(--orb);font-size:.52rem;color:var(--mu);border-bottom:1px solid var(--bd);}
-.nb-cells-list{flex:1;overflow-y:auto;padding:.35rem;}
-.nb-cells-list::-webkit-scrollbar{width:3px;}
-.nb-cells-list::-webkit-scrollbar-thumb{background:var(--bd2);}
-.nb-cell-item{display:flex;align-items:center;gap:.4rem;padding:.35rem .55rem;
-  border-radius:6px;cursor:pointer;transition:all .2s;margin-bottom:.2rem;
-  font-family:var(--mono);font-size:.6rem;color:var(--mu);border:1px solid transparent;}
-.nb-cell-item.active{background:rgba(189,147,249,.1);border-color:rgba(189,147,249,.3);color:var(--pu);}
-.nb-cell-item:hover:not(.active){background:rgba(255,255,255,.04);color:var(--tx2);}
-.nb-cell-type{font-family:var(--orb);font-size:.44rem;padding:.08rem .28rem;border-radius:3px;}
-.ctype-code{background:rgba(0,136,255,.1);color:var(--bl2);}
-.ctype-md{background:rgba(0,255,136,.08);color:var(--gr);}
-.ctype-raw{background:rgba(74,106,154,.1);color:var(--mu);}
-.nb-cell-del{margin-left:auto;background:transparent;border:none;color:var(--rd);
-  cursor:pointer;font-size:.62rem;opacity:.3;}
-.nb-cell-del:hover{opacity:1;}
-.btn-add-cell{width:100%;padding:.42rem;background:transparent;
-  border:1px dashed rgba(189,147,249,.25);border-radius:6px;color:var(--pu);
-  font-family:var(--orb);font-size:.52rem;cursor:pointer;margin:.5rem 0;
-  transition:all .2s;}
-.btn-add-cell:hover{background:rgba(189,147,249,.08);border-color:var(--pu);}
+/* Tipo badge */
+.cell-type-badge{
+  display:inline-flex;align-items:center;gap:.3rem;
+  font-family:var(--orb);font-size:.44rem;color:var(--mu);
+  padding:.08rem 0 .3rem;margin-bottom:.1rem;
+}
+.ctb-code{color:var(--bl2);}
+.ctb-md{color:var(--gr);}
 
-/* NOTEBOOK RIGHT: cell editor */
-.nb-editor{flex:1;display:flex;flex-direction:column;overflow:hidden;}
-.nb-editor-hdr{display:flex;align-items:center;gap:.5rem;padding:.5rem .85rem;
-  background:#0a0714;border-bottom:1px solid rgba(189,147,249,.2);flex-shrink:0;}
-.nb-cell-label{font-family:var(--orb);font-size:.56rem;color:var(--pu);}
-.nb-cell-type-sel{padding:.22rem .55rem;background:rgba(189,147,249,.08);
-  border:1px solid rgba(189,147,249,.25);border-radius:4px;color:var(--pu);
-  font-family:var(--orb);font-size:.5rem;cursor:pointer;outline:none;}
-.nb-render-area{flex:1;overflow:hidden;position:relative;background:var(--bg3);}
-/* Code cell editor */
-.cell-code-wrap{display:flex;height:100%;overflow:hidden;}
-.cell-lnums{width:40px;flex-shrink:0;background:#0d1117;border-right:1px solid var(--bd2);
-  padding:.72rem 0;font-family:var(--mono);font-size:.67rem;line-height:1.72;
-  color:var(--mu2);text-align:right;overflow:hidden;user-select:none;}
-.cell-lnums div{padding-right:.5rem;height:1.72em;}
-.cell-code-inner{flex:1;position:relative;overflow:hidden;}
-.cell-syn{position:absolute;inset:0;padding:.72rem .8rem;font-family:var(--mono);
-  font-size:.68rem;line-height:1.72;pointer-events:none;z-index:1;
-  overflow:hidden;white-space:pre;background:var(--bg3);color:var(--tx2);}
-.cell-ta{position:absolute;inset:0;background:transparent;color:transparent;
-  caret-color:var(--cy);padding:.72rem .8rem;font-family:var(--mono);font-size:.68rem;
-  border:none;outline:none;resize:none;line-height:1.72;z-index:2;
-  white-space:pre;overflow:auto;tab-size:4;}
-.cell-ta::-webkit-scrollbar{width:5px;height:5px;}
-.cell-ta::-webkit-scrollbar-thumb{background:var(--bd2);}
-/* Markdown cell editor */
-.cell-md-wrap{display:flex;flex-direction:column;height:100%;overflow:hidden;}
-.cell-md-ta{flex:1;background:var(--bg3);border:none;outline:none;resize:none;
-  color:var(--tx2);font-family:var(--mono);font-size:.7rem;line-height:1.7;
-  padding:.8rem;overflow:auto;}
-.cell-md-ta::-webkit-scrollbar{width:4px;}
-.cell-md-ta::-webkit-scrollbar-thumb{background:var(--bd2);}
-/* Cell output */
-.cell-output{background:#090d18;border-top:1px solid var(--bd);padding:.65rem .8rem;
-  font-family:var(--mono);font-size:.66rem;line-height:1.7;max-height:180px;
-  overflow-y:auto;white-space:pre-wrap;flex-shrink:0;}
+/* Editor de código dentro de celda */
+.cell-code-area{
+  position:relative;background:var(--bg2);
+  border:1px solid var(--bd);border-radius:6px;
+  overflow:hidden;min-height:48px;
+}
+.nb-cell.active .cell-code-area{border-color:rgba(189,147,249,.35);}
+.cell-syn-layer{
+  position:absolute;inset:0;padding:.6rem .8rem;
+  font-family:var(--mono);font-size:.72rem;line-height:1.65;
+  pointer-events:none;z-index:1;overflow:hidden;
+  white-space:pre;color:var(--tx2);background:var(--bg2);
+}
+.cell-textarea{
+  position:absolute;inset:0;
+  background:transparent;color:transparent;caret-color:var(--cy);
+  padding:.6rem .8rem;font-family:var(--mono);font-size:.72rem;
+  border:none;outline:none;resize:none;line-height:1.65;
+  z-index:2;white-space:pre;overflow:auto;tab-size:4;
+  min-height:48px;
+}
+.cell-textarea::-webkit-scrollbar{width:4px;height:4px;}
+.cell-textarea::-webkit-scrollbar-thumb{background:var(--bd2);}
+
+/* Markdown textarea */
+.cell-md-area{
+  background:var(--bg2);border:1px solid var(--bd);border-radius:6px;
+  width:100%;padding:.6rem .8rem;font-family:var(--mono);font-size:.72rem;
+  line-height:1.65;color:var(--tx2);border:none;outline:none;resize:none;
+  overflow:auto;min-height:48px;
+}
+.nb-cell.active .cell-md-area{border-color:rgba(0,255,136,.35);}
+
+/* Markdown renderizado */
+.cell-md-rendered{
+  padding:.5rem .8rem;font-size:.78rem;line-height:1.75;color:var(--tx);
+  cursor:pointer;background:var(--bg2);border-radius:6px;
+  border:1px solid var(--bd);
+}
+.cell-md-rendered h1{font-family:var(--orb);font-size:1rem;color:var(--bl2);margin-bottom:.5rem;}
+.cell-md-rendered h2{font-family:var(--orb);font-size:.85rem;color:var(--bl2);margin-bottom:.4rem;}
+.cell-md-rendered h3{font-family:var(--orb);font-size:.75rem;color:var(--pu);margin-bottom:.35rem;}
+.cell-md-rendered p{margin-bottom:.5rem;color:var(--tx2);}
+.cell-md-rendered code{background:rgba(0,136,255,.1);padding:.1rem .3rem;border-radius:3px;font-family:var(--mono);font-size:.7rem;color:var(--cy);}
+.cell-md-rendered strong{color:var(--tx);font-weight:600;}
+.cell-md-rendered em{color:var(--mu);font-style:italic;}
+
+/* Output de celda */
+.cell-output{
+  margin-top:.35rem;padding:.55rem .8rem;
+  background:#060a10;border:1px solid var(--bd);border-radius:6px;
+  font-family:var(--mono);font-size:.68rem;line-height:1.65;
+  white-space:pre-wrap;max-height:280px;overflow-y:auto;
+  display:none;
+}
 .cell-output::-webkit-scrollbar{width:4px;}
 .cell-output::-webkit-scrollbar-thumb{background:var(--bd2);}
-.out-ok{color:#39d353;}.out-err{color:#ff6080;}.out-inf{color:#58a6ff;}
-.nb-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;
-  height:100%;gap:.8rem;text-align:center;padding:2rem;}
-.nb-empty-icon{font-size:2.5rem;opacity:.3;}
-.nb-empty-title{font-family:var(--orb);font-size:.82rem;color:var(--mu);}
-.nb-empty-desc{font-size:.7rem;color:var(--mu);opacity:.7;max-width:300px;line-height:1.65;}
-/* Status bar */
-.statusbar{height:24px;display:flex;align-items:center;gap:.75rem;
-  padding:0 .85rem;background:#0a0d1a;border-top:1px solid var(--bd);
-  font-family:var(--mono);font-size:.56rem;color:var(--mu);flex-shrink:0;}
-.sb-dot{width:5px;height:5px;border-radius:50%;}
-.sb-idle{background:var(--mu);}.sb-run{background:var(--gr);animation:peng 2s infinite;}
-.sb-err{background:var(--rd);}
-.sb-right{margin-left:auto;display:flex;gap:.7rem;}
+.cell-output.show{display:block;}
+.out-ok{color:#39d353;}
+.out-err{color:#ff6080;}
+.out-inf{color:#58a6ff;}
+.out-warn{color:var(--yw);}
 
-/* Syntax tokens */
-.kw{color:var(--kw);font-weight:600;}.fn{color:var(--fn);}.st{color:var(--st);}
-.nm{color:var(--nm);}.cm{color:var(--cm);font-style:italic;}.cl{color:var(--cl);}
+/* Toolbar de celda (hover) */
+.cell-toolbar{
+  display:none;position:absolute;top:.3rem;right:.5rem;
+  gap:.2rem;align-items:center;z-index:5;
+}
+.nb-cell:hover .cell-toolbar,
+.nb-cell.active .cell-toolbar{display:flex;}
+.ct-btn{
+  width:20px;height:20px;border-radius:4px;
+  background:rgba(10,14,26,.85);border:1px solid var(--bd2);
+  color:var(--mu);font-size:.55rem;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:all .15s;
+}
+.ct-btn:hover{border-color:var(--bl2);color:var(--bl2);}
+.ct-btn.danger:hover{border-color:var(--rd);color:var(--rd);}
 
-/* ── FUNCTION 2: MANAGE NOTEBOOKS ── */
-#fn-manage{display:none;flex:1;overflow:hidden;}
+/* Add cell between cells */
+.add-cell-row{
+  width:min(900px,96%);margin:.05rem auto;height:18px;
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;transition:opacity .2s;
+}
+.add-cell-row:hover{opacity:1;}
+.add-cell-line{flex:1;height:1px;background:rgba(189,147,249,.2);}
+.add-cell-btns{display:flex;gap:.25rem;padding:0 .5rem;}
+.add-btn{
+  padding:.12rem .45rem;background:var(--bg);border:1px solid rgba(189,147,249,.3);
+  border-radius:4px;color:var(--pu);font-family:var(--orb);font-size:.42rem;
+  cursor:pointer;transition:all .15s;
+}
+.add-btn:hover{background:rgba(189,147,249,.08);}
+
+/* Bottom add area */
+.nb-bottom{
+  width:min(900px,96%);margin:.5rem auto 2rem;
+  display:flex;gap:.5rem;
+}
+.nb-add-big{
+  flex:1;padding:.55rem;background:transparent;
+  border:1px dashed rgba(189,147,249,.2);border-radius:8px;
+  color:var(--pu);font-family:var(--orb);font-size:.52rem;
+  cursor:pointer;transition:all .2s;text-align:center;
+}
+.nb-add-big:hover{background:rgba(189,147,249,.06);border-color:rgba(189,147,249,.5);}
+
+/* ── GESTIONAR NOTEBOOKS ── */
+#view-manage{display:none;flex:1;flex-direction:column;overflow:hidden;}
 .manage-wrap{display:flex;flex-direction:column;height:100%;overflow:hidden;}
-.manage-toolbar{display:flex;align-items:center;gap:.5rem;padding:.65rem 1rem;
+.manage-bar{display:flex;align-items:center;gap:.5rem;padding:.6rem .9rem;
   background:var(--p);border-bottom:1px solid var(--bd);flex-shrink:0;}
-.manage-title{font-family:var(--orb);font-size:.72rem;color:var(--pu);}
-.nb-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));
-  gap:.9rem;padding:1.2rem;overflow-y:auto;flex:1;}
+.manage-title-lbl{font-family:var(--orb);font-size:.68rem;color:var(--pu);}
+.nb-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));
+  gap:.85rem;padding:1.1rem;overflow-y:auto;flex:1;}
 .nb-grid::-webkit-scrollbar{width:5px;}
 .nb-grid::-webkit-scrollbar-thumb{background:var(--bd2);}
-.nb-card{background:var(--p);border:1px solid var(--bd);border-radius:12px;
-  overflow:hidden;transition:all .3s;animation:fu .4s ease both;}
-@keyframes fu{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
-.nb-card:hover{border-color:rgba(189,147,249,.4);box-shadow:0 8px 24px rgba(189,147,249,.08);}
-.nb-card-hdr{padding:.72rem .95rem;background:#0a0714;border-bottom:1px solid rgba(189,147,249,.15);
+.nb-card{background:var(--p);border:1px solid var(--bd);border-radius:10px;
+  overflow:hidden;transition:all .25s;}
+.nb-card:hover{border-color:rgba(189,147,249,.4);box-shadow:0 6px 20px rgba(189,147,249,.07);}
+.nb-card-hdr{padding:.65rem .9rem;background:#080b14;
+  border-bottom:1px solid rgba(189,147,249,.15);
   display:flex;align-items:center;justify-content:space-between;}
-.nb-card-badge{font-family:var(--orb);font-size:.48rem;padding:.12rem .38rem;border-radius:4px;
-  background:rgba(189,147,249,.12);border:1px solid rgba(189,147,249,.3);color:var(--pu);}
-.nb-card-body{padding:.95rem;}
-.nb-card-title{font-family:var(--orb);font-size:.7rem;color:var(--tx);margin-bottom:.32rem;}
-.nb-card-desc{font-size:.66rem;color:var(--mu);line-height:1.6;margin-bottom:.75rem;}
-.nb-card-meta{display:flex;gap:.8rem;font-family:var(--mono);font-size:.58rem;color:var(--mu2);margin-bottom:.7rem;}
-.nb-card-actions{display:flex;gap:.35rem;}
-.btn-edit-nb{flex:1;padding:.48rem;background:rgba(189,147,249,.12);border:1px solid rgba(189,147,249,.3);
-  border-radius:6px;color:var(--pu);font-family:var(--orb);font-size:.56rem;cursor:pointer;transition:all .2s;}
-.btn-edit-nb:hover{background:rgba(189,147,249,.22);}
-.btn-pub-nb{flex:1;padding:.48rem;background:linear-gradient(135deg,rgba(0,136,255,.18),rgba(0,200,255,.08));
-  border:1px solid rgba(0,136,255,.4);border-radius:6px;color:var(--bl2);font-family:var(--orb);
-  font-size:.56rem;cursor:pointer;transition:all .2s;}
-.btn-pub-nb:hover{background:rgba(0,136,255,.28);}
-.btn-del-nb{padding:.48rem .6rem;background:rgba(255,68,102,.08);border:1px solid rgba(255,68,102,.2);
-  border-radius:6px;color:#ff8899;font-family:var(--orb);font-size:.56rem;cursor:pointer;transition:all .2s;}
-.btn-del-nb:hover{background:rgba(255,68,102,.18);}
-.nb-empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;
-  height:100%;text-align:center;gap:1rem;padding:3rem;}
-.btn-new-nb{padding:.55rem 1.4rem;background:linear-gradient(135deg,#4a0a8a,var(--pu));
-  border:none;border-radius:8px;color:#fff;font-family:var(--orb);font-size:.68rem;
-  cursor:pointer;margin-top:.5rem;}
-/* PUBLISH MODAL */
-.modal-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:800;
-  align-items:center;justify-content:center;}
+.nb-card-title{font-family:var(--orb);font-size:.65rem;color:var(--tx);}
+.nb-card-badge{font-family:var(--orb);font-size:.44rem;padding:.1rem .32rem;
+  border-radius:4px;background:rgba(189,147,249,.1);
+  border:1px solid rgba(189,147,249,.25);color:var(--pu);}
+.nb-card-body{padding:.85rem;}
+.nb-card-desc{font-size:.64rem;color:var(--mu);line-height:1.55;margin-bottom:.65rem;}
+.nb-card-meta{font-family:var(--mono);font-size:.56rem;color:var(--mu2);margin-bottom:.6rem;}
+.nb-card-actions{display:flex;gap:.3rem;}
+.btn-edit-nb{flex:1;padding:.42rem;background:rgba(189,147,249,.1);
+  border:1px solid rgba(189,147,249,.25);border-radius:6px;
+  color:var(--pu);font-family:var(--orb);font-size:.52rem;cursor:pointer;transition:all .2s;}
+.btn-edit-nb:hover{background:rgba(189,147,249,.2);}
+.btn-pub-nb{flex:1;padding:.42rem;background:rgba(0,136,255,.1);
+  border:1px solid rgba(0,136,255,.3);border-radius:6px;
+  color:var(--bl2);font-family:var(--orb);font-size:.52rem;cursor:pointer;transition:all .2s;}
+.btn-pub-nb:hover{background:rgba(0,136,255,.2);}
+.btn-del-nb{padding:.42rem .55rem;background:rgba(255,68,102,.07);
+  border:1px solid rgba(255,68,102,.18);border-radius:6px;
+  color:#ff8899;font-family:var(--orb);font-size:.52rem;cursor:pointer;transition:all .2s;}
+.btn-del-nb:hover{background:rgba(255,68,102,.15);}
+.nb-empty-state{display:flex;flex-direction:column;align-items:center;
+  justify-content:center;height:100%;text-align:center;gap:.9rem;padding:2rem;}
+.nb-empty-icon{font-size:2.5rem;opacity:.3;}
+.nb-empty-ttl{font-family:var(--orb);font-size:.8rem;color:var(--mu);}
+.nb-empty-sub{font-size:.68rem;color:var(--mu);opacity:.7;max-width:280px;line-height:1.6;}
+
+/* ── STATUS BAR ── */
+.statusbar{
+  height:22px;display:flex;align-items:center;gap:.65rem;
+  padding:0 .85rem;background:#060a10;border-top:1px solid var(--bd);
+  font-family:var(--mono);font-size:.52rem;color:var(--mu);flex-shrink:0;
+}
+.sb-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0;}
+.sb-idle{background:var(--mu);}
+.sb-run{background:var(--gr);animation:puls 1.5s infinite;}
+.sb-err{background:var(--rd);}
+.sb-right{margin-left:auto;display:flex;gap:.65rem;}
+
+/* ── MODAL ── */
+.modal-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);
+  z-index:800;align-items:center;justify-content:center;}
 .modal-ov.open{display:flex;}
-.modal{background:var(--p);border:1px solid rgba(189,147,249,.35);border-radius:14px;
-  padding:1.7rem;width:min(480px,92vw);animation:su .3s ease;}
-@keyframes su{from{transform:translateY(16px);opacity:0;}to{transform:translateY(0);opacity:1;}}
-.modal-title{font-family:var(--orb);font-size:.85rem;color:var(--pu);margin-bottom:1.1rem;}
-.fg{margin-bottom:.75rem;}
-.fl{font-family:var(--orb);font-size:.52rem;color:var(--mu);letter-spacing:.1em;display:block;margin-bottom:.22rem;}
-.fi{width:100%;background:rgba(0,0,0,.4);border:1px solid var(--bd2);border-radius:7px;
-  padding:.48rem .78rem;color:var(--tx);font-family:var(--mono);font-size:.75rem;outline:none;}
+.modal{background:var(--p);border:1px solid rgba(189,147,249,.35);
+  border-radius:12px;padding:1.5rem;width:min(480px,92vw);}
+.modal-title{font-family:var(--orb);font-size:.82rem;color:var(--pu);margin-bottom:1rem;}
+.fg{margin-bottom:.7rem;}
+.fl{font-family:var(--orb);font-size:.5rem;color:var(--mu);
+  letter-spacing:.08em;display:block;margin-bottom:.2rem;}
+.fi{width:100%;background:rgba(0,0,0,.4);border:1px solid var(--bd2);
+  border-radius:7px;padding:.45rem .72rem;color:var(--tx);
+  font-family:var(--mono);font-size:.72rem;outline:none;}
 .fi:focus{border-color:var(--pu);}
-select.fi{cursor:pointer;}
-textarea.fi{resize:vertical;min-height:70px;line-height:1.55;}
-.btn-row{display:flex;gap:.45rem;margin-top:.75rem;}
-.btn-cancel{padding:.42rem .85rem;background:transparent;border:1px solid var(--bd2);
-  border-radius:7px;color:var(--mu);font-family:var(--orb);font-size:.56rem;cursor:pointer;}
+select.fi,textarea.fi{cursor:pointer;}
+textarea.fi{resize:vertical;min-height:65px;line-height:1.5;}
+.btn-row{display:flex;gap:.4rem;margin-top:.65rem;}
+.btn-pri{padding:.4rem .9rem;background:linear-gradient(135deg,#4a0a8a,var(--pu));
+  border:none;border-radius:6px;color:#fff;font-family:var(--orb);
+  font-size:.56rem;cursor:pointer;}
+.btn-cancel{padding:.4rem .85rem;background:transparent;
+  border:1px solid var(--bd2);border-radius:7px;color:var(--mu);
+  font-family:var(--orb);font-size:.54rem;cursor:pointer;}
+
+/* Syntax highlight */
+.kw{color:var(--kw);font-weight:600;}.fn{color:var(--fn);}
+.st{color:var(--st);}.nm{color:var(--nm);}.cm{color:var(--cm);font-style:italic;}
+.cl{color:var(--cl);}
+
+/* Mobile */
+@media(max-width:700px){
+  .nb-cell{width:98%;}
+  .nb-bottom{width:98%;}
+  .add-cell-row{width:98%;}
+  .cell-gutter{width:36px;}
+  .topbar{padding:0 .5rem;gap:.25rem;}
+  .tbtn span{display:none;}
+}
 </style>
 </head>
 <body>
@@ -251,764 +375,788 @@ textarea.fi{resize:vertical;min-height:70px;line-height:1.55;}
 <div class="access-denied" id="access-denied">
   <div class="denied-icon">🔒</div>
   <div class="denied-title">ACCESO RESTRINGIDO</div>
-  <div class="denied-desc">
-    El Arquitecto Profesional es exclusivo para<br>
-    <strong style="color:var(--pu);">Administradores</strong> y el <strong style="color:var(--yw);">Fundador</strong>.<br><br>
-    Tu cuenta no tiene los permisos necesarios para acceder a esta herramienta.
+  <div class="denied-desc">Arquitecto Profesional es exclusivo para<br>
+    <strong style="color:var(--pu);">Administradores</strong> y el
+    <strong style="color:var(--yw);">Fundador</strong>.
   </div>
-  <button class="btn-login" onclick="postCore('QCOL_NAV',{screen:'home'})">← Volver al menú</button>
+  <button class="btn-back" onclick="postCore('QCOL_NAV',{screen:'home'})">← Volver al menú</button>
 </div>
 
-<!-- TITLE BAR -->
-<div class="titlebar">
+<!-- TOP BAR -->
+<div class="topbar" id="topbar" style="display:none;">
   <div class="tb-logo">
-    <svg width="16" height="16" viewBox="0 0 40 40" fill="none">
-      <line x1="2" y1="14" x2="38" y2="14" stroke="#4a0a8a" stroke-width="1.5" stroke-dasharray="3 2"/>
-      <line x1="2" y1="26" x2="38" y2="26" stroke="#4a0a8a" stroke-width="1.5" stroke-dasharray="3 2"/>
-      <rect x="5" y="10" width="8" height="8" rx="2" fill="rgba(189,147,249,.2)" stroke="#bd93f9" stroke-width="1.5"/>
-      <text x="9" y="16" text-anchor="middle" font-family="monospace" font-size="5" fill="#bd93f9" font-weight="bold">H</text>
-      <g transform="translate(24,14) scale(1.05)">
-        <circle cx="6" cy="6" r="3.5" fill="none" stroke="#bd93f9" stroke-width="1.8"/>
-        <path d="M6 0v2M6 10v2M0 6h2M10 6h2M1.8 1.8l1.4 1.4M8.8 8.8l1.4 1.4M1.8 10.2l1.4-1.4M8.8 3.2l1.4-1.4" stroke="#bd93f9" stroke-width="1.3" stroke-linecap="round"/>
-      </g>
-    </svg>
-    <span><span class="tb-q">Q</span><span class="tb-c">COL</span></span>
-    <span class="tb-sub">⚙️ ARQUITECTO PROFESIONAL</span>
+    <span class="tb-q">Q</span><span style="font-family:var(--orb);font-size:.72rem;font-weight:900;color:var(--bl2);">COL</span>
+    <span class="tb-pro">PRO</span>
   </div>
+  <div class="tb-sep"></div>
+  <input class="nb-name-inp" id="nb-name-inp" placeholder="Sin título" value="Nuevo Notebook">
   <div class="tb-right">
-    <div class="admin-badge">ADMIN+</div>
-    <div class="engine-badge eng-off" id="eng-badge">● SIN MOTOR</div>
-    <div class="user-pill" id="user-pill">
-      <span id="uname">—</span>
-    </div>
+    <div class="eng-pill" id="eng-badge">● SIN COMPILADOR</div>
+    <div class="admin-pill" id="admin-pill" style="display:none;">ADMIN+</div>
+    <div class="user-pill" id="user-pill">—</div>
   </div>
 </div>
 
-<!-- IDE -->
-<div class="ide" id="ide" style="display:none;">
-  <!-- MODE BAR: 2 functions -->
-  <div class="mode-bar">
-    <!-- FUNCTION 1 -->
-    <button class="mode-btn on" id="fn-btn-1" onclick="setFn(1)">
-      <span class="mode-icon">📝</span>
-      CREAR / EDITAR NOTEBOOK
-    </button>
-    <div class="mode-sep"></div>
-    <!-- FUNCTION 2 -->
-    <button class="mode-btn" id="fn-btn-2" onclick="setFn(2)">
-      <span class="mode-icon">📂</span>
-      GESTIONAR PROYECTOS
-    </button>
-
-    <div class="mode-right">
-      <button class="bsm" onclick="newNotebook()">+ NUEVO</button>
-      <button class="bsm" onclick="showPublish()">📤 PUBLICAR</button>
-      <div class="sep"></div>
-      <button class="btn-run" id="btn-run" onclick="runCurCell()">▶ EJECUTAR CELDA</button>
-      <button class="btn-run" style="background:linear-gradient(135deg,#005500,#00aa00);" onclick="runAll()">▶▶ TODO</button>
-    </div>
+<!-- SECONDARY BAR -->
+<div class="secbar" id="secbar" style="display:none;">
+  <button class="stab on" id="stab-1" onclick="setView('notebook')">📝 NOTEBOOK</button>
+  <button class="stab" id="stab-2" onclick="setView('manage')">📂 MIS NOTEBOOKS</button>
+  <div class="secbar-right">
+    <button class="tbtn" onclick="addCellAt(-1,'code')" title="Añadir celda código">＋ Código</button>
+    <button class="tbtn" onclick="addCellAt(-1,'markdown')" title="Añadir celda texto">＋ Texto</button>
+    <button class="tbtn" onclick="importNb()" title="Subir .ipynb desde tu PC">📂 Abrir .ipynb</button>
+    <input type="file" id="import-file" style="display:none;" accept=".ipynb" onchange="handleImport(event)">
+    <button class="tbtn" onclick="downloadNb()" title="Descargar .ipynb">📥 .ipynb</button>
+    <button class="tbtn pub" onclick="showPublish()"><span>📤 PUBLICAR</span></button>
+    <div style="width:1px;height:18px;background:var(--bd);margin:0 .1rem;"></div>
+    <button class="tbtn run" onclick="runCurCell()" id="btn-run-cur">▶ EJECUTAR</button>
+    <button class="tbtn run-all" onclick="runAll()" id="btn-run-all">▶▶ TODO</button>
   </div>
+</div>
 
-  <!-- FUNCTION 1: NOTEBOOK EDITOR -->
-  <div id="fn-notebook">
+<!-- MAIN -->
+<div class="main" id="main-area" style="display:none;">
 
-    <!-- NB SIDEBAR -->
-    <div class="nb-sidebar">
-      <div class="nb-sidebar-hdr">📓 NOTEBOOK</div>
-      <!-- Metadata -->
-      <div class="nb-meta">
-        <label class="nb-label">TÍTULO</label>
-        <input class="nb-input" id="nb-title" placeholder="Nombre del notebook" value="Nuevo Notebook">
-        <label class="nb-label">DESCRIPCIÓN</label>
-        <textarea class="nb-input" id="nb-desc" placeholder="Descripción breve..." rows="2"></textarea>
-        <label class="nb-label">TAGS</label>
-        <input class="nb-input" id="nb-tags" placeholder="Qiskit · Avanzado">
-        <label class="nb-label">LIBRERÍA</label>
-        <select class="nb-input" id="nb-lib">
-          <option value="qiskit">Qiskit</option>
-          <option value="cirq">Cirq</option>
-          <option value="pennylane">PennyLane</option>
-          <option value="qutip">QuTiP</option>
-        </select>
-      </div>
-      <!-- Cell list -->
-      <div class="nb-cells-hdr">
-        CELDAS (<span id="cell-count">0</span>)
-        <button class="bsm" style="margin-left:auto;font-size:.46rem;padding:.18rem .4rem;" onclick="addCell('code')">+ Código</button>
-        <button class="bsm" style="font-size:.46rem;padding:.18rem .4rem;margin-left:.25rem;" onclick="addCell('markdown')">+ Texto</button>
-      </div>
-      <div class="nb-cells-list" id="cells-list"></div>
-      <!-- Actions -->
-      <div style="padding:.5rem .7rem;border-top:1px solid var(--bd);display:flex;flex-direction:column;gap:.3rem;">
-        <button class="btn-add-cell" onclick="addCell('code')">+ Agregar celda de código</button>
-        <button class="btn-add-cell" onclick="addCell('markdown')">+ Agregar celda de texto</button>
-        <button class="bsm" style="font-size:.5rem;" onclick="downloadNb()">📥 Descargar .ipynb</button>
-        <button class="bsm" style="font-size:.5rem;" onclick="importNb()">📂 Importar .ipynb</button>
-        <input type="file" id="import-file" style="display:none;" accept=".ipynb" onchange="handleImport(event)">
-      </div>
-    </div>
-
-    <!-- NB EDITOR -->
-    <div class="nb-editor">
-      <div class="nb-editor-hdr">
-        <div class="nb-cell-label" id="cell-label">Celda 1 — Código Python</div>
-        <select class="nb-cell-type-sel" id="cell-type-sel" onchange="changeCellType()">
-          <option value="code">Código Python</option>
-          <option value="markdown">Markdown / LaTeX</option>
-          <option value="raw">Raw text</option>
-        </select>
-        <div style="margin-left:auto;display:flex;gap:.35rem;">
-          <button class="bsm" style="font-size:.5rem;" onclick="moveCellUp()">↑</button>
-          <button class="bsm" style="font-size:.5rem;" onclick="moveCellDown()">↓</button>
-          <button class="bsm" style="font-size:.5rem;border-color:rgba(255,68,102,.3);color:#ff8899;" onclick="deleteCurCell()">🗑</button>
-        </div>
-      </div>
-      <div class="nb-render-area" id="nb-render-area">
-        <div class="nb-empty">
-          <div class="nb-empty-icon">📓</div>
-          <div class="nb-empty-title">Sin celdas</div>
-          <div class="nb-empty-desc">Agrega celdas de código o texto para construir tu notebook.</div>
-          <button class="btn-new-nb" onclick="addCell('code')">+ Agregar primera celda</button>
-        </div>
-      </div>
-      <!-- Cell output -->
-      <div class="cell-output" id="cell-output" style="display:none;">
-        <span id="cell-out-content"></span>
-      </div>
-      <!-- Status -->
-      <div class="statusbar">
-        <div class="sb-dot sb-idle" id="sb-dot"></div>
-        <span id="sb-txt">Listo</span>
-        <span>Python · <span id="sb-lib-nb">Qiskit</span></span>
-        <div class="sb-right">
-          <span id="sb-cells-info">0 celdas</span>
-          <span id="sb-cur">Ln 1, Col 1</span>
-        </div>
+  <!-- NOTEBOOK VIEW -->
+  <div id="view-notebook" style="display:flex;">
+    <div class="nb-scroll" id="nb-scroll">
+      <!-- Celdas se insertan aquí dinámicamente -->
+      <div class="nb-bottom">
+        <button class="nb-add-big" onclick="addCellAt(-1,'code')">＋ Añadir celda de código</button>
+        <button class="nb-add-big" onclick="addCellAt(-1,'markdown')">＋ Añadir celda de texto</button>
       </div>
     </div>
   </div>
 
-  <!-- FUNCTION 2: MANAGE -->
-  <div id="fn-manage">
+  <!-- MANAGE VIEW -->
+  <div id="view-manage">
     <div class="manage-wrap">
-      <div class="manage-toolbar">
-        <div class="manage-title">📂 GESTIÓN DE PROYECTOS</div>
-        <button class="bsm" style="margin-left:auto;" onclick="refreshNbs()">🔄 Actualizar</button>
-        <button class="btn-new-nb" style="padding:.3rem .8rem;font-size:.56rem;" onclick="newNotebook();setFn(1)">+ CREAR NOTEBOOK</button>
+      <div class="manage-bar">
+        <div class="manage-title-lbl">📂 MIS NOTEBOOKS</div>
+        <button class="tbtn" style="margin-left:auto;" onclick="refreshNbs()">🔄 Actualizar</button>
+        <button class="tbtn pub" onclick="newNotebook();setView('notebook')">＋ NUEVO</button>
       </div>
       <div class="nb-grid" id="nb-grid"></div>
     </div>
+  </div>
+
+</div>
+
+<!-- STATUS BAR -->
+<div class="statusbar" id="statusbar" style="display:none;">
+  <div class="sb-dot sb-idle" id="sb-dot"></div>
+  <span id="sb-txt">Listo</span>
+  <span>Python · <span id="sb-lib">Qiskit</span></span>
+  <div class="sb-right">
+    <span id="sb-cells-info">0 celdas</span>
+    <span id="sb-cur">Ln 1, Col 1</span>
   </div>
 </div>
 
 <!-- PUBLISH MODAL -->
 <div class="modal-ov" id="pub-modal">
   <div class="modal">
-    <div class="modal-title">📤 Publicar Notebook en Proyectos</div>
-    <div class="fg"><label class="fl">TÍTULO DEL PROYECTO</label>
+    <div class="modal-title">📤 Publicar Notebook</div>
+    <div class="fg"><label class="fl">TÍTULO</label>
       <input class="fi" id="pub-title" placeholder="Nombre del notebook"></div>
     <div class="fg"><label class="fl">DESCRIPCIÓN</label>
       <textarea class="fi" id="pub-desc" placeholder="Breve descripción..."></textarea></div>
     <div class="fg"><label class="fl">TAGS</label>
       <input class="fi" id="pub-tags" placeholder="Qiskit · LaTeX · Avanzado"></div>
-    <div class="fg"><label class="fl">ID DEL ARCHIVO (sin espacios)</label>
-      <input class="fi" id="pub-id" placeholder="mi_notebook_cuantico"></div>
-    <div class="fg" style="background:rgba(0,136,255,.06);border:1px solid rgba(0,136,255,.2);border-radius:8px;padding:.7rem;">
-      <div style="font-family:var(--orb);font-size:.56rem;color:var(--bl2);margin-bottom:.35rem;">ℹ️ Proceso de publicación</div>
-      <div style="font-size:.64rem;color:var(--mu);line-height:1.7;">
-        1. El notebook se descarga como <code style="color:var(--gr);">.ipynb</code><br>
-        2. Súbelo a GitHub en la carpeta <code style="color:var(--gr);">/notebooks</code><br>
-        3. El proyecto aparecerá en el módulo Proyectos
-      </div>
+    <div style="background:rgba(0,136,255,.06);border:1px solid rgba(0,136,255,.2);border-radius:8px;padding:.65rem;font-size:.62rem;color:var(--mu);line-height:1.7;">
+      El notebook se descargará como <code style="color:var(--gr);">.ipynb</code>.
+      Súbelo a GitHub en <code style="color:var(--gr);">/notebooks</code> para publicarlo.
     </div>
     <div class="btn-row">
-      <button class="btn-pub" onclick="publishNb()">📤 Publicar</button>
+      <button class="btn-pri" onclick="publishNb()">📤 Publicar</button>
       <button class="btn-cancel" onclick="closePublish()">Cancelar</button>
     </div>
   </div>
 </div>
 
 <script>
-// ════════════════════════════════════════════════
-// QCOL ARQUITECTO PROFESIONAL — Notebook Creator
-// Solo disponible para Admin y Fundador
-// ════════════════════════════════════════════════
+// ══════════════════════════════════════════════════
+// QCOL ARQUITECTO PROFESIONAL v3 — Notebook IDE
+// Estilo Google Colab · Solo Admin/Founder
+// ══════════════════════════════════════════════════
 
-// ── STANDALONE MODE (sin ecosistema) ────────────
-// Este módulo funciona solo abriendo el archivo.
-// Para probarlo sin el ecosistema: abre directamente.
 const STANDALONE = window.parent === window;
-
 let curUser = null;
 let engineURL = '', engineOK = false, running = false;
-let curFn = 1;  // 1 = editor, 2 = gestionar
+let curView = 'notebook';
+let cells = [];      // [{id, type, code, output, exec_count}]
+let curCellId = null;
+let execCounter = 0;
 
-// Notebook state
-let nb = {
-  title: 'Nuevo Notebook',
-  desc: '',
-  tags: '',
-  lib: 'qiskit',
-  cells: [],
-};
-let curCellIdx = -1;
-let savedNbs = [];  // locally saved notebooks
-
-// ── CORE COMM ────────────────────────────────────
-function postCore(t,d={}){ window.parent.postMessage({type:t,...d},'*'); }
-function notify(msg){
-  const n=document.getElementById('notif');
-  n.textContent=msg; n.classList.add('show');
-  clearTimeout(n._t); n._t=setTimeout(()=>n.classList.remove('show'),3200);
+// ── CORE COMM ──────────────────────────────────────
+function postCore(type, data={}){
+  if(!STANDALONE) window.parent.postMessage({type,...data},'*');
+}
+function notify(msg,ms=2800){
+  const el=document.getElementById('notif');
+  el.textContent=msg; el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'),ms);
 }
 
-window.addEventListener('message', e=>{
-  const d=e.data; if(!d?.type) return;
-  if(d.type==='QCOL_CONFIG'){
+// ── AUTH ───────────────────────────────────────────
+window.addEventListener('message',e=>{
+  const d=e.data||{};
+  if(d.type==='QCOL_USER'){
+    curUser=d.user;
+    const role=curUser?.role||'guest';
+    if(role!=='admin'&&role!=='founder'){
+      document.getElementById('access-denied').classList.add('show');
+      return;
+    }
+    document.getElementById('topbar').style.display='flex';
+    document.getElementById('secbar').style.display='flex';
+    document.getElementById('main-area').style.display='flex';
+    document.getElementById('statusbar').style.display='flex';
+    document.getElementById('user-pill').textContent=
+      (role==='founder'?'👑 ':role==='admin'?'🔑 ':'') + (curUser.name||'—').split(' ')[0];
+    if(role==='admin'||role==='founder')
+      document.getElementById('admin-pill').style.display='';
+    engineURL=localStorage.getItem('qcol_colab_url')||'';
+    if(engineURL) checkEngine();
+    refreshNbs();
+    if(cells.length===0) addCellAt(-1,'code');
+  }
+  if(d.type==='QCOL_CONFIG_UPDATED'){
     engineURL=localStorage.getItem('qcol_colab_url')||'';
     if(engineURL) checkEngine();
   }
-  if(d.type==='QCOL_USER_UPDATE'){
-    curUser=d.user;
-    checkAccess();
-  }
 });
-
 if(STANDALONE){
-  // In standalone mode, pretend to be admin for testing
-  curUser={name:'Admin Test',username:'admin_test',role:'admin',canUpload:true};
-  checkAccess();
-} else {
-  postCore('QCOL_GET_CONFIG');
+  document.getElementById('topbar').style.display='flex';
+  document.getElementById('secbar').style.display='flex';
+  document.getElementById('main-area').style.display='flex';
+  document.getElementById('statusbar').style.display='flex';
+  document.getElementById('user-pill').textContent='DEV';
+  if(cells.length===0) addCellAt(-1,'code');
+  refreshNbs();
 }
 
-function checkAccess(){
-  const isAdmin = curUser?.role==='admin'||curUser?.role==='founder';
-  const denied = document.getElementById('access-denied');
-  const ide = document.getElementById('ide');
-  if(!isAdmin&&!STANDALONE){
-    denied.classList.add('show');
-    ide.style.display='none';
-  } else {
-    denied.classList.remove('show');
-    ide.style.display='flex';
-    // Update user badge
-    document.getElementById('uname').textContent=
-      (curUser?.role==='founder'?'👑 ':curUser?.role==='admin'?'🔑 ':'')+
-      (curUser?.name?.split(' ')[0]||'Admin');
-    loadSavedNbs();
-    renderNbGrid();
-  }
-}
-
+// ── COMPILADOR ─────────────────────────────────────
 async function checkEngine(){
   if(!engineURL) return;
+  const isHF=engineURL.includes('hf.space')||engineURL.includes('huggingface');
+  const badge=document.getElementById('eng-badge');
   try{
-    const r=await fetch(engineURL+'/health',{signal:AbortSignal.timeout(5000)});
-    if(r.ok){
-      engineOK=true;
-      const eb=document.getElementById('eng-badge');
-      eb.textContent='● MOTOR ACTIVO'; eb.className='engine-badge eng-on';
+    let ok=false;
+    if(isHF){
+      const r=await fetch(engineURL+'/health/predict',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({data:['']}),signal:AbortSignal.timeout(12000)
+      });
+      ok=r.ok;
+    } else {
+      const r=await fetch(engineURL+'/health',{signal:AbortSignal.timeout(5000)});
+      ok=r.ok;
     }
-  }catch(e){engineOK=false;}
+    if(ok){
+      engineOK=true;
+      badge.textContent='● COMPILADOR ACTIVO';
+      badge.className='eng-pill on';
+    }
+  }catch(e){
+    engineOK=false;
+    badge.textContent='● SIN COMPILADOR';
+    badge.className='eng-pill';
+  }
 }
 
-// ── FUNCTION SWITCH ───────────────────────────────
-function setFn(n){
-  curFn=n;
-  document.getElementById('fn-btn-1').classList.toggle('on',n===1);
-  document.getElementById('fn-btn-2').classList.toggle('on',n===2);
-  document.getElementById('fn-notebook').style.display=n===1?'flex':'none';
-  document.getElementById('fn-manage').style.display=n===2?'flex':'none';
-  if(n===2) renderNbGrid();
+// ── VIEW ───────────────────────────────────────────
+function setView(v){
+  curView=v;
+  document.getElementById('view-notebook').style.display=v==='notebook'?'flex':'none';
+  document.getElementById('view-manage').style.display=v==='manage'?'flex':'none';
+  document.getElementById('stab-1').classList.toggle('on',v==='notebook');
+  document.getElementById('stab-2').classList.toggle('on',v==='manage');
+  if(v==='manage') refreshNbs();
 }
 
-// ── NOTEBOOK: NEW ─────────────────────────────────
-function newNotebook(){
-  nb={title:'Nuevo Notebook',desc:'',tags:'',lib:'qiskit',cells:[]};
-  curCellIdx=-1;
-  document.getElementById('nb-title').value=nb.title;
-  document.getElementById('nb-desc').value='';
-  document.getElementById('nb-tags').value='';
-  document.getElementById('nb-lib').value='qiskit';
-  document.getElementById('sb-lib-nb').textContent='Qiskit';
-  renderCellList();
-  showEmptyEditor();
-  setFn(1);
-  notify('Nuevo notebook creado');
+// ── CELL MANAGEMENT ────────────────────────────────
+function genId(){ return 'c'+Date.now()+Math.random().toString(36).slice(2,6); }
+
+function addCellAt(afterIdx, type='code'){
+  const cell={id:genId(),type,code:type==='code'?'':'',output:'',exec_count:null,mdEdit:false};
+  if(afterIdx===-1||afterIdx>=cells.length){
+    cells.push(cell);
+  } else {
+    cells.splice(afterIdx+1,0,cell);
+  }
+  renderCells();
+  focusCell(cell.id);
+  updateStatus();
 }
 
-// ── NOTEBOOK: CELLS ───────────────────────────────
-function addCell(type='code'){
-  const defaultSrc = type==='code'
-    ? `from qiskit import QuantumCircuit\nfrom numpy import pi\n\n# Celda ${nb.cells.length+1}\n`
-    : type==='markdown'
-    ? `## Título de la sección\n\nEscribe aquí tu texto en Markdown.\nPuedes usar LaTeX: $|\\psi\\rangle = \\alpha|0\\rangle + \\beta|1\\rangle$\n`
-    : '';
-  nb.cells.push({
-    type,
-    source: defaultSrc,
-    output: '',
-    _uid: Date.now().toString(36)+Math.random().toString(36).substr(2,4),
+function deleteCell(id){
+  if(cells.length<=1){ notify('Debes tener al menos 1 celda'); return; }
+  cells=cells.filter(c=>c.id!==id);
+  if(curCellId===id) curCellId=cells[0]?.id||null;
+  renderCells();
+  updateStatus();
+}
+
+function moveCellUp(id){
+  const i=cells.findIndex(c=>c.id===id);
+  if(i<=0) return;
+  [cells[i-1],cells[i]]=[cells[i],cells[i-1]];
+  renderCells(); focusCell(id);
+}
+function moveCellDown(id){
+  const i=cells.findIndex(c=>c.id===id);
+  if(i<0||i>=cells.length-1) return;
+  [cells[i],cells[i+1]]=[cells[i+1],cells[i]];
+  renderCells(); focusCell(id);
+}
+
+function getCellCode(id){
+  const ta=document.getElementById('ta-'+id);
+  return ta?ta.value:'';
+}
+function syncCellCode(id){
+  const cell=cells.find(c=>c.id===id);
+  if(!cell) return;
+  const ta=document.getElementById('ta-'+id);
+  const mta=document.getElementById('mta-'+id);
+  if(ta) cell.code=ta.value;
+  if(mta) cell.code=mta.value;
+}
+
+function focusCell(id){
+  curCellId=id;
+  document.querySelectorAll('.nb-cell').forEach(el=>{
+    el.classList.toggle('active',el.dataset.id===id);
   });
-  curCellIdx=nb.cells.length-1;
-  renderCellList();
-  renderCellEditor();
-  notify(`Celda ${type} agregada`);
+  const ta=document.getElementById('ta-'+id)||document.getElementById('mta-'+id);
+  if(ta) ta.focus();
 }
 
-function renderCellList(){
-  const list=document.getElementById('cells-list');
-  const count=document.getElementById('cell-count');
-  if(count) count.textContent=nb.cells.length;
-  if(!list) return;
-  if(nb.cells.length===0){list.innerHTML='<div style="padding:.5rem;font-size:.6rem;color:var(--mu);text-align:center;opacity:.6;">Sin celdas</div>';return;}
-  list.innerHTML=nb.cells.map((c,i)=>{
-    const preview=c.source.trim().split('\n')[0].substring(0,28)+'...';
-    const typeCls=c.type==='code'?'ctype-code':c.type==='markdown'?'ctype-md':'ctype-raw';
-    const typeLabel=c.type==='code'?'PY':c.type==='markdown'?'MD':'RAW';
-    return`<div class="nb-cell-item ${i===curCellIdx?'active':''}" onclick="selectCell(${i})">
-      <span class="nb-cell-type ${typeCls}">${typeLabel}</span>
-      <span style="flex:1;font-size:.56rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${preview}</span>
-      <button class="nb-cell-del" onclick="event.stopPropagation();deleteCell(${i})">✕</button>
+// ── RENDER CELLS ───────────────────────────────────
+function renderCells(){
+  const scroll=document.getElementById('nb-scroll');
+  const bottom=scroll.querySelector('.nb-bottom');
+  // Quitar celdas anteriores
+  scroll.querySelectorAll('.nb-cell,.add-cell-row').forEach(el=>el.remove());
+  // Insertar celdas antes del .nb-bottom
+  cells.forEach((cell,i)=>{
+    const row=buildAddRow(i-1);
+    scroll.insertBefore(row,bottom);
+    const el=buildCellEl(cell,i);
+    scroll.insertBefore(el,bottom);
+  });
+  const row=buildAddRow(cells.length-1);
+  scroll.insertBefore(row,bottom);
+  // Re-activar celda actual
+  if(curCellId) focusCell(curCellId);
+  updateStatus();
+}
+
+function buildAddRow(afterIdx){
+  const row=document.createElement('div');
+  row.className='add-cell-row';
+  row.innerHTML=`
+    <div class="add-cell-line"></div>
+    <div class="add-cell-btns">
+      <button class="add-btn" onclick="addCellAt(${afterIdx},'code')">＋ Código</button>
+      <button class="add-btn" onclick="addCellAt(${afterIdx},'markdown')">＋ Texto</button>
+    </div>
+    <div class="add-cell-line"></div>`;
+  return row;
+}
+
+function buildCellEl(cell,i){
+  const el=document.createElement('div');
+  el.className='nb-cell'+(curCellId===cell.id?' active':'');
+  el.dataset.id=cell.id;
+  el.onclick=()=>focusCell(cell.id);
+
+  const isCode=cell.type==='code';
+  const execLbl=cell.exec_count!==null?`[${cell.exec_count}]`:'[ ]';
+
+  // Toolbar de celda
+  const toolbar=`
+    <div class="cell-toolbar">
+      <button class="ct-btn" onclick="event.stopPropagation();moveCellUp('${cell.id}')" title="Subir">↑</button>
+      <button class="ct-btn" onclick="event.stopPropagation();moveCellDown('${cell.id}')" title="Bajar">↓</button>
+      <button class="ct-btn" onclick="event.stopPropagation();changeCellType('${cell.id}')" title="Cambiar tipo">${isCode?'Md':'{ }'}
+      </button>
+      <button class="ct-btn danger" onclick="event.stopPropagation();deleteCell('${cell.id}')" title="Eliminar">✕</button>
     </div>`;
-  }).join('');
-  document.getElementById('sb-cells-info').textContent=nb.cells.length+' celdas';
-}
 
-function selectCell(i){
-  // Save current cell content first
-  saveCurCellContent();
-  curCellIdx=i;
-  renderCellList();
-  renderCellEditor();
-}
+  if(isCode){
+    const escapedCode=escH(cell.code||'');
+    const highlighted=highlight(cell.code||'');
+    const outputHtml=cell.output
+      ?`<div class="cell-output show" id="out-${cell.id}">${cell.output}</div>`
+      :`<div class="cell-output" id="out-${cell.id}"></div>`;
 
-function saveCurCellContent(){
-  if(curCellIdx<0||curCellIdx>=nb.cells.length) return;
-  const ta=document.getElementById('cell-ta');
-  const md=document.getElementById('cell-md-ta');
-  if(ta) nb.cells[curCellIdx].source=ta.value;
-  else if(md) nb.cells[curCellIdx].source=md.value;
-}
-
-function renderCellEditor(){
-  const area=document.getElementById('nb-render-area');
-  const cell=nb.cells[curCellIdx];
-  if(!cell){showEmptyEditor();return;}
-
-  // Update header
-  document.getElementById('cell-label').textContent=
-    `Celda ${curCellIdx+1} — ${cell.type==='code'?'Código Python':cell.type==='markdown'?'Markdown / LaTeX':'Texto plano'}`;
-  document.getElementById('cell-type-sel').value=cell.type;
-
-  if(cell.type==='code'){
-    area.innerHTML=`<div class="cell-code-wrap" style="height:100%;">
-      <div class="cell-lnums" id="cell-lnums"></div>
-      <div class="cell-code-inner">
-        <div class="cell-syn" id="cell-syn"></div>
-        <textarea class="cell-ta" id="cell-ta"
-          spellcheck="false" autocorrect="off" autocapitalize="off"
-          oninput="onCellEdit()" onscroll="syncCellSc()"
-          onkeydown="handleCellKey(event)" onkeyup="updCellCur()" onclick="updCellCur()"
-        >${escH(cell.source)}</textarea>
+    el.innerHTML=`
+      ${toolbar}
+      <div class="cell-gutter">
+        <div class="cell-num">${execLbl}</div>
+        <button class="cell-run-btn" id="rbtn-${cell.id}"
+          onclick="event.stopPropagation();runCell('${cell.id}')"
+          title="Ejecutar celda (Shift+Enter)">▶</button>
       </div>
-    </div>`;
-    // Unescape for textarea
-    const ta=area.querySelector('.cell-ta');
-    if(ta){ta.value=cell.source;onCellEdit();}
+      <div class="cell-body">
+        <div class="cell-type-badge ctb-code">{ } Python</div>
+        <div class="cell-code-area" id="area-${cell.id}">
+          <div class="cell-syn-layer" id="syn-${cell.id}">${highlighted}</div>
+          <textarea class="cell-textarea" id="ta-${cell.id}"
+            spellcheck="false"
+            oninput="onCellInput('${cell.id}')"
+            onkeydown="onCellKeydown(event,'${cell.id}')"
+            onfocus="focusCell('${cell.id}')">${escapedCode}</textarea>
+        </div>
+        ${outputHtml}
+      </div>`;
   } else {
-    area.innerHTML=`<div class="cell-md-wrap">
-      <div style="padding:.45rem .8rem;background:#0a0714;border-bottom:1px solid rgba(0,255,136,.15);
-        font-family:var(--orb);font-size:.5rem;color:var(--gr);">
-        📝 Markdown — soporta LaTeX: $..$ y $$..$$
-      </div>
-      <textarea class="cell-md-ta" id="cell-md-ta"
-        oninput="saveCurCellContent()"
-      >${escH(cell.source)}</textarea>
-    </div>`;
-    const md=area.querySelector('.cell-md-ta');
-    if(md) md.value=cell.source;
+    // Markdown
+    const mdContent=cell.code||'';
+    if(cell.mdEdit||!mdContent){
+      el.innerHTML=`
+        ${toolbar}
+        <div class="cell-gutter">
+          <div class="cell-num" style="color:var(--gr)">Md</div>
+        </div>
+        <div class="cell-body">
+          <div class="cell-type-badge ctb-md">✦ Markdown / LaTeX</div>
+          <textarea class="cell-md-area" id="mta-${cell.id}"
+            placeholder="# Título&#10;Escribe Markdown o LaTeX: $E=mc^2$"
+            oninput="syncCellCode('${cell.id}')"
+            onkeydown="onMdKeydown(event,'${cell.id}')"
+            onfocus="focusCell('${cell.id}')"
+            rows="4">${escH(mdContent)}</textarea>
+        </div>`;
+    } else {
+      el.innerHTML=`
+        ${toolbar}
+        <div class="cell-gutter">
+          <div class="cell-num" style="color:var(--gr)">Md</div>
+        </div>
+        <div class="cell-body">
+          <div class="cell-type-badge ctb-md">✦ Markdown</div>
+          <div class="cell-md-rendered" id="mren-${cell.id}"
+            ondblclick="editMd('${cell.id}')"
+            title="Doble clic para editar">
+            ${renderMd(mdContent)}
+          </div>
+        </div>`;
+    }
   }
 
-  // Show output if any
-  const outEl=document.getElementById('cell-output');
-  const outContent=document.getElementById('cell-out-content');
-  if(cell.output){
-    outEl.style.display='block';
-    outContent.innerHTML=cell.output;
-  } else {
-    outEl.style.display='none';
+  // Auto-resize textarea
+  setTimeout(()=>{
+    const ta=document.getElementById('ta-'+cell.id);
+    if(ta) autoResize(ta);
+  },0);
+
+  return el;
+}
+
+function escH(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function editMd(id){
+  const cell=cells.find(c=>c.id===id);
+  if(cell){ cell.mdEdit=true; renderCells(); focusCell(id); }
+}
+
+function onMdKeydown(e,id){
+  if(e.key==='Escape'){
+    syncCellCode(id);
+    const cell=cells.find(c=>c.id===id);
+    if(cell){ cell.mdEdit=false; renderCells(); }
+  }
+  if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){
+    e.preventDefault();
+    syncCellCode(id);
+    const cell=cells.find(c=>c.id===id);
+    if(cell){ cell.mdEdit=false; renderCells(); }
+    // Mover a siguiente celda
+    const idx=cells.findIndex(c=>c.id===id);
+    if(idx<cells.length-1) focusCell(cells[idx+1].id);
   }
 }
 
-function showEmptyEditor(){
-  document.getElementById('nb-render-area').innerHTML=`<div class="nb-empty">
-    <div class="nb-empty-icon">📓</div>
-    <div class="nb-empty-title">Sin celdas</div>
-    <div class="nb-empty-desc">Agrega celdas de código o texto para construir tu notebook.</div>
-    <button class="btn-new-nb" onclick="addCell('code')">+ Agregar primera celda</button>
-  </div>`;
-  document.getElementById('cell-output').style.display='none';
+function renderMd(text){
+  // Simple Markdown render
+  let html=escH(text);
+  html=html.replace(/^### (.+)/gm,'<h3>$1</h3>');
+  html=html.replace(/^## (.+)/gm,'<h2>$1</h2>');
+  html=html.replace(/^# (.+)/gm,'<h1>$1</h1>');
+  html=html.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+  html=html.replace(/\*(.+?)\*/g,'<em>$1</em>');
+  html=html.replace(/`(.+?)`/g,'<code>$1</code>');
+  html=html.replace(/\n/g,'<br>');
+  return html;
 }
 
-function deleteCell(i){
-  nb.cells.splice(i,1);
-  if(curCellIdx>=nb.cells.length) curCellIdx=nb.cells.length-1;
-  renderCellList();
-  if(curCellIdx>=0) renderCellEditor(); else showEmptyEditor();
-  notify('Celda eliminada');
-}
-
-function deleteCurCell(){ if(curCellIdx>=0) deleteCell(curCellIdx); }
-
-function moveCellUp(){
-  if(curCellIdx<=0) return;
-  [nb.cells[curCellIdx-1],nb.cells[curCellIdx]]=[nb.cells[curCellIdx],nb.cells[curCellIdx-1]];
-  curCellIdx--;renderCellList();renderCellEditor();
-}
-function moveCellDown(){
-  if(curCellIdx>=nb.cells.length-1) return;
-  [nb.cells[curCellIdx+1],nb.cells[curCellIdx]]=[nb.cells[curCellIdx],nb.cells[curCellIdx+1]];
-  curCellIdx++;renderCellList();renderCellEditor();
-}
-
-function changeCellType(){
-  if(curCellIdx<0) return;
-  saveCurCellContent();
-  nb.cells[curCellIdx].type=document.getElementById('cell-type-sel').value;
-  renderCellList();renderCellEditor();
-}
-
-// ── CELL EDITOR FUNCTIONS ─────────────────────────
+// ── SYNTAX HIGHLIGHT ───────────────────────────────
 function highlight(code){
-  let h=code.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const KW=['import','from','as','def','class','return','if','else','elif','for','while',
+            'in','not','and','or','True','False','None','with','try','except','finally',
+            'lambda','pass','break','continue','yield','raise','del','global','assert'];
+  let h=escH(code);
   h=h.replace(/(#[^\n]*)/g,'<span class="cm">$1</span>');
-  h=h.replace(/("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')/g,m=>m.includes('class=')?m:`<span class="st">${m}</span>`);
-  ['from','import','as','def','class','return','if','elif','else','for','while','in','not','and','or','True','False','None','with','pass','try','except','finally','raise','yield','lambda'].forEach(k=>{
-    h=h.replace(new RegExp(`(?<![\\w])(${k})(?![\\w])`,'g'),(m,w)=>m.includes('class=')?m:`<span class="kw">${w}</span>`);
+  h=h.replace(/("""[\s\S]*?"""|'''[\s\S]*?'''|"[^"]*"|'[^']*')/g,'<span class="st">$1</span>');
+  h=h.replace(/\b(\d+\.?\d*)\b/g,'<span class="nm">$1</span>');
+  KW.forEach(k=>{
+    const re=new RegExp(`\\b(${k})\\b`,'g');
+    h=h.replace(re,'<span class="kw">$1</span>');
   });
-  ['QuantumCircuit','Statevector','AerSimulator','Simulator','LineQubit','Circuit'].forEach(k=>{
-    h=h.replace(new RegExp(`(?<![\\w])(${k})(?![\\w])`,'g'),(m,w)=>m.includes('class=')?m:`<span class="cl">${w}</span>`);
-  });
-  h=h.replace(/(?<![\\w.])(\d+\.?\d*(?:e[+-]?\d+)?)(?![\\w])/g,(m,n)=>`<span class="nm">${n}</span>`);
-  h=h.replace(/\b(pi|np|qml|qt|cirq|qc)\b/g,m=>`<span class="nm">${m}</span>`);
-  h=h.replace(/\b([a-zA-Z_]\w*)\s*(?=\()/g,(m,fn)=>m.includes('class=')?m:`<span class="fn">${fn}</span>`);
+  h=h.replace(/\b([A-Za-z_][A-Za-z0-9_]*)\s*(?=\()/g,'<span class="fn">$1</span>');
   return h;
 }
 
-function onCellEdit(){
-  const ta=document.getElementById('cell-ta');
-  const syn=document.getElementById('cell-syn');
-  const ln=document.getElementById('cell-lnums');
-  if(!ta) return;
-  if(curCellIdx>=0) nb.cells[curCellIdx].source=ta.value;
-  if(syn) syn.innerHTML=highlight(ta.value)+'\n';
-  if(ln){
-    const lines=ta.value.split('\n');
-    ln.innerHTML=lines.map((_,i)=>`<div>${i+1}</div>`).join('');
+function onCellInput(id){
+  const ta=document.getElementById('ta-'+id);
+  const syn=document.getElementById('syn-'+id);
+  if(ta&&syn){
+    const cell=cells.find(c=>c.id===id);
+    if(cell) cell.code=ta.value;
+    syn.innerHTML=highlight(ta.value);
+    autoResize(ta);
+    // Sync scroll
+    syn.scrollTop=ta.scrollTop;
+    syn.scrollLeft=ta.scrollLeft;
   }
 }
-function syncCellSc(){
-  const ta=document.getElementById('cell-ta');
-  const syn=document.getElementById('cell-syn');
-  const ln=document.getElementById('cell-lnums');
-  if(ta&&syn){syn.scrollTop=ta.scrollTop;syn.scrollLeft=ta.scrollLeft;}
-  if(ta&&ln) ln.scrollTop=ta.scrollTop;
+
+function autoResize(ta){
+  ta.style.height='auto';
+  const h=Math.max(48,ta.scrollHeight);
+  ta.style.height=h+'px';
+  const area=ta.closest('.cell-code-area');
+  if(area){ area.style.height=h+'px'; }
+  const syn=ta.parentElement?.querySelector('.cell-syn-layer');
+  if(syn) syn.style.height=h+'px';
 }
-function updCellCur(){
-  const ta=document.getElementById('cell-ta');if(!ta)return;
-  const txt=ta.value.substring(0,ta.selectionStart);
-  const lines=txt.split('\n');
-  document.getElementById('sb-cur').textContent=`Ln ${lines.length}, Col ${lines[lines.length-1].length+1}`;
-}
-function handleCellKey(e){
+
+function onCellKeydown(e,id){
+  const ta=document.getElementById('ta-'+id);
+  // Tab → insertar espacios
   if(e.key==='Tab'){
     e.preventDefault();
-    const ta=e.target,s=ta.selectionStart;
-    if(e.shiftKey){
-      const l=ta.value.lastIndexOf('\n',s-1);
-      if(ta.value.substring(l+1,l+5)==='    '){
-        ta.value=ta.value.substring(0,l+1)+ta.value.substring(l+5);
-        ta.selectionStart=ta.selectionEnd=s-4;
+    const s=ta.selectionStart,en=ta.selectionEnd;
+    ta.value=ta.value.substring(0,s)+'    '+ta.value.substring(en);
+    ta.selectionStart=ta.selectionEnd=s+4;
+    onCellInput(id);
+    return;
+  }
+  // Shift+Enter → ejecutar
+  if(e.shiftKey&&e.key==='Enter'){
+    e.preventDefault();
+    runCell(id);
+    // Mover a siguiente o crear nueva
+    const idx=cells.findIndex(c=>c.id===id);
+    if(idx<cells.length-1) focusCell(cells[idx+1].id);
+    else addCellAt(-1,'code');
+    return;
+  }
+  // Ctrl+Enter → ejecutar sin mover
+  if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){
+    e.preventDefault();
+    runCell(id);
+  }
+}
+
+function changeCellType(id){
+  const cell=cells.find(c=>c.id===id);
+  if(!cell) return;
+  cell.type=cell.type==='code'?'markdown':'code';
+  cell.mdEdit=true;
+  renderCells(); focusCell(id);
+}
+
+// ── EJECUTAR ───────────────────────────────────────
+async function runCell(id){
+  if(running){ notify('Ya hay una ejecución en curso'); return; }
+  const cell=cells.find(c=>c.id===id);
+  if(!cell||cell.type!=='code') return;
+  syncCellCode(id);
+  const code=cell.code.trim();
+  if(!code) return;
+
+  running=true;
+  setSbRun(true);
+  const rbtn=document.getElementById('rbtn-'+id);
+  const outEl=document.getElementById('out-'+id);
+  if(rbtn) rbtn.classList.add('spinning');
+  if(outEl){ outEl.className='cell-output show'; outEl.innerHTML='<span class="out-inf">Compilando...</span>'; }
+  document.getElementById('nb-cell-'+id)?.classList.add('running');
+
+  try{
+    if(engineOK&&engineURL){
+      const isHF=engineURL.includes('hf.space')||engineURL.includes('huggingface');
+      let result;
+      if(isHF){
+        const res=await fetch(engineURL+'/run/predict',{
+          method:'POST',headers:{'Content-Type':'application/json'},
+          mode:'cors',body:JSON.stringify({data:[code]}),
+          signal:AbortSignal.timeout(90000)
+        });
+        const raw=await res.json();
+        result=raw.data?raw.data[0]:raw;
+      } else {
+        const res=await fetch(engineURL+'/run',{
+          method:'POST',headers:{'Content-Type':'application/json'},
+          mode:'cors',body:JSON.stringify({code}),
+          signal:AbortSignal.timeout(60000)
+        });
+        result=await res.json();
+      }
+      execCounter++;
+      cell.exec_count=execCounter;
+      if(result.success){
+        let html=`<span class="out-ok">${escH(result.output||'✅ OK')}</span>`;
+        if(result.bloch?.probabilities){
+          html+='\n<span class="out-inf">── Probabilidades ──\n</span>';
+          Object.entries(result.bloch.probabilities).sort((a,b)=>b[1]-a[1]).forEach(([s,p])=>{
+            const bar='█'.repeat(Math.round(p*20));
+            html+=`<span class="out-ok">|${s}⟩: ${(p*100).toFixed(1).padStart(5)}%  ${bar}\n</span>`;
+          });
+        }
+        if(result.bloch?.counts){
+          const tot=Object.values(result.bloch.counts).reduce((a,b)=>a+b,0);
+          html+=`\n<span class="out-inf">── Mediciones (${tot} shots) ──\n</span>`;
+          Object.entries(result.bloch.counts).sort((a,b)=>b[1]-a[1]).forEach(([s,c])=>{
+            const bar='█'.repeat(Math.round(c/tot*20));
+            html+=`<span class="out-ok">|${s}⟩: ${c}  ${bar}\n</span>`;
+          });
+        }
+        cell.output=html;
+        if(outEl){ outEl.innerHTML=html; outEl.className='cell-output show'; }
+        setSbRun(false,'✅ Completado en '+(result.time||0)+'s');
+      } else {
+        cell.output=`<span class="out-err">${escH(result.output||'Error')}</span>`;
+        if(outEl){ outEl.innerHTML=cell.output; outEl.className='cell-output show'; }
+        setSbRun(false,'❌ Error','err');
       }
     } else {
-      ta.value=ta.value.substring(0,s)+'    '+ta.value.substring(ta.selectionEnd);
-      ta.selectionStart=ta.selectionEnd=s+4;
+      // Simulación local
+      await new Promise(r=>setTimeout(r,600));
+      execCounter++;
+      cell.exec_count=execCounter;
+      const simOut=`<span class="out-inf">⚡ Simulación local · Configura el compilador para Qiskit real\n</span><span class="out-ok"># ${code.split('\n')[0]}</span>`;
+      cell.output=simOut;
+      if(outEl){ outEl.innerHTML=simOut; outEl.className='cell-output show'; }
+      setSbRun(false,'Simulación local');
     }
-    onCellEdit();
+  } catch(e){
+    const errHtml=`<span class="out-err">❌ ${e.name==='TimeoutError'?'Tiempo agotado':e.message}</span>`;
+    cell.output=errHtml;
+    if(outEl){ outEl.innerHTML=errHtml; outEl.className='cell-output show'; }
+    setSbRun(false,'❌ Error','err');
   }
-  if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();runCurCell();}
+
+  running=false;
+  if(rbtn) rbtn.classList.remove('spinning');
+  // Actualizar número de celda
+  renderCellNum(id);
 }
 
-// ── EXECUTION ─────────────────────────────────────
-function setRunStatus(s,msg){
-  const dot=document.getElementById('sb-dot');
-  const stxt=document.getElementById('sb-txt');
-  dot.className='sb-dot '+(s==='run'?'sb-run':s==='err'?'sb-err':'sb-idle');
-  if(stxt) stxt.textContent=msg;
+function renderCellNum(id){
+  const cell=cells.find(c=>c.id===id);
+  if(!cell) return;
+  const numEl=document.querySelector(`[data-id="${id}"] .cell-num`);
+  if(numEl) numEl.textContent=cell.exec_count!==null?`[${cell.exec_count}]`:'[ ]';
 }
 
-async function runCurCell(){
-  if(curCellIdx<0){notify('Selecciona una celda primero');return;}
-  saveCurCellContent();
-  const cell=nb.cells[curCellIdx];
-  if(cell.type!=='code'){notify('Solo se pueden ejecutar celdas de código');return;}
-  await executeCell(curCellIdx);
-}
+async function runCurCell(){ if(curCellId) await runCell(curCellId); }
 
 async function runAll(){
-  setRunStatus('run','Ejecutando todo...');
-  for(let i=0;i<nb.cells.length;i++){
-    if(nb.cells[i].type==='code'){
-      await executeCell(i);
-      await new Promise(r=>setTimeout(r,300));
+  for(const cell of cells){
+    if(cell.type==='code'&&cell.code.trim()){
+      await runCell(cell.id);
+      await new Promise(r=>setTimeout(r,200));
     }
   }
-  setRunStatus('idle','Completado');
-  notify('✅ Todas las celdas ejecutadas');
 }
 
-async function executeCell(i){
-  const cell=nb.cells[i];
-  if(!cell||cell.type!=='code') return;
-  const code=cell.source;
-  setRunStatus('run','Ejecutando...');
-  const outEl=document.getElementById('cell-output');
-  const outContent=document.getElementById('cell-out-content');
-  if(outEl) outEl.style.display='block';
-
-  if(engineOK&&engineURL){
-    try{
-      const res=await fetch(engineURL+'/run',{
-        method:'POST',headers:{'Content-Type':'application/json'},mode:'cors',
-        body:JSON.stringify({code}),signal:AbortSignal.timeout(45000)
-      });
-      const d=await res.json();
-      const out=d.success?`<span class="out-ok">${escH(d.output)}</span>`
-        :`<span class="out-err">❌ ${escH(d.output)}</span>`;
-      cell.output=out;
-      if(outContent) outContent.innerHTML=out;
-      setRunStatus(d.success?'idle':'err',d.success?'Listo':'Error');
-    }catch(e){
-      const out=`<span class="out-err">❌ ${e.message}</span>`;
-      cell.output=out;if(outContent) outContent.innerHTML=out;
-      setRunStatus('err','Error de conexión');
-    }
-  } else {
-    await new Promise(r=>setTimeout(r,500));
-    const hasH=/\.h\(|Hadamard/.test(code),hasCX=/\.cx\(|CNOT/.test(code);
-    let result='';
-    if(hasH&&hasCX){result='Estado Bell |Φ⁺⟩ = (|00⟩+|11⟩)/√2\nP(|00⟩)=50%  P(|11⟩)=50%';}
-    else if(hasH){result='Superposición: (|0⟩+|1⟩)/√2';}
-    else if(code.includes('print(')){
-      // Extract print content roughly
-      const m=code.match(/print\(f?['"`](.*?)['"`]\)/);
-      result=m?m[1].replace(/\\n/g,'\n'):'✅ Ejecutado';
-    }
-    else{result='✅ Celda ejecutada (simulación local)\n⚠ Configura el motor para Qiskit real';}
-    const out=`<span class="out-ok">${escH(result)}</span>\n<span class="out-inf"># Simulación local — configura el motor para Qiskit real</span>`;
-    cell.output=out;if(outContent) outContent.innerHTML=out;
-    setRunStatus('idle','Listo (simulado)');
+function setSbRun(running,msg='',state=''){
+  const dot=document.getElementById('sb-dot');
+  const txt=document.getElementById('sb-txt');
+  if(dot){
+    dot.className='sb-dot '+(running?'sb-run':state==='err'?'sb-err':'sb-idle');
   }
-  renderCellList();
+  if(txt&&msg) txt.textContent=msg;
 }
 
-function escH(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
-
-// ── SAVE / LOAD ───────────────────────────────────
-function loadSavedNbs(){
-  savedNbs=JSON.parse(localStorage.getItem('qcol_pro_nbs')||'[]');
-}
-function saveCurNb(){
-  saveCurCellContent();
-  nb.title=document.getElementById('nb-title').value.trim()||'Sin título';
-  nb.desc=document.getElementById('nb-desc').value.trim();
-  nb.tags=document.getElementById('nb-tags').value.trim();
-  nb.lib=document.getElementById('nb-lib').value;
-  const idx=savedNbs.findIndex(n=>n._uid===nb._uid);
-  const entry={...nb,_uid:nb._uid||Date.now().toString(36),savedAt:new Date().toLocaleDateString()};
-  nb._uid=entry._uid;
-  if(idx>=0) savedNbs[idx]=entry; else savedNbs.unshift(entry);
-  localStorage.setItem('qcol_pro_nbs',JSON.stringify(savedNbs.slice(0,50)));
-  notify('✅ Notebook guardado: '+nb.title);
+function updateStatus(){
+  const el=document.getElementById('sb-cells-info');
+  if(el) el.textContent=cells.length+' celdas';
 }
 
-// ── DOWNLOAD .ipynb ────────────────────────────────
-function downloadNb(){
-  saveCurCellContent();
-  nb.title=document.getElementById('nb-title').value.trim()||'notebook';
-  const cells=nb.cells.map(c=>({
-    cell_type: c.type==='markdown'?'markdown':c.type==='raw'?'raw':'code',
-    source: [c.source],
-    metadata: {},
-    outputs: c.output?[{output_type:'stream',name:'stdout',text:[c.output.replace(/<[^>]+>/g,'')]}]:[],
-    execution_count: null,
-  }));
-  const nbJson={
-    nbformat:4, nbformat_minor:5,
-    metadata:{
-      kernelspec:{display_name:'Python 3',language:'python',name:'python3'},
-      language_info:{name:'python',version:'3.10.0'},
-      qcol:{lib:nb.lib,title:nb.title,desc:nb.desc,tags:nb.tags}
-    },
-    cells:[
-      // Title cell
-      {cell_type:'markdown',source:[`# ${nb.title}\n\n${nb.desc}\n\n**Tags:** ${nb.tags}\n\n*Creado con QCOL Arquitecto Profesional*`],metadata:{}},
-      ...cells
-    ]
-  };
-  const blob=new Blob([JSON.stringify(nbJson,null,2)],{type:'application/json'});
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
-  const fname=nb.title.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'')||'notebook';
-  a.download=fname+'.ipynb';a.click();
-  notify('📥 Descargado: '+a.download);
+// ── NOTEBOOK OPERATIONS ────────────────────────────
+function newNotebook(){
+  if(!confirm('¿Crear nuevo notebook? Se perderá el actual.')) return;
+  cells=[];execCounter=0;curCellId=null;
+  document.getElementById('nb-name-inp').value='Nuevo Notebook';
+  addCellAt(-1,'code');
+  notify('✅ Nuevo notebook');
 }
 
 function importNb(){ document.getElementById('import-file').click(); }
+
 function handleImport(e){
-  const file=e.target.files[0];if(!file)return;
+  const file=e.target.files[0];
+  if(!file) return;
   const reader=new FileReader();
   reader.onload=ev=>{
     try{
-      const data=JSON.parse(ev.target.result);
-      if(data.nbformat){
-        const title=data.metadata?.qcol?.title||file.name.replace('.ipynb','');
-        nb={
-          title,desc:data.metadata?.qcol?.desc||'',
-          tags:data.metadata?.qcol?.tags||'',lib:data.metadata?.qcol?.lib||'qiskit',
-          cells:data.cells.filter(c=>c.cell_type!=='markdown'||c.source.join('').trim()).map(c=>({
-            type:c.cell_type==='markdown'?'markdown':c.cell_type==='raw'?'raw':'code',
-            source:c.source.join(''),output:'',
-            _uid:Date.now().toString(36)+Math.random().toString(36).substr(2,4)
-          })),
-          _uid:Date.now().toString(36),
-        };
-        document.getElementById('nb-title').value=nb.title;
-        document.getElementById('nb-desc').value=nb.desc;
-        document.getElementById('nb-tags').value=nb.tags;
-        document.getElementById('nb-lib').value=nb.lib;
-        curCellIdx=nb.cells.length>0?0:-1;
-        renderCellList();
-        if(curCellIdx>=0) renderCellEditor(); else showEmptyEditor();
-        notify('✅ Notebook importado: '+nb.title);
-      }
-    }catch(err){notify('❌ Error al importar: '+err.message);}
+      const nb=JSON.parse(ev.target.result);
+      cells=[];execCounter=0;
+      // Nombre del notebook
+      const name=nb.metadata?.name||file.name.replace('.ipynb','');
+      document.getElementById('nb-name-inp').value=name;
+      // Importar celdas
+      (nb.cells||[]).forEach(c=>{
+        const src=Array.isArray(c.source)?c.source.join(''):c.source||'';
+        const type=c.cell_type==='markdown'?'markdown':'code';
+        const id=genId();
+        cells.push({
+          id, type, code:src, output:'', exec_count:null, mdEdit:false
+        });
+      });
+      if(cells.length===0) addCellAt(-1,'code');
+      else { renderCells(); focusCell(cells[0].id); }
+      setView('notebook');
+      notify(`✅ Importado: ${name} (${cells.length} celdas)`);
+    }catch(err){
+      notify('❌ Error al leer el .ipynb: '+err.message);
+    }
   };
   reader.readAsText(file);
   e.target.value='';
 }
 
-// ── PUBLISH ───────────────────────────────────────
-function showPublish(){
-  document.getElementById('pub-title').value=
-    document.getElementById('nb-title').value||'';
-  document.getElementById('pub-desc').value=
-    document.getElementById('nb-desc').value||'';
-  document.getElementById('pub-tags').value=
-    document.getElementById('nb-tags').value||'';
-  document.getElementById('pub-id').value=
-    (document.getElementById('nb-title').value||'notebook')
-      .toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'');
-  document.getElementById('pub-modal').classList.add('open');
-}
-function closePublish(){ document.getElementById('pub-modal').classList.remove('open'); }
-
-function publishNb(){
-  const title=document.getElementById('pub-title').value.trim();
-  const desc=document.getElementById('pub-desc').value.trim();
-  const tags=document.getElementById('pub-tags').value.trim();
-  const id=document.getElementById('pub-id').value.trim();
-  if(!title||!id){notify('Título e ID son obligatorios');return;}
-  // Save to projects list
-  const projs=JSON.parse(localStorage.getItem('qcol_projs')||'[]');
-  const idx=projs.findIndex(p=>p.id===id);
-  const entry={id,type:'nb',title,desc,tags,size:nb.cells.filter(c=>c.type==='code').length,time:nb.cells.length*3,added:new Date().toLocaleDateString()};
-  if(idx>=0) projs[idx]=entry; else projs.unshift(entry);
-  localStorage.setItem('qcol_projs',JSON.stringify(projs));
-  // Download the notebook
-  downloadNb();
-  closePublish();
-  notify(`✅ Publicado: "${title}"\nDescarga el .ipynb y súbelo a GitHub /notebooks/`);
-  saveCurNb();
+function downloadNb(){
+  const name=document.getElementById('nb-name-inp').value||'qcol_notebook';
+  const lib=localStorage.getItem('qcol_nb_lib')||'qiskit';
+  cells.forEach(c=>{
+    const ta=document.getElementById('ta-'+c.id);
+    const mta=document.getElementById('mta-'+c.id);
+    if(ta) c.code=ta.value;
+    if(mta) c.code=mta.value;
+  });
+  const nb={
+    nbformat:4,nbformat_minor:5,
+    metadata:{
+      name,
+      kernelspec:{display_name:'Python 3',language:'python',name:'python3'},
+      qcol:{lib,author:curUser?.name||'',created:new Date().toISOString()}
+    },
+    cells:cells.map(c=>({
+      cell_type:c.type==='markdown'?'markdown':'code',
+      source:[c.code],
+      metadata:{},
+      outputs:[],
+      execution_count:c.exec_count
+    }))
+  };
+  const blob=new Blob([JSON.stringify(nb,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=name.replace(/\.ipynb$/,'')+'.ipynb';
+  a.click();
+  notify('📥 '+a.download);
 }
 
-// ── MANAGE: NB GRID ───────────────────────────────
-function refreshNbs(){loadSavedNbs();renderNbGrid();}
-function renderNbGrid(){
-  const grid=document.getElementById('nb-grid');if(!grid)return;
-  if(savedNbs.length===0){
-    grid.innerHTML=`<div class="nb-empty-state" style="grid-column:1/-1;">
+// ── GESTIONAR NOTEBOOKS ────────────────────────────
+function getSavedNbs(){
+  if(!curUser) return [];
+  const key='qcol_nbs_'+(curUser.username||'dev');
+  return JSON.parse(localStorage.getItem(key)||'[]');
+}
+function saveCurrentNb(){
+  if(!curUser) return;
+  cells.forEach(c=>{
+    const ta=document.getElementById('ta-'+c.id);
+    const mta=document.getElementById('mta-'+c.id);
+    if(ta) c.code=ta.value;
+    if(mta) c.code=mta.value;
+  });
+  const name=document.getElementById('nb-name-inp').value||'Sin título';
+  const key='qcol_nbs_'+(curUser.username||'dev');
+  const nbs=getSavedNbs();
+  const existing=nbs.findIndex(n=>n.name===name);
+  const entry={name,cells:JSON.parse(JSON.stringify(cells)),saved:new Date().toISOString()};
+  if(existing>=0) nbs[existing]=entry; else nbs.unshift(entry);
+  localStorage.setItem(key,JSON.stringify(nbs.slice(0,50)));
+  notify('💾 Guardado: '+name);
+}
+function loadNb(name){
+  const nbs=getSavedNbs();
+  const nb=nbs.find(n=>n.name===name);
+  if(!nb) return;
+  cells=nb.cells.map(c=>({...c,mdEdit:false}));
+  document.getElementById('nb-name-inp').value=nb.name;
+  renderCells();
+  if(cells[0]) focusCell(cells[0].id);
+  setView('notebook');
+  notify('📂 Cargado: '+nb.name);
+}
+function deleteNb(name){
+  if(!confirm('¿Eliminar "'+name+'"?')) return;
+  const key='qcol_nbs_'+(curUser?.username||'dev');
+  const nbs=getSavedNbs().filter(n=>n.name!==name);
+  localStorage.setItem(key,JSON.stringify(nbs));
+  refreshNbs();
+  notify('🗑 Eliminado: '+name);
+}
+function refreshNbs(){
+  const grid=document.getElementById('nb-grid');
+  if(!grid) return;
+  const nbs=getSavedNbs();
+  if(nbs.length===0){
+    grid.innerHTML=`<div class="nb-empty-state">
       <div class="nb-empty-icon">📓</div>
-      <div style="font-family:var(--orb);font-size:.95rem;color:var(--mu);">Sin notebooks</div>
-      <div style="font-size:.72rem;color:var(--mu);opacity:.7;max-width:320px;line-height:1.7;">
-        Crea tu primer notebook en el editor y guárdalo.
-      </div>
-      <button class="btn-new-nb" onclick="newNotebook();setFn(1)">+ CREAR NOTEBOOK</button>
+      <div class="nb-empty-ttl">Sin notebooks guardados</div>
+      <div class="nb-empty-sub">Crea tu primer notebook o importa un .ipynb</div>
     </div>`;
     return;
   }
-  grid.innerHTML=savedNbs.map((n,i)=>
-    `<div class="nb-card">
+  grid.innerHTML=nbs.map(nb=>`
+    <div class="nb-card">
       <div class="nb-card-hdr">
-        <span class="nb-card-badge">${(n.lib||'qiskit').toUpperCase()}</span>
-        <span style="font-family:var(--mono);font-size:.52rem;color:var(--mu);">${n.savedAt||''}</span>
+        <div class="nb-card-title">${escH(nb.name)}</div>
+        <div class="nb-card-badge">${nb.cells?.length||0} celdas</div>
       </div>
       <div class="nb-card-body">
-        <div class="nb-card-title">${n.title||'Sin título'}</div>
-        <p class="nb-card-desc">${n.desc||'Sin descripción'}</p>
-        <div class="nb-card-meta">
-          <span>📝 ${n.cells?.length||0} celdas</span>
-          <span>🏷 ${n.tags||'—'}</span>
-        </div>
+        <div class="nb-card-meta">${new Date(nb.saved).toLocaleDateString()}</div>
         <div class="nb-card-actions">
-          <button class="btn-edit-nb" onclick="loadNb(${i});setFn(1)">✏️ Editar</button>
-          <button class="btn-pub-nb" onclick="loadNb(${i});showPublish()">📤 Publicar</button>
-          <button class="btn-del-nb" onclick="deleteNb(${i})">🗑</button>
+          <button class="btn-edit-nb" onclick="loadNb('${escH(nb.name)}')">📝 Editar</button>
+          <button class="btn-pub-nb" onclick="loadNb('${escH(nb.name)}');showPublish()">📤 Publicar</button>
+          <button class="btn-del-nb" onclick="deleteNb('${escH(nb.name)}')">🗑</button>
         </div>
       </div>
-    </div>`
-  ).join('');
+    </div>`).join('');
 }
 
-function loadNb(i){
-  nb={...savedNbs[i]};
-  document.getElementById('nb-title').value=nb.title||'';
-  document.getElementById('nb-desc').value=nb.desc||'';
-  document.getElementById('nb-tags').value=nb.tags||'';
-  document.getElementById('nb-lib').value=nb.lib||'qiskit';
-  curCellIdx=nb.cells?.length>0?0:-1;
-  renderCellList();
-  if(curCellIdx>=0) renderCellEditor(); else showEmptyEditor();
-  notify('Cargado: '+nb.title);
+// ── PUBLISH ────────────────────────────────────────
+function showPublish(){
+  const name=document.getElementById('nb-name-inp').value||'';
+  document.getElementById('pub-title').value=name;
+  document.getElementById('pub-modal').classList.add('open');
+}
+function closePublish(){ document.getElementById('pub-modal').classList.remove('open'); }
+function publishNb(){
+  saveCurrentNb();
+  downloadNb();
+  closePublish();
+  notify('📤 Descargado — súbelo a GitHub /notebooks');
 }
 
-function deleteNb(i){
-  if(!confirm('¿Eliminar "'+savedNbs[i].title+'"?')) return;
-  savedNbs.splice(i,1);
-  localStorage.setItem('qcol_pro_nbs',JSON.stringify(savedNbs));
-  renderNbGrid();
-  notify('Notebook eliminado');
-}
+// Auto-guardar cada 60s
+setInterval(()=>{ if(curUser&&cells.length>0) saveCurrentNb(); },60000);
 
-// Keyboard shortcut save
+// Keyboard shortcuts
 document.addEventListener('keydown',e=>{
-  if((e.ctrlKey||e.metaKey)&&e.key==='s'){e.preventDefault();saveCurNb();}
+  if((e.ctrlKey||e.metaKey)&&e.key==='s'){ e.preventDefault(); saveCurrentNb(); }
+  if((e.ctrlKey||e.metaKey)&&e.shiftKey&&e.key==='Enter'){ e.preventDefault(); runAll(); }
 });
-
-// Publish modal close on overlay click
-document.getElementById('pub-modal').addEventListener('click',e=>{
-  if(e.target===document.getElementById('pub-modal')) closePublish();
-});
-
-// ── INIT ──────────────────────────────────────────
-document.getElementById('sb-lib-nb').textContent='Qiskit';
-document.getElementById('nb-lib').addEventListener('change',function(){
-  document.getElementById('sb-lib-nb').textContent=
-    this.value.charAt(0).toUpperCase()+this.value.slice(1);
-});
-showEmptyEditor();
-renderCellList();
 </script>
 </body>
 </html>
