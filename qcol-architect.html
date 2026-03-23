@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>QCOL — Arquitecto Cuántico</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=JetBrains+Mono:wght@400;500;600&family=Exo+2:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -555,11 +555,44 @@ body { background:var(--bg); color:var(--tx); font-family:var(--ex); user-select
 .no-login { text-align:center; padding:1.5rem .5rem; color:var(--mu); font-size:.68rem; line-height:1.65; }
 .btn-li { padding:.35rem .8rem; background:linear-gradient(135deg,#003388,var(--bl)); border:none; border-radius:6px; color:#fff; font-family:var(--orb); font-size:.55rem; cursor:pointer; margin-top:.5rem; }
 
-@media(max-width:760px) {
+/* ══ MOBILE RESPONSIVE ══ */
+@media(max-width:900px) {
+  .resize-v { display:none; }
+  .right-panel { width:280px!important; }
+}
+@media(max-width:700px) {
   .palette { display:none; }
-  .right-panel { width:100%!important; }
+  .right-panel { width:100%!important; flex-shrink:0; }
   .body-layout { flex-direction:column; }
   .resize-v { display:none; }
+  .resize-h { display:none; }
+  #circuit-section { min-height:100px; height:140px!important; }
+  .toolbar { gap:.2rem; padding:0 .4rem; height:auto; min-height:36px; flex-wrap:wrap; padding:.3rem .4rem; }
+  .btn-run { padding:.28rem .7rem; font-size:.55rem; }
+  .bsm { padding:.22rem .4rem; font-size:.46rem; }
+  .lib-btn { padding:.2rem .4rem; font-size:.48rem; }
+  .tb-title { display:none; }
+  .mode-btn { padding:.22rem .5rem; font-size:.46rem; }
+  .rtabs { flex-wrap:nowrap; }
+  .rtab { font-size:.42rem; padding:.35rem .2rem; }
+  .code-ta { font-size:.62rem; }
+  .syn-lay { font-size:.62rem; }
+  .lnums { width:32px; font-size:.58rem; }
+  .out-body { font-size:.62rem; }
+  .pal-gate-sym { font-size:.6rem; }
+  .pal-gate-lbl { font-size:.38rem; }
+  .pg-sym { font-size:.55rem; }
+}
+@media(max-width:480px) {
+  .palette { display:none; }
+  .right-panel { width:100%!important; min-height:220px; }
+  .body-layout { flex-direction:column; }
+  .toolbar { gap:.15rem; }
+  .btn-run { padding:.25rem .55rem; font-size:.52rem; }
+  .sep { display:none; }
+  .lib-sel { gap:.12rem; }
+  .mode-sw { display:none; }
+  #circuit-section { height:110px!important; }
 }
 </style>
 </head>
@@ -603,14 +636,15 @@ body { background:var(--bg); color:var(--tx); font-family:var(--ex); user-select
   </button>
   <!-- Circuit to code -->
   <button class="bsm" onclick="genCode()" title="Generar código desde el circuito visual">⟳ CÓDIGO</button>
-  <!-- Open in Colab -->
-  <button class="bsm" onclick="openColab()" title="Abrir en Google Colab con todas las librerías preinstaladas">🚀 COLAB</button>
+  <!-- Open in HuggingFace -->
+  <button class="bsm" onclick="openHF()" title="Abrir en HuggingFace con GPU">🤗 HF GPU</button>
   <div class="sep"></div>
   <!-- Library -->
   <span style="font-family:var(--orb);font-size:.48rem;color:var(--mu);flex-shrink:0;">LIB:</span>
   <div class="lib-sel">
     <button class="lib-btn on" id="lb-qiskit" onclick="setLib('qiskit',this)">Qiskit</button>
     <button class="lib-btn" id="lb-cirq" onclick="setLib('cirq',this)">Cirq</button>
+    <button class="lib-btn" id="lb-qutip" onclick="setLib('qutip',this)">QuTiP</button>
   </div>
   <div class="sep"></div>
   <!-- Circuit controls -->
@@ -729,10 +763,10 @@ body { background:var(--bg); color:var(--tx); font-family:var(--ex); user-select
 # 1. Arrastra puertas al cable del qubit
 # 2. O escribe código directamente
 # 3. ▶ EJECUTAR → resultado aquí
-# 4. 🚀 COLAB → abre con Qiskit real
+# 4. 🤗 HF GPU → ejecutar con motor real
 #
 # Sin motor: simulación local
-# Con motor: Qiskit real en la nube</span>
+# Con motor: Qiskit real en HuggingFace</span>
       </div>
       <div class="out-bar">
         <button class="bsm" style="font-size:.5rem;" onclick="document.getElementById('out-body').innerHTML='<span class=inf># Limpiado</span>'">LIMPIAR</button>
@@ -770,9 +804,15 @@ body { background:var(--bg); color:var(--tx); font-family:var(--ex); user-select
           <input class="fi" id="save-name" placeholder="mi_circuito"></div>
         <div style="display:flex;gap:.35rem;flex-wrap:wrap;">
           <button class="bsm" style="font-size:.5rem;" onclick="saveCircuit()">💾 En cuenta</button>
+          <button class="bsm" id="btn-schedule" style="font-size:.5rem;display:none;" onclick="saveAndSchedule()">⏱ Ejecutar después</button>
           <button class="bsm" style="font-size:.5rem;" onclick="dlPy()">📥 .py</button>
           <button class="bsm" style="font-size:.5rem;" onclick="dlNb()">📥 .ipynb</button>
         </div>
+      </div>
+      <div class="save-sec" id="queue-sec" style="display:none;">
+        <div class="save-title">⏱ Cola — circuitos &gt;10 qubits</div>
+        <div id="queue-list" style="font-size:.62rem;color:var(--mu);">Sin circuitos en cola.</div>
+        <button class="bsm" style="font-size:.5rem;margin-top:.4rem;" onclick="runQueue()">▶ Ejecutar cola</button>
       </div>
       <div class="save-sec">
         <div class="save-title">📂 Mis circuitos</div>
@@ -826,9 +866,27 @@ function updateUserBadge(){
 
 async function checkEngine(){
   if(!engineURL) return;
+  const isHF=engineURL.includes('hf.space')||engineURL.includes('huggingface');
   try{
-    const r=await fetch(engineURL+'/health',{signal:AbortSignal.timeout(5000)});
-    if(r.ok){ engineOK=true; const b=document.getElementById('eng-badge'); b.textContent='● MOTOR ACTIVO'; b.className='badge badge-eng-on'; }
+    let ok=false;
+    if(isHF){
+      const r=await fetch(engineURL+'/health/predict',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({data:['']}),
+        signal:AbortSignal.timeout(15000)
+      });
+      ok=r.ok;
+    } else {
+      const r=await fetch(engineURL+'/health',{signal:AbortSignal.timeout(5000)});
+      ok=r.ok;
+    }
+    if(ok){
+      engineOK=true;
+      const b=document.getElementById('eng-badge');
+      b.textContent=isHF?'● GPU A100':'● MOTOR ACTIVO';
+      b.className='badge badge-eng-on';
+    }
   }catch(e){ engineOK=false; }
 }
 
@@ -865,9 +923,7 @@ const GATE_DEFS = {
     {id:'BAR', sym:'|||', bg:'#263238', glow:'rgba(74,106,154,.3)',  code_q:'qc.barrier()',         code_c:'# barrier',         desc:'Barrera'},
   ],
   'spec':[
-    {id:'|0⟩', sym:'|0⟩', bg:'#1a5fb4', glow:'rgba(26,95,180,.4)', code_q:'# q[{q}] = |0⟩',    code_c:'# q = |0⟩',    desc:'Estado base'},
-    {id:'|1⟩', sym:'|1⟩', bg:'#a51d2d', glow:'rgba(165,29,45,.4)', code_q:'qc.x({q})  # |1⟩',  code_c:'cirq.X({q})',   desc:'Estado excitado'},
-    {id:'|+⟩', sym:'|+⟩', bg:'#1a5fb4', glow:'rgba(26,95,180,.4)', code_q:'qc.h({q})  # |+⟩',  code_c:'cirq.H({q})',   desc:'Superposición'},
+    {id:'|0⟩', sym:'|0⟩', bg:'#1a5fb4', glow:'rgba(26,95,180,.4)', code_q:'# q[{q}] = |0⟩', code_c:'# q = |0⟩', desc:'Estado base'},
   ],
 };
 
@@ -880,7 +936,7 @@ function buildPalette(){
         style="background:${g.bg};"
         title="${g.desc}"
         data-gid="${g.id}"
-        onmousedown="onPalMouseDown('${g.id}')"
+        onmousedown="onPalMouseDown('${g.id}')" ontouchstart="onPalTouchStart(event,'${g.id}')"
         ondragstart="onPalDragStart(event,'${g.id}')">
         <span class="pal-gate-sym">${g.sym}</span>
         <span class="pal-gate-lbl">${g.id.length>3?g.id.substring(0,3):g.id}</span>
@@ -890,6 +946,52 @@ function buildPalette(){
 
 // ── DRAG FROM PALETTE ────────────────────────────────
 function onPalMouseDown(gid){ dragGate=gid; }
+// Touch support para móvil
+function onPalTouchStart(e,gid){
+  e.preventDefault();
+  dragGate=gid;
+  document.querySelectorAll('.pal-gate').forEach(pg=>{
+    if(pg.dataset.gid===gid) pg.classList.add('dragging-src');
+  });
+  // Crear elemento fantasma
+  const t=e.touches[0];
+  const ghost=document.createElement('div');
+  ghost.id='touch-ghost';
+  ghost.style.cssText=`position:fixed;top:${t.clientY-20}px;left:${t.clientX-20}px;width:40px;height:40px;background:#0088ff;border-radius:6px;opacity:.7;pointer-events:none;z-index:9999;display:flex;align-items:center;justify-content:center;color:#fff;font-family:monospace;font-size:.7rem;font-weight:bold;`;
+  ghost.textContent=gid.length>3?gid.substring(0,3):gid;
+  document.body.appendChild(ghost);
+  document.addEventListener('touchmove',onPalTouchMove,{passive:false});
+  document.addEventListener('touchend',onPalTouchEnd);
+}
+function onPalTouchMove(e){
+  e.preventDefault();
+  const t=e.touches[0];
+  const ghost=document.getElementById('touch-ghost');
+  if(ghost){ ghost.style.left=(t.clientX-20)+'px'; ghost.style.top=(t.clientY-20)+'px'; }
+  // Resaltar wire bajo el dedo
+  document.querySelectorAll('.q-wire').forEach(w=>w.classList.remove('dh'));
+  const el=document.elementFromPoint(t.clientX,t.clientY);
+  const wire=el?.closest('.q-wire');
+  if(wire) wire.classList.add('dh');
+}
+function onPalTouchEnd(e){
+  const ghost=document.getElementById('touch-ghost');
+  if(ghost) ghost.remove();
+  document.querySelectorAll('.pal-gate').forEach(pg=>pg.classList.remove('dragging-src'));
+  document.querySelectorAll('.q-wire').forEach(w=>w.classList.remove('dh'));
+  if(!dragGate){ document.removeEventListener('touchmove',onPalTouchMove); document.removeEventListener('touchend',onPalTouchEnd); return; }
+  const t=e.changedTouches[0];
+  const el=document.elementFromPoint(t.clientX,t.clientY);
+  const wire=el?.closest('.q-wire');
+  if(wire){
+    const q=parseInt(wire.id.replace('wire-',''));
+    if(!isNaN(q)) placeGate(dragGate,q);
+  }
+  dragGate=null;
+  document.removeEventListener('touchmove',onPalTouchMove);
+  document.removeEventListener('touchend',onPalTouchEnd);
+}
+
 function onPalDragStart(e,gid){
   dragGate=gid;
   e.dataTransfer.effectAllowed='copy';
@@ -960,9 +1062,14 @@ function removeGate(uid_){
 }
 
 function addQubit(){
-  if(circuit.qubits>=10){notify('Máximo 10 qubits');return;}
+  if(circuit.qubits>=20){notify('Máximo 20 qubits');return;}
   circuit.qubits++; renderCircuit();
   notify(`${circuit.qubits} qubits`);
+  // Mostrar cola solo si >10 qubits
+  const qs=document.getElementById('queue-sec');
+  const bs=document.getElementById('btn-schedule');
+  if(qs) qs.style.display=circuit.qubits>10?'block':'none';
+  if(bs) bs.style.display=circuit.qubits>10?'inline-flex':'none';
 }
 function removeQubit(){
   if(circuit.qubits<=1){notify('Mínimo 1 qubit');return;}
@@ -1165,9 +1272,10 @@ function setMode(m){
 // ── LIBRARY SWITCH ────────────────────────────────────
 const LIB_EXAMPLES={
   qiskit:`from qiskit import QuantumCircuit
+from qiskit.quantum_info import Statevector
 from numpy import pi
 
-# Estado Bell |Φ⁺⟩
+# ── Estado Bell |Φ⁺⟩ ──
 qc = QuantumCircuit(2, 2)
 qc.h(0)
 qc.cx(0, 1)
@@ -1177,7 +1285,9 @@ print("\\n|Φ⁺⟩ = (|00⟩ + |11⟩) / √2")`,
 
   cirq:`import cirq
 
-# Estado Bell |Φ⁺⟩ con Cirq
+# ── Estado Bell con Cirq ──
+# Cirq y QuTiP: solo editor de código
+# El circuito visual es solo para Qiskit
 q0, q1 = cirq.LineQubit.range(2)
 circuit = cirq.Circuit(
     cirq.H(q0),
@@ -1186,8 +1296,31 @@ circuit = cirq.Circuit(
 )
 print(circuit)
 sim = cirq.Simulator()
-result = sim.run(circuit, repetitions=100)
+result = sim.run(circuit, repetitions=1024)
 print("Resultados:", result)`,
+
+  qutip:`import qutip as qt
+import numpy as np
+
+# ── QuTiP — Física Cuántica Abierta ──
+# QuTiP: solo editor de código
+# Estado de Bell con QuTiP
+zero = qt.basis(2, 0)   # |0⟩
+one  = qt.basis(2, 1)   # |1⟩
+
+# Estado de Bell
+bell = (qt.tensor(zero, zero) + qt.tensor(one, one)).unit()
+print("Estado Bell:")
+print(bell)
+
+# Densidad matricial
+rho = bell * bell.dag()
+print("\\nMatriz densidad:")
+print(rho)
+
+# Entropía de entrelazamiento
+rho_A = rho.ptrace(0)
+print("\\nEntropía entrelazamiento:", qt.entropy_vn(rho_A))`
 };
 
 function setLib(lib,el){
@@ -1195,37 +1328,32 @@ function setLib(lib,el){
   document.querySelectorAll('.lib-btn').forEach(b=>b.classList.remove('on'));
   el.classList.add('on');
   document.getElementById('sb-lib').textContent=lib.charAt(0).toUpperCase()+lib.slice(1);
-  // Clear circuit and load example
+  // Circuito visual solo para Qiskit
+  const cs=document.getElementById('circuit-section');
+  const pal=document.getElementById('palette');
+  const rh=document.getElementById('resize-h');
+  const isQiskit=lib==='qiskit';
+  if(cs) cs.style.display=isQiskit?'flex':'none';
+  if(pal) pal.style.display=isQiskit?'flex':'none';
+  if(rh) rh.style.display=isQiskit?'flex':'none';
+  if(!isQiskit) setMode('code');
   circuit.gates=[];
-  renderCircuit();
+  if(isQiskit) renderCircuit();
   document.getElementById('code-ta').value=LIB_EXAMPLES[lib]||LIB_EXAMPLES.qiskit;
   onEdit();
-  notify('Librería: '+lib);
+  notify('Librería: '+lib+(isQiskit?'':' — Solo editor de código'));
 }
 
-// ── OPEN IN COLAB ─────────────────────────────────────
-function openColab(){
-  const code=encodeURIComponent(document.getElementById('code-ta').value);
-  const lib=curLib;
-
-  // Build a Colab notebook URL with the code pre-loaded
-  // Using the "open in colab" pattern with a template notebook
-  const ghUser='laffitacamargof-create';
-  const ghRepo='quantum-computing-open-lab';
-
-  // The notebook template has all libraries pre-installed
-  const colabURL=`https://colab.research.google.com/github/${ghUser}/${ghRepo}/blob/main/notebooks/QCOL_Template_${lib}.ipynb`;
-
-  // Also show the install cell so user can run
-  notify(`🚀 Abriendo Google Colab con ${lib} preinstalado...`,4000);
-  window.open(colabURL,'_blank');
-
-  // Also prompt to download current code
-  setTimeout(()=>{
-    if(confirm(`¿Descargar tu código actual como .ipynb para subirlo a Colab?\n\nHaz clic en OK para descargar.`)){
-      dlNb();
-    }
-  },800);
+// ── OPEN IN HUGGINGFACE ────────────────────────────────
+function openHF(){
+  const engineURL=localStorage.getItem('qcol_colab_url')||'';
+  if(!engineURL){
+    notify('Configura el motor HuggingFace en el panel de Configuración');
+    return;
+  }
+  // Descargar el código como .ipynb para subir a HF Space
+  dlNb();
+  notify('📥 Descargado — súbelo a tu HuggingFace Space',4000);
 }
 
 // ── EXECUTION ─────────────────────────────────────────
@@ -1251,18 +1379,37 @@ async function runCode(){
   out.innerHTML=`<span class="inf">Procesando · ${curLib}...\n</span>`;
 
   if(engineOK&&engineURL){
-    // ── MOTOR REAL ──
+    // ── MOTOR REAL — detecta HuggingFace o Flask ──
+    const isHF = engineURL.includes('hf.space') || engineURL.includes('huggingface');
     try{
-      const res=await fetch(engineURL+'/run',{
-        method:'POST',headers:{'Content-Type':'application/json'},mode:'cors',
-        body:JSON.stringify({code,lib:curLib}),
-        signal:AbortSignal.timeout(45000)
-      });
-      const d=await res.json();
+      let res, d;
+      if(isHF){
+        // Hugging Face Gradio API
+        res=await fetch(engineURL+'/run/predict',{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          mode:'cors',
+          body:JSON.stringify({data:[code]}),
+          signal:AbortSignal.timeout(75000)
+        });
+        const raw=await res.json();
+        // Gradio devuelve {data: [resultado]}
+        d = raw.data ? raw.data[0] : raw;
+      } else {
+        // Flask API (Render, PythonAnywhere, etc.)
+        res=await fetch(engineURL+'/run',{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          mode:'cors',
+          body:JSON.stringify({code,lib:curLib}),
+          signal:AbortSignal.timeout(45000)
+        });
+        d=await res.json();
+      }
       const el=((Date.now()-t0)/1000).toFixed(2);
       document.getElementById('out-elapsed').textContent=el+'s';
       if(d.success){
-        out.innerHTML=`<span class="inf">╔════════════════════════════╗\n║  Motor · ${el}s\n╚════════════════════════════╝\n\n</span>`;
+        out.innerHTML=`<span class="inf">╔════════════════════════════╗\n║  Motor · ${el}s${isHF?' · GPU A100':''}\n╚════════════════════════════╝\n\n</span>`;
         out.innerHTML+=`<span class="ok">${escH(d.output)}</span>`;
         if(d.bloch?.probabilities){
           out.innerHTML+=`\n<span class="inf">══ Probabilidades ══\n</span>`;
@@ -1281,12 +1428,13 @@ async function runCode(){
         }
         out.innerHTML+=`\n<span class="ok">✅ Completado en ${el}s</span>`;
         setRunSt('idle','Listo'); animateBloch(code);
+        logMonitorRun({success:true, lib:curLib, qubits:circuit.qubits, time:parseFloat(el)});
       } else {
         out.innerHTML+=`<span class="er">❌ Error:\n${escH(d.output)}</span>`;
         setRunSt('err','Error');
       }
     } catch(e){
-      out.innerHTML+=`<span class="er">❌ ${e.name==='TimeoutError'?'Tiempo agotado (45s)':e.message}</span>`;
+      out.innerHTML+=`<span class="er">❌ ${e.name==='TimeoutError'?'Tiempo agotado (75s)':e.message}</span>`;
       setRunSt('err','Error'); engineOK=false;
     }
   } else {
@@ -1318,10 +1466,11 @@ async function runCode(){
     out.innerHTML+=`\n<span class="ok">✅ Simulación completada en ${el}s</span>
 <span class="wa">
 💡 Para Qiskit/Cirq real:
-   Panel Fundador → Motor → Configurar URL
-   O usa 🚀 COLAB para abrirlo directamente</span>`;
+   Configuración → Motor HuggingFace → URL
+   O usa 🤗 HF GPU para ejecutar con motor</span>`;
     document.getElementById('out-elapsed').textContent=el+'s';
     setRunSt('idle','Listo (sim.)'); animateBloch(code);
+    logMonitorRun({success:true, lib:curLib, qubits:circuit.qubits, time:parseFloat(el), simulated:true});
   }
   running=false; btn.disabled=false; btn.innerHTML='<span>▶</span> EJECUTAR';
   out.scrollTop=out.scrollHeight;
@@ -1457,6 +1606,31 @@ function applyG(g){
   drawBloch();
 }
 function resetB(){blochSt={th:0,ph:0};drawBloch();}
+// ── MONITOR — registrar ejecución ────────────────
+function logMonitorRun(info){
+  try{
+    const user = curUser?.username || 'guest';
+    const entry = {
+      ts:      new Date().toISOString(),
+      user,
+      lib:     info.lib || 'qiskit',
+      qubits:  info.qubits || 0,
+      time:    info.time || 0,
+      success: info.success !== false,
+      simulated: info.simulated || false,
+    };
+    const raw  = localStorage.getItem('qcol_monitor_data');
+    const data = raw ? JSON.parse(raw) : {runs:[], total:0};
+    data.runs.push(entry);
+    data.total = (data.total||0) + 1;
+    // Guardar solo últimas 1000 ejecuciones
+    if(data.runs.length > 1000) data.runs = data.runs.slice(-1000);
+    localStorage.setItem('qcol_monitor_data', JSON.stringify(data));
+    // Notificar al core para que el founder lo tenga en tiempo real
+    postCore('QCOL_MONITOR_RUN', entry);
+  }catch(e){}
+}
+
 function animateBloch(code){
   resetB();const seq=[];
   if(/\.x\(\s*0|cirq\.X/.test(code)) seq.push('X');
@@ -1529,20 +1703,83 @@ function dlNb(){
   const code=document.getElementById('code-ta').value;
   const name=document.getElementById('save-name').value.trim()||'qcol_circuito';
   const lib=curLib;
-  const installLine=lib==='qiskit'
-    ?'!pip install qiskit qiskit-aer matplotlib -q'
-    :'!pip install cirq matplotlib -q';
+  const installLines={
+    qiskit:'!pip install qiskit qiskit-aer matplotlib -q',
+    cirq:'!pip install cirq matplotlib -q',
+    qutip:'!pip install qutip numpy scipy matplotlib -q',
+  };
   const nb={nbformat:4,nbformat_minor:5,
     metadata:{kernelspec:{display_name:'Python 3',language:'python',name:'python3'}},
     cells:[
       {cell_type:'markdown',source:[`# ${name}\n\nGenerado por QCOL Arquitecto Cuántico\n\nLibrería: **${lib}**`],metadata:{}},
-      {cell_type:'code',source:[installLine],metadata:{},outputs:[],execution_count:null},
+      {cell_type:'code',source:[installLines[lib]||installLines.qiskit],metadata:{},outputs:[],execution_count:null},
       {cell_type:'code',source:[code],metadata:{},outputs:[],execution_count:null},
     ]};
   const blob=new Blob([JSON.stringify(nb,null,2)],{type:'application/json'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);
   a.download=name.replace(/\.ipynb$/,'')+'.ipynb';a.click();
-  notify('📥 '+a.download+' — Súbelo a Colab');
+  notify('📥 '+a.download);
+}
+
+// ── GUARDAR Y EJECUTAR DESPUÉS ─────────────────────────
+function saveAndSchedule(){
+  if(!curUser){notify('Inicia sesión para usar la cola de ejecución');postCore('QCOL_LOGIN');return;}
+  const name=(document.getElementById('save-name').value.trim()||'circuito_'+Date.now());
+  const code=document.getElementById('code-ta').value;
+  const key='qcol_queue_'+curUser.username;
+  const queue=JSON.parse(localStorage.getItem(key)||'[]');
+  queue.push({name,code,lib:curLib,circ:JSON.stringify(circuit),added:new Date().toLocaleString(),status:'pendiente'});
+  localStorage.setItem(key,JSON.stringify(queue.slice(0,50)));
+  renderQueue();
+  notify('⏱ "'+name+'" añadido a la cola');
+  rTab('save');
+}
+
+function renderQueue(){
+  const el=document.getElementById('queue-list');if(!el)return;
+  if(!curUser){el.innerHTML='<div style="color:var(--mu);font-size:.6rem;">Inicia sesión para usar la cola.</div>';return;}
+  const key='qcol_queue_'+curUser.username;
+  const queue=JSON.parse(localStorage.getItem(key)||'[]');
+  if(queue.length===0){el.innerHTML='<div style="color:var(--mu);font-size:.6rem;">Sin circuitos en cola.</div>';return;}
+  el.innerHTML=queue.map((c,i)=>`<div style="display:flex;align-items:center;gap:.5rem;padding:.35rem .5rem;background:rgba(0,0,0,.2);border:1px solid var(--bd);border-radius:6px;margin-bottom:.25rem;">
+    <span style="flex:1;font-family:var(--mono);font-size:.58rem;color:var(--tx);">${c.name}</span>
+    <span style="font-size:.48rem;color:${c.status==='completado'?'var(--gr)':c.status==='error'?'var(--rd)':'var(--yw)'};">${c.status}</span>
+    <button class="ci-del" onclick="removeFromQueue(${i})">✕</button>
+  </div>`).join('');
+}
+
+async function runQueue(){
+  if(!curUser){notify('Inicia sesión primero');return;}
+  const key='qcol_queue_'+curUser.username;
+  const queue=JSON.parse(localStorage.getItem(key)||'[]');
+  const pending=queue.filter(c=>c.status==='pendiente');
+  if(pending.length===0){notify('Sin circuitos pendientes en cola');return;}
+  notify('▶ Ejecutando cola: '+pending.length+' circuito(s)...',5000);
+  for(let i=0;i<queue.length;i++){
+    if(queue[i].status!=='pendiente') continue;
+    queue[i].status='ejecutando';
+    localStorage.setItem(key,JSON.stringify(queue));
+    renderQueue();
+    // Cargar y ejecutar
+    document.getElementById('code-ta').value=queue[i].code;
+    document.getElementById('save-name').value=queue[i].name;
+    onEdit();
+    await runCode();
+    queue[i].status='completado';
+    localStorage.setItem(key,JSON.stringify(queue));
+    renderQueue();
+    await new Promise(r=>setTimeout(r,500));
+  }
+  notify('✅ Cola completada');
+}
+
+function removeFromQueue(i){
+  if(!curUser) return;
+  const key='qcol_queue_'+curUser.username;
+  const queue=JSON.parse(localStorage.getItem(key)||'[]');
+  queue.splice(i,1);
+  localStorage.setItem(key,JSON.stringify(queue));
+  renderQueue();
 }
 
 // ── RESIZE PANELS ─────────────────────────────────────

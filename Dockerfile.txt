@@ -1,0 +1,54 @@
+# ═══════════════════════════════════════════════════
+# QCOL Motor — HuggingFace Space
+# Python 3.11 con compilador incluido
+# Compila: qiskit-aer, cirq, pennylane, qutip
+# ═══════════════════════════════════════════════════
+FROM python:3.11-slim
+
+# Instalar compiladores y dependencias del sistema
+RUN apt-get update && apt-get install -y \
+    gcc g++ gfortran cmake ninja-build \
+    libopenblas-dev liblapack-dev \
+    pkg-config git curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Usuario sin privilegios para HuggingFace
+RUN useradd -m -u 1000 user
+USER user
+ENV HOME=/home/user \
+    PATH=/home/user/.local/bin:$PATH
+
+WORKDIR /home/user/app
+
+# Copiar requirements primero (cache de capas)
+COPY --chown=user requirements.txt .
+
+# Instalar librerías cuánticas (compila con gcc disponible)
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir \
+    qiskit==1.0.2 \
+    qiskit-aer==0.13.3 \
+    cirq==1.3.0 \
+    pennylane==0.36.0 \
+    pennylane-qiskit \
+    qutip==4.7.5 \
+    numpy \
+    scipy \
+    matplotlib \
+    sympy \
+    flask==3.0.3 \
+    flask-cors==4.0.1 \
+    gradio==4.44.0
+
+# Copiar app
+COPY --chown=user app.py .
+
+# Puerto HuggingFace
+EXPOSE 7860
+
+# Variables de entorno para HF
+ENV GRADIO_SERVER_NAME=0.0.0.0 \
+    GRADIO_SERVER_PORT=7860
+
+# Arrancar
+CMD ["python", "app.py"]

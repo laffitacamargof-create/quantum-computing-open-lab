@@ -183,8 +183,33 @@ body::before{content:'';position:fixed;inset:0;
 .qcol-footer{text-align:center;padding:1.2rem 1rem;border-top:1px solid var(--b);color:var(--mu);font-size:.64rem;letter-spacing:.04em;background:rgba(3,8,16,.5);margin-top:auto;}
 .qcol-footer span{color:var(--bl2);}
 
-@media(max-width:600px){.menu-grid{grid-template-columns:1fr;}}
-@media(max-width:400px){#ai-panel-wrapper{width:calc(100vw - 1.5rem);right:.75rem;}}
+/* ══ MOBILE RESPONSIVE ══ */
+@media(max-width:768px){
+  #qcol-header { padding:.55rem 1rem; height:50px; }
+  .logo-q,.logo-col { font-size:.88rem; }
+  .hbtn { padding:.26rem .55rem; font-size:.5rem; }
+  .menu-hero h1 { font-size:clamp(.85rem,3vw,1.4rem); }
+  .menu-hero p { font-size:.68rem; }
+  .menu-grid { grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:.75rem; padding:0 .9rem; }
+  .menu-card { padding:1.1rem; }
+  .card-title { font-size:.68rem; }
+  .card-desc { font-size:.62rem; }
+  .screen-hdr { padding:.6rem 1rem; }
+  .screen-title { font-size:.72rem; }
+  .module-iframe { min-height:calc(100vh - 110px); }
+  #ai-panel-wrapper { width:calc(100vw - 1rem); right:.5rem; bottom:.5rem; }
+  .ai-panel { height:400px; }
+}
+@media(max-width:600px){
+  .menu-grid { grid-template-columns:1fr 1fr; gap:.6rem; padding:0 .75rem; }
+  #module-container { padding-top:50px; }
+}
+@media(max-width:420px){
+  .menu-grid { grid-template-columns:1fr; }
+  .menu-hero { padding:1.5rem .75rem 1rem; }
+  #ai-panel-wrapper { width:calc(100vw - 1rem); right:.5rem; }
+  .hbtn.ai-btn span { display:none; }
+}
 </style>
 </head>
 <body>
@@ -345,7 +370,7 @@ body::before{content:'';position:fixed;inset:0;
   <div class="screen active" id="screen-home">
     <div class="menu-hero">
       <h1>⚛ QUANTUM COMPUTING OPEN LAB</h1>
-      <p>Ecosistema modular de divulgación y desarrollo de computación cuántica</p>
+      <p>El ecosistema donde estudiantes aprenden, simulan y publican sus primeros proyectos de computación cuántica.</p>
     </div>
     <div class="menu-grid" id="menu-grid"></div>
     <div class="qcol-footer">
@@ -465,18 +490,11 @@ body::before{content:'';position:fixed;inset:0;
     </div>
   </div>
 
-  <!-- CONFIGURACIÓN DEL ECOSISTEMA -->
+  <!-- PANEL FUNDADOR -->
   <div class="screen" id="screen-founder">
     <div class="screen-hdr">
       <button class="btn-back" onclick="QCOL.nav('home')">← MENÚ</button>
-      <div class="screen-title">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-          <rect x="2" y="3" width="20" height="18" rx="3" stroke="#bd93f9" stroke-width="1.5"/>
-          <path d="M8 9h8M8 13h5" stroke="#bd93f9" stroke-width="1.5" stroke-linecap="round"/>
-          <circle cx="17" cy="17" r="2.5" fill="rgba(189,147,249,.2)" stroke="#bd93f9" stroke-width="1.2"/>
-        </svg>
-        CONFIGURACIÓN DEL ECOSISTEMA
-      </div>
+      <div class="screen-title">👑 PANEL FUNDADOR</div>
     </div>
     <div class="module-iframe-wrap" id="founder-wrap">
       <div id="founder-ph"></div>
@@ -539,10 +557,24 @@ const QCOL = (() => {
     if (d.type === 'QCOL_LOGOUT')       doLogout();
     if (d.type === 'QCOL_OPEN_FOUNDER') openAuth('founder');
     if (d.type === 'QCOL_SAVE') {
-      localStorage.setItem(d.key, typeof d.val === 'object' ? JSON.stringify(d.val) : d.val);
+      const val = typeof d.val === 'object' ? JSON.stringify(d.val) : d.val;
+      localStorage.setItem(d.key, val);
       if (d.key === 'qcol_colab_url') checkEngine();
       if (d.key === 'qcol_ai') { aiCfg = d.val; setupAI(); }
       if (d.key === 'qcol_fp') notify('✅ Contraseña fundador actualizada');
+      // Propagar cambio de config a todos los módulos
+      broadcast({ type:'QCOL_CONFIG_UPDATED', key: d.key });
+    }
+    // Monitor: el arquitecto registra ejecuciones — el core las persiste
+    if (d.type === 'QCOL_MONITOR_RUN') {
+      try {
+        const raw  = localStorage.getItem('qcol_monitor_data');
+        const data = raw ? JSON.parse(raw) : {runs:[], total:0};
+        data.runs.push(d);
+        data.total = (data.total||0) + 1;
+        if (data.runs.length > 1000) data.runs = data.runs.slice(-1000);
+        localStorage.setItem('qcol_monitor_data', JSON.stringify(data));
+      } catch(e) {}
     }
   });
 
@@ -718,8 +750,7 @@ const QCOL = (() => {
         delay:.25, show:true,
       },
       {
-        screen: isF ? 'founder' : null,
-        onClick: isF ? null : "QCOL.openAuth('founder')",
+        screen:'founder',
         icon:`<svg width="22" height="22" viewBox="0 0 24 24" fill="none">
           <rect x="2" y="3" width="20" height="18" rx="3" stroke="#bd93f9" stroke-width="1.5"/>
           <path d="M8 9h8M8 13h5" stroke="#bd93f9" stroke-width="1.5" stroke-linecap="round"/>
@@ -728,7 +759,7 @@ const QCOL = (() => {
         </svg>`,
         title:'CONFIGURACIÓN', badge:'badge-admin', badgeTxt:'SISTEMA',
         desc:'Configuración y gestión del ecosistema.',
-        delay:.3, show:true,
+        delay:.3, show: isF,
       },
       {
         screen:'help',
@@ -743,12 +774,9 @@ const QCOL = (() => {
     ];
 
     document.getElementById('menu-grid').innerHTML = cards.filter(c => c.show).map(c => {
-      // Si tiene onClick explícito usarlo, si no navegar a screen
       const click = c.onClick
         ? `onclick="${c.onClick}"`
-        : c.screen
-          ? `onclick="QCOL.nav('${c.screen}')"`
-          : `onclick="QCOL.openAuth('founder')"`;  // fallback para founder
+        : c.screen ? `onclick="QCOL.nav('${c.screen}')"` : '';
       const cls = (c.locked && !isAdm) ? 'menu-card locked' : 'menu-card';
       const lock = (c.locked && !isAdm)
         ? `<div style="font-size:.6rem;color:var(--rd);margin-top:.4rem;">🔒 Requiere cuenta administrador</div>` : '';
@@ -898,23 +926,61 @@ const QCOL = (() => {
   }
 
   async function callAI(msg) {
-    const sys = aiCfg.prompt || 'Eres el asistente de QCOL, ecosistema de computación cuántica. Responde en español, conciso y técnico.';
+    const temp   = aiCfg.temp   || 0.7;
+    const tokens = aiCfg.tokens || 600;
+    const lang   = aiCfg.lang   || 'es';
+
+    // Ajustar prompt con idioma
+    const langNote = lang==='es' ? ' Responde siempre en español.'
+                   : lang==='en' ? ' Always respond in English.'
+                   : ' Respond in both Spanish and English.';
+    const sys = (aiCfg.prompt || 'Eres el asistente de QCOL, ecosistema de computación cuántica. Responde de forma concisa y técnica.') + langNote;
+
     const msgs = [
       { role:'system', content:sys },
       ...aiHistory.slice(-6),
       { role:'user', content:msg },
     ];
+
     const endpoints = {
-      groq: 'https://api.groq.com/openai/v1/chat/completions',
-      mistral: 'https://api.mistral.ai/v1/chat/completions',
+      mistral:     'https://api.mistral.ai/v1/chat/completions',
+      groq:        'https://api.groq.com/openai/v1/chat/completions',
+      openai:      'https://api.openai.com/v1/chat/completions',
     };
+
+    if (aiCfg.provider === 'huggingface') {
+      // HuggingFace Inference API
+      const model = aiCfg.model || 'mistralai/Mistral-7B-Instruct-v0.3';
+      const url = `https://api-inference.huggingface.co/models/${model}`;
+      const prompt = msgs.map(m => `${m.role}: ${m.content}`).join('\n') + '\nassistant:';
+      const res = await fetch(url, {
+        method:'POST',
+        headers:{'Authorization':'Bearer '+aiCfg.key,'Content-Type':'application/json'},
+        body:JSON.stringify({ inputs:prompt, parameters:{ max_new_tokens:tokens, temperature:temp } }),
+        signal: AbortSignal.timeout(20000),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || 'Error HuggingFace');
+      return Array.isArray(d) ? d[0].generated_text.split('assistant:').pop().trim() : d.generated_text;
+    }
+
     const url = endpoints[aiCfg.provider];
     if (!url) throw new Error('Proveedor no soportado');
+
+    const defaultModel = aiCfg.provider==='mistral' ? 'mistral-large-latest'
+                       : aiCfg.provider==='groq'    ? 'llama3-70b-8192'
+                       : 'gpt-4o-mini';
+
     const res = await fetch(url, {
       method:'POST',
       headers:{'Authorization':'Bearer '+aiCfg.key,'Content-Type':'application/json'},
-      body:JSON.stringify({ model:aiCfg.model||'llama3-8b-8192', messages:msgs, max_tokens:600 }),
-      signal: AbortSignal.timeout(15000),
+      body:JSON.stringify({
+        model:       aiCfg.model || defaultModel,
+        messages:    msgs,
+        max_tokens:  tokens,
+        temperature: temp,
+      }),
+      signal: AbortSignal.timeout(20000),
     });
     const d = await res.json();
     if (!res.ok) throw new Error(d.error?.message || 'Error API');
