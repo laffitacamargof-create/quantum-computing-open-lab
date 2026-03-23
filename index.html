@@ -372,6 +372,23 @@ body::before{content:'';position:fixed;inset:0;
       <h1>⚛ QUANTUM COMPUTING OPEN LAB</h1>
       <p>El ecosistema donde estudiantes aprenden, simulan y publican sus primeros proyectos de computación cuántica.</p>
     </div>
+    <div id="logout-bar" style="display:none;position:absolute;top:.6rem;right:.7rem;z-index:20;">
+      <button onclick="QCOL.doLogout()" style="
+        background:rgba(255,68,102,.08);
+        border:1px solid rgba(255,68,102,.3);
+        border-radius:6px;
+        color:#ff8899;
+        font-family:var(--orb);
+        font-size:.48rem;
+        padding:.28rem .65rem;
+        cursor:pointer;
+        letter-spacing:.05em;
+        transition:all .2s;
+      " onmouseover="this.style.background='rgba(255,68,102,.18)'"
+         onmouseout="this.style.background='rgba(255,68,102,.08)'">
+        ✕ SALIR
+      </button>
+    </div>
     <div class="menu-grid" id="menu-grid"></div>
     <div class="qcol-footer">
       Creado por <span>Franci Laffita Camargo</span> · Estudiante de Física Nuclear ·
@@ -590,7 +607,6 @@ const QCOL = (() => {
         type: 'QCOL_CONFIG',
         user: curUser,
         version: VERSION,
-        // CAMBIO 4: NO se exponen URLs de motores ni plataformas al módulo
         // Los módulos solo saben que tienen un "motor" sin nombre
         engineReady: !!localStorage.getItem('qcol_colab_url'),
         ghUser: (JSON.parse(localStorage.getItem('qcol_gh')||'{}').user)||'laffitacamargof-create',
@@ -630,7 +646,6 @@ const QCOL = (() => {
       setTimeout(() => { sendCfg(iframe.contentWindow); broadcast({type:'QCOL_USER_UPDATE',user:curUser}); }, 200);
     };
     iframe.onerror = () => {
-      // CAMBIO 4: el placeholder NO menciona tecnologías externas
       wrap.innerHTML = renderPH(screen);
     };
 
@@ -643,8 +658,6 @@ const QCOL = (() => {
 
     setTimeout(() => { wrap.innerHTML = ''; wrap.appendChild(iframe); }, 100);
   }
-
-  // CAMBIO 4: placeholder sin mencionar motores ni tecnologías
   function renderPH(screen) {
     const info = {
       projects:       { icon:'📂', title:'PROYECTOS',              desc:'Explora y ejecuta los notebooks del laboratorio.' },
@@ -671,10 +684,8 @@ const QCOL = (() => {
     const isAdm = role === 'admin' || role === 'founder';
     const isF   = role === 'founder';
 
-    // CAMBIO 2: "LIBRERÍA Y TUTORIALES" actualizado
-    // CAMBIO 1: icono arquitecto con engranaje+circuito SVG
-    // CAMBIO 3: descripciones sin precarga de contenido
-    // CAMBIO 4: sin mencionar motores/plataformas
+
+
 
     const cards = [
       {
@@ -682,13 +693,12 @@ const QCOL = (() => {
         icon:`<svg width="22" height="22" viewBox="0 0 24 24" fill="none">
           <rect x="3" y="3" width="18" height="18" rx="3" stroke="#00ccff" stroke-width="1.5"/>
           <path d="M3 9h18M9 21V9" stroke="#00ccff" stroke-width="1.5"/></svg>`,
-        title:'PROYECTOS', badge:'badge-github', badgeTxt:'GITHUB',
-        desc:'Notebooks y documentos del laboratorio. Ejecútalos directamente.',
+        title:'PROYECTOS', badge:'', badgeTxt:'',
+        desc:'Publica y explora proyectos de computación cuántica de la comunidad.',
         delay:.05, show:true,
       },
       {
         screen:'architect',
-        // CAMBIO 1: SVG con engranaje + circuito cuántico
         icon:`<svg width="24" height="24" viewBox="0 0 40 40" fill="none">
           <line x1="2" y1="14" x2="38" y2="14" stroke="#004488" stroke-width="1.5" stroke-dasharray="3 2"/>
           <line x1="2" y1="26" x2="38" y2="26" stroke="#004488" stroke-width="1.5" stroke-dasharray="3 2"/>
@@ -704,7 +714,6 @@ const QCOL = (() => {
               stroke="#00ccff" stroke-width="1.3" stroke-linecap="round"/>
           </g></svg>`,
         title:'⚙️ ARQUITECTO CUÁNTICO', badge:'badge-new', badgeTxt:'CUÁNTICO',
-        // CAMBIO 4: sin mencionar Colab ni ningún motor
         desc:'Escribe y ejecuta código cuántico. Elige entre Qiskit, Cirq, PennyLane o QuTiP. Guarda tus circuitos.',
         delay:.1, show:true,
       },
@@ -730,10 +739,8 @@ const QCOL = (() => {
           <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" stroke="#00ccff" stroke-width="1.5"/>
           <path d="M8 7h8M8 11h8M8 15h5" stroke="#00ccff" stroke-width="1"/>
         </svg>`,
-        // CAMBIO 2: nombre actualizado
-        title:'LIBRERÍA Y TUTORIALES', badge:'badge-github', badgeTxt:'GITHUB',
-        // CAMBIO 2: descripción actualizada con videos, PDFs y Notebooks
-        desc:'Videos, PDFs y Notebooks educativos de computación cuántica.',
+        title:'LIBRERÍA Y TUTORIALES', badge:'', badgeTxt:'',
+        desc:'Videos y PDFs educativos de computación cuántica.',
         delay:.2, show:true,
       },
       {
@@ -750,16 +757,28 @@ const QCOL = (() => {
         delay:.25, show:true,
       },
       {
-        screen:'founder',
-        icon:`<svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-          <rect x="2" y="3" width="20" height="18" rx="3" stroke="#bd93f9" stroke-width="1.5"/>
-          <path d="M8 9h8M8 13h5" stroke="#bd93f9" stroke-width="1.5" stroke-linecap="round"/>
-          <circle cx="17" cy="17" r="2.5" fill="rgba(189,147,249,.2)" stroke="#bd93f9" stroke-width="1.2"/>
-          <path d="M15.8 17l.9.9 1.8-1.8" stroke="#bd93f9" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+        screen: isF ? 'founder' : null,
+        onClick: isF ? null : "QCOL.openAuth('founder')",
+        icon:`<svg width="26" height="26" viewBox="0 0 48 48" fill="none">
+          <!-- Panel de control -->
+          <rect x="4" y="8" width="40" height="32" rx="4" fill="rgba(189,147,249,.08)" stroke="#bd93f9" stroke-width="1.8"/>
+          <!-- Líneas de panel -->
+          <rect x="9" y="14" width="12" height="7" rx="2" fill="rgba(189,147,249,.15)" stroke="#bd93f9" stroke-width="1.2"/>
+          <rect x="27" y="14" width="12" height="7" rx="2" fill="rgba(189,147,249,.15)" stroke="#bd93f9" stroke-width="1.2"/>
+          <line x1="9" y1="27" x2="21" y2="27" stroke="#bd93f9" stroke-width="1.2" stroke-linecap="round"/>
+          <line x1="9" y1="31" x2="17" y2="31" stroke="rgba(189,147,249,.5)" stroke-width="1" stroke-linecap="round"/>
+          <!-- Engranaje superpuesto abajo-derecha -->
+          <circle cx="34" cy="30" r="6" fill="rgba(10,14,26,.9)"/>
+          <circle cx="34" cy="30" r="3.5" fill="none" stroke="#bd93f9" stroke-width="1.5"/>
+          <circle cx="34" cy="30" r="1.2" fill="#bd93f9"/>
+          <path d="M34 22.5v2M34 35.5v2M26.5 30h2M39.5 30h2
+                   M28.6 24.6l1.4 1.4M38 33.4l1.4 1.4
+                   M28.6 35.4l1.4-1.4M38 26.6l1.4-1.4"
+            stroke="#bd93f9" stroke-width="1.3" stroke-linecap="round"/>
         </svg>`,
         title:'CONFIGURACIÓN', badge:'badge-admin', badgeTxt:'SISTEMA',
         desc:'Configuración y gestión del ecosistema.',
-        delay:.3, show: isF,
+        delay:.3, show: true,
       },
       {
         screen:'help',
@@ -847,17 +866,18 @@ const QCOL = (() => {
 
   function updateUI() {
     const area = document.getElementById('hdr-user-area');
+    const logoutBar = document.getElementById('logout-bar');
     if (curUser) {
       const ini = curUser.name.split(' ').map(n=>n[0]).join('').substring(0,2).toUpperCase();
-      const ico = curUser.role==='founder'?'👑':curUser.role==='admin'?'🔑':'';
+      const ico = curUser.role==='founder'?'👑':curUser.role==='admin'?'🔑':''
       area.innerHTML = `<div class="user-chip" onclick="QCOL.nav('account')">
         <div class="user-dot"></div>${ico} ${ini}
         <span style="font-size:.42rem;color:var(--mu);">${curUser.role.toUpperCase()}</span>
-        <span style="font-size:.44rem;color:var(--rd);cursor:pointer;"
-          onclick="event.stopPropagation();QCOL.doLogout()">✕</span>
       </div>`;
+      if (logoutBar) logoutBar.style.display = 'block';
     } else {
       area.innerHTML = `<button class="hbtn" onclick="QCOL.openAuth('login')">ENTRAR</button>`;
+      if (logoutBar) logoutBar.style.display = 'none';
     }
   }
 
@@ -869,7 +889,6 @@ const QCOL = (() => {
     const lbl = document.getElementById('ai-prov-lbl');
     if (aiCfg.key && aiCfg.provider !== 'none') {
       if (dot) dot.className = 'ai-status-dot ok';
-      // CAMBIO 4: no mostrar nombre del proveedor al usuario
       if (txt) txt.textContent = 'Asistente cuántico activo';
       if (lbl) lbl.textContent = '';
     } else {
@@ -1002,7 +1021,6 @@ const QCOL = (() => {
     try {
       const r = await fetch(url + '/health', { signal:AbortSignal.timeout(5000) });
       if (r.ok) {
-        // CAMBIO 4: badge genérico sin nombre del motor
         document.getElementById('hdr-engine-badge').style.display = 'flex';
         document.getElementById('arch-badge').style.display = 'flex';
       }
