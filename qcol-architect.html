@@ -423,6 +423,29 @@ let currentBlochQubit = 0;
 let pyodide = null;
 let pyodideLoading = false;
 
+// Funciones auxiliares que el nuevo runCode necesita
+function setRunSt(state, msg) {
+    const sbTxt = document.getElementById('sb-txt');
+    const sbDot = document.getElementById('sb-dot');
+    if (sbTxt) sbTxt.textContent = msg;
+    if (sbDot) {
+        if (state === 'run') sbDot.style.background = '#ffd700';
+        else if (state === 'err') sbDot.style.background = '#ff4466';
+        else sbDot.style.background = 'var(--gr)';
+    }
+}
+function updateBlochFromProbs(probs) {
+    // stub: si se reciben probabilidades, actualizar la esfera de Bloch (opcional)
+    if (!probs) return;
+    for (let i = 0; i < Math.min(probs.length, circuit.qubits); i++) {
+        const p0 = probs[i]?.[0] || 0.5;
+        const theta = 2 * Math.acos(Math.sqrt(p0));
+        blochStates[i] = { theta: theta, phi: 0 };
+    }
+    drawBloch();
+    updateBlochSelector();
+}
+
 // ═══════════════════════════════════════════════════════════
 // MOCK DE QISKIT UNIVERSAL + SCIPY DEFINITIVO + STUB NUMPY
 // ═══════════════════════════════════════════════════════════
@@ -1331,6 +1354,131 @@ json.dumps({
     }
 }
 
+// ========== NUEVO runCode CORREGIDO ==========
+async function runCode() {
+    if (running) return;
+    const code = document.getElementById('code-ta').value.trim();
+    if (!code) { notify('Escribe código primero'); return; }
+    running = true;
+    const btn = document.getElementById('btn-run');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<span>⏳</span> EJECUTANDO'; }
+    setRunSt('run', 'Conectando...');
+    setTab('out');
+    const out = document.getElementById('out-body');
+    const t0 = Date.now();
+
+    // 1. Sincronizar visual con Pyodide (en segundo plano, sin esperar)
+    const syncPromise = syncWithPyodide().catch(err => {
+        console.warn('Sync visual falló (no crítico):', err);
+        out.innerHTML += `<span class="wa">⚠️ Sincronización visual falló, pero la ejecución continúa.</span>\n`;
+    });
+
+    // 2. Obtener URL del compilador externo
+    let serverURL = engineURL;
+    if (!serverURL) {
+        serverURL = localStorage.getItem('qcol_colab_url');
+        if (!serverURL) {
+            // No hay URL → ejecución local con Pyodide
+            out.innerHTML = '<span class="inf">⚠️ Sin compilador externo. Usando ejecución local (Pyodide).</span>\n';
+            await syncPromise; // esperamos a que termine la sincronización antes de ejecutar local
+            await runCodeLocal(code, out, t0);
+            running = false;
+            if (btn) btn.disabled = false;
+            return;
+        }
+    }
+    serverURL = serverURL.trim().replace(/\/+$/, '');
+
+    // 3. Enviar código al compilador externo con timeout de 15 segundos
+    out.innerHTML = '<span class="inf">🌐 Conectando al compilador externo...</span>\n';
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+    try {
+        out.innerHTML = '<span class="inf">📤 Enviando código...</span>\n';
+        const isHF = serverURL.includes('hf.space') || serverURL.includes('huggingface');
+        let response;
+        if (isHF) {
+            response = await fetch(serverURL + '/run/predict', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ data: [code] }),
+                signal: controller.signal
+            });
+        } else {
+            response = await fetch(serverURL + '/run', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ code, lib: curLib || 'qiskit' }),
+                signal: controller.signal
+            });
+        }
+        clearTimeout(timeoutId);
+        if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        const data = await response.json();
+        const elapsed = ((Date.now() - t0) / 1000).toFixed(2);
+        document.getElementById('out-elapsed').textContent = elapsed + 's';
+        let outputText = '';
+        if (isHF) {
+            outputText = data.data ? data.data[0] : JSON.stringify(data);
+        } else {
+            outputText = data.output || data.error || 'Sin salida';
+        }
+        out.innerHTML = `<span class="inf">╔═══════════════════════╗\n║  Compilador externo · ${elapsed}s\n╚═══════════════════════╝\n\n</span><span class="ok">${escapeHtml(outputText)}</span>`;
+        setRunSt('idle', 'Listo');
+        if (data.bloch?.probabilities) updateBlochFromProbs(data.bloch.probabilities);
+    } catch (err) {
+        let errorMsg = err.message;
+        if (err.name === 'AbortError') errorMsg = 'Tiempo de espera agotado (15 segundos). El servidor no responde.';
+        out.innerHTML = `<span class="er">❌ Error en el compilador:<br>${escapeHtml(errorMsg)}</span>`;
+        setRunSt('err', 'Error');
+        engineOK = false;
+    } finally {
+        // Esperar a que la sincronización visual termine (si aún no lo hizo)
+        await syncPromise.catch(() => {});
+        running = false;
+        if (btn) { btn.disabled = false; btn.innerHTML = '▶ EJECUTAR'; }
+    }
+}
+
+// ========== NUEVO runCodeLocal (fallback) ==========
+async function runCodeLocal(code, out, t0) {
+    out.innerHTML += '<span class="inf">\n⚛️ Ejecutando con Pyodide (local)...</span>\n';
+    try {
+        const py = await initPyodide();
+        py.globals.set('_pending_user_code', code);
+        const result = await py.runPythonAsync(`
+import json, traceback, io, sys
+_user_code = globals().get('_pending_user_code', '')
+_out_buf = io.StringIO()
+_err = None
+try:
+    _old_stdout = sys.stdout
+    sys.stdout = _out_buf
+    exec(_user_code, {})
+    sys.stdout = _old_stdout
+except Exception as _e:
+    sys.stdout = _old_stdout
+    _err = traceback.format_exc()
+json.dumps({"output": _out_buf.getvalue(), "error": _err, "success": _err is None})
+        `);
+        const d = JSON.parse(result);
+        const elapsed = ((Date.now() - t0) / 1000).toFixed(2);
+        document.getElementById('out-elapsed').textContent = elapsed + 's';
+        if (d.success) {
+            out.innerHTML += `<span class="ok">✅ Ejecutado (Pyodide) · ${elapsed}s\n${escapeHtml(d.output || 'Sin output')}</span>`;
+            setRunSt('idle', 'Listo');
+        } else {
+            out.innerHTML += `<span class="er">❌ ${escapeHtml(d.error)}</span>`;
+            setRunSt('err', 'Error');
+            const lineMatch = d.error.match(/line (\d+)/);
+            if (lineMatch) highlightErrorLine(parseInt(lineMatch[1]));
+        }
+    } catch (e) {
+        out.innerHTML += `<span class="er">❌ Error en Pyodide: ${e.message}</span>`;
+        setRunSt('err', 'Error');
+    }
+}
+
 // Funciones de Bloch, Run, Save, etc.
 function drawBloch() {
     const canvas = document.getElementById('bloch-canvas');
@@ -1374,97 +1522,6 @@ function applyBlochGate(gate) {
     blochStates[currentBlochQubit] = state;
     drawBloch();
     updateBlochSelector();
-}
-
-async function runCode() {
-    if (running) return;
-    const code = document.getElementById('code-ta').value.trim();
-    if (!code) { notify('Escribe código primero'); return; }
-    running = true;
-    const btn = document.getElementById('btn-run');
-    if (btn) { btn.disabled = true; btn.innerHTML = '<span>⏳</span> EJECUTANDO'; }
-    setRunSt('run', 'Ejecutando...');
-    setTab('out');
-    const out = document.getElementById('out-body');
-    const t0 = Date.now();
-
-    syncWithPyodide().catch(() => {});
-
-    if (engineOK && engineURL) {
-        out.innerHTML = '<span class="inf">⏳ Enviando al compilador cuántico...\n</span>';
-        const isHF = engineURL.includes('hf.space') || engineURL.includes('huggingface');
-        try {
-            let res, d;
-            if (isHF) {
-                res = await fetchWithRetry(engineURL + '/run/predict', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ data: [code] })
-                }, 3, 30000);
-                const raw = await res.json();
-                d = raw.data ? raw.data[0] : raw;
-            } else {
-                res = await fetchWithRetry(engineURL + '/run', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ code, lib: 'qiskit' })
-                }, 3, 30000);
-                d = await res.json();
-            }
-            const el = ((Date.now()-t0)/1000).toFixed(2);
-            document.getElementById('out-elapsed').textContent = el + 's';
-            if (d.success) {
-                out.innerHTML = `<span class="inf">╔═══════════════════════╗\n║  Compilador · ${el}s\n╚═══════════════════════╝\n\n</span><span class="ok">${escapeHtml(d.output)}</span>`;
-                if (d.bloch?.probabilities) updateBlochFromProbs(d.bloch.probabilities);
-                setRunSt('idle','Listo');
-                logMonitorRun({ success:true, lib:'qiskit', qubits:circuit.qubits, time:parseFloat(el) });
-            } else {
-                out.innerHTML += `<span class="er">❌ ${escapeHtml(d.output||'Error')}</span>`;
-                setRunSt('err','Error');
-            }
-        } catch(e) {
-            out.innerHTML += `<span class="er">❌ ${e.message}\nVerifica que el compilador esté activo.</span>`;
-            setRunSt('err','Error');
-        }
-    } else {
-        out.innerHTML = '<span class="inf">⚠️ Sin compilador externo — usando Pyodide local\n</span>';
-        try {
-            const py = await initPyodide();
-            if (py) {
-                py.globals.set('_pending_user_code', code);
-                const result = await py.runPythonAsync(`
-import json, traceback, io, sys
-_user_code = globals().get('_pending_user_code','')
-_out_buf = io.StringIO()
-_err = None
-try:
-    _old_stdout = sys.stdout
-    sys.stdout = _out_buf
-    exec(_user_code, {})
-    sys.stdout = _old_stdout
-except Exception as _e:
-    sys.stdout = _old_stdout
-    _err = traceback.format_exc()
-json.dumps({"output": _out_buf.getvalue(), "error": _err, "success": _err is None})
-                `);
-                const d = JSON.parse(result);
-                const el = ((Date.now()-t0)/1000).toFixed(2);
-                document.getElementById('out-elapsed').textContent = el + 's';
-                if (d.success) {
-                    out.innerHTML += `<span class="ok">✅ Ejecutado (Pyodide) · ${el}s\n${escapeHtml(d.output||'Sin output')}</span>`;
-                } else {
-                    out.innerHTML += `<span class="er">❌ ${escapeHtml(d.error)}</span>`;
-                    const lineMatch = d.error.match(/line (\d+)/);
-                    if (lineMatch) highlightErrorLine(parseInt(lineMatch[1]));
-                }
-            }
-        } catch(e2) {
-            out.innerHTML += `<span class="er">❌ ${e2.message}</span>`;
-        }
-        setRunSt('idle','Listo');
-    }
-    running = false;
-    if (btn) { btn.disabled = false; btn.innerHTML = '▶ EJECUTAR'; }
 }
 
 function addQubit() { if (circuit.qubits < MAX_QUBITS) { circuit.qubits++; if (!blochStates[circuit.qubits-1]) blochStates[circuit.qubits-1] = { theta: 0, phi: 0 }; renderCircuit(); updateCircuitInfo(); updateCodeFromCircuit(); notify(`${circuit.qubits} qubits`); } else notify(`Máximo ${MAX_QUBITS} qubits`); }
