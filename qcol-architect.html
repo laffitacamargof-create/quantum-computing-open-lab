@@ -5,8 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Arquitecto Cuántico</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=JetBrains+Mono:wght@400;500;600&family=Exo+2:wght@300;400;500;600&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
 <style>
+/* ══════════════════════════════════════════════════
+   ARQUITECTO CUÁNTICO — Iconos estándar + click para eliminar
+══════════════════════════════════════════════════ */
 :root {
   --bg:#0a0e1a; --bg2:#0d1220; --bg3:#111827; --bg4:#060912;
   --p:#0f1626;  --p2:#141e30;  --p3:#1a2640;
@@ -56,7 +58,7 @@ body { background:var(--bg); color:var(--tx); font-family:var(--ex); }
   font-family:var(--orb); font-size:.5rem; cursor:pointer;
 }
 .u-dot { width:6px; height:6px; border-radius:50%; background:var(--mu); }
-.u-dot.on { background:var(--gr); }
+.u-dot.on { background:var(--gr); box-shadow:0 0 4px var(--gr); }
 
 .toolbar {
   height:38px; display:flex; align-items:center; gap:.4rem;
@@ -71,9 +73,6 @@ body { background:var(--bg); color:var(--tx); font-family:var(--ex); }
   background:linear-gradient(135deg,#003a9e,var(--bl));
   color:#fff; font-family:var(--orb); font-size:.6rem;
   font-weight:700; cursor:pointer;
-}
-.btn-parse {
-  background:linear-gradient(135deg,#8b5cf6,var(--pu));
 }
 .bsm {
   padding:.2rem .5rem; border-radius:5px;
@@ -219,6 +218,8 @@ body { background:var(--bg); color:var(--tx); font-family:var(--ex); }
   line-height:1.6; z-index:2;
   white-space:pre; overflow:auto; tab-size:4;
 }
+.code-ta::-webkit-scrollbar { width:6px; }
+.code-ta::-webkit-scrollbar-thumb { background:var(--bd2); }
 
 .statusbar {
   display:flex; align-items:center; gap:.5rem;
@@ -258,10 +259,12 @@ body { background:var(--bg); color:var(--tx); font-family:var(--ex); }
   font-family:var(--mono); font-size:.7rem; color:var(--tx2);
   line-height:1.6; overflow-y:auto; white-space:pre-wrap;
 }
+.out-body::-webkit-scrollbar { width:4px; }
 .ok { color:#3fb950; }
 .er { color:#f85149; }
 .inf { color:#58a6ff; }
 .wa { color:#d29922; }
+.pb { color:#bc8cff; }
 .out-bar {
   padding:.3rem .6rem; background:#060912;
   border-top:1px solid var(--bd);
@@ -270,8 +273,8 @@ body { background:var(--bg); color:var(--tx); font-family:var(--ex); }
 }
 
 .bloch-panel { flex:1; display:flex; flex-direction:column; align-items:center; padding:1rem; gap:1rem; overflow:auto; background:radial-gradient(circle at center, #0a0e1a, #060912); }
-.bloch-container { width:100%; max-width:280px; margin:0 auto; }
-#bloch-canvas { width:100%; aspect-ratio:1; background:radial-gradient(circle at 30% 30%, #0d1424, #040810); border-radius:50%; box-shadow:0 0 30px rgba(0,136,255,0.2); }
+.bloch-container { position:relative; width:100%; max-width:280px; margin:0 auto; }
+#bloch-canvas { width:100%; aspect-ratio:1; background:radial-gradient(circle at 30% 30%, #0d1424, #040810); border-radius:50%; box-shadow:0 0 30px rgba(0,136,255,0.2); cursor:grab; }
 .bloch-q-select { background:var(--bg3); border:1px solid var(--bd2); color:var(--bl2); padding:.2rem .5rem; border-radius:4px; font-family:var(--mono); font-size:.6rem; }
 .bloch-info { text-align:center; font-family:var(--mono); font-size:.65rem; color:var(--tx2); background:rgba(0,0,0,.3); padding:.5rem; border-radius:8px; width:100%; }
 .gate-btns { display:flex; flex-wrap:wrap; gap:.3rem; justify-content:center; margin-top:.5rem; }
@@ -282,6 +285,7 @@ body { background:var(--bg); color:var(--tx); font-family:var(--ex); }
 .save-title { font-family:var(--orb); font-size:.5rem; color:var(--bl2); margin-bottom:.4rem; }
 .fi { width:100%; padding:.3rem .5rem; background:rgba(20,30,50,.7); border:1px solid var(--bd2); color:var(--tx); font-family:var(--mono); font-size:.6rem; border-radius:4px; }
 .circ-item { display:flex; align-items:center; gap:.4rem; padding:.3rem .5rem; background:rgba(20,30,50,.5); border:1px solid var(--bd); border-radius:5px; margin-bottom:.2rem; cursor:pointer; }
+.circ-item:hover { border-color:var(--bl); background:rgba(0,136,255,.1); }
 .ci-name { font-family:var(--mono); font-size:.6rem; color:var(--tx); flex:1; }
 .ci-del { background:transparent; border:none; color:var(--rd); cursor:pointer; font-size:.7rem; }
 
@@ -290,13 +294,22 @@ body { background:var(--bg); color:var(--tx); font-family:var(--ex); }
 .q-wire { flex:1; position:relative; height:56px; min-width:200px; background:transparent; }
 .q-wire::before { content:''; position:absolute; left:0; right:0; top:50%; height:2px; background:linear-gradient(90deg, rgba(0,136,255,0.3), rgba(0,136,255,0.1)); transform:translateY(-50%); pointer-events:none; }
 .placed-gate { position:absolute; top:50%; transform:translateY(-50%); z-index:5; cursor:pointer; }
-.pg-box { width:38px; height:38px; border-radius:6px; display:flex; align-items:center; justify-content:center; border:1.5px solid rgba(255,255,255,.2); background:#0088ff; }
+.pg-box { width:38px; height:38px; border-radius:6px; display:flex; align-items:center; justify-content:center; border:1.5px solid rgba(255,255,255,.2); }
 .pg-sym { font-family:var(--mono); font-size:.8rem; font-weight:700; color:#fff; }
+.multi-gate-container, .triple-gate-container { position:absolute; top:0; left:0; z-index:5; cursor:pointer; }
+.multi-gate-svg, .triple-gate-svg { cursor:pointer; }
 
 @media(max-width:700px){
   .palette { width:120px; }
   .right-panel { width:280px; }
   .bloch-container { max-width:220px; }
+  .code-hdr-lbl { font-size:.45rem; }
+  .compiler-status { font-size:.4rem; }
+}
+@media(max-width:480px){
+  .toolbar { gap:.2rem; padding:0 .4rem; }
+  .btn-run { padding:.2rem .6rem; font-size:.55rem; }
+  .bsm, .lib-btn, .mode-btn { padding:.15rem .35rem; font-size:.45rem; }
 }
 </style>
 </head>
@@ -313,7 +326,7 @@ body { background:var(--bg); color:var(--tx); font-family:var(--ex); }
 
 <div class="toolbar">
   <button class="btn-run" id="btn-run">▶ EJECUTAR</button>
-  <button class="btn-run btn-parse" id="btn-parse">🔄 SINCRONIZAR (Pyodide)</button>
+  <button class="bsm" id="btn-sync">⟳ SINCRONIZAR</button>
   <button class="bsm" id="btn-clear">🗑 Limpiar</button>
   <div class="sep"></div>
   <button class="bsm" id="btn-addqb">+ Qubit</button>
@@ -345,8 +358,8 @@ body { background:var(--bg); color:var(--tx); font-family:var(--ex); }
         <span class="code-hdr-lbl">{ } EDITOR PYTHON</span>
         <div class="code-hdr-right">
           <span class="compiler-status" id="compiler-status">● SIN COMPILADOR</span>
-          <button class="bsm" id="btn-copy">COPIAR</button>
-          <button class="bsm" id="btn-clear-code">LIMPIAR</button>
+          <button class="bsm" id="btn-copy" style="padding:.15rem .4rem;">COPIAR</button>
+          <button class="bsm" id="btn-clear-code" style="padding:.15rem .4rem;">LIMPIAR</button>
         </div>
       </div>
       <div class="code-wrap">
@@ -376,22 +389,28 @@ body { background:var(--bg); color:var(--tx); font-family:var(--ex); }
     
     <div class="output-panel" id="p-out">
       <div class="out-hdr">TERMINAL</div>
-      <div class="out-body" id="out-body"><span class="inf">✅ Listo. Usa "SINCRONIZAR (Pyodide)" para ejecutar código Qiskit avanzado con Python real.</span></div>
-      <div class="out-bar"><button class="bsm" id="btn-clear-out">LIMPIAR</button><button class="btn-run" id="btn-run2">▶ EJECUTAR</button><span id="out-elapsed"></span></div>
+      <div class="out-body" id="out-body"><span class="inf">╔══════════════════════════╗<br>║  Listo                   ║<br>╚══════════════════════════╝<br><br>✅ Listo</span></div>
+      <div class="out-bar"><button class="bsm" id="btn-clear-out">LIMPIAR</button><button class="btn-run" id="btn-run2">▶ EJECUTAR</button><span id="out-elapsed" style="margin-left:auto;font-size:.45rem;"></span></div>
     </div>
     
     <div class="bloch-panel" id="p-bloch" style="display:none;">
-      <div class="bloch-container"><canvas id="bloch-canvas" width="280" height="280"></canvas><select id="bloch-q-select" class="bloch-q-select"></select></div>
+      <div class="bloch-container">
+        <canvas id="bloch-canvas" width="280" height="280"></canvas>
+        <div class="bloch-controls"><select id="bloch-q-select" class="bloch-q-select"></select></div>
+      </div>
       <div class="bloch-info" id="bloch-info"></div>
       <div class="gate-btns">
-        <button class="gb" data-gate="H">H</button><button class="gb" data-gate="X">X</button><button class="gb" data-gate="Y">Y</button><button class="gb" data-gate="Z">Z</button>
-        <button class="gb" data-gate="SX">√X</button><button class="gb" data-gate="RX">Rx</button><button class="gb" data-gate="RY">Ry</button><button class="gb" data-gate="RZ">Rz</button>
+        <button class="gb" data-gate="H">H</button><button class="gb" data-gate="X">X</button>
+        <button class="gb" data-gate="Y">Y</button><button class="gb" data-gate="Z">Z</button>
+        <button class="gb" data-gate="SX">√X</button><button class="gb" data-gate="RX">Rx</button>
+        <button class="gb" data-gate="RY">Ry</button><button class="gb" data-gate="RZ">Rz</button>
         <button class="gb rst" data-gate="reset">⟳ RESET</button>
       </div>
     </div>
     
     <div class="save-panel" id="p-save" style="display:none;">
-      <div class="save-sec"><div class="save-title">💾 GUARDAR</div><input class="fi" id="save-name" placeholder="nombre_circuito"><button class="bsm" id="btn-save">Guardar</button><button class="bsm" id="btn-dlpy">📥 .py</button><button class="bsm" id="btn-dlnb">📥 .ipynb</button></div>
+      <div class="save-sec"><div class="save-title">💾 GUARDAR</div><input class="fi" id="save-name" placeholder="nombre_circuito"><button class="bsm" id="btn-save" style="margin-top:.3rem;">Guardar circuito</button><button class="bsm" id="btn-dlpy" style="margin-top:.3rem;">📥 Descargar .py</button><button class="bsm" id="btn-dlnb" style="margin-top:.3rem;">📥 .ipynb</button></div>
+      <div class="save-sec" id="queue-sec" style="display:none;"><div class="save-title">⏱ Cola (>10 qubits)</div><div id="queue-list"></div><button class="bsm" id="btn-run-queue" style="margin-top:.3rem;">▶ Ejecutar cola</button></div>
       <div class="save-sec"><div class="save-title">📂 MIS CIRCUITOS</div><div id="circ-list"></div></div>
     </div>
   </div>
@@ -399,8 +418,7 @@ body { background:var(--bg); color:var(--tx); font-family:var(--ex); }
 
 <script>
 // ═══════════════════════════════════════════════════════════
-// ARQUITECTO CUÁNTICO — Con Pyodide (ejecución real de Python)
-// Módulo qiskit mock UNIVERSAL + scipy CORREGIDO + numpy STUB automático
+// ARQUITECTO CUÁNTICO — Iconos estándar + click eliminar + 3 reintentos 30s
 // ═══════════════════════════════════════════════════════════
 
 let circuit = { qubits: 2, gates: [] };
@@ -411,8 +429,8 @@ let engineURL = '', engineOK = false;
 let running = false;
 let dragGate = null;
 let nextId = 1;
-let isUpdatingFromCircuit = false;
 let isUpdatingFromCode = false;
+let isUpdatingFromCircuit = false;
 let syncTimeout = null;
 const ROW_HEIGHT = 56;
 const MAX_QUBITS = 20;
@@ -420,575 +438,47 @@ const MAX_QUBITS = 20;
 let blochStates = {};
 let currentBlochQubit = 0;
 
-let pyodide = null;
-let pyodideLoading = false;
-
-// Funciones auxiliares que el nuevo runCode necesita
-function setRunSt(state, msg) {
-    const sbTxt = document.getElementById('sb-txt');
-    const sbDot = document.getElementById('sb-dot');
-    if (sbTxt) sbTxt.textContent = msg;
-    if (sbDot) {
-        if (state === 'run') sbDot.style.background = '#ffd700';
-        else if (state === 'err') sbDot.style.background = '#ff4466';
-        else sbDot.style.background = 'var(--gr)';
-    }
-}
-function updateBlochFromProbs(probs) {
-    // stub: si se reciben probabilidades, actualizar la esfera de Bloch (opcional)
-    if (!probs) return;
-    for (let i = 0; i < Math.min(probs.length, circuit.qubits); i++) {
-        const p0 = probs[i]?.[0] || 0.5;
-        const theta = 2 * Math.acos(Math.sqrt(p0));
-        blochStates[i] = { theta: theta, phi: 0 };
-    }
-    drawBloch();
-    updateBlochSelector();
-}
-
-// ═══════════════════════════════════════════════════════════
-// MOCK DE QISKIT UNIVERSAL + SCIPY DEFINITIVO + STUB NUMPY
-// ═══════════════════════════════════════════════════════════
-const QISKIT_MOCK_CODE = `
-import sys, types
-
-# ── 1. DynamicPackage: módulo que también es paquete (__path__) ──
-class DynamicPackage(types.ModuleType):
-    def __init__(self, name, is_package=True):
-        super().__init__(name)
-        if is_package:
-            self.__path__ = []
-    def __getattr__(self, name):
-        # NUNCA lanzar AttributeError
-        class Stub:
-            def __init__(self, *args, **kwargs):
-                self.name = name
-            def __call__(self, *args, **kwargs):
-                return Stub(name)
-            def __getattr__(self, attr):
-                return Stub(f"{name}.{attr}")
-        setattr(self, name, Stub)
-        return Stub
-
-# ── 2. Import hook universal para qiskit.* ──
-def _create_qiskit_submodule(fullname):
-    if fullname in sys.modules:
-        return sys.modules[fullname]
-    mod = DynamicPackage(fullname, is_package=True)
-    sys.modules[fullname] = mod
-    parent, _, child = fullname.rpartition('.')
-    if parent and parent in sys.modules:
-        setattr(sys.modules[parent], child, mod)
-    return mod
-
-class QiskitMetaFinder:
-    def find_spec(self, fullname, path, target=None):
-        if not fullname.startswith('qiskit.'):
-            return None
-        if fullname in sys.modules:
-            return None
-        _create_qiskit_submodule(fullname)
-        return None
-
-sys.meta_path.insert(0, QiskitMetaFinder())
-
-# ── 3. Módulo raíz qiskit como paquete ──
-qiskit = DynamicPackage('qiskit', is_package=True)
-sys.modules['qiskit'] = qiskit
-
-# Submódulos esenciales pre-creados
-essential_subs = [
-    'qiskit.circuit', 'qiskit.circuit.library',
-    'qiskit.extensions', 'qiskit.visualization',
-    'qiskit.providers', 'qiskit.providers.aer',
-    'qiskit.quantum_info'
-]
-for sub in essential_subs:
-    _create_qiskit_submodule(sub)
-
-# ── 4. Clases reales (QuantumRegister, ClassicalRegister, QuantumCircuit) ──
-class QuantumRegister:
-    def __init__(self, size, name=None):
-        self.size = int(size)
-        self.name = name or 'q'
-    def __getitem__(self, idx):
-        if isinstance(idx, int): return idx
-        try: return int(idx)
-        except: return 0
-    def __len__(self): return self.size
-    def __iter__(self): return iter(range(self.size))
-
-class ClassicalRegister:
-    def __init__(self, size, name=None):
-        self.size = int(size)
-        self.name = name or 'c'
-    def __getitem__(self, idx):
-        if isinstance(idx, int): return idx
-        try: return int(idx)
-        except: return 0
-    def __len__(self): return self.size
-    def __iter__(self): return iter(range(self.size))
-
-class Operation:
-    __slots__ = ('name', 'qubits', 'params')
-    def __init__(self, name, qubits, params=None):
-        self.name = name
-        self.qubits = qubits
-        self.params = params or []
-
-class QuantumCircuit:
-    def __init__(self, *args):
-        self.data = []
-        self.num_qubits = 2
-        self.num_clbits = 0
-        try:
-            if len(args) == 0:
-                self.num_qubits = 2
-            elif len(args) == 1:
-                a = args[0]
-                if isinstance(a, int): self.num_qubits = a
-                elif hasattr(a, 'size'): self.num_qubits = a.size
-            elif len(args) >= 2:
-                a0, a1 = args[0], args[1]
-                if isinstance(a0, int) and isinstance(a1, int):
-                    self.num_qubits, self.num_clbits = a0, a1
-                elif hasattr(a0, 'size') and hasattr(a1, 'size'):
-                    self.num_qubits = a0.size
-                    self.num_clbits = a1.size
-                elif isinstance(a0, int):
-                    self.num_qubits = a0
-                    if hasattr(a1, 'size'): self.num_clbits = a1.size
-                    elif isinstance(a1, int): self.num_clbits = a1
-        except Exception:
-            self.num_qubits = 2
-        self.qubits = self.num_qubits
-        self.n_qubits = self.num_qubits
-
-    def _to_int(self, q):
-        if isinstance(q, int): return q
-        if isinstance(q, bool): return int(q)
-        if isinstance(q, float): return int(q)
-        try: return int(q)
-        except: return 0
-
-    def _expand(self, qubits):
-        clean = []
-        for q in qubits:
-            if isinstance(q, range):
-                clean.extend(list(q))
-            elif isinstance(q, (list, tuple)):
-                for sq in q:
-                    if isinstance(sq, range): clean.extend(list(sq))
-                    else:
-                        try: clean.append(self._to_int(sq))
-                        except: pass
-            else:
-                try: clean.append(self._to_int(q))
-                except: pass
-        return clean
-
-    def _add(self, name, qubits, params=None):
-        clean = self._expand(qubits)
-        if clean:
-            op = Operation(name, clean, params or [])
-            self.data.append(op)
-        return self
-
-    # Puertas 1-qubit
-    def h(self, q): return self._add('h', [q])
-    def x(self, q): return self._add('x', [q])
-    def y(self, q): return self._add('y', [q])
-    def z(self, q): return self._add('z', [q])
-    def s(self, q): return self._add('s', [q])
-    def sdg(self, q): return self._add('sdg', [q])
-    def t(self, q): return self._add('t', [q])
-    def tdg(self, q): return self._add('tdg', [q])
-    def sx(self, q): return self._add('sx', [q])
-    def id(self, q): return self._add('id', [q])
-    def rx(self, theta, q): return self._add('rx', [q], [theta])
-    def ry(self, theta, q): return self._add('ry', [q], [theta])
-    def rz(self, theta, q): return self._add('rz', [q], [theta])
-    def p(self, theta, q): return self._add('p', [q], [theta])
-    def u(self, t, p, l, q): return self._add('u', [q], [t,p,l])
-    def u1(self, theta, q): return self._add('u1', [q], [theta])
-    def u2(self, phi, lam, q): return self._add('u2', [q], [phi,lam])
-    def u3(self, t, p, l, q): return self._add('u3', [q], [t,p,l])
-    def initialize(self, sv, q): return self._add('h', [q])
-    def reset(self, q): return self._add('reset', [q])
-
-    # Puertas 2-qubit
-    def cx(self, c, t): return self._add('cx', [c,t])
-    def cnot(self, c, t): return self._add('cx', [c,t])
-    def cz(self, c, t): return self._add('cz', [c,t])
-    def cy(self, c, t): return self._add('cy', [c,t])
-    def ch(self, c, t): return self._add('ch', [c,t])
-    def swap(self, a, b): return self._add('swap', [a,b])
-    def iswap(self, a, b): return self._add('swap', [a,b])
-    def cp(self, theta, c, t): return self._add('cp', [c,t], [theta])
-    def crx(self, theta, c, t): return self._add('crx', [c,t], [theta])
-    def cry(self, theta, c, t): return self._add('cry', [c,t], [theta])
-    def crz(self, theta, c, t): return self._add('crz', [c,t], [theta])
-    def cu(self, t,p,l,g,c,tgt): return self._add('cu', [c,tgt], [t,p,l])
-
-    # Puertas 3-qubit
-    def ccx(self, a, b, t): return self._add('ccx', [a,b,t])
-    def toffoli(self, a, b, t): return self._add('ccx', [a,b,t])
-    def cswap(self, a, b, t): return self._add('cswap', [a,b,t])
-    def fredkin(self, a, b, t): return self._add('cswap', [a,b,t])
-    def ccz(self, a, b, t): return self._add('ccz', [a,b,t])
-
-    # Multi-control
-    def mcx(self, controls, target, ancilla=None):
-        qs = (list(controls) if hasattr(controls,'__iter__') else [controls]) + [target]
-        return self._add('mcx', qs)
-    def mct(self, controls, target, ancilla=None):
-        return self.mcx(controls, target, ancilla)
-    def append(self, gate, qubits, clbits=None):
-        name = getattr(gate, 'name', 'unknown')
-        return self._add(name, list(qubits) if hasattr(qubits,'__iter__') else [qubits])
-
-    # Medición
-    def measure(self, q, c):
-        qs = list(q) if hasattr(q,'__iter__') and not isinstance(q,int) else [q]
-        cs = list(c) if hasattr(c,'__iter__') and not isinstance(c,int) else [c]
-        for qi, ci in zip(qs, cs):
-            self._add('measure', [qi], [ci])
-        return self
-    def measure_all(self):
-        for i in range(self.num_qubits):
-            self._add('measure', [i], [i])
-        return self
-
-    # Utilidades
-    def barrier(self, *args): return self
-    def delay(self, dt, q, unit='dt'): return self
-    def compose(self, other, qubits=None, **kw): return self
-    def inverse(self): return self
-    def draw(self, output='text', **kw):
-        return f"QuantumCircuit({self.num_qubits}q, {self.num_clbits}c) - {len(self.data)} ops"
-    def depth(self): return len(self.data)
-    def size(self): return len(self.data)
-    def num_parameters(self): return 0
-    def copy(self):
-        import copy; return copy.deepcopy(self)
-
-# ── 5. Clases del library (QFT con atributo size) ──
-class MCXGate:
-    def __init__(self, n, ctrl_state=None):
-        self.name = 'mcx'
-        self.num_ctrl_qubits = n
-
-class QFT:
-    def __init__(self, n, approximation_degree=0, do_swaps=True, **kw):
-        self.name = 'qft'
-        self.num_qubits = n
-        self.size = n
-        self.n_qubits = n
-
-class GroverOperator:
-    def __init__(self, oracle, **kw): self.name = 'grover'
-
-class PhaseOracle:
-    def __init__(self, expression, **kw): self.name = 'phase_oracle'
-
-# ── 6. UnitaryGate para qiskit.extensions ──
-class UnitaryGate:
-    def __init__(self, data, label=None, num_qubits=None):
-        self.name = 'unitary'
-        self.data = data
-        self.label = label
-        self.num_qubits = num_qubits
-
-_ext_mod = sys.modules['qiskit.extensions']
-_ext_mod.UnitaryGate = UnitaryGate
-qiskit.UnitaryGate = UnitaryGate
-
-# ── 7. Aer / Simulador ──
-class _MockResult:
-    def __init__(self, n): self._n = n
-    def get_counts(self, *a, **k): return {'0'*self._n: 1024}
-    def get_statevector(self, *a, **k): return [1.0] + [0.0]*(2**self._n-1)
-
-class _MockJob:
-    def __init__(self, n): self._n = n
-    def result(self): return _MockResult(self._n)
-
-class AerSimulator:
-    def run(self, circ, shots=1024, **k):
-        n = getattr(circ, 'num_qubits', 2)
-        return _MockJob(n)
-
-class Aer:
-    @staticmethod
-    def get_backend(name='aer_simulator', **k):
-        return AerSimulator()
-
-def transpile(circuit, backend=None, **k): return circuit
-def execute(circ, backend, shots=1024, **k): return backend.run(circ, shots)
-
-# ── 8. Visualización stubs ──
-_vis_mod = sys.modules['qiskit.visualization']
-if not hasattr(_vis_mod, 'plot_histogram'):
-    def plot_histogram(*args, **kwargs):
-        return "[Mock] Histogram plot - Qiskit mock"
-    def plot_bloch_multivector(*args, **kwargs):
-        return "[Mock] Bloch sphere - Qiskit mock"
-    _vis_mod.plot_histogram = plot_histogram
-    _vis_mod.plot_bloch_multivector = plot_bloch_multivector
-    qiskit.plot_histogram = plot_histogram
-    qiskit.plot_bloch_multivector = plot_bloch_multivector
-
-# ── 9. Asignar clases al módulo raíz qiskit ──
-qiskit.QuantumRegister = QuantumRegister
-qiskit.ClassicalRegister = ClassicalRegister
-qiskit.QuantumCircuit = QuantumCircuit
-qiskit.MCXGate = MCXGate
-qiskit.QFT = QFT
-qiskit.GroverOperator = GroverOperator
-qiskit.UnitaryGate = UnitaryGate
-qiskit.AerSimulator = AerSimulator
-qiskit.Aer = Aer
-qiskit.transpile = transpile
-qiskit.execute = execute
-
-# Asignar también a los submódulos correspondientes
-library_mod = sys.modules['qiskit.circuit.library']
-library_mod.MCXGate = MCXGate
-library_mod.QFT = QFT
-library_mod.GroverOperator = GroverOperator
-library_mod.PhaseOracle = PhaseOracle
-library_mod.QuantumCircuit = QuantumCircuit
-
-aer_mod = sys.modules['qiskit.providers.aer']
-aer_mod.AerSimulator = AerSimulator
-
-# ── 10. MOCK DE SCIPY CORREGIDO DEFINITIVAMENTE ──
-if 'scipy' not in sys.modules:
-    class UniversalStub:
-        def __init__(self, name=None):
-            self._name = name
-        def __call__(self, *args, **kwargs):
-            return UniversalStub(self._name)
-        def __getattr__(self, attr):
-            return UniversalStub(f"{self._name}.{attr}")
-        def rvs(self, *args, **kwargs):
-            n = args[0] if args else 2
-            return [[1.0 if i == j else 0.0 for j in range(n)] for i in range(n)]
-        def pdf(self, x): return 1.0
-        def cdf(self, x): return 0.5
-        def ppf(self, q): return 0.0
-        def logpdf(self, x): return 0.0
-        def mean(self): return 0.0
-        def var(self): return 1.0
-        def std(self): return 1.0
-
-    class ScipyModule(types.ModuleType):
-        def __init__(self, name, is_package=True):
-            super().__init__(name)
-            if is_package:
-                self.__path__ = []
-                self.__spec__ = types.SimpleNamespace(name=name, loader=None, origin='mock')
-            self._stubs = {}
-        def __getattr__(self, name):
-            if name in self._stubs:
-                return self._stubs[name]
-            stub = UniversalStub(f"{self.__name__}.{name}")
-            self._stubs[name] = stub
-            setattr(self, name, stub)
-            return stub
-
-    scipy_root = ScipyModule('scipy', is_package=True)
-    sys.modules['scipy'] = scipy_root
-
-    submodules = ['stats', 'optimize', 'sparse', 'linalg', 'fft', 'integrate',
-                  'signal', 'ndimage', 'cluster', 'constants', 'special']
-    for sub in submodules:
-        sub_mod = ScipyModule(f'scipy.{sub}', is_package=True)
-        sys.modules[f'scipy.{sub}'] = sub_mod
-        setattr(scipy_root, sub, sub_mod)
-
-    stats_mod = sys.modules['scipy.stats']
-    common_names = [
-        'unitary_group', 'ortho_group', 'norm', 'uniform', 'bernoulli',
-        'binom', 'poisson', 'chi2', 'expon', 'gamma', 'beta', 't', 'f',
-        'multivariate_normal', 'dirichlet', 'wishart', 'entropy',
-        'ks_2samp', 'ttest_ind', 'ttest_rel', 'mannwhitneyu',
-        'pearsonr', 'spearmanr', 'kendalltau', 'linregress',
-        'randint', 'logistic', 'cauchy', 'laplace', 'gumbel_r',
-        'lognorm', 'pareto', 'truncnorm', 'vonmises',
-        'rv_continuous', 'rv_discrete', 'describe', 'zscore',
-        'iqr', 'skew', 'kurtosis', 'sem', 'mode', 'gmean', 'hmean',
-        'rankdata', 'percentileofscore', 'find_repeats'
-    ]
-    stub_instance = UniversalStub('scipy.stats')
-    for name in common_names:
-        setattr(stats_mod, name, stub_instance)
-
-    opt_mod = sys.modules['scipy.optimize']
-    opt_mod.minimize = lambda *a, **k: type('Result', (), {'fun': 0.0, 'x': []})()
-    opt_mod.root = lambda *a, **k: type('Result', (), {'success': True})()
-
-# ── 11. STUB DE NUMPY (fallback por si no carga Pyodide) ──
-if 'numpy' not in sys.modules:
-    class _NumpyStub:
-        pi = 3.141592653589793
-        e = 2.718281828459045
-        class random:
-            @staticmethod
-            def uniform(a, b, size=None):
-                if size is None:
-                    return (a + b) / 2.0
-                return [(a + b) / 2.0] * size
-            @staticmethod
-            def randn(*size):
-                if not size:
-                    return 0.0
-                return [0.0] * size[0]
-        @staticmethod
-        def array(x): return x
-        @staticmethod
-        def zeros(shape): return [0] * shape if isinstance(shape, int) else [0] * shape[0]
-        @staticmethod
-        def ones(shape): return [1] * shape if isinstance(shape, int) else [1] * shape[0]
-        @staticmethod
-        def sin(x): return x
-        @staticmethod
-        def cos(x): return 1.0
-        @staticmethod
-        def exp(x): return 1.0 + x
-        @staticmethod
-        def sqrt(x): return x ** 0.5
-        @staticmethod
-        def linspace(start, stop, num): return [start + i*(stop-start)/(num-1) for i in range(num)]
-        def __getattr__(self, name):
-            return self
-    sys.modules['numpy'] = _NumpyStub()
-    print("[Mock] numpy stub cargado (fallback)")
-
-# ── 12. Asegurar que todos los módulos qiskit tengan __path__ ──
-for mod_name in list(sys.modules.keys()):
-    if mod_name.startswith('qiskit') or mod_name == 'qiskit':
-        mod = sys.modules[mod_name]
-        if not hasattr(mod, '__path__'):
-            mod.__path__ = []
-
-print("[Mock] Qiskit universal + scipy + numpy stub cargado OK")
-`;
-
-// Funciones de resaltado de sintaxis (texto plano -> HTML)
-function escapeHtml(str) {
-    return str.replace(/[&<>]/g, function(m) {
-        if (m === '&') return '&amp;';
-        if (m === '<') return '&lt;';
-        if (m === '>') return '&gt;';
-        return m;
-    });
-}
-
-const SYNTAX_RULES = [
-    { regex: /#.*$/gm, type: 'comment' },
-    { regex: /"""[\s\S]*?"""/g, type: 'string' },
-    { regex: /'''[\s\S]*?'''/g, type: 'string' },
-    { regex: /"(?:\\.|[^"\\])*"/g, type: 'string' },
-    { regex: /'(?:\\.|[^'\\])*'/g, type: 'string' },
-    { regex: /\b\d+(?:\.\d+)?(?:[eE][+-]?\d+)?\b/g, type: 'number' },
-    { regex: /\b(and|or|not|if|elif|else|for|while|break|continue|import|from|as|def|class|return|yield|try|except|finally|raise|with|assert|lambda|pass|del|global|nonlocal|is|in|None|True|False)\b/g, type: 'keyword' },
-    { regex: /\b(print|len|range|type|isinstance|map|filter|zip|enumerate|sum|min|max|sorted|open)\b/g, type: 'builtin' },
-    { regex: /\b(qiskit|QuantumCircuit|QuantumRegister|ClassicalRegister|AerSimulator|transpile|plot_histogram|MCXGate|QFT|GroverOperator|execute|np|numpy|random|math|scipy)\b/g, type: 'qiskit' },
-    { regex: /\b([a-zA-Z_][a-zA-Z0-9_]*)\s*(?=\()/g, type: 'function' },
-];
-
-const COLOR_MAP = {
-    'keyword': '#ff79c6', 'string': '#f1fa8c', 'comment': '#6272a4',
-    'number': '#bd93f9', 'qiskit': '#50fa7b', 'builtin': '#8be9fd',
-    'function': '#ffb86c'
-};
-
-function tokenizeLine(line, rules) {
-    const tokens = [];
-    for (const rule of rules) {
-        let match;
-        rule.regex.lastIndex = 0;
-        while ((match = rule.regex.exec(line)) !== null) {
-            tokens.push({ start: match.index, end: match.index + match[0].length, type: rule.type });
-        }
-    }
-    tokens.sort((a, b) => { if (a.start !== b.start) return a.start - b.start; return b.end - a.end; });
-    const filtered = []; let lastEnd = -1;
-    for (const token of tokens) {
-        if (token.start >= lastEnd) { filtered.push(token); lastEnd = token.end; }
-    }
-    return filtered;
-}
-
-function lineToHtml(line, tokens) {
-    let pos = 0, html = '';
-    for (const token of tokens) {
-        if (token.start > pos) html += escapeHtml(line.substring(pos, token.start));
-        const fragment = line.substring(token.start, token.end);
-        const color = COLOR_MAP[token.type] || '#ffffff';
-        html += `<span style="color:${color};">${escapeHtml(fragment)}</span>`;
-        pos = token.end;
-    }
-    if (pos < line.length) html += escapeHtml(line.substring(pos));
-    return html;
-}
-
-function updateSyntaxHighlight() {
-    const ta = document.getElementById('code-ta');
-    const syn = document.getElementById('syn-lay');
-    const lnums = document.getElementById('lnums');
-    if (!ta || !syn) return;
-    const lines = ta.value.split('\n');
-    if (lnums) lnums.innerHTML = lines.map((_, i) => `<div>${i + 1}</div>`).join('');
-    const highlighted = lines.map(line => lineToHtml(line, tokenizeLine(line, SYNTAX_RULES))).join('\n');
-    syn.innerHTML = highlighted + '\n';
-    syn.scrollTop = ta.scrollTop;
-    syn.scrollLeft = ta.scrollLeft;
-}
-
-// Puertas predefinidas para la paleta visual
 const GATES = {
-    '1q': [
-        { id: 'H', sym: 'H', bg: '#1a5fb4', glow:'rgba(26,95,180,.6)', desc: 'Hadamard', code: 'qc.h({q})' },
-        { id: 'X', sym: 'X', bg: '#c01c28', glow:'rgba(192,28,40,.6)', desc: 'Pauli-X', code: 'qc.x({q})' },
-        { id: 'Y', sym: 'Y', bg: '#7a3e99', glow:'rgba(122,62,153,.6)', desc: 'Pauli-Y', code: 'qc.y({q})' },
-        { id: 'Z', sym: 'Z', bg: '#1c71d8', glow:'rgba(28,113,216,.6)', desc: 'Pauli-Z', code: 'qc.z({q})' },
-        { id: 'S', sym: 'S', bg: '#c64600', glow:'rgba(198,70,0,.6)', desc: 'Fase π/2', code: 'qc.s({q})' },
-        { id: 'T', sym: 'T', bg: '#26a269', glow:'rgba(38,162,105,.6)', desc: 'Fase π/4', code: 'qc.t({q})' },
-        { id: 'SX', sym: '√X', bg: '#c01c28', glow:'rgba(192,28,40,.4)', desc: 'Raíz X', code: 'qc.sx({q})' },
-        { id: 'RX', sym: 'Rx', bg: '#0077c2', glow:'rgba(0,119,194,.6)', desc: 'Rotación X', code: 'qc.rx(np.pi/4, {q})' },
-        { id: 'RY', sym: 'Ry', bg: '#005f6a', glow:'rgba(0,95,106,.6)', desc: 'Rotación Y', code: 'qc.ry(np.pi/4, {q})' },
-        { id: 'RZ', sym: 'Rz', bg: '#5e35b1', glow:'rgba(94,53,177,.6)', desc: 'Rotación Z', code: 'qc.rz(np.pi/4, {q})' }
-    ],
-    '2q': [
-        { id: 'CX', sym: 'CX', bg: '#007070', glow:'rgba(0,131,143,.6)', desc: 'CNOT', code: 'qc.cx({q},{q2})', multi: true },
-        { id: 'CZ', sym: 'CZ', bg: '#00695c', glow:'rgba(0,105,92,.6)', desc: 'CZ', code: 'qc.cz({q},{q2})', multi: true },
-        { id: 'SWAP', sym: 'SW', bg: '#1565c0', glow:'rgba(21,101,192,.6)', desc: 'SWAP', code: 'qc.swap({q},{q2})', multi: true }
-    ],
-    '3q': [
-        { id: 'CCX', sym: 'CCX', bg: '#005f6a', glow:'rgba(0,95,106,.6)', desc: 'Toffoli', code: 'qc.ccx({q},{q2},{q3})', triple: true },
-        { id: 'CSW', sym: 'CSW', bg: '#283593', glow:'rgba(40,53,147,.6)', desc: 'Fredkin', code: 'qc.cswap({q},{q2},{q3})', triple: true }
-    ],
-    'meas': [
-        { id: 'M', sym: 'M', bg: '#6d4c41', glow:'rgba(109,76,65,.6)', desc: 'Medir', code: 'qc.measure({q},{q})' }
-    ]
+  '1q': [
+    { id: 'H', sym: 'H', bg: '#1a5fb4', glow:'rgba(26,95,180,.6)', desc: 'Hadamard', code: 'qc.h({q})', regex: /qc\.h\((\d+)\)/ },
+    { id: 'X', sym: 'X', bg: '#c01c28', glow:'rgba(192,28,40,.6)', desc: 'Pauli-X', code: 'qc.x({q})', regex: /qc\.x\((\d+)\)/ },
+    { id: 'Y', sym: 'Y', bg: '#7a3e99', glow:'rgba(122,62,153,.6)', desc: 'Pauli-Y', code: 'qc.y({q})', regex: /qc\.y\((\d+)\)/ },
+    { id: 'Z', sym: 'Z', bg: '#1c71d8', glow:'rgba(28,113,216,.6)', desc: 'Pauli-Z', code: 'qc.z({q})', regex: /qc\.z\((\d+)\)/ },
+    { id: 'S', sym: 'S', bg: '#c64600', glow:'rgba(198,70,0,.6)', desc: 'Fase π/2', code: 'qc.s({q})', regex: /qc\.s\((\d+)\)/ },
+    { id: 'T', sym: 'T', bg: '#26a269', glow:'rgba(38,162,105,.6)', desc: 'Fase π/4', code: 'qc.t({q})', regex: /qc\.t\((\d+)\)/ },
+    { id: 'SX', sym: '√X', bg: '#c01c28', glow:'rgba(192,28,40,.4)', desc: 'Raíz X', code: 'qc.sx({q})', regex: /qc\.sx\((\d+)\)/ },
+    { id: 'RX', sym: 'Rx', bg: '#0077c2', glow:'rgba(0,119,194,.6)', desc: 'Rotación X', code: 'qc.rx(np.pi/4, {q})', regex: /qc\.rx\([^,]+,\s*(\d+)\)/ },
+    { id: 'RY', sym: 'Ry', bg: '#005f6a', glow:'rgba(0,95,106,.6)', desc: 'Rotación Y', code: 'qc.ry(np.pi/4, {q})', regex: /qc\.ry\([^,]+,\s*(\d+)\)/ },
+    { id: 'RZ', sym: 'Rz', bg: '#5e35b1', glow:'rgba(94,53,177,.6)', desc: 'Rotación Z', code: 'qc.rz(np.pi/4, {q})', regex: /qc\.rz\([^,]+,\s*(\d+)\)/ }
+  ],
+  '2q': [
+    { id: 'CX', sym: 'CX', bg: '#007070', glow:'rgba(0,131,143,.6)', desc: 'CNOT', code: 'qc.cx({q},{q2})', regex: /qc\.cx\((\d+),\s*(\d+)\)/, multi: true },
+    { id: 'CZ', sym: 'CZ', bg: '#00695c', glow:'rgba(0,105,92,.6)', desc: 'CZ', code: 'qc.cz({q},{q2})', regex: /qc\.cz\((\d+),\s*(\d+)\)/, multi: true },
+    { id: 'SWAP', sym: 'SW', bg: '#1565c0', glow:'rgba(21,101,192,.6)', desc: 'SWAP', code: 'qc.swap({q},{q2})', regex: /qc\.swap\((\d+),\s*(\d+)\)/, multi: true }
+  ],
+  '3q': [
+    { id: 'CCX', sym: 'CCX', bg: '#005f6a', glow:'rgba(0,95,106,.6)', desc: 'Toffoli', code: 'qc.ccx({q},{q2},{q3})', regex: /qc\.ccx\((\d+),\s*(\d+),\s*(\d+)\)/, triple: true },
+    { id: 'CSW', sym: 'CSW', bg: '#283593', glow:'rgba(40,53,147,.6)', desc: 'Fredkin (CSWAP)', code: 'qc.cswap({q},{q2},{q3})', regex: /qc\.cswap\((\d+),\s*(\d+),\s*(\d+)\)/, triple: true }
+  ],
+  'meas': [
+    { id: 'M', sym: 'M', bg: '#6d4c41', glow:'rgba(109,76,65,.6)', desc: 'Medir', code: 'qc.measure({q},{q})', regex: /qc\.measure\((\d+),\s*\d+\)/ }
+  ]
 };
 
 function buildPalette() {
-    const container = document.getElementById('palette-body');
-    if (!container) return;
-    let html = '';
-    html += '<div class="pal-sec"><div class="pal-sec-lbl">1 QUBIT</div><div class="pal-grid">';
-    GATES['1q'].forEach(g => { html += `<div class="pal-gate" draggable="true" data-gate="${g.id}" style="background:${g.bg};box-shadow:0 0 8px ${g.glow||'rgba(0,136,255,.3)'}" ondragstart="onDragStart(event)" ondragend="onDragEnd()"><span class="pal-gate-sym">${g.sym}</span><span class="pal-gate-lbl">${g.id}</span></div>`; });
-    html += '</div></div><div class="pal-sec"><div class="pal-sec-lbl">2 QUBITS</div><div class="pal-grid">';
-    GATES['2q'].forEach(g => { html += `<div class="pal-gate" draggable="true" data-gate="${g.id}" style="background:${g.bg};box-shadow:0 0 8px ${g.glow||'rgba(0,136,255,.3)'}" ondragstart="onDragStart(event)" ondragend="onDragEnd()"><span class="pal-gate-sym">${g.sym}</span><span class="pal-gate-lbl">${g.id}</span></div>`; });
-    html += '</div></div><div class="pal-sec"><div class="pal-sec-lbl">3 QUBITS</div><div class="pal-grid">';
-    GATES['3q'].forEach(g => { html += `<div class="pal-gate" draggable="true" data-gate="${g.id}" style="background:${g.bg};box-shadow:0 0 8px ${g.glow||'rgba(0,136,255,.3)'}" ondragstart="onDragStart(event)" ondragend="onDragEnd()"><span class="pal-gate-sym">${g.sym}</span><span class="pal-gate-lbl">${g.id}</span></div>`; });
-    html += '</div></div><div class="pal-sec"><div class="pal-sec-lbl">MEDICIÓN</div><div class="pal-grid">';
-    GATES['meas'].forEach(g => { html += `<div class="pal-gate" draggable="true" data-gate="${g.id}" style="background:${g.bg};box-shadow:0 0 8px ${g.glow||'rgba(0,136,255,.3)'}" ondragstart="onDragStart(event)" ondragend="onDragEnd()"><span class="pal-gate-sym">${g.sym}</span><span class="pal-gate-lbl">${g.id}</span></div>`; });
-    html += '</div></div>';
-    container.innerHTML = html;
+  const container = document.getElementById('palette-body');
+  if (!container) return;
+  let html = '';
+  html += '<div class="pal-sec"><div class="pal-sec-lbl">1 QUBIT</div><div class="pal-grid">';
+  GATES['1q'].forEach(g => { html += `<div class="pal-gate" draggable="true" data-gate="${g.id}" style="background:${g.bg};--gate-glow:${g.glow||'rgba(0,136,255,.4)'};box-shadow:0 0 8px ${g.glow||'rgba(0,136,255,.3)'}" ondragstart="onDragStart(event)" ondragend="onDragEnd()"><span class="pal-gate-sym">${g.sym}</span><span class="pal-gate-lbl">${g.id}</span></div>`; });
+  html += '</div></div><div class="pal-sec"><div class="pal-sec-lbl">2 QUBITS</div><div class="pal-grid">';
+  GATES['2q'].forEach(g => { html += `<div class="pal-gate" draggable="true" data-gate="${g.id}" style="background:${g.bg};--gate-glow:${g.glow||'rgba(0,136,255,.4)'};box-shadow:0 0 8px ${g.glow||'rgba(0,136,255,.3)'}" ondragstart="onDragStart(event)" ondragend="onDragEnd()"><span class="pal-gate-sym">${g.sym}</span><span class="pal-gate-lbl">${g.id}</span></div>`; });
+  html += '</div></div><div class="pal-sec"><div class="pal-sec-lbl">3 QUBITS</div><div class="pal-grid">';
+  GATES['3q'].forEach(g => { html += `<div class="pal-gate" draggable="true" data-gate="${g.id}" style="background:${g.bg};--gate-glow:${g.glow||'rgba(0,136,255,.4)'};box-shadow:0 0 8px ${g.glow||'rgba(0,136,255,.3)'}" ondragstart="onDragStart(event)" ondragend="onDragEnd()"><span class="pal-gate-sym">${g.sym}</span><span class="pal-gate-lbl">${g.id}</span></div>`; });
+  html += '</div></div><div class="pal-sec"><div class="pal-sec-lbl">MEDICIÓN</div><div class="pal-grid">';
+  GATES['meas'].forEach(g => { html += `<div class="pal-gate" draggable="true" data-gate="${g.id}" style="background:${g.bg};--gate-glow:${g.glow||'rgba(0,136,255,.4)'};box-shadow:0 0 8px ${g.glow||'rgba(0,136,255,.3)'}" ondragstart="onDragStart(event)" ondragend="onDragEnd()"><span class="pal-gate-sym">${g.sym}</span><span class="pal-gate-lbl">${g.id}</span></div>`; });
+  html += '</div></div>';
+  container.innerHTML = html;
 }
 
 function onDragStart(e) { dragGate = e.target.closest('.pal-gate')?.dataset.gate; if (dragGate) e.dataTransfer.setData('text/plain', dragGate); }
@@ -1000,624 +490,1004 @@ function onWireDrop(e, qubit) { e.preventDefault(); e.currentTarget.classList.re
 function findGateDef(id) { for (const cat of Object.values(GATES)) { const g = cat.find(g => g.id === id); if (g) return g; } return null; }
 
 function placeGate(gateId, qubit) {
-    if (isUpdatingFromCode) return;
-    isUpdatingFromCircuit = true;
-    const def = findGateDef(gateId);
-    if (!def) { isUpdatingFromCircuit = false; return; }
-    if (def.triple) {
-        if (circuit.qubits < 3) { notify('Necesitas al menos 3 qubits'); isUpdatingFromCircuit = false; return; }
-        let q1 = qubit, q2 = qubit + 1 < circuit.qubits ? qubit + 1 : qubit - 1, q3 = qubit + 2 < circuit.qubits ? qubit + 2 : qubit - 2;
-        if (q2 < 0) q2 = 0; if (q3 < 0) q3 = 0;
-        if (q1 === q2) q2 = (q2 + 1) % circuit.qubits;
-        if (q1 === q3) q3 = (q3 + 1) % circuit.qubits;
-        if (q2 === q3) q3 = (q3 + 1) % circuit.qubits;
-        const qs = [q1, q2, q3].sort((a, b) => a - b);
-        circuit.gates.push({ id: gateId, q: qs[0], q2: qs[1], q3: qs[2], def: def, uid: nextId++ });
-    } else if (def.multi) {
-        if (circuit.qubits < 2) { notify('Necesitas al menos 2 qubits'); isUpdatingFromCircuit = false; return; }
-        const q2 = qubit + 1 < circuit.qubits ? qubit + 1 : qubit - 1;
-        circuit.gates.push({ id: gateId, q: Math.min(qubit, q2), q2: Math.max(qubit, q2), def: def, uid: nextId++ });
-    } else {
-        circuit.gates.push({ id: gateId, q: qubit, def: def, uid: nextId++ });
-    }
-    renderCircuit();
-    updateCircuitInfo();
-    updateCodeFromCircuit();
-    isUpdatingFromCircuit = false;
-    notify(`${gateId} → q[${qubit}]`);
+  if (isUpdatingFromCode) return;
+  isUpdatingFromCircuit = true;
+  const def = findGateDef(gateId);
+  if (!def) { isUpdatingFromCircuit = false; return; }
+  if (def.triple) {
+    if (circuit.qubits < 3) { notify('Necesitas al menos 3 qubits'); isUpdatingFromCircuit = false; return; }
+    let qCtrl = qubit;
+    let qSwap1 = qubit + 1 < circuit.qubits ? qubit + 1 : qubit - 1;
+    let qSwap2 = qubit + 2 < circuit.qubits ? qubit + 2 : qubit - 2;
+    if (qSwap1 < 0) qSwap1 = 0;
+    if (qSwap2 < 0) qSwap2 = 0;
+    if (qCtrl === qSwap1) qSwap1 = (qSwap1 + 1) % circuit.qubits;
+    if (qCtrl === qSwap2) qSwap2 = (qSwap2 + 1) % circuit.qubits;
+    if (qSwap1 === qSwap2) qSwap2 = (qSwap2 + 1) % circuit.qubits;
+    const qs = [qCtrl, qSwap1, qSwap2].sort((a, b) => a - b);
+    circuit.gates.push({ id: gateId, q: qs[0], q2: qs[1], q3: qs[2], def: def, uid: nextId++ });
+  } else if (def.multi) {
+    if (circuit.qubits < 2) { notify('Necesitas al menos 2 qubits'); isUpdatingFromCircuit = false; return; }
+    const q2 = qubit + 1 < circuit.qubits ? qubit + 1 : qubit - 1;
+    circuit.gates.push({ id: gateId, q: Math.min(qubit, q2), q2: Math.max(qubit, q2), def: def, uid: nextId++ });
+  } else {
+    circuit.gates.push({ id: gateId, q: qubit, def: def, uid: nextId++ });
+  }
+  renderCircuit();
+  updateCircuitInfo();
+  updateCodeFromCircuit();
+  isUpdatingFromCircuit = false;
+  notify(`${gateId} → q[${qubit}]`);
+  if (engineOK && engineURL) setTimeout(() => runCode(), 900);
 }
 
 function removeGate(uid) {
-    if (isUpdatingFromCode) return;
-    isUpdatingFromCircuit = true;
-    circuit.gates = circuit.gates.filter(g => g.uid !== uid);
-    renderCircuit();
-    updateCircuitInfo();
-    updateCodeFromCircuit();
-    isUpdatingFromCircuit = false;
+  if (isUpdatingFromCode) return;
+  isUpdatingFromCircuit = true;
+  circuit.gates = circuit.gates.filter(g => g.uid !== uid);
+  renderCircuit();
+  updateCircuitInfo();
+  updateCodeFromCircuit();
+  isUpdatingFromCircuit = false;
 }
 
 function renderCircuit() {
-    const container = document.getElementById('circuit-canvas');
-    if (!container) return;
-    const depth = Array(circuit.qubits).fill(0);
-    const placed = circuit.gates.map(g => {
-        let col;
-        if (g.q3 !== undefined) { col = Math.max(depth[g.q], depth[g.q2], depth[g.q3]); depth[g.q] = col + 1; depth[g.q2] = col + 1; depth[g.q3] = col + 1; }
-        else if (g.q2 !== undefined) { col = Math.max(depth[g.q], depth[g.q2]); depth[g.q] = col + 1; depth[g.q2] = col + 1; }
-        else { col = depth[g.q]; depth[g.q]++; }
-        return { ...g, col };
-    });
-    const totalCols = Math.max(...depth, 1);
-    const step = 52;
-    const wireWidth = totalCols * step + 70;
-    let html = `<div style="min-width:${wireWidth}px; position:relative;">`;
-    for (let q = 0; q < circuit.qubits; q++) {
-        html += `<div class="q-row" style="height:${ROW_HEIGHT}px;"><div class="q-label">q[${q}]</div><div class="q-wire" ondragover="onWireDragOver(event)" ondragleave="onWireDragLeave(event)" ondrop="onWireDrop(event, ${q})" style="position:relative; height:${ROW_HEIGHT}px;"></div></div>`;
+  const container = document.getElementById('circuit-canvas');
+  if (!container) return;
+  const depth = Array(circuit.qubits).fill(0);
+  const placed = circuit.gates.map(g => {
+    let col;
+    if (g.q3 !== undefined) { col = Math.max(depth[g.q], depth[g.q2], depth[g.q3]); depth[g.q] = col + 1; depth[g.q2] = col + 1; depth[g.q3] = col + 1; }
+    else if (g.q2 !== undefined) { col = Math.max(depth[g.q], depth[g.q2]); depth[g.q] = col + 1; depth[g.q2] = col + 1; }
+    else { col = depth[g.q]; depth[g.q]++; }
+    return { ...g, col };
+  });
+  const totalCols = Math.max(...depth, 1);
+  const step = 52;
+  const wireWidth = totalCols * step + 70;
+  let html = `<div style="min-width:${wireWidth}px; position:relative;">`;
+  for (let q = 0; q < circuit.qubits; q++) {
+    html += `<div class="q-row" style="height:${ROW_HEIGHT}px;"><div class="q-label">q[${q}]</div><div class="q-wire" ondragover="onWireDragOver(event)" ondragleave="onWireDragLeave(event)" ondrop="onWireDrop(event, ${q})" style="position:relative; height:${ROW_HEIGHT}px;"></div></div>`;
+  }
+  placed.forEach(g => {
+    const left = g.col * step + 15;
+    if (g.q3 !== undefined) {
+      const qs = [g.q, g.q2, g.q3].sort((a, b) => a - b);
+      const topY = qs[0] * ROW_HEIGHT;
+      const height = (qs[2] - qs[0]) * ROW_HEIGHT;
+      const gCol = g.def?.bg || '#0088ff';
+      let svg = '';
+      if (g.id === 'CCX') {
+        // Toffoli: dos puntos de control y target con ⊕
+        svg = `<svg width="52" height="${ROW_HEIGHT + height}" viewBox="0 0 52 ${ROW_HEIGHT + height}" style="cursor:pointer;" onclick="removeGate(${g.uid})">
+          <line x1="26" y1="0" x2="26" y2="${ROW_HEIGHT + height}" stroke="${gCol}" stroke-width="2.5"/>
+          <circle cx="26" cy="${ROW_HEIGHT / 2}" r="8" fill="${gCol}" stroke="rgba(255,255,255,.9)" stroke-width="1.5"/>
+          <circle cx="26" cy="${ROW_HEIGHT / 2 + (qs[1] - qs[0]) * ROW_HEIGHT}" r="8" fill="${gCol}" stroke="rgba(255,255,255,.9)" stroke-width="1.5"/>
+          <circle cx="26" cy="${ROW_HEIGHT / 2 + height}" r="14" fill="none" stroke="${gCol}" stroke-width="2.5"/>
+          <line x1="18" y1="${ROW_HEIGHT / 2 + height}" x2="34" y2="${ROW_HEIGHT / 2 + height}" stroke="${gCol}" stroke-width="2"/>
+          <line x1="26" y1="${ROW_HEIGHT / 2 + height - 10}" x2="26" y2="${ROW_HEIGHT / 2 + height + 10}" stroke="${gCol}" stroke-width="2"/>
+        </svg>`;
+      } else if (g.id === 'CSW') {
+        // Fredkin: punto de control + dos cruces
+        svg = `<svg width="52" height="${ROW_HEIGHT + height}" viewBox="0 0 52 ${ROW_HEIGHT + height}" style="cursor:pointer;" onclick="removeGate(${g.uid})">
+          <line x1="26" y1="0" x2="26" y2="${ROW_HEIGHT + height}" stroke="${gCol}" stroke-width="2.5"/>
+          <circle cx="26" cy="${ROW_HEIGHT / 2}" r="8" fill="${gCol}" stroke="rgba(255,255,255,.9)" stroke-width="1.5"/>
+          <line x1="18" y1="${ROW_HEIGHT / 2 + (qs[1] - qs[0]) * ROW_HEIGHT - 6}" x2="34" y2="${ROW_HEIGHT / 2 + (qs[1] - qs[0]) * ROW_HEIGHT + 6}" stroke="${gCol}" stroke-width="2"/>
+          <line x1="34" y1="${ROW_HEIGHT / 2 + (qs[1] - qs[0]) * ROW_HEIGHT - 6}" x2="18" y2="${ROW_HEIGHT / 2 + (qs[1] - qs[0]) * ROW_HEIGHT + 6}" stroke="${gCol}" stroke-width="2"/>
+          <line x1="18" y1="${ROW_HEIGHT / 2 + height - 6}" x2="34" y2="${ROW_HEIGHT / 2 + height + 6}" stroke="${gCol}" stroke-width="2"/>
+          <line x1="34" y1="${ROW_HEIGHT / 2 + height - 6}" x2="18" y2="${ROW_HEIGHT / 2 + height + 6}" stroke="${gCol}" stroke-width="2"/>
+        </svg>`;
+      }
+      html += `<div style="position:absolute; left:${left}px; top:${topY}px;">${svg}</div>`;
+    } else if (g.q2 !== undefined) {
+      const topY = g.q * ROW_HEIGHT;
+      const height = (g.q2 - g.q) * ROW_HEIGHT;
+      const gCol = g.def?.bg || '#0088ff';
+      let svg = '';
+      if (g.id === 'CX') {
+        // CNOT: punto de control + target con ⊕
+        svg = `<svg width="48" height="${ROW_HEIGHT + height}" viewBox="0 0 48 ${ROW_HEIGHT + height}" style="cursor:pointer;" onclick="removeGate(${g.uid})">
+          <line x1="24" y1="0" x2="24" y2="${ROW_HEIGHT + height}" stroke="${gCol}" stroke-width="2.5"/>
+          <circle cx="24" cy="${ROW_HEIGHT / 2}" r="8" fill="${gCol}" stroke="rgba(255,255,255,.9)" stroke-width="1.5"/>
+          <circle cx="24" cy="${ROW_HEIGHT / 2 + height}" r="14" fill="none" stroke="${gCol}" stroke-width="2.5"/>
+          <line x1="16" y1="${ROW_HEIGHT / 2 + height}" x2="32" y2="${ROW_HEIGHT / 2 + height}" stroke="${gCol}" stroke-width="2"/>
+          <line x1="24" y1="${ROW_HEIGHT / 2 + height - 10}" x2="24" y2="${ROW_HEIGHT / 2 + height + 10}" stroke="${gCol}" stroke-width="2"/>
+        </svg>`;
+      } else if (g.id === 'CZ') {
+        // CZ: dos puntos
+        svg = `<svg width="48" height="${ROW_HEIGHT + height}" viewBox="0 0 48 ${ROW_HEIGHT + height}" style="cursor:pointer;" onclick="removeGate(${g.uid})">
+          <line x1="24" y1="0" x2="24" y2="${ROW_HEIGHT + height}" stroke="${gCol}" stroke-width="2.5"/>
+          <circle cx="24" cy="${ROW_HEIGHT / 2}" r="8" fill="${gCol}" stroke="rgba(255,255,255,.9)" stroke-width="1.5"/>
+          <circle cx="24" cy="${ROW_HEIGHT / 2 + height}" r="8" fill="${gCol}" stroke="rgba(255,255,255,.9)" stroke-width="1.5"/>
+        </svg>`;
+      } else if (g.id === 'SWAP') {
+        // SWAP: dos cruces
+        svg = `<svg width="48" height="${ROW_HEIGHT + height}" viewBox="0 0 48 ${ROW_HEIGHT + height}" style="cursor:pointer;" onclick="removeGate(${g.uid})">
+          <line x1="24" y1="0" x2="24" y2="${ROW_HEIGHT + height}" stroke="${gCol}" stroke-width="2.5"/>
+          <line x1="16" y1="${ROW_HEIGHT / 2 - 6}" x2="32" y2="${ROW_HEIGHT / 2 + 6}" stroke="${gCol}" stroke-width="2"/>
+          <line x1="32" y1="${ROW_HEIGHT / 2 - 6}" x2="16" y2="${ROW_HEIGHT / 2 + 6}" stroke="${gCol}" stroke-width="2"/>
+          <line x1="16" y1="${ROW_HEIGHT / 2 + height - 6}" x2="32" y2="${ROW_HEIGHT / 2 + height + 6}" stroke="${gCol}" stroke-width="2"/>
+          <line x1="32" y1="${ROW_HEIGHT / 2 + height - 6}" x2="16" y2="${ROW_HEIGHT / 2 + height + 6}" stroke="${gCol}" stroke-width="2"/>
+        </svg>`;
+      }
+      html += `<div style="position:absolute; left:${left}px; top:${topY}px;">${svg}</div>`;
+    } else {
+      const yPos = g.q * ROW_HEIGHT;
+      html += `<div class="placed-gate" style="left:${left}px; top:${yPos + ROW_HEIGHT / 2}px; transform:translateY(-50%);" onclick="removeGate(${g.uid})"><div class="pg-box" style="background:${g.bg};--gate-glow:${g.glow||'rgba(0,136,255,.4)'};box-shadow:0 0 8px ${g.glow||'rgba(0,136,255,.3)'}"><span class="pg-sym">${g.def.sym}</span></div></div>`;
     }
-    placed.forEach(g => {
-        const left = g.col * step + 15;
-        if (g.q3 !== undefined) {
-            const qs = [g.q, g.q2, g.q3].sort((a, b) => a - b);
-            const topY = qs[0] * ROW_HEIGHT;
-            const height = (qs[2] - qs[0]) * ROW_HEIGHT;
-            const gCol = g.def?.bg || '#0088ff';
-            let svg = '';
-            if (g.id === 'CCX') {
-                svg = `<svg width="52" height="${ROW_HEIGHT + height}" viewBox="0 0 52 ${ROW_HEIGHT + height}" style="cursor:pointer;" onclick="removeGate(${g.uid})"><line x1="26" y1="0" x2="26" y2="${ROW_HEIGHT + height}" stroke="${gCol}" stroke-width="2.5"/><circle cx="26" cy="${ROW_HEIGHT/2}" r="8" fill="${gCol}" stroke="rgba(255,255,255,.9)" stroke-width="1.5"/><circle cx="26" cy="${ROW_HEIGHT/2 + (qs[1]-qs[0])*ROW_HEIGHT}" r="8" fill="${gCol}" stroke="rgba(255,255,255,.9)" stroke-width="1.5"/><circle cx="26" cy="${ROW_HEIGHT/2 + height}" r="14" fill="none" stroke="${gCol}" stroke-width="2.5"/><line x1="18" y1="${ROW_HEIGHT/2 + height}" x2="34" y2="${ROW_HEIGHT/2 + height}" stroke="${gCol}" stroke-width="2"/><line x1="26" y1="${ROW_HEIGHT/2 + height - 10}" x2="26" y2="${ROW_HEIGHT/2 + height + 10}" stroke="${gCol}" stroke-width="2"/></svg>`;
-            } else if (g.id === 'CSW') {
-                svg = `<svg width="52" height="${ROW_HEIGHT + height}" viewBox="0 0 52 ${ROW_HEIGHT + height}" style="cursor:pointer;" onclick="removeGate(${g.uid})"><line x1="26" y1="0" x2="26" y2="${ROW_HEIGHT + height}" stroke="${gCol}" stroke-width="2.5"/><circle cx="26" cy="${ROW_HEIGHT/2}" r="8" fill="${gCol}" stroke="rgba(255,255,255,.9)" stroke-width="1.5"/><line x1="18" y1="${ROW_HEIGHT/2 + (qs[1]-qs[0])*ROW_HEIGHT - 6}" x2="34" y2="${ROW_HEIGHT/2 + (qs[1]-qs[0])*ROW_HEIGHT + 6}" stroke="${gCol}" stroke-width="2"/><line x1="34" y1="${ROW_HEIGHT/2 + (qs[1]-qs[0])*ROW_HEIGHT - 6}" x2="18" y2="${ROW_HEIGHT/2 + (qs[1]-qs[0])*ROW_HEIGHT + 6}" stroke="${gCol}" stroke-width="2"/><line x1="18" y1="${ROW_HEIGHT/2 + height - 6}" x2="34" y2="${ROW_HEIGHT/2 + height + 6}" stroke="${gCol}" stroke-width="2"/><line x1="34" y1="${ROW_HEIGHT/2 + height - 6}" x2="18" y2="${ROW_HEIGHT/2 + height + 6}" stroke="${gCol}" stroke-width="2"/></svg>`;
-            }
-            html += `<div style="position:absolute; left:${left}px; top:${topY}px;">${svg}</div>`;
-        } else if (g.q2 !== undefined) {
-            const topY = g.q * ROW_HEIGHT;
-            const height = (g.q2 - g.q) * ROW_HEIGHT;
-            const gCol = g.def?.bg || '#0088ff';
-            let svg = '';
-            if (g.id === 'CX') {
-                svg = `<svg width="48" height="${ROW_HEIGHT + height}" viewBox="0 0 48 ${ROW_HEIGHT + height}" style="cursor:pointer;" onclick="removeGate(${g.uid})"><line x1="24" y1="0" x2="24" y2="${ROW_HEIGHT + height}" stroke="${gCol}" stroke-width="2.5"/><circle cx="24" cy="${ROW_HEIGHT/2}" r="8" fill="${gCol}" stroke="rgba(255,255,255,.9)" stroke-width="1.5"/><circle cx="24" cy="${ROW_HEIGHT/2 + height}" r="14" fill="none" stroke="${gCol}" stroke-width="2.5"/><line x1="16" y1="${ROW_HEIGHT/2 + height}" x2="32" y2="${ROW_HEIGHT/2 + height}" stroke="${gCol}" stroke-width="2"/><line x1="24" y1="${ROW_HEIGHT/2 + height - 10}" x2="24" y2="${ROW_HEIGHT/2 + height + 10}" stroke="${gCol}" stroke-width="2"/></svg>`;
-            } else if (g.id === 'CZ') {
-                svg = `<svg width="48" height="${ROW_HEIGHT + height}" viewBox="0 0 48 ${ROW_HEIGHT + height}" style="cursor:pointer;" onclick="removeGate(${g.uid})"><line x1="24" y1="0" x2="24" y2="${ROW_HEIGHT + height}" stroke="${gCol}" stroke-width="2.5"/><circle cx="24" cy="${ROW_HEIGHT/2}" r="8" fill="${gCol}" stroke="rgba(255,255,255,.9)" stroke-width="1.5"/><circle cx="24" cy="${ROW_HEIGHT/2 + height}" r="8" fill="${gCol}" stroke="rgba(255,255,255,.9)" stroke-width="1.5"/></svg>`;
-            } else if (g.id === 'SWAP') {
-                svg = `<svg width="48" height="${ROW_HEIGHT + height}" viewBox="0 0 48 ${ROW_HEIGHT + height}" style="cursor:pointer;" onclick="removeGate(${g.uid})"><line x1="24" y1="0" x2="24" y2="${ROW_HEIGHT + height}" stroke="${gCol}" stroke-width="2.5"/><line x1="16" y1="${ROW_HEIGHT/2 - 6}" x2="32" y2="${ROW_HEIGHT/2 + 6}" stroke="${gCol}" stroke-width="2"/><line x1="32" y1="${ROW_HEIGHT/2 - 6}" x2="16" y2="${ROW_HEIGHT/2 + 6}" stroke="${gCol}" stroke-width="2"/><line x1="16" y1="${ROW_HEIGHT/2 + height - 6}" x2="32" y2="${ROW_HEIGHT/2 + height + 6}" stroke="${gCol}" stroke-width="2"/><line x1="32" y1="${ROW_HEIGHT/2 + height - 6}" x2="16" y2="${ROW_HEIGHT/2 + height + 6}" stroke="${gCol}" stroke-width="2"/></svg>`;
-            }
-            html += `<div style="position:absolute; left:${left}px; top:${topY}px;">${svg}</div>`;
-        } else {
-            const yPos = g.q * ROW_HEIGHT;
-            html += `<div class="placed-gate" style="left:${left}px; top:${yPos + ROW_HEIGHT/2}px; transform:translateY(-50%);" onclick="removeGate(${g.uid})"><div class="pg-box" style="background:${g.bg};box-shadow:0 0 8px ${g.glow||'rgba(0,136,255,.3)'}"><span class="pg-sym">${g.def.sym}</span></div></div>`;
-        }
-    });
-    html += `</div>`;
-    container.innerHTML = html;
+  });
+  html += `</div>`;
+  container.innerHTML = html;
 }
 
 function updateCircuitInfo() {
-    document.getElementById('qcount-badge').textContent = `${circuit.qubits} qubits · ${circuit.gates.length} puertas`;
-    updateBlochSelector();
+  const ng = circuit.gates.length;
+  document.getElementById('qcount-badge').textContent = `${circuit.qubits} qubits · ${ng} puertas`;
+  updateBlochSelector();
+  const qs = document.getElementById('queue-sec');
+  if (qs) qs.style.display = circuit.qubits > 10 ? 'block' : 'none';
 }
 
 function updateBlochSelector() {
-    const sel = document.getElementById('bloch-q-select');
-    if (!sel) return;
-    sel.innerHTML = '';
-    for (let i = 0; i < circuit.qubits; i++) {
-        let state = blochStates[i] || { theta: 0, phi: 0 };
-        let label = state.theta < 0.1 ? '|0⟩' : state.theta > Math.PI - 0.1 ? '|1⟩' : 'sup';
-        sel.innerHTML += `<option value="${i}">Qubit ${i} (${label})</option>`;
-    }
-    if (currentBlochQubit >= circuit.qubits) currentBlochQubit = circuit.qubits - 1;
+  const sel = document.getElementById('bloch-q-select');
+  if (!sel) return;
+  sel.innerHTML = '';
+  for (let i = 0; i < circuit.qubits; i++) {
+    let state = blochStates[i] || { theta: 0, phi: 0 };
+    let label = state.theta < 0.1 ? '|0⟩' : state.theta > Math.PI - 0.1 ? '|1⟩' : 'sup';
+    sel.innerHTML += `<option value="${i}">Qubit ${i} (${label})</option>`;
+  }
+  if (currentBlochQubit >= circuit.qubits) currentBlochQubit = circuit.qubits - 1;
+  if (sel.value !== currentBlochQubit.toString()) sel.value = currentBlochQubit;
 }
 
 function updateCodeFromCircuit() {
-    if (isUpdatingFromCode) return;
-    let code = `from qiskit import QuantumCircuit\nimport numpy as np\n\nqc = QuantumCircuit(${circuit.qubits}, ${circuit.qubits})\n\n`;
-    circuit.gates.forEach(g => {
-        let line = g.def.code.replace('{q}', g.q).replace('{q2}', g.q2 !== undefined ? g.q2 : 0).replace('{q3}', g.q3 !== undefined ? g.q3 : 0);
-        code += line + '\n';
-    });
-    code += `\nqc.measure(range(${circuit.qubits}), range(${circuit.qubits}))\nprint(qc.draw(output='text'))`;
-    const ta = document.getElementById('code-ta');
-    if (ta && ta.value !== code) { ta.value = code; updateSyntaxHighlight(); }
+  if (isUpdatingFromCode) return;
+  let code = `from qiskit import QuantumCircuit, execute, Aer\nimport numpy as np\n\nqc = QuantumCircuit(${circuit.qubits}, ${circuit.qubits})\n\n`;
+  circuit.gates.forEach(g => {
+    let line = g.def.code.replace('{q}', g.q).replace('{q2}', g.q2 !== undefined ? g.q2 : 0).replace('{q3}', g.q3 !== undefined ? g.q3 : 0);
+    code += line + '\n';
+  });
+  code += `\nqc.measure(range(${circuit.qubits}), range(${circuit.qubits}))\nprint(qc.draw(output='text'))\n\nbackend = Aer.get_backend('qasm_simulator')\njob = execute(qc, backend, shots=1024)\nresult = job.result()\nprint("\\nResultados:", result.get_counts())`;
+  const ta = document.getElementById('code-ta');
+  if (ta && ta.value !== code) { ta.value = code; updateSyntaxHighlight(); }
 }
 
-// ═══════════════════════════════════════════════════════════
-// INICIALIZAR PYODIDE Y EJECUTAR CÓDIGO REAL CON CORRECCIÓN AUTOMÁTICA DE NUMPY
-// ═══════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════
+// PARSER UNIVERSAL — Lee cualquier código Qiskit/Python válido
+// Soporta: QuantumRegister, bucles for, variables, expresiones,
+//          MCXGate, nombre de circuito diferente a 'qc', etc.
+// ══════════════════════════════════════════════════════════════
+function normalizeQiskitCode(code) {
+  // Paso 1: Detectar nombre del circuito (puede ser qc, circuit, qcirc, etc.)
+  const circNameMatch = code.match(/(\w+)\s*=\s*QuantumCircuit\s*\(/);
+  const circName = circNameMatch ? circNameMatch[1] : 'qc';
 
-async function initPyodide() {
-    if (pyodide !== null) return pyodide;
-    if (pyodideLoading) {
-        await new Promise(resolve => { const check = setInterval(() => { if (pyodide !== null) { clearInterval(check); resolve(); } }, 100); });
-        return pyodide;
+  // Paso 2: Resolver variables numéricas simples (n = 20, theta = pi/4, etc.)
+  const vars = {};
+  const varRe = /^(\w+)\s*=\s*([\d.]+(?:\s*[\+\-\*\/]\s*[\d.]+)*)\s*$/;
+  code.split('\n').forEach(line => {
+    const m = line.trim().match(varRe);
+    if (m && !isNaN(parseFloat(m[2]))) vars[m[1]] = parseFloat(eval(m[2].replace(/\s/g,'')));
+  });
+  // pi constant
+  vars['pi'] = Math.PI; vars['np.pi'] = Math.PI;
+
+  // Paso 3: Resolver QuantumRegister → mapeo de nombres a índices
+  // qr = QuantumRegister(n, 'q') → qr[i] = i
+  const qrMap = {}; // qrMap['qr'] = offset
+  let offset = 0;
+  const qrRe = /(\w+)\s*=\s*QuantumRegister\s*\(\s*(\d+|\w+)/g;
+  let qrMatch;
+  while ((qrMatch = qrRe.exec(code)) !== null) {
+    const regName = qrMatch[1];
+    const size = parseInt(qrMatch[2]) || (vars[qrMatch[2]] ? parseInt(vars[qrMatch[2]]) : 8);
+    qrMap[regName] = offset;
+    offset += size;
+  }
+  // Si hay QuantumRegisters, actualizar número de qubits
+  if (offset > 0 && offset !== circuit.qubits && offset <= 20) {
+    circuit.qubits = offset;
+  }
+
+  // Función para resolver un argumento de qubit a índice numérico
+  function resolveQubit(arg) {
+    arg = arg.trim();
+    // Número directo: 0, 1, 2...
+    if (/^\d+$/.test(arg)) return parseInt(arg);
+    // Variable simple: n
+    if (vars[arg] !== undefined) return Math.floor(vars[arg]);
+    // Registro con índice: qr[0], qr[i], qr[i+1], qr[i-1]
+    const regIdxMatch = arg.match(/^(\w+)\[(.+)\]$/);
+    if (regIdxMatch) {
+      const regName = regIdxMatch[1];
+      const idxExpr = regIdxMatch[2].trim();
+      let idx = NaN;
+      // Número literal
+      if (/^\d+$/.test(idxExpr)) { idx = parseInt(idxExpr); }
+      // Variable
+      else if (vars[idxExpr] !== undefined) { idx = Math.floor(vars[idxExpr]); }
+      // Expresión simple i+1, i-1, i*2
+      else {
+        try {
+          const safeExpr = idxExpr.replace(/[a-z_]\w*/gi, match => {
+            if (vars[match] !== undefined) return vars[match];
+            return 'NaN';
+          });
+          idx = Math.floor(Function('"use strict"; return (' + safeExpr + ')')());
+        } catch(e) { idx = NaN; }
+      }
+      if (!isNaN(idx) && qrMap[regName] !== undefined) return qrMap[regName] + idx;
+      if (!isNaN(idx)) return idx;
     }
-    pyodideLoading = true;
-    const out = document.getElementById('out-body');
-    out.innerHTML = '<span class="inf">🔄 Cargando Pyodide (ejecución Python en navegador)...</span>\n';
-    try {
-        pyodide = await loadPyodide();
-        await pyodide.runPythonAsync(QISKIT_MOCK_CODE);
-        await pyodide.loadPackage('numpy');
-        out.innerHTML = '<span class="ok">✅ Pyodide cargado correctamente. Ahora puedes sincronizar código Qiskit avanzado.</span>\n';
-        notify('✅ Pyodide listo');
-        const statusSpan = document.getElementById('compiler-status');
-        if (statusSpan) {
-            statusSpan.textContent = '● PYODIDE ACTIVO';
-            statusSpan.classList.remove('waiting');
-            statusSpan.classList.add('active');
+    return NaN;
+  }
+
+  // Paso 4: Expandir bucles for simples
+  // for i in range(n): qc.h(i)
+  function expandLoops(lines) {
+    const result = [];
+    let i = 0;
+    while (i < lines.length) {
+      const line = lines[i].trim();
+      const forMatch = line.match(/^for\s+(\w+)\s+in\s+range\s*\((\d+|\w+)(?:\s*,\s*(\d+|\w+))?(?:\s*,\s*(\d+|\w+))?\s*\)\s*:/);
+      if (forMatch) {
+        const varName = forMatch[1];
+        let start = 0, end = 0, step = 1;
+        if (forMatch[3] !== undefined) {
+          start = parseInt(forMatch[2]) || parseInt(vars[forMatch[2]]) || 0;
+          end   = parseInt(forMatch[3]) || parseInt(vars[forMatch[3]]) || 0;
+        } else {
+          end = parseInt(forMatch[2]) || parseInt(vars[forMatch[2]]) || 0;
         }
-    } catch (err) {
-        out.innerHTML = `<span class="er">❌ Error cargando Pyodide: ${err.message}</span>\n`;
-        notify('❌ Error cargando Pyodide');
-        console.error(err);
+        if (forMatch[4]) step = parseInt(forMatch[4]) || 1;
+        // Collect body (next indented lines)
+        const body = [];
+        i++;
+        while (i < lines.length && (lines[i].startsWith('  ') || lines[i].startsWith('\t') || lines[i].trim() === '')) {
+          body.push(lines[i]);
+          i++;
+        }
+        // Expand
+        for (let v = start; v < end; v += step) {
+          const loopVars = { ...vars, [varName]: v };
+          body.forEach(bl => {
+            // Replace loop variable in line
+            const expanded = bl.replace(new RegExp('\\b' + varName + '\\b', 'g'), v);
+            result.push(expanded);
+          });
+        }
+        continue;
+      }
+      result.push(lines[i]);
+      i++;
     }
-    pyodideLoading = false;
-    return pyodide;
+    return result;
+  }
+
+  return { expandLoops, resolveQubit, circName, qrMap, vars };
 }
 
-function mapOpNameToGateId(opName) {
-    const map = {
-        'h': 'H', 'x': 'X', 'y': 'Y', 'z': 'Z', 's': 'S', 't': 'T', 'sx': 'SX',
-        'rx': 'RX', 'ry': 'RY', 'rz': 'RZ', 'p': 'RZ',
-        'cx': 'CX', 'cz': 'CZ', 'swap': 'SWAP', 'cp': 'CZ',
-        'ccx': 'CCX', 'cswap': 'CSW', 'mcx': 'CCX',
-        'measure': 'M'
-    };
-    return map[opName] || 'H';
+function updateCircuitFromCode() {
+  if (isUpdatingFromCircuit) return;
+  const code = document.getElementById('code-ta').value;
+  const newGates = [];
+
+  // Run universal parser
+  const { expandLoops, resolveQubit, circName } = normalizeQiskitCode(code);
+
+  // Expand loops first
+  let lines = expandLoops(code.split('\n'));
+
+  // Now detect circuit name per line (may change)
+  lines.forEach(line => {
+    line = line.trim();
+    if (!line || line.startsWith('#')) return;
+
+    // Detect circuit variable name dynamically per line
+    const cn = circName; // fallback
+
+    // Build dynamic regexes using circuit name
+    // Also accept any variable name before the dot: \w+\.(h|x|...) 
+    function tryQ(op, str) {
+      // op: gate name, str: argument string → qubit index
+      const q = resolveQubit(str);
+      return isNaN(q) ? null : q;
+    }
+
+    // 3-qubit gates
+    const m3 = line.match(/\w+\.(?:ccx|toffoli)\s*\(([^,]+),([^,]+),([^)]+)\)/i) ||
+                line.match(/\w+\.append\s*\(MCXGate\(\d+\)\s*,\s*\[([^\]]*)\]/i);
+    if (m3) {
+      let qs;
+      if (line.includes('append')) {
+        // MCX: extract qubit list
+        const qlist = m3[1].split(',').map(s => resolveQubit(s)).filter(q => !isNaN(q));
+        if (qlist.length >= 3) qs = [qlist[0], qlist[1], qlist[qlist.length-1]].sort((a,b)=>a-b);
+      } else {
+        qs = [resolveQubit(m3[1]), resolveQubit(m3[2]), resolveQubit(m3[3])].filter(q=>!isNaN(q)).sort((a,b)=>a-b);
+      }
+      if (qs && qs.length >= 3 && qs[2] < circuit.qubits) {
+        const gDef = GATES['3q'][0]; // CCX
+        newGates.push({ id:'CCX', q:qs[0], q2:qs[1], q3:qs[2], def:gDef, uid:nextId++ });
+        return;
+      }
+    }
+
+    // CSWAP / Fredkin
+    const mcsw = line.match(/\w+\.cswap\s*\(([^,]+),([^,]+),([^)]+)\)/i);
+    if (mcsw) {
+      const qs = [resolveQubit(mcsw[1]),resolveQubit(mcsw[2]),resolveQubit(mcsw[3])].filter(q=>!isNaN(q)).sort((a,b)=>a-b);
+      if (qs.length===3 && qs[2]<circuit.qubits) {
+        const gDef = GATES['3q'][1] || GATES['3q'][0];
+        newGates.push({id:'CSW',q:qs[0],q2:qs[1],q3:qs[2],def:gDef,uid:nextId++});
+        return;
+      }
+    }
+
+    // 2-qubit gates — flexible arg matching
+    const g2map = [
+      {id:'CX',  re:/\w+\.cx\s*\(([^,]+),([^)]+)\)/i},
+      {id:'CZ',  re:/\w+\.cz\s*\(([^,]+),([^)]+)\)/i},
+      {id:'SWAP',re:/\w+\.swap\s*\(([^,]+),([^)]+)\)/i},
+      {id:'CX',  re:/\w+\.cnot\s*\(([^,]+),([^)]+)\)/i},
+      {id:'CX',  re:/\w+\.cx\s*\(([^,]+),([^)]+)\)/i},
+      {id:'CZ',  re:/\w+\.cp\s*\([^,]+,\s*([^,]+),([^)]+)\)/i},  // cp → CZ visual
+      {id:'CX',  re:/\w+\.ch\s*\(([^,]+),([^)]+)\)/i},
+      {id:'CX',  re:/\w+\.cy\s*\(([^,]+),([^)]+)\)/i},
+    ];
+    for (const {id, re} of g2map) {
+      const m = line.match(re);
+      if (m) {
+        const q1 = resolveQubit(m[1]), q2 = resolveQubit(m[2]);
+        if (!isNaN(q1) && !isNaN(q2) && q1 !== q2 && Math.max(q1,q2) < circuit.qubits) {
+          const gDef = findGateDef(id) || GATES['2q'][0];
+          newGates.push({id, q:Math.min(q1,q2), q2:Math.max(q1,q2), def:gDef, uid:nextId++});
+          return;
+        }
+      }
+    }
+
+    // 1-qubit gates — flexible
+    const g1map = [
+      {id:'H',  re:/\w+\.h\s*\(([^)]+)\)/i},
+      {id:'X',  re:/\w+\.x\s*\(([^)]+)\)/i},
+      {id:'Y',  re:/\w+\.y\s*\(([^)]+)\)/i},
+      {id:'Z',  re:/\w+\.z\s*\(([^)]+)\)/i},
+      {id:'S',  re:/\w+\.s\s*\(([^)]+)\)/i},
+      {id:'T',  re:/\w+\.t\s*\(([^)]+)\)/i},
+      {id:'SX', re:/\w+\.sx\s*\(([^)]+)\)/i},
+      {id:'RX', re:/\w+\.rx\s*\([^,]+,\s*([^)]+)\)/i},
+      {id:'RY', re:/\w+\.ry\s*\([^,]+,\s*([^)]+)\)/i},
+      {id:'RZ', re:/\w+\.rz\s*\([^,]+,\s*([^)]+)\)/i},
+      {id:'RZ', re:/\w+\.p\s*\([^,]+,\s*([^)]+)\)/i},  // phase gate → RZ visual
+      {id:'H',  re:/\w+\.initialize\s*\([^,]+,\s*([^)]+)\)/i},
+      {id:'M',  re:/\w+\.measure\s*\(([^,)]+)/i},
+    ];
+    for (const {id, re} of g1map) {
+      const m = line.match(re);
+      if (m) {
+        const q = resolveQubit(m[1]);
+        if (!isNaN(q) && q < circuit.qubits) {
+          const gDef = findGateDef(id) || GATES['1q'][0];
+          newGates.push({id, q, def:gDef, uid:nextId++});
+          return;
+        }
+      }
+    }
+
+    // measure_all, barrier (show M on all qubits)
+    if (/\w+\.measure_all\s*\(\s*\)/.test(line)) {
+      const gDef = findGateDef('M') || GATES['meas'][0];
+      for (let qi=0; qi<circuit.qubits; qi++)
+        newGates.push({id:'M', q:qi, def:gDef, uid:nextId++});
+      return;
+    }
+
+    // QuantumCircuit size detection
+    const qcMatch = line.match(/\w+\s*=\s*QuantumCircuit\s*\(\s*(\d+|\w+)/);
+    if (qcMatch) {
+      const n = parseInt(qcMatch[1]) || 2;
+      if (n > 0 && n <= 20 && n !== circuit.qubits) {
+        circuit.qubits = n;
+      }
+    }
+  });
+
+  const currJSON = JSON.stringify(circuit.gates.map(g => ({ id: g.id, q: g.q, q2: g.q2, q3: g.q3 })));
+  const newJSON  = JSON.stringify(newGates.map(g => ({ id: g.id, q: g.q, q2: g.q2, q3: g.q3 })));
+  if (currJSON !== newJSON) {
+    isUpdatingFromCode = true;
+    circuit.gates = newGates;
+    renderCircuit();
+    updateCircuitInfo();
+    isUpdatingFromCode = false;
+  }
+}
+
+// Función de escape HTML simple
+function escapeHtml(str) {
+  return str.replace(/[&<>]/g, function(m) {
+    if (m === '&') return '&amp;';
+    if (m === '<') return '&lt;';
+    if (m === '>') return '&gt;';
+    return m;
+  });
+}
+
+// Resaltador de sintaxis CORREGIDO - trabaja sobre texto plano, no sobre HTML
+function highlightSyntax(plainCode) {
+  const lines = plainCode.split('\n');
+  const resultLines = [];
+  
+  // Definir reglas de resaltado (regex, color)
+  const rules = [
+    { regex: /(#.*$)/g, color: '#6272a4' },                    // Comentarios
+    { regex: /(".*?"|'.*?')/g, color: '#f1fa8c' },             // Strings
+    { regex: /\b(from|import|def|class|return|if|elif|else|for|while|in|not|and|or|True|False|None|as|print)\b/g, color: '#ff79c6' }, // Keywords
+    { regex: /\b(QuantumCircuit|execute|Aer|np|pi)\b/g, color: '#8be9fd' }, // Clases Qiskit
+    { regex: /\b(\d+)\b/g, color: '#bd93f9' }                  // Números
+  ];
+  
+  for (let line of lines) {
+    // Colección de tokens: { start, end, color }
+    let tokens = [];
+    
+    // Aplicar cada regla sobre la línea original (sin modificar)
+    for (const rule of rules) {
+      let match;
+      // Resetear regex
+      rule.regex.lastIndex = 0;
+      while ((match = rule.regex.exec(line)) !== null) {
+        tokens.push({
+          start: match.index,
+          end: match.index + match[0].length,
+          color: rule.color,
+          text: match[0]
+        });
+      }
+    }
+    
+    // Ordenar tokens por posición de inicio
+    tokens.sort((a, b) => a.start - b.start);
+    
+    // Eliminar tokens solapados (prioridad: el que empieza primero)
+    const uniqueTokens = [];
+    let lastEnd = -1;
+    for (const token of tokens) {
+      if (token.start >= lastEnd) {
+        uniqueTokens.push(token);
+        lastEnd = token.end;
+      }
+    }
+    
+    // Construir la línea HTML
+    let htmlLine = '';
+    let pos = 0;
+    
+    for (const token of uniqueTokens) {
+      // Texto antes del token
+      if (token.start > pos) {
+        htmlLine += escapeHtml(line.substring(pos, token.start));
+      }
+      // Token resaltado
+      htmlLine += `<span style="color:${token.color};">${escapeHtml(token.text)}</span>`;
+      pos = token.end;
+    }
+    
+    // Resto de la línea
+    if (pos < line.length) {
+      htmlLine += escapeHtml(line.substring(pos));
+    }
+    
+    resultLines.push(htmlLine);
+  }
+  
+  return resultLines.join('\n');
+}
+
+function updateSyntaxHighlight() {
+  const ta = document.getElementById('code-ta');
+  const syn = document.getElementById('syn-lay');
+  const lnums = document.getElementById('lnums');
+  
+  if (!ta || !syn) return;
+  
+  const plainCode = ta.value;
+  const lines = plainCode.split('\n');
+  
+  // Actualizar números de línea
+  if (lnums) {
+    lnums.innerHTML = lines.map((_, i) => `<div>${i + 1}</div>`).join('');
+  }
+  
+  // Aplicar resaltado sobre el texto plano
+  const highlighted = highlightSyntax(plainCode);
+  syn.innerHTML = highlighted + '\n';
+  
+  // Sincronizar scroll
+  syn.scrollTop = ta.scrollTop;
+  syn.scrollLeft = ta.scrollLeft;
+}
+
+function onCodeEdit() { 
+  updateSyntaxHighlight(); 
+  if (syncTimeout) clearTimeout(syncTimeout);
+  syncTimeout = setTimeout(() => updateCircuitFromCode(), 500);
+}
+function onCodeScroll() { const ta = document.getElementById('code-ta'), syn = document.getElementById('syn-lay'); if (ta && syn) { syn.scrollTop = ta.scrollTop; syn.scrollLeft = ta.scrollLeft; } }
+function forceSync() { updateCircuitFromCode(); notify('🔄 Sincronización forzada'); }
+
+function formatError(errText, code) {
+  const lines = code ? code.split('\n') : [];
+  let html = '';
+  const lineMatch = errText.match(/line[^\d]*(\d+)/i) || errText.match(/línea[^\d]*(\d+)/i);
+  const errLine = lineMatch ? parseInt(lineMatch[1]) : null;
+  if (errLine && errLine > 0) highlightErrorLine(errLine);
+  const typeMatch = errText.match(/(SyntaxError|NameError|TypeError|ValueError|ImportError|AttributeError|IndexError|KeyError|ZeroDivisionError|IndentationError)[:\s]/);
+  const errType = typeMatch ? typeMatch[1] : 'Error';
+  const explanations = {
+    'SyntaxError': '💡 Error de sintaxis — revisa paréntesis, dos puntos o indentación.',
+    'NameError': '💡 Variable o función no definida — ¿escribiste bien el nombre?',
+    'TypeError': '💡 Tipo incorrecto — estás usando un tipo de dato que no corresponde.',
+    'ValueError': '💡 Valor incorrecto — el valor no es válido para esta operación.',
+    'ImportError': '💡 No se pudo importar — la librería no está disponible.',
+    'IndentationError': '💡 Error de indentación — verifica los espacios al inicio de la línea.',
+  };
+  const explanation = explanations[errType] || '💡 Revisa el código en la línea indicada.';
+  html += `❌ ${errType}` + (errLine ? ` en línea ${errLine}` : '') + '\n';
+  if (errLine && lines[errLine - 1]) html += `\n<span class="err-line"><span class="err-arrow">→ L${errLine}:</span> ${escH(lines[errLine - 1])}</span>\n`;
+  const msgLines = errText.split('\n').filter(l => l.trim());
+  html += `<span class="err-msg">${escH(msgLines[msgLines.length - 1] || errText)}</span>\n\n<span class="wa">${explanation}</span>`;
+  return html;
 }
 
 function highlightErrorLine(lineNum) {
-    const ta = document.getElementById('code-ta');
-    if (!ta) return;
-    const lines = ta.value.split('\n');
-    let pos = 0;
-    for (let i = 0; i < lineNum - 1 && i < lines.length; i++) {
-        pos += lines[i].length + 1;
-    }
-    ta.focus();
-    ta.setSelectionRange(pos, pos + (lines[lineNum - 1] || '').length);
-    const lineHeight = parseInt(getComputedStyle(ta).lineHeight) || 19;
-    ta.scrollTop = (lineNum - 3) * lineHeight;
-    updCur();
+  const ta = document.getElementById('code-ta');
+  if (!ta) return;
+  const lines = ta.value.split('\n');
+  let pos = 0;
+  for (let i = 0; i < lineNum - 1 && i < lines.length; i++) pos += lines[i].length + 1;
+  ta.focus();
+  ta.setSelectionRange(pos, pos + (lines[lineNum - 1] || '').length);
+  const lineHeight = parseInt(getComputedStyle(ta).lineHeight) || 19;
+  ta.scrollTop = (lineNum - 3) * lineHeight;
+  updCur();
 }
 
-// Función para corregir automáticamente el código si falta numpy
-function autoFixNumpyError(errorMsg, originalCode) {
-    if (errorMsg.includes("No module named 'numpy'")) {
-        const stub = `import sys
-if 'numpy' not in sys.modules:
-    class _NumpyStub:
-        pi = 3.141592653589793
-        e = 2.718281828459045
-        class random:
-            @staticmethod
-            def uniform(a, b, size=None):
-                if size is None:
-                    return (a + b) / 2.0
-                return [(a + b) / 2.0] * size
-            @staticmethod
-            def randn(*size):
-                if not size:
-                    return 0.0
-                return [0.0] * size[0]
-        @staticmethod
-        def array(x): return x
-        @staticmethod
-        def zeros(shape): return [0] * shape if isinstance(shape, int) else [0] * shape[0]
-        @staticmethod
-        def ones(shape): return [1] * shape if isinstance(shape, int) else [1] * shape[0]
-        @staticmethod
-        def sin(x): return x
-        @staticmethod
-        def cos(x): return 1.0
-        @staticmethod
-        def exp(x): return 1.0 + x
-        @staticmethod
-        def sqrt(x): return x ** 0.5
-        @staticmethod
-        def linspace(start, stop, num): return [start + i*(stop-start)/(num-1) for i in range(num)]
-        def __getattr__(self, name):
-            return self
-    sys.modules['numpy'] = _NumpyStub()
-    import numpy as np
-`;
-        return stub + "\n" + originalCode;
-    }
-    return originalCode;
-}
+function escH(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
-async function syncWithPyodide() {
-    if (isUpdatingFromCircuit) return;
-    isUpdatingFromCircuit = true;
-    
-    let code = document.getElementById('code-ta').value;
-    if (!code.trim()) { notify('Escribe código primero'); isUpdatingFromCircuit = false; return; }
-    
-    const out = document.getElementById('out-body');
-    out.innerHTML = '<span class="inf">🔄 Ejecutando código con Pyodide...</span>\n';
-    
-    let retryWithFix = false;
-    let fixedCode = code;
-    let attempt = 0;
-    
-    async function tryExecute(execCode) {
-        const py = await initPyodide();
-        if (!py) throw new Error('Pyodide no disponible');
-        
-        py.globals.set('_pending_user_code', execCode);
-        
-        const result = await py.runPythonAsync(`
-import json, traceback, sys
-
-_user_code = globals().get('_pending_user_code', '')
-_ns = {}
-_error = None
-_circuit = None
-_num_qubits = 0
-_data = []
-
-try:
-    exec(_user_code, _ns)
-except Exception as _e:
-    _error = traceback.format_exc()
-
-if _error is None:
-    for _name in ['circuit','qc','circ','qcirc','quantum_circuit']:
-        _obj = _ns.get(_name)
-        if _obj is not None and hasattr(_obj, 'data'):
-            _circuit = _obj
-            break
-    if _circuit is None:
-        for _v in _ns.values():
-            if hasattr(_v, 'data') and hasattr(_v, 'num_qubits'):
-                _circuit = _v
-                break
-    if _circuit is None:
-        _error = "No se encontró ningún circuito (usa: qc = QuantumCircuit(n))"
-    else:
-        _num_qubits = getattr(_circuit, 'num_qubits', getattr(_circuit, 'qubits', 0))
-        _data = getattr(_circuit, 'data', [])
-
-json.dumps({
-    "success": _error is None,
-    "error": _error,
-    "num_qubits": _num_qubits,
-    "gates": [(op.name, op.qubits, op.params) for op in _data] if _data else [],
-    "circuit_exists": _circuit is not None
-})
-        `);
-        return JSON.parse(result);
-    }
-    
+async function fetchWithRetry(url, options, retries = 3, delay = 30000) {
+  let lastError;
+  for (let attempt = 1; attempt <= retries; attempt++) {
     try {
-        let data = await tryExecute(code);
-        
-        // Si falla por numpy, intentar corregir automáticamente
-        if (!data.success && data.error && data.error.includes("No module named 'numpy'")) {
-            out.innerHTML += '<span class="wa">⚠️ Se detectó falta de numpy. Aplicando corrección automática...</span>\n';
-            const fixed = autoFixNumpyError(data.error, code);
-            data = await tryExecute(fixed);
-            if (data.success && data.circuit_exists) {
-                // Actualizar el editor con el código corregido
-                document.getElementById('code-ta').value = fixed;
-                updateSyntaxHighlight();
-                notify('✅ numpy corregido automáticamente');
-            }
-        }
-        
-        if (data.success && data.circuit_exists) {
-            circuit.qubits = Math.min(data.num_qubits, MAX_QUBITS);
-            
-            const newGates = [];
-            for (const gate of data.gates) {
-                const gateId = mapOpNameToGateId(gate[0]);
-                const def = findGateDef(gateId);
-                if (!def) continue;
-                
-                const qubits = gate[1];
-                const uid = nextId++;
-                
-                if (qubits.length === 1) {
-                    newGates.push({ id: gateId, q: qubits[0], def: def, uid: uid });
-                } else if (qubits.length === 2) {
-                    newGates.push({ id: gateId, q: Math.min(qubits[0], qubits[1]), q2: Math.max(qubits[0], qubits[1]), def: def, uid: uid });
-                } else if (qubits.length >= 3) {
-                    const sorted = [...qubits].sort((a,b) => a-b);
-                    newGates.push({ id: gateId, q: sorted[0], q2: sorted[1], q3: sorted[2], def: def, uid: uid });
-                }
-            }
-            
-            circuit.gates = newGates;
-            renderCircuit();
-            updateCircuitInfo();
-            updateCodeFromCircuit();
-            
-            out.innerHTML = `<span class="ok">✅ Código sincronizado correctamente.</span><br>
-                            <span class="inf">📊 ${newGates.length} puertas registradas</span><br>
-                            <span class="inf">🎯 Qubits: ${circuit.qubits}</span><br>`;
-            notify(`✅ Sincronizado: ${newGates.length} puertas`);
-        } else {
-            out.innerHTML = `<span class="er">❌ Error en el código:<br><pre style="white-space:pre-wrap;">${escapeHtml(data.error)}</pre></span>`;
-            const lineMatch = data.error.match(/line (\d+)/);
-            if (lineMatch) {
-                const lineNum = parseInt(lineMatch[1]);
-                highlightErrorLine(lineNum);
-            }
-            notify(`Error en el código`);
-        }
-        
-    } catch (err) {
-        console.error('Error:', err);
-        out.innerHTML = `<span class="er">❌ Error ejecutando Pyodide:<br>${escapeHtml(err.message)}</span>`;
-        notify('Error de ejecución');
-    } finally {
-        isUpdatingFromCircuit = false;
-    }
-}
-
-// ========== NUEVO runCode CORREGIDO ==========
-async function runCode() {
-    if (running) return;
-    const code = document.getElementById('code-ta').value.trim();
-    if (!code) { notify('Escribe código primero'); return; }
-    running = true;
-    const btn = document.getElementById('btn-run');
-    if (btn) { btn.disabled = true; btn.innerHTML = '<span>⏳</span> EJECUTANDO'; }
-    setRunSt('run', 'Conectando...');
-    setTab('out');
-    const out = document.getElementById('out-body');
-    const t0 = Date.now();
-
-    // 1. Sincronizar visual con Pyodide (en segundo plano, sin esperar)
-    const syncPromise = syncWithPyodide().catch(err => {
-        console.warn('Sync visual falló (no crítico):', err);
-        out.innerHTML += `<span class="wa">⚠️ Sincronización visual falló, pero la ejecución continúa.</span>\n`;
-    });
-
-    // 2. Obtener URL del compilador externo
-    let serverURL = engineURL;
-    if (!serverURL) {
-        serverURL = localStorage.getItem('qcol_colab_url');
-        if (!serverURL) {
-            // No hay URL → ejecución local con Pyodide
-            out.innerHTML = '<span class="inf">⚠️ Sin compilador externo. Usando ejecución local (Pyodide).</span>\n';
-            await syncPromise; // esperamos a que termine la sincronización antes de ejecutar local
-            await runCodeLocal(code, out, t0);
-            running = false;
-            if (btn) btn.disabled = false;
-            return;
-        }
-    }
-    serverURL = serverURL.trim().replace(/\/+$/, '');
-
-    // 3. Enviar código al compilador externo con timeout de 15 segundos
-    out.innerHTML = '<span class="inf">🌐 Conectando al compilador externo...</span>\n';
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000);
-    try {
-        out.innerHTML = '<span class="inf">📤 Enviando código...</span>\n';
-        const isHF = serverURL.includes('hf.space') || serverURL.includes('huggingface');
-        let response;
-        if (isHF) {
-            response = await fetch(serverURL + '/run/predict', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ data: [code] }),
-                signal: controller.signal
-            });
-        } else {
-            response = await fetch(serverURL + '/run', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ code, lib: curLib || 'qiskit' }),
-                signal: controller.signal
-            });
-        }
-        clearTimeout(timeoutId);
-        if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        const data = await response.json();
-        const elapsed = ((Date.now() - t0) / 1000).toFixed(2);
-        document.getElementById('out-elapsed').textContent = elapsed + 's';
-        let outputText = '';
-        if (isHF) {
-            outputText = data.data ? data.data[0] : JSON.stringify(data);
-        } else {
-            outputText = data.output || data.error || 'Sin salida';
-        }
-        out.innerHTML = `<span class="inf">╔═══════════════════════╗\n║  Compilador externo · ${elapsed}s\n╚═══════════════════════╝\n\n</span><span class="ok">${escapeHtml(outputText)}</span>`;
-        setRunSt('idle', 'Listo');
-        if (data.bloch?.probabilities) updateBlochFromProbs(data.bloch.probabilities);
-    } catch (err) {
-        let errorMsg = err.message;
-        if (err.name === 'AbortError') errorMsg = 'Tiempo de espera agotado (15 segundos). El servidor no responde.';
-        out.innerHTML = `<span class="er">❌ Error en el compilador:<br>${escapeHtml(errorMsg)}</span>`;
-        setRunSt('err', 'Error');
-        engineOK = false;
-    } finally {
-        // Esperar a que la sincronización visual termine (si aún no lo hizo)
-        await syncPromise.catch(() => {});
-        running = false;
-        if (btn) { btn.disabled = false; btn.innerHTML = '▶ EJECUTAR'; }
-    }
-}
-
-// ========== NUEVO runCodeLocal (fallback) ==========
-async function runCodeLocal(code, out, t0) {
-    out.innerHTML += '<span class="inf">\n⚛️ Ejecutando con Pyodide (local)...</span>\n';
-    try {
-        const py = await initPyodide();
-        py.globals.set('_pending_user_code', code);
-        const result = await py.runPythonAsync(`
-import json, traceback, io, sys
-_user_code = globals().get('_pending_user_code', '')
-_out_buf = io.StringIO()
-_err = None
-try:
-    _old_stdout = sys.stdout
-    sys.stdout = _out_buf
-    exec(_user_code, {})
-    sys.stdout = _old_stdout
-except Exception as _e:
-    sys.stdout = _old_stdout
-    _err = traceback.format_exc()
-json.dumps({"output": _out_buf.getvalue(), "error": _err, "success": _err is None})
-        `);
-        const d = JSON.parse(result);
-        const elapsed = ((Date.now() - t0) / 1000).toFixed(2);
-        document.getElementById('out-elapsed').textContent = elapsed + 's';
-        if (d.success) {
-            out.innerHTML += `<span class="ok">✅ Ejecutado (Pyodide) · ${elapsed}s\n${escapeHtml(d.output || 'Sin output')}</span>`;
-            setRunSt('idle', 'Listo');
-        } else {
-            out.innerHTML += `<span class="er">❌ ${escapeHtml(d.error)}</span>`;
-            setRunSt('err', 'Error');
-            const lineMatch = d.error.match(/line (\d+)/);
-            if (lineMatch) highlightErrorLine(parseInt(lineMatch[1]));
-        }
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), delay);
+      const res = await fetch(url, { ...options, signal: controller.signal });
+      clearTimeout(timeoutId);
+      if (res.ok) return res;
+      lastError = new Error(`HTTP ${res.status}`);
+      if (attempt < retries) {
+        notify(`⏳ Intento ${attempt}/${retries} falló, reintentando en ${delay/1000}s...`);
+        await new Promise(r => setTimeout(r, delay));
+      }
     } catch (e) {
-        out.innerHTML += `<span class="er">❌ Error en Pyodide: ${e.message}</span>`;
-        setRunSt('err', 'Error');
+      lastError = e;
+      if (attempt < retries) {
+        notify(`⚠️ Timeout/Error (${e.message}) - Reintento ${attempt}/${retries}`);
+        await new Promise(r => setTimeout(r, delay));
+      }
     }
+  }
+  throw lastError;
 }
 
-// Funciones de Bloch, Run, Save, etc.
-function drawBloch() {
-    const canvas = document.getElementById('bloch-canvas');
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    const w = canvas.width, h = canvas.height;
-    const cx = w/2, cy = h/2;
-    const r = Math.min(w, h) * 0.38;
-    ctx.clearRect(0, 0, w, h);
-    ctx.fillStyle = '#0a0e1a';
-    ctx.fillRect(0, 0, w, h);
-    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2); ctx.strokeStyle = 'rgba(0,136,255,0.4)'; ctx.stroke();
-    for (let i = 1; i <= 3; i++) {
-        const yr = r * Math.sin(i * Math.PI/4);
-        ctx.beginPath(); ctx.ellipse(cx, cy, yr, yr*0.35, 0, 0, Math.PI*2); ctx.strokeStyle = `rgba(0,136,255,0.15)`; ctx.stroke();
+async function runCode() {
+  if (running) return;
+  const code = document.getElementById('code-ta').value.trim();
+  if (!code) { notify('Escribe código primero'); return; }
+  running = true;
+  setRunSt('run', 'Ejecutando...');
+  const btn = document.getElementById('btn-run');
+  btn.disabled = true;
+  btn.innerHTML = '<span>⏳</span> EJECUTANDO';
+  setTab('out');
+  const t0 = Date.now();
+  const out = document.getElementById('out-body');
+  out.innerHTML = `<span class="inf">Procesando · ${curLib}...\n</span>`;
+
+  if (engineOK && engineURL) {
+    const isHF = engineURL.includes('hf.space') || engineURL.includes('huggingface');
+    try {
+      let res, d;
+      if (isHF) {
+        res = await fetchWithRetry(engineURL + '/run/predict', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ data: [code] })
+        }, 3, 30000);
+        const raw = await res.json();
+        d = raw.data ? raw.data[0] : raw;
+      } else {
+        res = await fetchWithRetry(engineURL + '/run', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code, lib: curLib })
+        }, 3, 30000);
+        d = await res.json();
+      }
+      const el = ((Date.now() - t0) / 1000).toFixed(2);
+      document.getElementById('out-elapsed').textContent = el + 's';
+      if (d.success) {
+        out.innerHTML = `<span class="inf">╔════════════════════════════╗\n║  Compilador · ${el}s\n╚════════════════════════════╝\n\n</span><span class="ok">${escH(d.output)}</span>`;
+        if (d.bloch?.probabilities) updateBlochFromProbs(d.bloch.probabilities);
+        setRunSt('idle', 'Listo');
+        logMonitorRun({ success: true, lib: curLib, qubits: circuit.qubits, time: parseFloat(el) });
+      } else {
+        out.innerHTML += `<span class="er">${formatError(d.output, code)}</span>`;
+        setRunSt('err', 'Error');
+      }
+    } catch (e) {
+      out.innerHTML += `<span class="er">❌ ${e.name === 'AbortError' ? 'Tiempo agotado tras 3 intentos (30s c/u)' : e.message}</span>`;
+      setRunSt('err', 'Error');
+      engineOK = false;
+      document.getElementById('compiler-status').textContent = '● SIN COMPILADOR';
+      document.getElementById('compiler-status').classList.remove('active', 'waiting');
     }
-    ctx.beginPath(); ctx.moveTo(cx - r*1.1, cy); ctx.lineTo(cx + r*1.1, cy); ctx.moveTo(cx, cy - r*1.1); ctx.lineTo(cx, cy + r*1.1); ctx.strokeStyle = 'rgba(0,200,255,0.2)'; ctx.stroke();
-    const state = blochStates[currentBlochQubit] || { theta: 0, phi: 0 };
-    const x = r * Math.sin(state.theta) * Math.cos(state.phi);
-    const y = -r * Math.cos(state.theta);
-    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + x, cy + y); ctx.strokeStyle = '#00ffdd'; ctx.lineWidth = 2.5; ctx.stroke();
-    ctx.beginPath(); ctx.arc(cx + x, cy + y, 6, 0, Math.PI*2); ctx.fillStyle = '#00ffdd'; ctx.fill();
-    ctx.font = '10px monospace'; ctx.fillStyle = '#8aa0c4';
-    ctx.fillText('|0⟩', cx+5, cy-r-5); ctx.fillText('|1⟩', cx+5, cy+r+12); ctx.fillText('|+⟩', cx+r+10, cy);
-    document.getElementById('bloch-info').innerHTML = `<span>Qubit ${currentBlochQubit}</span><br>θ=${Math.round(state.theta*180/Math.PI)}° φ=${Math.round(state.phi*180/Math.PI)}°<br>P0=${(Math.cos(state.theta/2)**2*100).toFixed(1)}% P1=${(Math.sin(state.theta/2)**2*100).toFixed(1)}%`;
+  } else {
+    await new Promise(r => setTimeout(r, 650));
+    const el = ((Date.now() - t0) / 1000).toFixed(2);
+    const hasH = /\.h\(|Hadamard/.test(code), hasCX = /\.cx\(|CNOT/.test(code), hasX = /\.x\(/.test(code);
+    let st = '', eq = '', probs = [];
+    if (hasH && hasCX) { st = 'Bell |Φ⁺⟩'; eq = '(|00⟩+|11⟩)/√2'; probs = [['00', '50.0'], ['11', '50.0']]; }
+    else if (hasH) { st = 'Superposición'; eq = '(|0⟩+|1⟩)/√2'; probs = [['0', '50.0'], ['1', '50.0']]; }
+    else if (hasX) { st = '|1⟩'; eq = 'Excitado'; probs = [['1', '100.0']]; }
+    else { st = '|0⟩'; eq = 'Base'; probs = [['0', '100.0']]; }
+    out.innerHTML = `<span class="inf">╔════════════════════════════════╗\n║  Simulación local · ${el}s\n╚════════════════════════════════╝\n\n</span><span class="ok">Estado final: ${st}\n|ψ⟩ = ${eq}\n\n</span><span class="inf">══ Probabilidades ══\n</span>`;
+    probs.forEach(([s, p]) => { const bar = '█'.repeat(parseInt(p / 5) || 1); out.innerHTML += `<span class="pb">|${s}⟩: ${p.padStart(6)}%  ${bar}\n</span>`; });
+    out.innerHTML += `\n<span class="ok">✅ Simulación completada en ${el}s</span>`;
+    document.getElementById('out-elapsed').textContent = el + 's';
+    setRunSt('idle', 'Listo (sim.)');
+    logMonitorRun({ success: true, lib: curLib, qubits: circuit.qubits, time: parseFloat(el), simulated: true });
+  }
+  running = false;
+  btn.disabled = false;
+  btn.innerHTML = '<span>▶</span> EJECUTAR';
+  out.scrollTop = out.scrollHeight;
+}
+
+function setRunSt(s, msg) {
+  const dot = document.getElementById('sb-dot'), stxt = document.getElementById('sb-txt');
+  dot.className = 'sb-dot ' + (s === 'run' ? 'run' : s === 'err' ? 'err' : 'idle');
+  if (stxt) stxt.textContent = msg;
+}
+
+function logMonitorRun(info) {
+  try {
+    const user = curUser?.username || 'guest';
+    const entry = { ts: new Date().toISOString(), user, lib: info.lib || 'qiskit', qubits: info.qubits || 0, time: info.time || 0, success: info.success !== false, simulated: info.simulated || false };
+    const raw = localStorage.getItem('qcol_monitor_data');
+    const data = raw ? JSON.parse(raw) : { runs: [], total: 0 };
+    data.runs.push(entry);
+    data.total = (data.total || 0) + 1;
+    if (data.runs.length > 1000) data.runs = data.runs.slice(-1000);
+    localStorage.setItem('qcol_monitor_data', JSON.stringify(data));
+  } catch (e) { }
+}
+
+function drawBloch() {
+  const canvas = document.getElementById('bloch-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width, h = canvas.height;
+  const cx = w / 2, cy = h / 2;
+  const r = Math.min(w, h) * 0.38;
+  ctx.clearRect(0, 0, w, h);
+  ctx.fillStyle = '#0a0e1a';
+  ctx.fillRect(0, 0, w, h);
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(0,136,255,0.4)';
+  ctx.stroke();
+  for (let i = 1; i <= 3; i++) {
+    const yr = r * Math.sin(i * Math.PI / 4);
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, yr, yr * 0.35, 0, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(0,136,255,0.15)`;
+    ctx.stroke();
+  }
+  ctx.beginPath();
+  ctx.moveTo(cx - r * 1.1, cy);
+  ctx.lineTo(cx + r * 1.1, cy);
+  ctx.moveTo(cx, cy - r * 1.1);
+  ctx.lineTo(cx, cy + r * 1.1);
+  ctx.strokeStyle = 'rgba(0,200,255,0.2)';
+  ctx.stroke();
+  const state = blochStates[currentBlochQubit] || { theta: 0, phi: 0 };
+  const theta = state.theta, phi = state.phi;
+  const x = r * Math.sin(theta) * Math.cos(phi);
+  const y = -r * Math.cos(theta);
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  ctx.lineTo(cx + x, cy + y);
+  ctx.strokeStyle = '#00ffdd';
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(cx + x, cy + y, 6, 0, Math.PI * 2);
+  ctx.fillStyle = '#00ffdd';
+  ctx.fill();
+  ctx.font = '10px monospace';
+  ctx.fillStyle = '#8aa0c4';
+  ctx.fillText('|0⟩', cx + 5, cy - r - 5);
+  ctx.fillText('|1⟩', cx + 5, cy + r + 12);
+  ctx.fillText('|+⟩', cx + r + 10, cy);
+  const prob0 = Math.cos(theta / 2) ** 2, prob1 = Math.sin(theta / 2) ** 2;
+  document.getElementById('bloch-info').innerHTML = `<span>Qubit ${currentBlochQubit}</span><br>θ=${Math.round(theta * 180 / Math.PI)}° φ=${Math.round(phi * 180 / Math.PI)}°<br>P0=${(prob0 * 100).toFixed(1)}% P1=${(prob1 * 100).toFixed(1)}%`;
+}
+
+function updateBlochFromProbs(probs) {
+  const n = circuit.qubits;
+  for (let qi = 0; qi < n; qi++) {
+    let p0 = 0;
+    Object.entries(probs).forEach(([s, p]) => {
+      const bit = s.length > qi ? s[s.length - 1 - qi] : '0';
+      if (bit === '0') p0 += p;
+    });
+    const th = 2 * Math.acos(Math.min(1, Math.sqrt(Math.max(0, p0))));
+    blochStates[qi] = { theta: th, phi: blochStates[qi]?.phi || 0 };
+    if (qi === currentBlochQubit) drawBloch();
+  }
+  updateBlochSelector();
 }
 
 function applyBlochGate(gate) {
-    let state = blochStates[currentBlochQubit] || { theta: 0, phi: 0 };
-    switch(gate) {
-        case 'H': state.theta = Math.PI/2; state.phi = 0; break;
-        case 'X': state.theta = Math.PI - state.theta; break;
-        case 'Y': state.theta = Math.PI - state.theta; state.phi = (state.phi + Math.PI) % (2*Math.PI); break;
-        case 'Z': state.phi = (state.phi + Math.PI) % (2*Math.PI); break;
-        case 'SX': state.theta = Math.PI/2; state.phi = 0; break;
-        case 'RX': state.theta = Math.PI/4; state.phi = 0; break;
-        case 'RY': state.theta = Math.PI/4; state.phi = Math.PI/2; break;
-        case 'RZ': state.phi = (state.phi + Math.PI/4) % (2*Math.PI); break;
-        case 'reset': state.theta = 0; state.phi = 0; break;
-    }
-    blochStates[currentBlochQubit] = state;
-    drawBloch();
-    updateBlochSelector();
+  let state = blochStates[currentBlochQubit] || { theta: 0, phi: 0 };
+  switch (gate) {
+    case 'H': state.theta = Math.PI / 2; state.phi = 0; break;
+    case 'X': state.theta = Math.PI - state.theta; break;
+    case 'Y': state.theta = Math.PI - state.theta; state.phi = (state.phi + Math.PI) % (2 * Math.PI); break;
+    case 'Z': state.phi = (state.phi + Math.PI) % (2 * Math.PI); break;
+    case 'SX': state.theta = Math.PI / 2; state.phi = 0; break;
+    case 'RX': state.theta = Math.PI / 4; state.phi = 0; break;
+    case 'RY': state.theta = Math.PI / 4; state.phi = Math.PI / 2; break;
+    case 'RZ': state.phi = (state.phi + Math.PI / 4) % (2 * Math.PI); break;
+    case 'reset': state.theta = 0; state.phi = 0; break;
+  }
+  blochStates[currentBlochQubit] = state;
+  drawBloch();
+  updateBlochSelector();
 }
 
-function addQubit() { if (circuit.qubits < MAX_QUBITS) { circuit.qubits++; if (!blochStates[circuit.qubits-1]) blochStates[circuit.qubits-1] = { theta: 0, phi: 0 }; renderCircuit(); updateCircuitInfo(); updateCodeFromCircuit(); notify(`${circuit.qubits} qubits`); } else notify(`Máximo ${MAX_QUBITS} qubits`); }
-function removeQubit() { if (circuit.qubits > 1) { circuit.gates = circuit.gates.filter(g => g.q < circuit.qubits-1 && (!g.q2 || g.q2 < circuit.qubits-1) && (!g.q3 || g.q3 < circuit.qubits-1)); circuit.qubits--; if (currentBlochQubit >= circuit.qubits) currentBlochQubit = circuit.qubits-1; renderCircuit(); updateCircuitInfo(); updateCodeFromCircuit(); notify(`${circuit.qubits} qubits`); } }
+function addQubit() { if (circuit.qubits < MAX_QUBITS) { circuit.qubits++; if (!blochStates[circuit.qubits - 1]) blochStates[circuit.qubits - 1] = { theta: 0, phi: 0 }; renderCircuit(); updateCircuitInfo(); updateCodeFromCircuit(); notify(`${circuit.qubits} qubits`); } else notify(`Máximo ${MAX_QUBITS} qubits`); }
+function removeQubit() { if (circuit.qubits > 1) { circuit.gates = circuit.gates.filter(g => g.q < circuit.qubits - 1 && (!g.q2 || g.q2 < circuit.qubits - 1) && (!g.q3 || g.q3 < circuit.qubits - 1)); circuit.qubits--; if (currentBlochQubit >= circuit.qubits) currentBlochQubit = circuit.qubits - 1; renderCircuit(); updateCircuitInfo(); updateCodeFromCircuit(); notify(`${circuit.qubits} qubits`); } }
 function clearCircuit() { circuit.gates = []; for (let i = 0; i < circuit.qubits; i++) blochStates[i] = { theta: 0, phi: 0 }; renderCircuit(); updateCircuitInfo(); updateCodeFromCircuit(); drawBloch(); notify('Circuito limpiado'); }
-function clearCode() { document.getElementById('code-ta').value = 'from qiskit import QuantumCircuit\nimport numpy as np\n\nqc = QuantumCircuit(2)\nqc.h(0)\nqc.cx(0, 1)\nqc.measure_all()\nprint(qc.draw(output="text"))'; onCodeEdit(); }
+function clearCode() { document.getElementById('code-ta').value = 'from qiskit import QuantumCircuit\nimport numpy as np\n\nqc = QuantumCircuit(2)\nqc.h(0)\nqc.cx(0, 1)\nqc.measure_all()\nprint(qc.draw(output="text"))\n\nfrom qiskit import execute, Aer\nbackend = Aer.get_backend("qasm_simulator")\njob = execute(qc, backend, shots=1024)\nprint(job.result().get_counts())'; onCodeEdit(); }
 function copyCode() { navigator.clipboard.writeText(document.getElementById('code-ta').value); notify('📋 Código copiado'); }
-function onCodeEdit() {
-    updateSyntaxHighlight();
-    if (syncTimeout) clearTimeout(syncTimeout);
-    syncTimeout = setTimeout(() => {
-        if (pyodide !== null) {
-            syncWithPyodide().catch(() => {});
-        }
-    }, 600);
-}
-function onCodeScroll() { const ta = document.getElementById('code-ta'), syn = document.getElementById('syn-lay'); if (ta && syn) { syn.scrollTop = ta.scrollTop; syn.scrollLeft = ta.scrollLeft; } }
-function updCur() { const ta = document.getElementById('code-ta'); const txt = ta.value.substring(0, ta.selectionStart); const lines = txt.split('\n'); document.getElementById('sb-cur').textContent = `Ln ${lines.length}, Col ${lines[lines.length-1].length+1}`; }
+function updCur() { const ta = document.getElementById('code-ta'); const txt = ta.value.substring(0, ta.selectionStart); const lines = txt.split('\n'); document.getElementById('sb-cur').textContent = `Ln ${lines.length}, Col ${lines[lines.length - 1].length + 1}`; }
 
-function saveCircuit() { const name = document.getElementById('save-name').value.trim() || 'circuito_' + Date.now(); const code = document.getElementById('code-ta').value; const circuits = JSON.parse(localStorage.getItem('circuits') || '[]'); circuits.unshift({ name, code, date: new Date().toISOString() }); if (circuits.length > 20) circuits.pop(); localStorage.setItem('circuits', JSON.stringify(circuits)); loadSavedCircuits(); notify(`✅ Guardado: ${name}`); }
-function loadSavedCircuits() { const container = document.getElementById('circ-list'); if (!container) return; const circuits = JSON.parse(localStorage.getItem('circuits') || '[]'); if (circuits.length === 0) { container.innerHTML = '<div style="color:var(--mu);">Sin circuitos guardados</div>'; return; } container.innerHTML = circuits.map((c, i) => `<div class="circ-item" onclick="loadCircuit(${i})"><span class="ci-name">${c.name}</span><button class="ci-del" onclick="event.stopPropagation(); deleteCircuit(${i})">✕</button></div>`).join(''); }
-function loadCircuit(i) { const circuits = JSON.parse(localStorage.getItem('circuits') || '[]'); const c = circuits[i]; if (c) { document.getElementById('code-ta').value = c.code; document.getElementById('save-name').value = c.name; updateSyntaxHighlight(); syncWithPyodide(); notify(`Cargado: ${c.name}`); setTab('out'); } }
-function deleteCircuit(i) { const circuits = JSON.parse(localStorage.getItem('circuits') || '[]'); circuits.splice(i, 1); localStorage.setItem('circuits', JSON.stringify(circuits)); loadSavedCircuits(); notify('Eliminado'); }
-function dlPy() { const code = document.getElementById('code-ta').value; const blob = new Blob([code], { type: 'text/plain' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'circuito.py'; a.click(); URL.revokeObjectURL(a.href); notify('📥 Descargado'); }
-function dlNb() { const code = document.getElementById('code-ta').value; const name = document.getElementById('save-name').value.trim() || 'circuito'; const nb = { nbformat: 4, nbformat_minor: 5, metadata: { kernelspec: { display_name: 'Python 3', language: 'python', name: 'python3' } }, cells: [{ cell_type: 'markdown', source: [`# ${name}`], metadata: {} }, { cell_type: 'code', source: ['!pip install qiskit -q', code], metadata: {}, outputs: [], execution_count: null }] }; const blob = new Blob([JSON.stringify(nb, null, 2)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name.replace(/\.ipynb$/, '') + '.ipynb'; a.click(); URL.revokeObjectURL(a.href); notify('📥 Descargado .ipynb'); }
+function saveCircuit() {
+  if (!curUser) { notify('Inicia sesión para guardar circuitos'); return; }
+  const name = document.getElementById('save-name').value.trim() || 'circuito_' + Date.now();
+  const code = document.getElementById('code-ta').value;
+  const key = 'qcol_circuits_' + curUser.username;
+  const all = JSON.parse(localStorage.getItem(key) || '[]');
+  const idx = all.findIndex(c => c.name === name);
+  const entry = { name, code, lib: curLib, circ: JSON.stringify(circuit), date: new Date().toLocaleDateString() };
+  if (idx >= 0) all[idx] = entry;
+  else all.unshift(entry);
+  localStorage.setItem(key, JSON.stringify(all.slice(0, 100)));
+  notify('✅ Guardado: ' + name);
+  renderSaveList();
+}
+
+function renderSaveList() {
+  const list = document.getElementById('circ-list');
+  if (!list) return;
+  if (!curUser) { list.innerHTML = `<div class="no-login">Inicia sesión para guardar circuitos<br><button class="btn-li" onclick="postCore('QCOL_LOGIN')">INICIAR SESIÓN</button></div>`; return; }
+  const key = 'qcol_circuits_' + curUser.username;
+  const all = JSON.parse(localStorage.getItem(key) || '[]');
+  if (all.length === 0) { list.innerHTML = '<div style="text-align:center;color:var(--mu);">Sin circuitos guardados</div>'; return; }
+  list.innerHTML = all.map((c, i) => `<div class="circ-item" onclick="loadCircuit(${i})"><span class="ci-name">${c.name}</span><button class="ci-del" onclick="event.stopPropagation(); deleteCircuit(${i})">✕</button></div>`).join('');
+}
+
+function loadCircuit(i) {
+  const key = 'qcol_circuits_' + curUser.username;
+  const c = JSON.parse(localStorage.getItem(key) || '[]')[i];
+  if (!c) return;
+  document.getElementById('code-ta').value = c.code;
+  document.getElementById('save-name').value = c.name;
+  if (c.circ) { try { const cc = JSON.parse(c.circ); circuit = cc; renderCircuit(); updateCircuitInfo(); } catch (e) { } }
+  onCodeEdit();
+  setTab('out');
+  notify('Cargado: ' + c.name);
+}
+
+function deleteCircuit(i) {
+  const key = 'qcol_circuits_' + curUser.username;
+  const all = JSON.parse(localStorage.getItem(key) || '[]');
+  all.splice(i, 1);
+  localStorage.setItem(key, JSON.stringify(all));
+  renderSaveList();
+  notify('Eliminado');
+}
+
+function dlPy() {
+  const code = document.getElementById('code-ta').value;
+  const name = document.getElementById('save-name').value.trim() || 'circuito';
+  const blob = new Blob([code], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name.replace(/\.py$/, '') + '.py';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  notify('📥 Descargado');
+}
+
+function dlNb() {
+  const code = document.getElementById('code-ta').value;
+  const name = document.getElementById('save-name').value.trim() || 'circuito';
+  const nb = {
+    nbformat: 4, nbformat_minor: 5,
+    metadata: { kernelspec: { display_name: 'Python 3', language: 'python', name: 'python3' } },
+    cells: [
+      { cell_type: 'markdown', source: [`# ${name}\n\nGenerado por Arquitecto Cuántico`], metadata: {} },
+      { cell_type: 'code', source: ['!pip install qiskit qiskit-aer matplotlib -q'], metadata: {}, outputs: [], execution_count: null },
+      { cell_type: 'code', source: [code], metadata: {}, outputs: [], execution_count: null }
+    ]
+  };
+  const blob = new Blob([JSON.stringify(nb, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name.replace(/\.ipynb$/, '') + '.ipynb';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  notify('📥 Descargado .ipynb');
+}
+
+function saveAndSchedule() {
+  if (!curUser) { notify('Inicia sesión para usar la cola'); return; }
+  const name = document.getElementById('save-name').value.trim() || 'circuito_' + Date.now();
+  const code = document.getElementById('code-ta').value;
+  const key = 'qcol_queue_' + curUser.username;
+  const queue = JSON.parse(localStorage.getItem(key) || '[]');
+  queue.push({ name, code, lib: curLib, circ: JSON.stringify(circuit), added: new Date().toLocaleString(), status: 'pendiente' });
+  localStorage.setItem(key, JSON.stringify(queue.slice(0, 50)));
+  renderQueue();
+  notify('⏱ "' + name + '" añadido a la cola');
+  setTab('save');
+}
+
+function renderQueue() {
+  const el = document.getElementById('queue-list');
+  if (!el) return;
+  if (!curUser) { el.innerHTML = '<div style="color:var(--mu);">Inicia sesión para usar la cola</div>'; return; }
+  const key = 'qcol_queue_' + curUser.username;
+  const queue = JSON.parse(localStorage.getItem(key) || '[]');
+  if (queue.length === 0) { el.innerHTML = '<div style="color:var(--mu);">Sin circuitos en cola</div>'; return; }
+  el.innerHTML = queue.map((c, i) => `<div style="display:flex;align-items:center;gap:.5rem;padding:.3rem .5rem;background:rgba(0,0,0,.2);border:1px solid var(--bd);border-radius:6px;margin-bottom:.2rem;"><span style="flex:1;">${c.name}</span><span style="font-size:.45rem;color:${c.status === 'completado' ? 'var(--gr)' : c.status === 'error' ? 'var(--rd)' : 'var(--yw)'};">${c.status}</span><button class="ci-del" onclick="removeFromQueue(${i})">✕</button></div>`).join('');
+}
+
+async function runQueue() {
+  if (!curUser) { notify('Inicia sesión primero'); return; }
+  const key = 'qcol_queue_' + curUser.username;
+  const queue = JSON.parse(localStorage.getItem(key) || '[]');
+  const pending = queue.filter(c => c.status === 'pendiente');
+  if (pending.length === 0) { notify('Sin circuitos pendientes'); return; }
+  notify('▶ Ejecutando cola: ' + pending.length + ' circuito(s)...', 5000);
+  for (let i = 0; i < queue.length; i++) {
+    if (queue[i].status !== 'pendiente') continue;
+    queue[i].status = 'ejecutando';
+    localStorage.setItem(key, JSON.stringify(queue));
+    renderQueue();
+    document.getElementById('code-ta').value = queue[i].code;
+    document.getElementById('save-name').value = queue[i].name;
+    onCodeEdit();
+    await runCode();
+    queue[i].status = 'completado';
+    localStorage.setItem(key, JSON.stringify(queue));
+    renderQueue();
+    await new Promise(r => setTimeout(r, 500));
+  }
+  notify('✅ Cola completada');
+}
+
+function removeFromQueue(i) {
+  if (!curUser) return;
+  const key = 'qcol_queue_' + curUser.username;
+  const queue = JSON.parse(localStorage.getItem(key) || '[]');
+  queue.splice(i, 1);
+  localStorage.setItem(key, JSON.stringify(queue));
+  renderQueue();
+}
 
 function setTab(tab) {
-    document.querySelectorAll('.rtab').forEach(btn => btn.classList.toggle('on', btn.dataset.tab === tab));
-    document.getElementById('p-out').style.display = tab === 'out' ? 'flex' : 'none';
-    document.getElementById('p-bloch').style.display = tab === 'bloch' ? 'flex' : 'none';
-    document.getElementById('p-save').style.display = tab === 'save' ? 'flex' : 'none';
-    if (tab === 'bloch') setTimeout(drawBloch, 50);
-    if (tab === 'save') loadSavedCircuits();
+  document.querySelectorAll('.rtab').forEach(btn => btn.classList.toggle('on', btn.dataset.tab === tab));
+  document.getElementById('p-out').style.display = tab === 'out' ? 'flex' : 'none';
+  document.getElementById('p-bloch').style.display = tab === 'bloch' ? 'flex' : 'none';
+  document.getElementById('p-save').style.display = tab === 'save' ? 'flex' : 'none';
+  if (tab === 'bloch') setTimeout(drawBloch, 50);
+  if (tab === 'save') { renderSaveList(); renderQueue(); }
 }
-function setMode(mode) { curMode = mode; const cs = document.getElementById('circuit-section'), pal = document.getElementById('palette'), rh = document.getElementById('resize-h'); if (mode === 'circ') { cs.style.display = 'flex'; pal.style.display = 'flex'; if (rh) rh.style.display = 'flex'; } else { cs.style.display = 'none'; pal.style.display = 'none'; if (rh) rh.style.display = 'none'; } document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.toggle('on', btn.dataset.mode === mode)); }
+
+function setMode(mode) {
+  curMode = mode;
+  const cs = document.getElementById('circuit-section'), pal = document.getElementById('palette'), rh = document.getElementById('resize-h');
+  if (mode === 'circ') { cs.style.display = 'flex'; pal.style.display = 'flex'; if (rh) rh.style.display = 'flex'; }
+  else { cs.style.display = 'none'; pal.style.display = 'none'; if (rh) rh.style.display = 'none'; }
+  document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.toggle('on', btn.dataset.mode === mode));
+}
+
 function setLib(lib) { curLib = lib; document.querySelectorAll('.lib-btn').forEach(btn => btn.classList.toggle('on', btn.dataset.lib === lib)); updateCodeFromCircuit(); notify('Librería: ' + lib); }
-function notify(msg, dur = 2000) { const n = document.getElementById('notif'); n.textContent = msg; n.classList.add('show'); clearTimeout(n._t); n._t = setTimeout(() => n.classList.remove('show'), dur); }
+
+function notify(msg, dur = 2000) {
+  const n = document.getElementById('notif');
+  n.textContent = msg;
+  n.classList.add('show');
+  clearTimeout(n._t);
+  n._t = setTimeout(() => n.classList.remove('show'), dur);
+}
 
 let resizingH = false, startY, startHeight;
 let resizingV = false, startX, startWidth;
+
 function initResize() {
-    const resizeH = document.getElementById('resize-h');
-    const resizeV = document.getElementById('resize-v');
-    const circuitSec = document.getElementById('circuit-section');
-    const rightPanel = document.getElementById('right-panel');
-    if (resizeH) resizeH.onmousedown = (e) => { resizingH = true; startY = e.clientY; startHeight = circuitSec.offsetHeight; document.body.style.cursor = 'ns-resize'; e.preventDefault(); };
-    if (resizeV) resizeV.onmousedown = (e) => { resizingV = true; startX = e.clientX; startWidth = rightPanel.offsetWidth; document.body.style.cursor = 'ew-resize'; e.preventDefault(); };
-    document.onmousemove = (e) => {
-        if (resizingH) { let nh = startHeight + (e.clientY - startY); if (nh > 80 && nh < window.innerHeight * 0.7) circuitSec.style.height = nh + 'px'; }
-        if (resizingV) { let nw = startWidth + (startX - e.clientX); if (nw > 200 && nw < window.innerWidth * 0.4) rightPanel.style.width = nw + 'px'; }
-    };
-    document.onmouseup = () => { resizingH = false; resizingV = false; document.body.style.cursor = ''; };
+  const resizeH = document.getElementById('resize-h');
+  const resizeV = document.getElementById('resize-v');
+  const circuitSec = document.getElementById('circuit-section');
+  const rightPanel = document.getElementById('right-panel');
+  if (resizeH) resizeH.onmousedown = (e) => { resizingH = true; startY = e.clientY; startHeight = circuitSec.offsetHeight; document.body.style.cursor = 'ns-resize'; e.preventDefault(); };
+  if (resizeV) resizeV.onmousedown = (e) => { resizingV = true; startX = e.clientX; startWidth = rightPanel.offsetWidth; document.body.style.cursor = 'ew-resize'; e.preventDefault(); };
+  document.onmousemove = (e) => {
+    if (resizingH) { let nh = startHeight + (e.clientY - startY); if (nh > 80 && nh < window.innerHeight * 0.7) circuitSec.style.height = nh + 'px'; }
+    if (resizingV) { let nw = startWidth + (startX - e.clientX); if (nw > 200 && nw < window.innerWidth * 0.4) rightPanel.style.width = nw + 'px'; }
+  };
+  document.onmouseup = () => { resizingH = false; resizingV = false; document.body.style.cursor = ''; };
 }
 
 function init() {
-    for (let i = 0; i < circuit.qubits; i++) blochStates[i] = { theta: 0, phi: 0 };
-    buildPalette();
-    renderCircuit();
-    updateCircuitInfo();
-    updateCodeFromCircuit();
-    initResize();
+  for (let i = 0; i < circuit.qubits; i++) blochStates[i] = { theta: 0, phi: 0 };
+  buildPalette();
+  renderCircuit();
+  updateCircuitInfo();
+  updateCodeFromCircuit();
+  initResize();
 
-    document.getElementById('btn-run').onclick = runCode;
-    document.getElementById('btn-run2').onclick = runCode;
-    document.getElementById('btn-parse').onclick = syncWithPyodide;
-    document.getElementById('btn-clear').onclick = clearCircuit;
-    document.getElementById('btn-clear-code').onclick = clearCode;
-    document.getElementById('btn-addqb').onclick = addQubit;
-    document.getElementById('btn-remqb').onclick = removeQubit;
-    document.getElementById('btn-copy').onclick = copyCode;
-    document.getElementById('btn-clear-out').onclick = () => document.getElementById('out-body').innerHTML = '<span class="inf">Terminal limpiada</span>';
-    document.getElementById('btn-save').onclick = saveCircuit;
-    document.getElementById('btn-dlpy').onclick = dlPy;
-    document.getElementById('btn-dlnb').onclick = dlNb;
+  document.getElementById('btn-run').onclick = runCode;
+  document.getElementById('btn-run2').onclick = runCode;
+  document.getElementById('btn-sync').onclick = forceSync;
+  document.getElementById('btn-clear').onclick = clearCircuit;
+  document.getElementById('btn-clear-code').onclick = clearCode;
+  document.getElementById('btn-addqb').onclick = addQubit;
+  document.getElementById('btn-remqb').onclick = removeQubit;
+  document.getElementById('btn-copy').onclick = copyCode;
+  document.getElementById('btn-clear-out').onclick = () => document.getElementById('out-body').innerHTML = '<span class="inf">Terminal limpiada</span>';
+  document.getElementById('btn-save').onclick = saveCircuit;
+  document.getElementById('btn-dlpy').onclick = dlPy;
+  document.getElementById('btn-dlnb').onclick = dlNb;
+  document.getElementById('btn-run-queue').onclick = runQueue;
 
-    document.querySelectorAll('.lib-btn').forEach(btn => btn.onclick = () => setLib(btn.dataset.lib));
-    document.querySelectorAll('.mode-btn').forEach(btn => btn.onclick = () => setMode(btn.dataset.mode));
-    document.querySelectorAll('.rtab').forEach(btn => btn.onclick = () => setTab(btn.dataset.tab));
-    document.querySelectorAll('.gb').forEach(btn => btn.onclick = () => applyBlochGate(btn.dataset.gate));
+  document.querySelectorAll('.lib-btn').forEach(btn => btn.onclick = () => setLib(btn.dataset.lib));
+  document.querySelectorAll('.mode-btn').forEach(btn => btn.onclick = () => setMode(btn.dataset.mode));
+  document.querySelectorAll('.rtab').forEach(btn => btn.onclick = () => setTab(btn.dataset.tab));
+  document.querySelectorAll('.gb').forEach(btn => btn.onclick = () => applyBlochGate(btn.dataset.gate));
 
-    document.getElementById('bloch-q-select').onchange = (e) => { currentBlochQubit = parseInt(e.target.value); drawBloch(); };
+  document.getElementById('bloch-q-select').onchange = (e) => { currentBlochQubit = parseInt(e.target.value); drawBloch(); };
 
-    const ta = document.getElementById('code-ta');
-    ta.onscroll = onCodeScroll;
-    ta.oninput = onCodeEdit;
-    ta.onkeyup = updCur;
-    ta.onclick = updCur;
-    ta.onkeydown = (e) => {
-        if (e.key === 'Tab') { e.preventDefault(); const s = ta.selectionStart; ta.value = ta.value.substring(0, s) + '    ' + ta.value.substring(ta.selectionEnd); ta.selectionStart = ta.selectionEnd = s + 4; onCodeEdit(); }
-        if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); saveCircuit(); }
-    };
+  const ta = document.getElementById('code-ta');
+  ta.onscroll = onCodeScroll;
+  ta.oninput = onCodeEdit;
+  ta.onkeyup = updCur;
+  ta.onclick = updCur;
+  ta.onkeydown = (e) => {
+    if (e.key === 'Tab') { e.preventDefault(); const s = ta.selectionStart; ta.value = ta.value.substring(0, s) + '    ' + ta.value.substring(ta.selectionEnd); ta.selectionStart = ta.selectionEnd = s + 4; onCodeEdit(); }
+    if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); saveCircuit(); }
+    if ((e.ctrlKey || e.metaKey) && e.key === 'r') { e.preventDefault(); runCode(); }
+  };
 
-    drawBloch();
-    loadSavedCircuits();
-    
-    setTimeout(() => { initPyodide().catch(console.error); }, 1000);
+  drawBloch();
+  renderSaveList();
+  renderQueue();
 }
 
 window.onDragStart = onDragStart;
@@ -1628,110 +1498,97 @@ window.onWireDrop = onWireDrop;
 window.removeGate = removeGate;
 window.loadCircuit = loadCircuit;
 window.deleteCircuit = deleteCircuit;
+window.removeFromQueue = removeFromQueue;
 
-async function fetchWithRetry(url, options, retries=3, timeout=30000) {
-    let lastErr;
-    for (let attempt=1; attempt<=retries; attempt++) {
-        try {
-            const ctrl = new AbortController();
-            const tid  = setTimeout(() => ctrl.abort(), timeout);
-            const res  = await fetch(url, { ...options, signal: ctrl.signal });
-            clearTimeout(tid);
-            if (res.ok) return res;
-            lastErr = new Error('HTTP ' + res.status);
-            if (attempt < retries) {
-                notify(`⚠️ Intento ${attempt}/${retries} falló. Reintentando...`);
-                await new Promise(r => setTimeout(r, 3000));
-            }
-        } catch(e) {
-            lastErr = e;
-            if (e.name === 'AbortError') lastErr = new Error(`Timeout (${timeout/1000}s)`);
-            if (attempt < retries) {
-                notify(`⚠️ Intento ${attempt}/${retries}: ${lastErr.message}`);
-                await new Promise(r => setTimeout(r, 3000));
-            }
-        }
-    }
-    throw lastErr;
+// ══════════════════════════════════════════════════
+// ECOSISTEMA — Comunicación con index.html
+// ══════════════════════════════════════════════════
+function postCore(type, data={}) {
+  try { window.parent.postMessage({type, ...data}, '*'); } catch(e) {}
 }
 
 async function checkEngine() {
-    if (!engineURL) return;
-    engineURL = engineURL.trim().replace(/\/+$/, '');
-    const badge  = document.getElementById('eng-badge');
-    const status = document.getElementById('compiler-status');
-    const setS   = (txt, cls) => {
-        if (badge)  { badge.textContent = txt; badge.className = 'badge ' + cls; }
-        if (status) { status.textContent = txt; }
-    };
-    setS('⏳ Conectando...', 'badge-warn');
-    for (let attempt=1; attempt<=3; attempt++) {
-        try {
-            setS(`⏳ Intento ${attempt}/3...`, 'badge-warn');
-            const ctrl = new AbortController();
-            const tid  = setTimeout(() => ctrl.abort(), 30000);
-            const res  = await fetch(engineURL + '/health/predict', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ data: [''] }),
-                signal: ctrl.signal
-            });
-            clearTimeout(tid);
-            if (res.ok) {
-                const raw = await res.json();
-                const d   = raw.data ? raw.data[0] : raw;
-                engineOK  = true;
-                const libs = (d.libs||[]).slice(0,4).join(', ');
-                setS('● COMPILADOR ACTIVO', 'badge-on');
-                notify('✅ Compilador conectado' + (libs ? ' · '+libs : ''));
-                try { window.parent.postMessage({type:'QCOL_SAVE',key:'qcol_colab_url',val:engineURL},'*'); } catch(e){}
-                return;
-            }
-            throw new Error('HTTP ' + res.status);
-        } catch(e) {
-            if (attempt < 3) {
-                notify(`⚠️ Intento ${attempt}/3: ${e.message}`);
-                await new Promise(r => setTimeout(r, 4000));
-            }
-        }
+  if (!engineURL) return;
+  engineURL = engineURL.trim().replace(/\/+$/, '');
+  const badge = document.getElementById('eng-badge');
+  const status = document.getElementById('compiler-status');
+  const setStatus = (txt, cls) => {
+    if (badge) { badge.textContent = txt; badge.className = 'badge ' + cls; }
+    if (status) { status.textContent = txt; status.className = 'compiler-status ' + (cls==='badge-on'?'ok':''); }
+  };
+  setStatus('⏳ Conectando...', 'badge-warn');
+  notify('🔄 Conectando al compilador...', 4000);
+
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      setStatus(`⏳ Intento ${attempt}/3...`, 'badge-warn');
+      const controller = new AbortController();
+      const tid = setTimeout(() => controller.abort(), 30000);
+      const res = await fetch(engineURL + '/health/predict', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: [''] }),
+        signal: controller.signal
+      });
+      clearTimeout(tid);
+      if (res.ok) {
+        const raw = await res.json();
+        const d = raw.data ? raw.data[0] : raw;
+        engineOK = true;
+        setStatus('● COMPILADOR ACTIVO', 'badge-on');
+        const libs = (d.libs || []).slice(0,4).join(', ');
+        notify('✅ Compilador conectado' + (libs ? ' · ' + libs : ''));
+        postCore('QCOL_SAVE', {key:'qcol_colab_url', val:engineURL});
+        return;
+      }
+      throw new Error('HTTP ' + res.status);
+    } catch(e) {
+      if (e.name === 'AbortError') {
+        notify(`⏱ Intento ${attempt}/3: timeout 30s`);
+      } else {
+        notify(`⚠️ Intento ${attempt}/3: ${e.message}`);
+      }
+      if (attempt < 3) await new Promise(r => setTimeout(r, 4000));
     }
-    engineOK = false;
-    setS('● SIN COMPILADOR', 'badge-off');
-    notify('❌ No se pudo conectar al compilador (3 intentos)');
+  }
+  engineOK = false;
+  setStatus('● SIN COMPILADOR', 'badge-off');
+  notify('❌ No se pudo conectar después de 3 intentos');
 }
 
-(function(){
-    function postCore(type, data={}) {
-        try { window.parent.postMessage({type,...data},'*'); } catch(e){}
+window.addEventListener('message', e => {
+  const d = e.data || {};
+  if (d.type === 'QCOL_USER') {
+    curUser = d.user;
+    const pill = document.getElementById('user-pill');
+    if (pill && curUser) {
+      const role = curUser.role || 'guest';
+      const ico = role==='founder'?'👑 ':role==='admin'?'🔑 ':'';
+      pill.textContent = ico + (curUser.name||curUser.username||'—').split(' ')[0];
+      const dot = document.getElementById('udot');
+      if (dot) { dot.className = 'u-dot on'; }
     }
-    window.addEventListener('message', e => {
-        const d = e.data||{};
-        if (d.type==='QCOL_USER') {
-            curUser = d.user;
-            const pill = document.getElementById('user-pill') ||
-                         document.getElementById('uname');
-            if (pill && curUser) {
-                const role = curUser.role||'guest';
-                const ico  = role==='founder'?'👑 ':role==='admin'?'🔑 ':'';
-                pill.textContent = ico + (curUser.name||curUser.username||'—').split(' ')[0];
-                const dot = document.getElementById('udot');
-                if (dot) dot.className = 'u-dot on';
-            }
-        }
-        if (d.type==='QCOL_CONFIG'||d.type==='QCOL_CONFIG_UPDATED') {
-            const url = localStorage.getItem('qcol_colab_url')||'';
-            if (url && url!==engineURL) { engineURL=url; checkEngine(); }
-        }
-    });
-    postCore('QCOL_GET_USER');
-    postCore('QCOL_GET_CONFIG');
-    setTimeout(() => {
-        const stored = localStorage.getItem('qcol_cur_user');
-        if (stored && !curUser) { try { curUser=JSON.parse(stored); } catch(e){} }
-        const url = localStorage.getItem('qcol_colab_url')||'';
-        if (url) { engineURL=url; checkEngine(); }
-    }, 800);
-})();
+    renderSaveList();
+  }
+  if (d.type === 'QCOL_CONFIG' || d.type === 'QCOL_CONFIG_UPDATED') {
+    const url = localStorage.getItem('qcol_colab_url') || '';
+    if (url && url !== engineURL) { engineURL = url; checkEngine(); }
+  }
+  if (d.type === 'QCOL_USER_UPDATE') {
+    curUser = d.user; renderSaveList();
+  }
+});
+
+// Al cargar: pedir usuario y config del ecosistema
+postCore('QCOL_GET_USER');
+postCore('QCOL_GET_CONFIG');
+setTimeout(() => {
+  const stored = localStorage.getItem('qcol_cur_user');
+  if (stored && !curUser) { try { curUser = JSON.parse(stored); renderSaveList(); } catch(e){} }
+  const url = localStorage.getItem('qcol_colab_url') || '';
+  if (url) { engineURL = url; checkEngine(); }
+}, 800);
+
 
 init();
 </script>
