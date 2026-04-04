@@ -418,7 +418,7 @@ body { background:var(--bg); color:var(--tx); font-family:var(--ex); }
 
 <script>
 // ═══════════════════════════════════════════════════════════
-// ARQUITECTO CUÁNTICO — Iconos estándar + click eliminar + 3 reintentos 30s
+// ARQUITECTO CUÁNTICO — Compatible con Qiskit 1.0+ y servidor real
 // ═══════════════════════════════════════════════════════════
 
 let circuit = { qubits: 2, gates: [] };
@@ -558,7 +558,6 @@ function renderCircuit() {
       const gCol = g.def?.bg || '#0088ff';
       let svg = '';
       if (g.id === 'CCX') {
-        // Toffoli: dos puntos de control y target con ⊕
         svg = `<svg width="52" height="${ROW_HEIGHT + height}" viewBox="0 0 52 ${ROW_HEIGHT + height}" style="cursor:pointer;" onclick="removeGate(${g.uid})">
           <line x1="26" y1="0" x2="26" y2="${ROW_HEIGHT + height}" stroke="${gCol}" stroke-width="2.5"/>
           <circle cx="26" cy="${ROW_HEIGHT / 2}" r="8" fill="${gCol}" stroke="rgba(255,255,255,.9)" stroke-width="1.5"/>
@@ -568,7 +567,6 @@ function renderCircuit() {
           <line x1="26" y1="${ROW_HEIGHT / 2 + height - 10}" x2="26" y2="${ROW_HEIGHT / 2 + height + 10}" stroke="${gCol}" stroke-width="2"/>
         </svg>`;
       } else if (g.id === 'CSW') {
-        // Fredkin: punto de control + dos cruces
         svg = `<svg width="52" height="${ROW_HEIGHT + height}" viewBox="0 0 52 ${ROW_HEIGHT + height}" style="cursor:pointer;" onclick="removeGate(${g.uid})">
           <line x1="26" y1="0" x2="26" y2="${ROW_HEIGHT + height}" stroke="${gCol}" stroke-width="2.5"/>
           <circle cx="26" cy="${ROW_HEIGHT / 2}" r="8" fill="${gCol}" stroke="rgba(255,255,255,.9)" stroke-width="1.5"/>
@@ -585,7 +583,6 @@ function renderCircuit() {
       const gCol = g.def?.bg || '#0088ff';
       let svg = '';
       if (g.id === 'CX') {
-        // CNOT: punto de control + target con ⊕
         svg = `<svg width="48" height="${ROW_HEIGHT + height}" viewBox="0 0 48 ${ROW_HEIGHT + height}" style="cursor:pointer;" onclick="removeGate(${g.uid})">
           <line x1="24" y1="0" x2="24" y2="${ROW_HEIGHT + height}" stroke="${gCol}" stroke-width="2.5"/>
           <circle cx="24" cy="${ROW_HEIGHT / 2}" r="8" fill="${gCol}" stroke="rgba(255,255,255,.9)" stroke-width="1.5"/>
@@ -594,14 +591,12 @@ function renderCircuit() {
           <line x1="24" y1="${ROW_HEIGHT / 2 + height - 10}" x2="24" y2="${ROW_HEIGHT / 2 + height + 10}" stroke="${gCol}" stroke-width="2"/>
         </svg>`;
       } else if (g.id === 'CZ') {
-        // CZ: dos puntos
         svg = `<svg width="48" height="${ROW_HEIGHT + height}" viewBox="0 0 48 ${ROW_HEIGHT + height}" style="cursor:pointer;" onclick="removeGate(${g.uid})">
           <line x1="24" y1="0" x2="24" y2="${ROW_HEIGHT + height}" stroke="${gCol}" stroke-width="2.5"/>
           <circle cx="24" cy="${ROW_HEIGHT / 2}" r="8" fill="${gCol}" stroke="rgba(255,255,255,.9)" stroke-width="1.5"/>
           <circle cx="24" cy="${ROW_HEIGHT / 2 + height}" r="8" fill="${gCol}" stroke="rgba(255,255,255,.9)" stroke-width="1.5"/>
         </svg>`;
       } else if (g.id === 'SWAP') {
-        // SWAP: dos cruces
         svg = `<svg width="48" height="${ROW_HEIGHT + height}" viewBox="0 0 48 ${ROW_HEIGHT + height}" style="cursor:pointer;" onclick="removeGate(${g.uid})">
           <line x1="24" y1="0" x2="24" y2="${ROW_HEIGHT + height}" stroke="${gCol}" stroke-width="2.5"/>
           <line x1="16" y1="${ROW_HEIGHT / 2 - 6}" x2="32" y2="${ROW_HEIGHT / 2 + 6}" stroke="${gCol}" stroke-width="2"/>
@@ -641,41 +636,37 @@ function updateBlochSelector() {
   if (sel.value !== currentBlochQubit.toString()) sel.value = currentBlochQubit;
 }
 
+// ═══════════════════════════════════════════════════════════
+// GENERACIÓN DE CÓDIGO COMPATIBLE CON QISKIT 1.0+
+// ═══════════════════════════════════════════════════════════
 function updateCodeFromCircuit() {
   if (isUpdatingFromCode) return;
-  let code = `from qiskit import QuantumCircuit, execute, Aer\nimport numpy as np\n\nqc = QuantumCircuit(${circuit.qubits}, ${circuit.qubits})\n\n`;
+  let code = `from qiskit import QuantumCircuit\nimport numpy as np\nfrom qiskit_aer import AerSimulator\n\nqc = QuantumCircuit(${circuit.qubits}, ${circuit.qubits})\n\n`;
   circuit.gates.forEach(g => {
     let line = g.def.code.replace('{q}', g.q).replace('{q2}', g.q2 !== undefined ? g.q2 : 0).replace('{q3}', g.q3 !== undefined ? g.q3 : 0);
     code += line + '\n';
   });
-  code += `\nqc.measure(range(${circuit.qubits}), range(${circuit.qubits}))\nprint(qc.draw(output='text'))\n\nbackend = Aer.get_backend('qasm_simulator')\njob = execute(qc, backend, shots=1024)\nresult = job.result()\nprint("\\nResultados:", result.get_counts())`;
+  code += `\nqc.measure(range(${circuit.qubits}), range(${circuit.qubits}))\nprint(qc.draw(output='text'))\n\nsimulator = AerSimulator()\nresult = simulator.run(qc, shots=1024).result()\ncounts = result.get_counts()\nprint("Resultados:", counts)`;
   const ta = document.getElementById('code-ta');
   if (ta && ta.value !== code) { ta.value = code; updateSyntaxHighlight(); }
 }
 
 // ══════════════════════════════════════════════════════════════
 // PARSER UNIVERSAL — Lee cualquier código Qiskit/Python válido
-// Soporta: QuantumRegister, bucles for, variables, expresiones,
-//          MCXGate, nombre de circuito diferente a 'qc', etc.
 // ══════════════════════════════════════════════════════════════
 function normalizeQiskitCode(code) {
-  // Paso 1: Detectar nombre del circuito (puede ser qc, circuit, qcirc, etc.)
   const circNameMatch = code.match(/(\w+)\s*=\s*QuantumCircuit\s*\(/);
   const circName = circNameMatch ? circNameMatch[1] : 'qc';
 
-  // Paso 2: Resolver variables numéricas simples (n = 20, theta = pi/4, etc.)
   const vars = {};
   const varRe = /^(\w+)\s*=\s*([\d.]+(?:\s*[\+\-\*\/]\s*[\d.]+)*)\s*$/;
   code.split('\n').forEach(line => {
     const m = line.trim().match(varRe);
     if (m && !isNaN(parseFloat(m[2]))) vars[m[1]] = parseFloat(eval(m[2].replace(/\s/g,'')));
   });
-  // pi constant
   vars['pi'] = Math.PI; vars['np.pi'] = Math.PI;
 
-  // Paso 3: Resolver QuantumRegister → mapeo de nombres a índices
-  // qr = QuantumRegister(n, 'q') → qr[i] = i
-  const qrMap = {}; // qrMap['qr'] = offset
+  const qrMap = {};
   let offset = 0;
   const qrRe = /(\w+)\s*=\s*QuantumRegister\s*\(\s*(\d+|\w+)/g;
   let qrMatch;
@@ -685,29 +676,21 @@ function normalizeQiskitCode(code) {
     qrMap[regName] = offset;
     offset += size;
   }
-  // Si hay QuantumRegisters, actualizar número de qubits
   if (offset > 0 && offset !== circuit.qubits && offset <= 20) {
     circuit.qubits = offset;
   }
 
-  // Función para resolver un argumento de qubit a índice numérico
   function resolveQubit(arg) {
     arg = arg.trim();
-    // Número directo: 0, 1, 2...
     if (/^\d+$/.test(arg)) return parseInt(arg);
-    // Variable simple: n
     if (vars[arg] !== undefined) return Math.floor(vars[arg]);
-    // Registro con índice: qr[0], qr[i], qr[i+1], qr[i-1]
     const regIdxMatch = arg.match(/^(\w+)\[(.+)\]$/);
     if (regIdxMatch) {
       const regName = regIdxMatch[1];
       const idxExpr = regIdxMatch[2].trim();
       let idx = NaN;
-      // Número literal
-      if (/^\d+$/.test(idxExpr)) { idx = parseInt(idxExpr); }
-      // Variable
-      else if (vars[idxExpr] !== undefined) { idx = Math.floor(vars[idxExpr]); }
-      // Expresión simple i+1, i-1, i*2
+      if (/^\d+$/.test(idxExpr)) idx = parseInt(idxExpr);
+      else if (vars[idxExpr] !== undefined) idx = Math.floor(vars[idxExpr]);
       else {
         try {
           const safeExpr = idxExpr.replace(/[a-z_]\w*/gi, match => {
@@ -723,8 +706,6 @@ function normalizeQiskitCode(code) {
     return NaN;
   }
 
-  // Paso 4: Expandir bucles for simples
-  // for i in range(n): qc.h(i)
   function expandLoops(lines) {
     const result = [];
     let i = 0;
@@ -741,18 +722,14 @@ function normalizeQiskitCode(code) {
           end = parseInt(forMatch[2]) || parseInt(vars[forMatch[2]]) || 0;
         }
         if (forMatch[4]) step = parseInt(forMatch[4]) || 1;
-        // Collect body (next indented lines)
         const body = [];
         i++;
         while (i < lines.length && (lines[i].startsWith('  ') || lines[i].startsWith('\t') || lines[i].trim() === '')) {
           body.push(lines[i]);
           i++;
         }
-        // Expand
         for (let v = start; v < end; v += step) {
-          const loopVars = { ...vars, [varName]: v };
           body.forEach(bl => {
-            // Replace loop variable in line
             const expanded = bl.replace(new RegExp('\\b' + varName + '\\b', 'g'), v);
             result.push(expanded);
           });
@@ -773,48 +750,36 @@ function updateCircuitFromCode() {
   const code = document.getElementById('code-ta').value;
   const newGates = [];
 
-  // Run universal parser
   const { expandLoops, resolveQubit, circName } = normalizeQiskitCode(code);
-
-  // Expand loops first
   let lines = expandLoops(code.split('\n'));
 
-  // Now detect circuit name per line (may change)
   lines.forEach(line => {
     line = line.trim();
     if (!line || line.startsWith('#')) return;
 
-    // Detect circuit variable name dynamically per line
-    const cn = circName; // fallback
-
-    // Build dynamic regexes using circuit name
-    // Also accept any variable name before the dot: \w+\.(h|x|...) 
     function tryQ(op, str) {
-      // op: gate name, str: argument string → qubit index
       const q = resolveQubit(str);
       return isNaN(q) ? null : q;
     }
 
-    // 3-qubit gates
+    // 3-qubit
     const m3 = line.match(/\w+\.(?:ccx|toffoli)\s*\(([^,]+),([^,]+),([^)]+)\)/i) ||
                 line.match(/\w+\.append\s*\(MCXGate\(\d+\)\s*,\s*\[([^\]]*)\]/i);
     if (m3) {
       let qs;
       if (line.includes('append')) {
-        // MCX: extract qubit list
         const qlist = m3[1].split(',').map(s => resolveQubit(s)).filter(q => !isNaN(q));
         if (qlist.length >= 3) qs = [qlist[0], qlist[1], qlist[qlist.length-1]].sort((a,b)=>a-b);
       } else {
         qs = [resolveQubit(m3[1]), resolveQubit(m3[2]), resolveQubit(m3[3])].filter(q=>!isNaN(q)).sort((a,b)=>a-b);
       }
       if (qs && qs.length >= 3 && qs[2] < circuit.qubits) {
-        const gDef = GATES['3q'][0]; // CCX
+        const gDef = GATES['3q'][0];
         newGates.push({ id:'CCX', q:qs[0], q2:qs[1], q3:qs[2], def:gDef, uid:nextId++ });
         return;
       }
     }
 
-    // CSWAP / Fredkin
     const mcsw = line.match(/\w+\.cswap\s*\(([^,]+),([^,]+),([^)]+)\)/i);
     if (mcsw) {
       const qs = [resolveQubit(mcsw[1]),resolveQubit(mcsw[2]),resolveQubit(mcsw[3])].filter(q=>!isNaN(q)).sort((a,b)=>a-b);
@@ -825,14 +790,13 @@ function updateCircuitFromCode() {
       }
     }
 
-    // 2-qubit gates — flexible arg matching
+    // 2-qubit
     const g2map = [
       {id:'CX',  re:/\w+\.cx\s*\(([^,]+),([^)]+)\)/i},
       {id:'CZ',  re:/\w+\.cz\s*\(([^,]+),([^)]+)\)/i},
       {id:'SWAP',re:/\w+\.swap\s*\(([^,]+),([^)]+)\)/i},
       {id:'CX',  re:/\w+\.cnot\s*\(([^,]+),([^)]+)\)/i},
-      {id:'CX',  re:/\w+\.cx\s*\(([^,]+),([^)]+)\)/i},
-      {id:'CZ',  re:/\w+\.cp\s*\([^,]+,\s*([^,]+),([^)]+)\)/i},  // cp → CZ visual
+      {id:'CZ',  re:/\w+\.cp\s*\([^,]+,\s*([^,]+),([^)]+)\)/i},
       {id:'CX',  re:/\w+\.ch\s*\(([^,]+),([^)]+)\)/i},
       {id:'CX',  re:/\w+\.cy\s*\(([^,]+),([^)]+)\)/i},
     ];
@@ -848,7 +812,7 @@ function updateCircuitFromCode() {
       }
     }
 
-    // 1-qubit gates — flexible
+    // 1-qubit
     const g1map = [
       {id:'H',  re:/\w+\.h\s*\(([^)]+)\)/i},
       {id:'X',  re:/\w+\.x\s*\(([^)]+)\)/i},
@@ -860,7 +824,7 @@ function updateCircuitFromCode() {
       {id:'RX', re:/\w+\.rx\s*\([^,]+,\s*([^)]+)\)/i},
       {id:'RY', re:/\w+\.ry\s*\([^,]+,\s*([^)]+)\)/i},
       {id:'RZ', re:/\w+\.rz\s*\([^,]+,\s*([^)]+)\)/i},
-      {id:'RZ', re:/\w+\.p\s*\([^,]+,\s*([^)]+)\)/i},  // phase gate → RZ visual
+      {id:'RZ', re:/\w+\.p\s*\([^,]+,\s*([^)]+)\)/i},
       {id:'H',  re:/\w+\.initialize\s*\([^,]+,\s*([^)]+)\)/i},
       {id:'M',  re:/\w+\.measure\s*\(([^,)]+)/i},
     ];
@@ -876,7 +840,6 @@ function updateCircuitFromCode() {
       }
     }
 
-    // measure_all, barrier (show M on all qubits)
     if (/\w+\.measure_all\s*\(\s*\)/.test(line)) {
       const gDef = findGateDef('M') || GATES['meas'][0];
       for (let qi=0; qi<circuit.qubits; qi++)
@@ -884,7 +847,6 @@ function updateCircuitFromCode() {
       return;
     }
 
-    // QuantumCircuit size detection
     const qcMatch = line.match(/\w+\s*=\s*QuantumCircuit\s*\(\s*(\d+|\w+)/);
     if (qcMatch) {
       const n = parseInt(qcMatch[1]) || 2;
@@ -905,7 +867,6 @@ function updateCircuitFromCode() {
   }
 }
 
-// Función de escape HTML simple
 function escapeHtml(str) {
   return str.replace(/[&<>]/g, function(m) {
     if (m === '&') return '&amp;';
@@ -915,74 +876,41 @@ function escapeHtml(str) {
   });
 }
 
-// Resaltador de sintaxis CORREGIDO - trabaja sobre texto plano, no sobre HTML
 function highlightSyntax(plainCode) {
   const lines = plainCode.split('\n');
   const resultLines = [];
-  
-  // Definir reglas de resaltado (regex, color)
   const rules = [
-    { regex: /(#.*$)/g, color: '#6272a4' },                    // Comentarios
-    { regex: /(".*?"|'.*?')/g, color: '#f1fa8c' },             // Strings
-    { regex: /\b(from|import|def|class|return|if|elif|else|for|while|in|not|and|or|True|False|None|as|print)\b/g, color: '#ff79c6' }, // Keywords
-    { regex: /\b(QuantumCircuit|execute|Aer|np|pi)\b/g, color: '#8be9fd' }, // Clases Qiskit
-    { regex: /\b(\d+)\b/g, color: '#bd93f9' }                  // Números
+    { regex: /(#.*$)/g, color: '#6272a4' },
+    { regex: /(".*?"|'.*?')/g, color: '#f1fa8c' },
+    { regex: /\b(from|import|def|class|return|if|elif|else|for|while|in|not|and|or|True|False|None|as|print)\b/g, color: '#ff79c6' },
+    { regex: /\b(QuantumCircuit|AerSimulator|np|pi)\b/g, color: '#8be9fd' },
+    { regex: /\b(\d+)\b/g, color: '#bd93f9' }
   ];
-  
   for (let line of lines) {
-    // Colección de tokens: { start, end, color }
     let tokens = [];
-    
-    // Aplicar cada regla sobre la línea original (sin modificar)
     for (const rule of rules) {
       let match;
-      // Resetear regex
       rule.regex.lastIndex = 0;
       while ((match = rule.regex.exec(line)) !== null) {
-        tokens.push({
-          start: match.index,
-          end: match.index + match[0].length,
-          color: rule.color,
-          text: match[0]
-        });
+        tokens.push({ start: match.index, end: match.index + match[0].length, color: rule.color, text: match[0] });
       }
     }
-    
-    // Ordenar tokens por posición de inicio
     tokens.sort((a, b) => a.start - b.start);
-    
-    // Eliminar tokens solapados (prioridad: el que empieza primero)
     const uniqueTokens = [];
     let lastEnd = -1;
     for (const token of tokens) {
-      if (token.start >= lastEnd) {
-        uniqueTokens.push(token);
-        lastEnd = token.end;
-      }
+      if (token.start >= lastEnd) { uniqueTokens.push(token); lastEnd = token.end; }
     }
-    
-    // Construir la línea HTML
     let htmlLine = '';
     let pos = 0;
-    
     for (const token of uniqueTokens) {
-      // Texto antes del token
-      if (token.start > pos) {
-        htmlLine += escapeHtml(line.substring(pos, token.start));
-      }
-      // Token resaltado
+      if (token.start > pos) htmlLine += escapeHtml(line.substring(pos, token.start));
       htmlLine += `<span style="color:${token.color};">${escapeHtml(token.text)}</span>`;
       pos = token.end;
     }
-    
-    // Resto de la línea
-    if (pos < line.length) {
-      htmlLine += escapeHtml(line.substring(pos));
-    }
-    
+    if (pos < line.length) htmlLine += escapeHtml(line.substring(pos));
     resultLines.push(htmlLine);
   }
-  
   return resultLines.join('\n');
 }
 
@@ -990,22 +918,12 @@ function updateSyntaxHighlight() {
   const ta = document.getElementById('code-ta');
   const syn = document.getElementById('syn-lay');
   const lnums = document.getElementById('lnums');
-  
   if (!ta || !syn) return;
-  
   const plainCode = ta.value;
   const lines = plainCode.split('\n');
-  
-  // Actualizar números de línea
-  if (lnums) {
-    lnums.innerHTML = lines.map((_, i) => `<div>${i + 1}</div>`).join('');
-  }
-  
-  // Aplicar resaltado sobre el texto plano
+  if (lnums) lnums.innerHTML = lines.map((_, i) => `<div>${i + 1}</div>`).join('');
   const highlighted = highlightSyntax(plainCode);
   syn.innerHTML = highlighted + '\n';
-  
-  // Sincronizar scroll
   syn.scrollTop = ta.scrollTop;
   syn.scrollLeft = ta.scrollLeft;
 }
@@ -1036,9 +954,9 @@ function formatError(errText, code) {
   };
   const explanation = explanations[errType] || '💡 Revisa el código en la línea indicada.';
   html += `❌ ${errType}` + (errLine ? ` en línea ${errLine}` : '') + '\n';
-  if (errLine && lines[errLine - 1]) html += `\n<span class="err-line"><span class="err-arrow">→ L${errLine}:</span> ${escH(lines[errLine - 1])}</span>\n`;
+  if (errLine && lines[errLine - 1]) html += `\n<span class="err-line"><span class="err-arrow">→ L${errLine}:</span> ${escapeHtml(lines[errLine - 1])}</span>\n`;
   const msgLines = errText.split('\n').filter(l => l.trim());
-  html += `<span class="err-msg">${escH(msgLines[msgLines.length - 1] || errText)}</span>\n\n<span class="wa">${explanation}</span>`;
+  html += `<span class="err-msg">${escapeHtml(msgLines[msgLines.length - 1] || errText)}</span>\n\n<span class="wa">${explanation}</span>`;
   return html;
 }
 
@@ -1054,8 +972,6 @@ function highlightErrorLine(lineNum) {
   ta.scrollTop = (lineNum - 3) * lineHeight;
   updCur();
 }
-
-function escH(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
 async function fetchWithRetry(url, options, retries = 3, delay = 30000) {
   let lastError;
@@ -1082,10 +998,21 @@ async function fetchWithRetry(url, options, retries = 3, delay = 30000) {
   throw lastError;
 }
 
+// ═══════════════════════════════════════════════════════════
+// EJECUCIÓN REAL (SOLO SERVIDOR, SIN SIMULACIÓN LOCAL)
+// ═══════════════════════════════════════════════════════════
 async function runCode() {
   if (running) return;
   const code = document.getElementById('code-ta').value.trim();
   if (!code) { notify('Escribe código primero'); return; }
+  
+  if (!engineOK || !engineURL) {
+    notify('❌ No hay compilador configurado. Configura la URL en el panel Fundador.');
+    const out = document.getElementById('out-body');
+    out.innerHTML = `<span class="er">⚠️ No se ha configurado ningún compilador en la nube.\n\nVe al panel Fundador → 🤗 Compilador HuggingFace y guarda la URL de tu Space.</span>`;
+    return;
+  }
+  
   running = true;
   setRunSt('run', 'Ejecutando...');
   const btn = document.getElementById('btn-run');
@@ -1094,61 +1021,44 @@ async function runCode() {
   setTab('out');
   const t0 = Date.now();
   const out = document.getElementById('out-body');
-  out.innerHTML = `<span class="inf">Procesando · ${curLib}...\n</span>`;
+  out.innerHTML = `<span class="inf">Enviando código al compilador cuántico (Qiskit 1.0+)...\n</span>`;
 
-  if (engineOK && engineURL) {
-    const isHF = engineURL.includes('hf.space') || engineURL.includes('huggingface');
-    try {
-      let res, d;
-      if (isHF) {
-        res = await fetchWithRetry(engineURL + '/run/predict', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ data: [code] })
-        }, 3, 30000);
-        const raw = await res.json();
-        d = raw.data ? raw.data[0] : raw;
-      } else {
-        res = await fetchWithRetry(engineURL + '/run', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code, lib: curLib })
-        }, 3, 30000);
-        d = await res.json();
-      }
-      const el = ((Date.now() - t0) / 1000).toFixed(2);
-      document.getElementById('out-elapsed').textContent = el + 's';
-      if (d.success) {
-        out.innerHTML = `<span class="inf">╔════════════════════════════╗\n║  Compilador · ${el}s\n╚════════════════════════════╝\n\n</span><span class="ok">${escH(d.output)}</span>`;
-        if (d.bloch?.probabilities) updateBlochFromProbs(d.bloch.probabilities);
-        setRunSt('idle', 'Listo');
-        logMonitorRun({ success: true, lib: curLib, qubits: circuit.qubits, time: parseFloat(el) });
-      } else {
-        out.innerHTML += `<span class="er">${formatError(d.output, code)}</span>`;
-        setRunSt('err', 'Error');
-      }
-    } catch (e) {
-      out.innerHTML += `<span class="er">❌ ${e.name === 'AbortError' ? 'Tiempo agotado tras 3 intentos (30s c/u)' : e.message}</span>`;
-      setRunSt('err', 'Error');
-      engineOK = false;
-      document.getElementById('compiler-status').textContent = '● SIN COMPILADOR';
-      document.getElementById('compiler-status').classList.remove('active', 'waiting');
+  const isHF = engineURL.includes('hf.space') || engineURL.includes('huggingface');
+  try {
+    let res, d;
+    if (isHF) {
+      res = await fetchWithRetry(engineURL + '/run/predict', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: [code] })
+      }, 3, 30000);
+      const raw = await res.json();
+      d = raw.data ? raw.data[0] : raw;
+    } else {
+      res = await fetchWithRetry(engineURL + '/run', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code, lib: curLib })
+      }, 3, 30000);
+      d = await res.json();
     }
-  } else {
-    await new Promise(r => setTimeout(r, 650));
     const el = ((Date.now() - t0) / 1000).toFixed(2);
-    const hasH = /\.h\(|Hadamard/.test(code), hasCX = /\.cx\(|CNOT/.test(code), hasX = /\.x\(/.test(code);
-    let st = '', eq = '', probs = [];
-    if (hasH && hasCX) { st = 'Bell |Φ⁺⟩'; eq = '(|00⟩+|11⟩)/√2'; probs = [['00', '50.0'], ['11', '50.0']]; }
-    else if (hasH) { st = 'Superposición'; eq = '(|0⟩+|1⟩)/√2'; probs = [['0', '50.0'], ['1', '50.0']]; }
-    else if (hasX) { st = '|1⟩'; eq = 'Excitado'; probs = [['1', '100.0']]; }
-    else { st = '|0⟩'; eq = 'Base'; probs = [['0', '100.0']]; }
-    out.innerHTML = `<span class="inf">╔════════════════════════════════╗\n║  Simulación local · ${el}s\n╚════════════════════════════════╝\n\n</span><span class="ok">Estado final: ${st}\n|ψ⟩ = ${eq}\n\n</span><span class="inf">══ Probabilidades ══\n</span>`;
-    probs.forEach(([s, p]) => { const bar = '█'.repeat(parseInt(p / 5) || 1); out.innerHTML += `<span class="pb">|${s}⟩: ${p.padStart(6)}%  ${bar}\n</span>`; });
-    out.innerHTML += `\n<span class="ok">✅ Simulación completada en ${el}s</span>`;
     document.getElementById('out-elapsed').textContent = el + 's';
-    setRunSt('idle', 'Listo (sim.)');
-    logMonitorRun({ success: true, lib: curLib, qubits: circuit.qubits, time: parseFloat(el), simulated: true });
+    if (d.success) {
+      out.innerHTML = `<span class="inf">╔════════════════════════════╗\n║  Compilador · ${el}s\n╚════════════════════════════╝\n\n</span><span class="ok">${escapeHtml(d.output)}</span>`;
+      if (d.bloch?.probabilities) updateBlochFromProbs(d.bloch.probabilities);
+      setRunSt('idle', 'Listo');
+      logMonitorRun({ success: true, lib: curLib, qubits: circuit.qubits, time: parseFloat(el) });
+    } else {
+      out.innerHTML += `<span class="er">${formatError(d.output, code)}</span>`;
+      setRunSt('err', 'Error');
+    }
+  } catch (e) {
+    out.innerHTML += `<span class="er">❌ ${e.name === 'AbortError' ? 'Tiempo agotado tras 3 intentos (30s c/u)' : e.message}</span>`;
+    setRunSt('err', 'Error');
+    engineOK = false;
+    document.getElementById('compiler-status').textContent = '● SIN COMPILADOR';
+    document.getElementById('compiler-status').classList.remove('active', 'waiting');
   }
   running = false;
   btn.disabled = false;
@@ -1165,7 +1075,7 @@ function setRunSt(s, msg) {
 function logMonitorRun(info) {
   try {
     const user = curUser?.username || 'guest';
-    const entry = { ts: new Date().toISOString(), user, lib: info.lib || 'qiskit', qubits: info.qubits || 0, time: info.time || 0, success: info.success !== false, simulated: info.simulated || false };
+    const entry = { ts: new Date().toISOString(), user, lib: info.lib || 'qiskit', qubits: info.qubits || 0, time: info.time || 0, success: info.success !== false };
     const raw = localStorage.getItem('qcol_monitor_data');
     const data = raw ? JSON.parse(raw) : { runs: [], total: 0 };
     data.runs.push(entry);
@@ -1262,7 +1172,24 @@ function applyBlochGate(gate) {
 function addQubit() { if (circuit.qubits < MAX_QUBITS) { circuit.qubits++; if (!blochStates[circuit.qubits - 1]) blochStates[circuit.qubits - 1] = { theta: 0, phi: 0 }; renderCircuit(); updateCircuitInfo(); updateCodeFromCircuit(); notify(`${circuit.qubits} qubits`); } else notify(`Máximo ${MAX_QUBITS} qubits`); }
 function removeQubit() { if (circuit.qubits > 1) { circuit.gates = circuit.gates.filter(g => g.q < circuit.qubits - 1 && (!g.q2 || g.q2 < circuit.qubits - 1) && (!g.q3 || g.q3 < circuit.qubits - 1)); circuit.qubits--; if (currentBlochQubit >= circuit.qubits) currentBlochQubit = circuit.qubits - 1; renderCircuit(); updateCircuitInfo(); updateCodeFromCircuit(); notify(`${circuit.qubits} qubits`); } }
 function clearCircuit() { circuit.gates = []; for (let i = 0; i < circuit.qubits; i++) blochStates[i] = { theta: 0, phi: 0 }; renderCircuit(); updateCircuitInfo(); updateCodeFromCircuit(); drawBloch(); notify('Circuito limpiado'); }
-function clearCode() { document.getElementById('code-ta').value = 'from qiskit import QuantumCircuit\nimport numpy as np\n\nqc = QuantumCircuit(2)\nqc.h(0)\nqc.cx(0, 1)\nqc.measure_all()\nprint(qc.draw(output="text"))\n\nfrom qiskit import execute, Aer\nbackend = Aer.get_backend("qasm_simulator")\njob = execute(qc, backend, shots=1024)\nprint(job.result().get_counts())'; onCodeEdit(); }
+function clearCode() { 
+  const defaultCode = `from qiskit import QuantumCircuit
+import numpy as np
+from qiskit_aer import AerSimulator
+
+qc = QuantumCircuit(2, 2)
+qc.h(0)
+qc.cx(0, 1)
+qc.measure([0,1], [0,1])
+print(qc.draw(output='text'))
+
+simulator = AerSimulator()
+result = simulator.run(qc, shots=1024).result()
+counts = result.get_counts()
+print("Resultados:", counts)`;
+  document.getElementById('code-ta').value = defaultCode; 
+  onCodeEdit(); 
+}
 function copyCode() { navigator.clipboard.writeText(document.getElementById('code-ta').value); notify('📋 Código copiado'); }
 function updCur() { const ta = document.getElementById('code-ta'); const txt = ta.value.substring(0, ta.selectionStart); const lines = txt.split('\n'); document.getElementById('sb-cur').textContent = `Ln ${lines.length}, Col ${lines[lines.length - 1].length + 1}`; }
 
@@ -1514,7 +1441,7 @@ async function checkEngine() {
   const status = document.getElementById('compiler-status');
   const setStatus = (txt, cls) => {
     if (badge) { badge.textContent = txt; badge.className = 'badge ' + cls; }
-    if (status) { status.textContent = txt; status.className = 'compiler-status ' + (cls==='badge-on'?'ok':''); }
+    if (status) { status.textContent = txt; status.className = 'compiler-status ' + (cls==='badge-on'?'active':'waiting'); }
   };
   setStatus('⏳ Conectando...', 'badge-warn');
   notify('🔄 Conectando al compilador...', 4000);
@@ -1588,7 +1515,6 @@ setTimeout(() => {
   const url = localStorage.getItem('qcol_colab_url') || '';
   if (url) { engineURL = url; checkEngine(); }
 }, 800);
-
 
 init();
 </script>
