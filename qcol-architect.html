@@ -419,6 +419,7 @@ body { background:var(--bg); color:var(--tx); font-family:var(--ex); }
 <script>
 // ═══════════════════════════════════════════════════════════
 // ARQUITECTO CUÁNTICO — Compatible con Qiskit 1.0+ y servidor real
+// Colores distintivos por puerta, sin transparencias en cables
 // ═══════════════════════════════════════════════════════════
 
 let circuit = { qubits: 2, gates: [] };
@@ -438,30 +439,31 @@ const MAX_QUBITS = 20;
 let blochStates = {};
 let currentBlochQubit = 0;
 
+// Definición de puertas con colores sólidos y distintivos (sin transparencias)
 const GATES = {
   '1q': [
-    { id: 'H', sym: 'H', bg: '#1a5fb4', glow:'rgba(26,95,180,.6)', desc: 'Hadamard', code: 'qc.h({q})', regex: /qc\.h\((\d+)\)/ },
-    { id: 'X', sym: 'X', bg: '#c01c28', glow:'rgba(192,28,40,.6)', desc: 'Pauli-X', code: 'qc.x({q})', regex: /qc\.x\((\d+)\)/ },
-    { id: 'Y', sym: 'Y', bg: '#7a3e99', glow:'rgba(122,62,153,.6)', desc: 'Pauli-Y', code: 'qc.y({q})', regex: /qc\.y\((\d+)\)/ },
-    { id: 'Z', sym: 'Z', bg: '#1c71d8', glow:'rgba(28,113,216,.6)', desc: 'Pauli-Z', code: 'qc.z({q})', regex: /qc\.z\((\d+)\)/ },
-    { id: 'S', sym: 'S', bg: '#c64600', glow:'rgba(198,70,0,.6)', desc: 'Fase π/2', code: 'qc.s({q})', regex: /qc\.s\((\d+)\)/ },
-    { id: 'T', sym: 'T', bg: '#26a269', glow:'rgba(38,162,105,.6)', desc: 'Fase π/4', code: 'qc.t({q})', regex: /qc\.t\((\d+)\)/ },
-    { id: 'SX', sym: '√X', bg: '#c01c28', glow:'rgba(192,28,40,.4)', desc: 'Raíz X', code: 'qc.sx({q})', regex: /qc\.sx\((\d+)\)/ },
-    { id: 'RX', sym: 'Rx', bg: '#0077c2', glow:'rgba(0,119,194,.6)', desc: 'Rotación X', code: 'qc.rx(np.pi/4, {q})', regex: /qc\.rx\([^,]+,\s*(\d+)\)/ },
-    { id: 'RY', sym: 'Ry', bg: '#005f6a', glow:'rgba(0,95,106,.6)', desc: 'Rotación Y', code: 'qc.ry(np.pi/4, {q})', regex: /qc\.ry\([^,]+,\s*(\d+)\)/ },
-    { id: 'RZ', sym: 'Rz', bg: '#5e35b1', glow:'rgba(94,53,177,.6)', desc: 'Rotación Z', code: 'qc.rz(np.pi/4, {q})', regex: /qc\.rz\([^,]+,\s*(\d+)\)/ }
+    { id: 'H', sym: 'H', bg: '#1a5fb4', glow:'#1a5fb4', desc: 'Hadamard', code: 'qc.h({q})', regex: /qc\.h\((\d+)\)/ },
+    { id: 'X', sym: 'X', bg: '#c01c28', glow:'#c01c28', desc: 'Pauli-X', code: 'qc.x({q})', regex: /qc\.x\((\d+)\)/ },
+    { id: 'Y', sym: 'Y', bg: '#7a3e99', glow:'#7a3e99', desc: 'Pauli-Y', code: 'qc.y({q})', regex: /qc\.y\((\d+)\)/ },
+    { id: 'Z', sym: 'Z', bg: '#1c71d8', glow:'#1c71d8', desc: 'Pauli-Z', code: 'qc.z({q})', regex: /qc\.z\((\d+)\)/ },
+    { id: 'S', sym: 'S', bg: '#c64600', glow:'#c64600', desc: 'Fase π/2', code: 'qc.s({q})', regex: /qc\.s\((\d+)\)/ },
+    { id: 'T', sym: 'T', bg: '#26a269', glow:'#26a269', desc: 'Fase π/4', code: 'qc.t({q})', regex: /qc\.t\((\d+)\)/ },
+    { id: 'SX', sym: '√X', bg: '#c01c28', glow:'#c01c28', desc: 'Raíz X', code: 'qc.sx({q})', regex: /qc\.sx\((\d+)\)/ },
+    { id: 'RX', sym: 'Rx', bg: '#0077c2', glow:'#0077c2', desc: 'Rotación X', code: 'qc.rx(np.pi/4, {q})', regex: /qc\.rx\([^,]+,\s*(\d+)\)/ },
+    { id: 'RY', sym: 'Ry', bg: '#005f6a', glow:'#005f6a', desc: 'Rotación Y', code: 'qc.ry(np.pi/4, {q})', regex: /qc\.ry\([^,]+,\s*(\d+)\)/ },
+    { id: 'RZ', sym: 'Rz', bg: '#5e35b1', glow:'#5e35b1', desc: 'Rotación Z', code: 'qc.rz(np.pi/4, {q})', regex: /qc\.rz\([^,]+,\s*(\d+)\)/ }
   ],
   '2q': [
-    { id: 'CX', sym: 'CX', bg: '#007070', glow:'rgba(0,131,143,.6)', desc: 'CNOT', code: 'qc.cx({q},{q2})', regex: /qc\.cx\((\d+),\s*(\d+)\)/, multi: true },
-    { id: 'CZ', sym: 'CZ', bg: '#00695c', glow:'rgba(0,105,92,.6)', desc: 'CZ', code: 'qc.cz({q},{q2})', regex: /qc\.cz\((\d+),\s*(\d+)\)/, multi: true },
-    { id: 'SWAP', sym: 'SW', bg: '#1565c0', glow:'rgba(21,101,192,.6)', desc: 'SWAP', code: 'qc.swap({q},{q2})', regex: /qc\.swap\((\d+),\s*(\d+)\)/, multi: true }
+    { id: 'CX', sym: 'CX', bg: '#007070', glow:'#007070', desc: 'CNOT', code: 'qc.cx({q},{q2})', regex: /qc\.cx\((\d+),\s*(\d+)\)/, multi: true },
+    { id: 'CZ', sym: 'CZ', bg: '#00695c', glow:'#00695c', desc: 'CZ', code: 'qc.cz({q},{q2})', regex: /qc\.cz\((\d+),\s*(\d+)\)/, multi: true },
+    { id: 'SWAP', sym: 'SW', bg: '#1565c0', glow:'#1565c0', desc: 'SWAP', code: 'qc.swap({q},{q2})', regex: /qc\.swap\((\d+),\s*(\d+)\)/, multi: true }
   ],
   '3q': [
-    { id: 'CCX', sym: 'CCX', bg: '#005f6a', glow:'rgba(0,95,106,.6)', desc: 'Toffoli', code: 'qc.ccx({q},{q2},{q3})', regex: /qc\.ccx\((\d+),\s*(\d+),\s*(\d+)\)/, triple: true },
-    { id: 'CSW', sym: 'CSW', bg: '#283593', glow:'rgba(40,53,147,.6)', desc: 'Fredkin (CSWAP)', code: 'qc.cswap({q},{q2},{q3})', regex: /qc\.cswap\((\d+),\s*(\d+),\s*(\d+)\)/, triple: true }
+    { id: 'CCX', sym: 'CCX', bg: '#005f6a', glow:'#005f6a', desc: 'Toffoli', code: 'qc.ccx({q},{q2},{q3})', regex: /qc\.ccx\((\d+),\s*(\d+),\s*(\d+)\)/, triple: true },
+    { id: 'CSW', sym: 'CSW', bg: '#283593', glow:'#283593', desc: 'Fredkin (CSWAP)', code: 'qc.cswap({q},{q2},{q3})', regex: /qc\.cswap\((\d+),\s*(\d+),\s*(\d+)\)/, triple: true }
   ],
   'meas': [
-    { id: 'M', sym: 'M', bg: '#6d4c41', glow:'rgba(109,76,65,.6)', desc: 'Medir', code: 'qc.measure({q},{q})', regex: /qc\.measure\((\d+),\s*\d+\)/ }
+    { id: 'M', sym: 'M', bg: '#6d4c41', glow:'#6d4c41', desc: 'Medir', code: 'qc.measure({q},{q})', regex: /qc\.measure\((\d+),\s*\d+\)/ }
   ]
 };
 
@@ -470,13 +472,13 @@ function buildPalette() {
   if (!container) return;
   let html = '';
   html += '<div class="pal-sec"><div class="pal-sec-lbl">1 QUBIT</div><div class="pal-grid">';
-  GATES['1q'].forEach(g => { html += `<div class="pal-gate" draggable="true" data-gate="${g.id}" style="background:${g.bg};--gate-glow:${g.glow||'rgba(0,136,255,.4)'};box-shadow:0 0 8px ${g.glow||'rgba(0,136,255,.3)'}" ondragstart="onDragStart(event)" ondragend="onDragEnd()"><span class="pal-gate-sym">${g.sym}</span><span class="pal-gate-lbl">${g.id}</span></div>`; });
+  GATES['1q'].forEach(g => { html += `<div class="pal-gate" draggable="true" data-gate="${g.id}" style="background:${g.bg};box-shadow:0 0 6px ${g.glow}" ondragstart="onDragStart(event)" ondragend="onDragEnd()"><span class="pal-gate-sym">${g.sym}</span><span class="pal-gate-lbl">${g.id}</span></div>`; });
   html += '</div></div><div class="pal-sec"><div class="pal-sec-lbl">2 QUBITS</div><div class="pal-grid">';
-  GATES['2q'].forEach(g => { html += `<div class="pal-gate" draggable="true" data-gate="${g.id}" style="background:${g.bg};--gate-glow:${g.glow||'rgba(0,136,255,.4)'};box-shadow:0 0 8px ${g.glow||'rgba(0,136,255,.3)'}" ondragstart="onDragStart(event)" ondragend="onDragEnd()"><span class="pal-gate-sym">${g.sym}</span><span class="pal-gate-lbl">${g.id}</span></div>`; });
+  GATES['2q'].forEach(g => { html += `<div class="pal-gate" draggable="true" data-gate="${g.id}" style="background:${g.bg};box-shadow:0 0 6px ${g.glow}" ondragstart="onDragStart(event)" ondragend="onDragEnd()"><span class="pal-gate-sym">${g.sym}</span><span class="pal-gate-lbl">${g.id}</span></div>`; });
   html += '</div></div><div class="pal-sec"><div class="pal-sec-lbl">3 QUBITS</div><div class="pal-grid">';
-  GATES['3q'].forEach(g => { html += `<div class="pal-gate" draggable="true" data-gate="${g.id}" style="background:${g.bg};--gate-glow:${g.glow||'rgba(0,136,255,.4)'};box-shadow:0 0 8px ${g.glow||'rgba(0,136,255,.3)'}" ondragstart="onDragStart(event)" ondragend="onDragEnd()"><span class="pal-gate-sym">${g.sym}</span><span class="pal-gate-lbl">${g.id}</span></div>`; });
+  GATES['3q'].forEach(g => { html += `<div class="pal-gate" draggable="true" data-gate="${g.id}" style="background:${g.bg};box-shadow:0 0 6px ${g.glow}" ondragstart="onDragStart(event)" ondragend="onDragEnd()"><span class="pal-gate-sym">${g.sym}</span><span class="pal-gate-lbl">${g.id}</span></div>`; });
   html += '</div></div><div class="pal-sec"><div class="pal-sec-lbl">MEDICIÓN</div><div class="pal-grid">';
-  GATES['meas'].forEach(g => { html += `<div class="pal-gate" draggable="true" data-gate="${g.id}" style="background:${g.bg};--gate-glow:${g.glow||'rgba(0,136,255,.4)'};box-shadow:0 0 8px ${g.glow||'rgba(0,136,255,.3)'}" ondragstart="onDragStart(event)" ondragend="onDragEnd()"><span class="pal-gate-sym">${g.sym}</span><span class="pal-gate-lbl">${g.id}</span></div>`; });
+  GATES['meas'].forEach(g => { html += `<div class="pal-gate" draggable="true" data-gate="${g.id}" style="background:${g.bg};box-shadow:0 0 6px ${g.glow}" ondragstart="onDragStart(event)" ondragend="onDragEnd()"><span class="pal-gate-sym">${g.sym}</span><span class="pal-gate-lbl">${g.id}</span></div>`; });
   html += '</div></div>';
   container.innerHTML = html;
 }
@@ -608,7 +610,7 @@ function renderCircuit() {
       html += `<div style="position:absolute; left:${left}px; top:${topY}px;">${svg}</div>`;
     } else {
       const yPos = g.q * ROW_HEIGHT;
-      html += `<div class="placed-gate" style="left:${left}px; top:${yPos + ROW_HEIGHT / 2}px; transform:translateY(-50%);" onclick="removeGate(${g.uid})"><div class="pg-box" style="background:${g.bg};--gate-glow:${g.glow||'rgba(0,136,255,.4)'};box-shadow:0 0 8px ${g.glow||'rgba(0,136,255,.3)'}"><span class="pg-sym">${g.def.sym}</span></div></div>`;
+      html += `<div class="placed-gate" style="left:${left}px; top:${yPos + ROW_HEIGHT / 2}px; transform:translateY(-50%);" onclick="removeGate(${g.uid})"><div class="pg-box" style="background:${g.def.bg};box-shadow:0 0 6px ${g.def.glow}"><span class="pg-sym">${g.def.sym}</span></div></div>`;
     }
   });
   html += `</div>`;
