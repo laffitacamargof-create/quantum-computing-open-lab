@@ -108,6 +108,7 @@ textarea.fi{resize:vertical;min-height:70px;line-height:1.6;}
   <button class="tab" onclick="showTab('colab')">🤗 Compilador HuggingFace</button>
   <button class="tab" onclick="showTab('github')">⬡ GitHub</button>
   <button class="tab" onclick="showTab('ai')">🤖 IA</button>
+  <button class="tab" onclick="showTab('iaresolver')">🧠 IA Resolver</button>
   <button class="tab" onclick="showTab('users')">👥 Usuarios</button>
   <button class="tab" onclick="showTab('content')">📂 Contenido</button>
   <button class="tab" onclick="showTab('config')">⚙️ Sistema</button>
@@ -130,37 +131,43 @@ textarea.fi{resize:vertical;min-height:70px;line-height:1.6;}
           <td><button class="bsm" onclick="downloadModule('core')">📥 Core</button></td>
         </tr>
         <tr>
-          <td><strong>Proyectos</strong></td><td style="font-family:var(--mono);font-size:.6rem;color:var(--gr);">qcol-projects.html</td>
+          <td><strong>Proyectos</strong></td>
+          <td style="font-family:var(--mono);font-size:.6rem;color:var(--gr);">qcol-projects.html</td>
           <td style="font-size:.62rem;color:var(--mu);">Notebooks desde GitHub</td>
           <td><span class="rb" id="st-projects" style="background:rgba(255,184,0,.12);color:#ffb800;border:1px solid rgba(255,184,0,.3);">PENDIENTE</span></td>
           <td><button class="bsm" onclick="downloadModule('projects')">📥</button></td>
         </tr>
         <tr>
-          <td><strong>Arquitecto</strong></td><td style="font-family:var(--mono);font-size:.6rem;color:var(--gr);">qcol-architect.html</td>
+          <td><strong>Arquitecto</strong></td>
+          <td style="font-family:var(--mono);font-size:.6rem;color:var(--gr);">qcol-architect.html</td>
           <td style="font-size:.62rem;color:var(--mu);">Editor Qiskit · Cirq · QuTiP + GPU HuggingFace</td>
           <td><span class="rb" id="st-architect" style="background:rgba(255,184,0,.12);color:#ffb800;border:1px solid rgba(255,184,0,.3);">PENDIENTE</span></td>
           <td><button class="bsm" onclick="downloadModule('architect')">📥</button></td>
         </tr>
         <tr>
-          <td><strong>Arquitecto Pro</strong></td><td style="font-family:var(--mono);font-size:.6rem;color:var(--gr);">qcol-architect-pro.html</td>
+          <td><strong>Arquitecto Pro</strong></td>
+          <td style="font-family:var(--mono);font-size:.6rem;color:var(--gr);">qcol-architect-pro.html</td>
           <td style="font-size:.62rem;color:var(--mu);">Notebooks completos — Admin+</td>
           <td><span class="rb" id="st-archpro" style="background:rgba(255,184,0,.12);color:#ffb800;border:1px solid rgba(255,184,0,.3);">PENDIENTE</span></td>
           <td><button class="bsm" onclick="downloadModule('architect-pro')">📥</button></td>
         </tr>
         <tr>
-          <td><strong>Librería</strong></td><td style="font-family:var(--mono);font-size:.6rem;color:var(--gr);">qcol-library.html</td>
+          <td><strong>Librería</strong></td>
+          <td style="font-family:var(--mono);font-size:.6rem;color:var(--gr);">qcol-library.html</td>
           <td style="font-size:.62rem;color:var(--mu);">Recursos educativos desde GitHub</td>
           <td><span class="rb" id="st-library" style="background:rgba(255,184,0,.12);color:#ffb800;border:1px solid rgba(255,184,0,.3);">PENDIENTE</span></td>
           <td><button class="bsm" onclick="downloadModule('library')">📥</button></td>
         </tr>
         <tr>
-          <td><strong>Cuenta</strong></td><td style="font-family:var(--mono);font-size:.6rem;color:var(--gr);">qcol-account.html</td>
+          <td><strong>Cuenta</strong></td>
+          <td style="font-family:var(--mono);font-size:.6rem;color:var(--gr);">qcol-account.html</td>
           <td style="font-size:.62rem;color:var(--mu);">Perfil y circuitos guardados</td>
           <td><span class="rb" id="st-account" style="background:rgba(255,184,0,.12);color:#ffb800;border:1px solid rgba(255,184,0,.3);">PENDIENTE</span></td>
           <td><button class="bsm" onclick="downloadModule('account')">📥</button></td>
         </tr>
         <tr>
-          <td><strong>Ayuda</strong></td><td style="font-family:var(--mono);font-size:.6rem;color:var(--gr);">qcol-help.html</td>
+          <td><strong>Ayuda</strong></td>
+          <td style="font-family:var(--mono);font-size:.6rem;color:var(--gr);">qcol-help.html</td>
           <td style="font-size:.62rem;color:var(--mu);">Documentación del ecosistema</td>
           <td><span class="rb" id="st-help" style="background:rgba(255,184,0,.12);color:#ffb800;border:1px solid rgba(255,184,0,.3);">PENDIENTE</span></td>
           <td><button class="bsm" onclick="downloadModule('help')">📥</button></td>
@@ -224,6 +231,7 @@ textarea.fi{resize:vertical;min-height:70px;line-height:1.6;}
       <div style="display:flex;gap:.4rem;">
         <input class="fi" id="colab-url" placeholder="https://[usuario]-qcol-compilador.hf.space">
         <button class="btn btn-ok" onclick="testColab()" style="white-space:nowrap;">🧪 PROBAR</button>
+        <button class="btn btn-ok" onclick="checkEngine()" style="white-space:nowrap;">🔄 RECONECTAR</button>
       </div>
       <div style="font-size:.58rem;color:var(--mu);margin-top:.28rem;">
         Ejemplo: <code style="color:var(--gr);">https://laffitacamargo-qcol-compilador.hf.space</code>
@@ -469,6 +477,94 @@ textarea.fi{resize:vertical;min-height:70px;line-height:1.6;}
   </div>
 </div>
 
+<!-- ════════════ IA RESOLVER (NUEVO) ════════════ -->
+<div class="panel" id="tab-iaresolver">
+  <div class="sec">
+    <div class="sec-title">🧠 IA Resolver — Clasificación automática de errores</div>
+    <div class="alert alert-info">
+      El editor <strong>Arquitecto Cuántico</strong> puede consultar a <strong>Mistral 3</strong> para clasificar atributos no reconocidos durante la sincronización.
+      Los atributos considerados <strong>innecesarios</strong> para dibujar el circuito se ignorarán permanentemente, evitando futuras consultas.
+    </div>
+
+    <div class="grid2">
+      <div>
+        <div class="fg">
+          <label class="fl">🔑 API Key de Mistral</label>
+          <input class="fi" id="mistral-key" type="password" placeholder="Ingresa tu API key de Mistral">
+          <div style="font-size:.58rem;color:var(--mu);margin-top:.25rem;">
+            Obtén tu clave gratis en <a onclick="window.open('https://console.mistral.ai','_blank')" style="color:var(--gr);cursor:pointer;">console.mistral.ai</a> → API Keys → Create
+          </div>
+        </div>
+        <div class="fg">
+          <label class="fl">🤖 Modelo de Mistral</label>
+          <select class="fi" id="mistral-model">
+            <option value="mistral-large-latest">Mistral Large (mejor calidad)</option>
+            <option value="mistral-small-latest">Mistral Small (más rápido)</option>
+            <option value="open-mistral-nemo">Mistral Nemo (rápido y eficiente)</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label class="fl">⏱️ Timeout (segundos)</label>
+          <input class="fi" id="mistral-timeout" type="number" min="5" max="30" value="10" style="width:100px;">
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-pri" onclick="saveMistralSettings()">💾 Guardar configuración</button>
+          <button class="btn btn-ok" onclick="testMistralConnection()">🧪 Probar conexión</button>
+          <button class="btn btn-sec" onclick="resetMistralPrompt()">🔄 Restaurar prompt por defecto</button>
+        </div>
+      </div>
+      <div>
+        <div class="tog-row">
+          <div>
+            <div class="tog-name">🧠 Clasificación automática de errores</div>
+            <div class="tog-desc">Permite a Mistral 3 clasificar errores y silenciar los innecesarios</div>
+          </div>
+          <label class="tog">
+            <input type="checkbox" id="mistral-toggle">
+            <span class="tog-sl"></span>
+          </label>
+        </div>
+        <div class="status-row">
+          <div class="sdot" id="mistral-dot"></div>
+          <div class="stxt" id="mistral-status">Cargando...</div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-ok" onclick="syncIgnoredAttrsWithCloud()">☁️ Sincronizar con la nube</button>
+          <button class="btn btn-sec" onclick="resetMistralCalls()">🔄 Reiniciar contador</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="fg">
+      <label class="fl">📝 Prompt del sistema (opcional)</label>
+      <textarea class="fi" id="mistral-prompt" rows="4" placeholder="Deja en blanco para usar el prompt por defecto"></textarea>
+      <div style="font-size:.58rem;color:var(--mu);margin-top:.25rem;">
+        El prompt por defecto ya está optimizado para el Arquitecto Cuántico. Solo modifícalo si sabes lo que haces.
+      </div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-title">📊 Estadísticas de llamadas a Mistral</div>
+    <div class="status-row">
+      <div class="sdot ok"></div>
+      <div class="stxt" id="mistral-calls-count">0 llamadas realizadas</div>
+      <button class="bsm" onclick="resetMistralCalls()" style="margin-left:auto;">Reiniciar contador</button>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-title">📋 Atributos ignorados permanentemente</div>
+    <div class="alert alert-info">
+      Estos atributos/métodos han sido clasificados como <strong>innecesarios</strong> por Mistral y serán ignorados en el editor.
+      Puedes eliminarlos de la lista si quieres que se reconsideren.
+    </div>
+    <div id="ignored-attrs-table" style="font-size:.65rem;color:var(--mu);">
+      Cargando lista...
+    </div>
+  </div>
+</div>
+
 <!-- ════════════ USUARIOS ════════════ -->
 <div class="panel" id="tab-users">
   <div class="grid2">
@@ -478,7 +574,7 @@ textarea.fi{resize:vertical;min-height:70px;line-height:1.6;}
         <table class="tbl" id="users-tbl">
           <thead><tr><th>USUARIO</th><th>ROL</th><th>UPLOAD</th><th>ACCIONES</th></tr></thead>
           <tbody id="users-tbody">
-            <tr><td>franci_laffita</td><td><span class="rb rbf">FUNDADOR</span></td><td style="color:var(--gr)">✅</td><td>—</td></tr>
+            <tr><td style="font-size:.62rem;">franci_laffita — Franci Laffita</td><td><span class="rb rbf">FUNDADOR</span></td><td style="color:var(--gr)">✅</td><td>—</td></tr>
           </tbody>
         </table>
       </div>
@@ -737,7 +833,6 @@ window.addEventListener('message', (e) => {
   const d = e.data;
   if (!d || !d.type) return;
   if (d.type === 'QCOL_CONFIG') {
-    // Recibir configuración del core
     if (d.ghUser) {
       document.getElementById('gh-user').value = d.ghUser;
       document.getElementById('gh-repo').value = d.ghRepo;
@@ -782,7 +877,325 @@ function showTab(id) {
   event.target.classList.add('active');
   if (id === 'users') renderUsers();
   if (id === 'content') renderProjs();
+  if (id === 'iaresolver') {
+    loadIgnoredAttrsTable();
+    updateMistralUI();
+  }
   loadSaved();
+}
+
+// ══ FETCH CON REINTENTOS ══
+async function fetchWithRetry(url, options, retries = 3, delay = 4000, timeout = 30000) {
+  let lastError;
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeout);
+      const res = await fetch(url, { ...options, signal: controller.signal });
+      clearTimeout(timeoutId);
+      if (res.ok) return res;
+      lastError = new Error(`HTTP ${res.status}`);
+      if (attempt < retries) {
+        addColabLog(`⏳ Intento ${attempt}/${retries} falló (${lastError.message}). Reintentando en ${delay/1000}s...`);
+        await new Promise(r => setTimeout(r, delay));
+      }
+    } catch (e) {
+      lastError = e;
+      if (e.name === 'AbortError') lastError = new Error(`Timeout (${timeout/1000}s)`);
+      if (attempt < retries) {
+        addColabLog(`⚠️ Intento ${attempt}/${retries}: ${lastError.message}. Reintentando...`);
+        await new Promise(r => setTimeout(r, delay));
+      }
+    }
+  }
+  throw lastError;
+}
+
+async function checkEngine() {
+  const url = document.getElementById('colab-url').value.trim();
+  if (!url) {
+    document.getElementById('colab-dot').className = 'sdot off';
+    document.getElementById('colab-status').textContent = 'Sin URL';
+    return false;
+  }
+  const baseURL = url.replace(/\/$/, '');
+  const healthURL = baseURL + '/health/predict';
+  document.getElementById('colab-dot').className = 'sdot warn';
+  document.getElementById('colab-status').textContent = 'Conectando...';
+  addColabLog(`🔄 Conectando a ${baseURL} (3 intentos, 30s c/u)...`);
+
+  try {
+    const res = await fetchWithRetry(healthURL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data: [''] })
+    }, 3, 4000, 30000);
+    const raw = await res.json();
+    const d = raw.data ? raw.data[0] : raw;
+    const engine = d.engine || 'qiskit';
+    const libs = (d.libs || []).slice(0, 4).join(', ');
+    document.getElementById('colab-dot').className = 'sdot ok';
+    document.getElementById('colab-status').textContent = `✅ Conectado — ${engine}`;
+    document.getElementById('colab-sub').textContent = libs;
+    addColabLog(`✅ Compilador activo: ${engine} · ${libs}`);
+    return true;
+  } catch (err) {
+    document.getElementById('colab-dot').className = 'sdot err';
+    document.getElementById('colab-status').textContent = `❌ Error: ${err.message}`;
+    addColabLog(`❌ ${err.message}`);
+    return false;
+  }
+}
+
+async function testColab() {
+  const success = await checkEngine();
+  if (success) notify('✅ Compilador HuggingFace conectado');
+  else notify('❌ No se pudo conectar al compilador después de 3 intentos');
+}
+
+function saveColab() {
+  const url = document.getElementById('colab-url').value.trim();
+  localStorage.setItem('qcol_colab_url', url);
+  postToCore('QCOL_SAVE_CONFIG', { key: 'colab_url', value: url });
+  notify('✅ URL del compilador guardada');
+  addSysLog('Compilador HuggingFace URL guardada', 'ok');
+  setTimeout(() => checkEngine(), 500);
+}
+
+// ══ CONSTANTE PROMPT POR DEFECTO ══
+const DEFAULT_PROMPT = `Eres un asistente especializado en el editor "Arquitecto Cuántico" del ecosistema QCOL (Quantum Computing Open Lab). Este editor dibuja circuitos cuánticos a partir de código Python (Qiskit). Tu única tarea es clasificar si un atributo o método es ESENCIAL o NO ESENCIAL para poder dibujar el circuito (es decir, para conocer las puertas, sus qubits y sus conexiones). Responde únicamente con "SI" o "NO".
+
+Reglas de clasificación:
+- RESPUESTA "SI" (esencial) si el atributo es:
+  * Un método de puerta: h, x, y, z, s, t, sx, rx, ry, rz, p, cx, cz, swap, cp, ccx, cswap, mcx, append, measure, measure_all.
+  * Una propiedad fundamental: num_qubits, qubits, data (la lista de operaciones), clbits, name (cuando se usa para identificar una puerta).
+  * Un método que añade una operación al circuito (como qc.append(gate, qubits)).
+  * Cualquier cosa que directamente afecte a la estructura del circuito.
+
+- RESPUESTA "NO" (no esencial) si el atributo es:
+  * Métodos de simulación: run, result, get_counts, statevector, save_statevector, AerSimulator.
+  * Métodos de visualización: draw, plot_histogram, plot_bloch_multivector, figure, show.
+  * Metadatos: definition, label, properties, settings, configuration, __dict__, __class__.
+  * Atributos internos de Python: __name__, __module__, __doc__, __dict__, __weakref__.
+  * Cualquier cosa relacionada con el simulador o con la salida de resultados (no con la construcción del circuito).
+  * Errores de lógica del usuario (por ejemplo, intentar acceder a 'operation' en un objeto que no tiene ese atributo). En ese caso, responde "NO" porque no es esencial para el dibujo.
+
+Si no estás seguro, responde "NO".`;
+
+// ══ CARGAR CONFIGURACIÓN DE MISTRAL (CON LIMPIEZA) ══
+function loadMistralSettings() {
+  const enabled = localStorage.getItem('qcol_mistral_enabled') === 'true';
+  let key = localStorage.getItem('qcol_mistral_key') || '';
+  const model = localStorage.getItem('qcol_mistral_model') || 'mistral-large-latest';
+  const timeout = localStorage.getItem('qcol_mistral_timeout') || '10';
+  let prompt = localStorage.getItem('qcol_mistral_prompt');
+  
+  // Limpiar key y prompt de caracteres no ASCII
+  const cleanedKey = key.replace(/[^\x00-\xFF]/g, '');
+  if (cleanedKey !== key) {
+    localStorage.setItem('qcol_mistral_key', cleanedKey);
+    key = cleanedKey;
+    notify('⚠️ Se ha limpiado la API key de caracteres no ASCII.');
+  }
+  if (prompt) {
+    const cleanedPrompt = prompt.replace(/[^\x00-\xFF]/g, '');
+    if (cleanedPrompt !== prompt) {
+      localStorage.setItem('qcol_mistral_prompt', cleanedPrompt);
+      prompt = cleanedPrompt;
+      notify('⚠️ Se ha limpiado el prompt de caracteres no ASCII.');
+    }
+  }
+  
+  // Si no hay prompt guardado, usar el por defecto
+  if (!prompt) {
+    prompt = DEFAULT_PROMPT;
+    localStorage.setItem('qcol_mistral_prompt', prompt);
+  }
+  
+  document.getElementById('mistral-toggle').checked = enabled;
+  document.getElementById('mistral-key').value = key;
+  document.getElementById('mistral-model').value = model;
+  document.getElementById('mistral-timeout').value = timeout;
+  document.getElementById('mistral-prompt').value = prompt;
+  
+  updateMistralUI();
+}
+
+// ══ GUARDAR CONFIGURACIÓN DE MISTRAL (CON LIMPIEZA) ══
+function cleanNonASCII(str) {
+  return str.replace(/[^\x00-\xFF]/g, '');
+}
+
+function saveMistralSettings() {
+  let apiKey = document.getElementById('mistral-key').value.trim();
+  let prompt = document.getElementById('mistral-prompt').value;
+  const cleanedKey = cleanNonASCII(apiKey);
+  const cleanedPrompt = cleanNonASCII(prompt);
+  
+  if (cleanedKey !== apiKey) {
+    notify('⚠️ La API key contenía caracteres no ASCII. Se han eliminado automáticamente.');
+    document.getElementById('mistral-key').value = cleanedKey;
+  }
+  if (cleanedPrompt !== prompt) {
+    notify('⚠️ El prompt contenía caracteres no ASCII. Se han eliminado automáticamente.');
+    document.getElementById('mistral-prompt').value = cleanedPrompt;
+  }
+  
+  localStorage.setItem('qcol_mistral_enabled', document.getElementById('mistral-toggle').checked);
+  localStorage.setItem('qcol_mistral_key', cleanedKey);
+  localStorage.setItem('qcol_mistral_model', document.getElementById('mistral-model').value);
+  localStorage.setItem('qcol_mistral_timeout', document.getElementById('mistral-timeout').value);
+  localStorage.setItem('qcol_mistral_prompt', cleanedPrompt);
+  
+  updateMistralUI();
+  notify('✅ Configuración de Mistral guardada');
+  addSysLog('Mistral: configuración actualizada', 'ok');
+}
+
+function resetMistralPrompt() {
+  localStorage.setItem('qcol_mistral_prompt', DEFAULT_PROMPT);
+  document.getElementById('mistral-prompt').value = DEFAULT_PROMPT;
+  notify('✅ Prompt restaurado al valor por defecto');
+  addSysLog('Mistral: prompt restaurado', 'ok');
+}
+
+async function testMistralConnection() {
+  let apiKey = localStorage.getItem('qcol_mistral_key');
+  if (!apiKey) { notify('❌ No hay API key configurada'); return; }
+  // Limpiar de nuevo por si acaso
+  apiKey = cleanNonASCII(apiKey);
+  if (apiKey !== localStorage.getItem('qcol_mistral_key')) {
+    localStorage.setItem('qcol_mistral_key', apiKey);
+    notify('⚠️ Se ha limpiado la API key de caracteres no ASCII.');
+  }
+  const model = localStorage.getItem('qcol_mistral_model') || 'mistral-large-latest';
+  notify('🔄 Probando conexión con Mistral...');
+  try {
+    const res = await fetch('https://api.mistral.ai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: model,
+        messages: [{ role: 'user', content: 'Di "OK"' }],
+        max_tokens: 5
+      })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      notify('✅ Conexión exitosa con Mistral');
+      addSysLog('Mistral: conexión probada correctamente', 'ok');
+    } else {
+      throw new Error(data.error?.message || 'Error desconocido');
+    }
+  } catch (err) {
+    notify('❌ Error conectando con Mistral: ' + err.message);
+    addSysLog('Mistral: error de conexión', 'err');
+  }
+}
+
+function updateMistralUI() {
+  const enabled = localStorage.getItem('qcol_mistral_enabled') === 'true';
+  const hasKey = !!localStorage.getItem('qcol_mistral_key');
+  const dot = document.getElementById('mistral-dot');
+  const status = document.getElementById('mistral-status');
+  if (dot) {
+    if (enabled && hasKey) dot.className = 'sdot ok';
+    else if (enabled && !hasKey) dot.className = 'sdot warn';
+    else dot.className = 'sdot off';
+  }
+  if (status) {
+    if (enabled && hasKey) status.textContent = '✅ Activo · Clasificando errores automáticamente';
+    else if (enabled && !hasKey) status.textContent = '⚠️ Activado sin API key';
+    else status.textContent = '⏸️ Desactivado';
+  }
+  const calls = parseInt(localStorage.getItem('qcol_mistral_calls') || '0');
+  const callsSpan = document.getElementById('mistral-calls-count');
+  if (callsSpan) callsSpan.textContent = calls + ' llamadas realizadas';
+  loadIgnoredAttrsTable();
+}
+
+function loadIgnoredAttrsTable() {
+  const container = document.getElementById('ignored-attrs-table');
+  if (!container) return;
+  let attrs = [];
+  const raw = localStorage.getItem('qcol_ignored_attrs');
+  try { attrs = raw ? JSON.parse(raw) : []; } catch(e) { attrs = []; }
+  if (attrs.length === 0) {
+    container.innerHTML = '<div style="padding:.5rem;color:var(--mu);">No hay atributos ignorados aún.</div>';
+    return;
+  }
+  let reasons = {};
+  const reasonsRaw = localStorage.getItem('qcol_ignored_attrs_reasons');
+  if (reasonsRaw) try { reasons = JSON.parse(reasonsRaw); } catch(e) {}
+  let html = `<table class="tbl" style="width:100%;">
+    <thead><tr><th>Atributo</th><th>Razón</th><th>Fecha</th><th></th></tr></thead>
+    <tbody>`;
+  for (let attr of attrs) {
+    const reason = reasons[attr] || 'Clasificado por Mistral';
+    const date = new Date().toLocaleDateString();
+    html += `<tr>
+      <td style="font-family:var(--mono);font-size:.65rem;">${escapeHtml(attr)}</td>
+      <td style="font-size:.6rem;color:var(--mu);">${escapeHtml(reason)}</td>
+      <td style="font-size:.6rem;">${date}</td>
+      <td><button class="bsm red" onclick="removeIgnoredAttr('${escapeHtml(attr)}')">✕ Revertir</button></td>
+    </tr>`;
+  }
+  html += `</tbody></table>`;
+  container.innerHTML = html;
+}
+
+function removeIgnoredAttr(attr) {
+  if (!confirm(`¿Eliminar "${attr}" de la lista de atributos ignorados?`)) return;
+  let attrs = [];
+  const raw = localStorage.getItem('qcol_ignored_attrs');
+  try { attrs = raw ? JSON.parse(raw) : []; } catch(e) {}
+  const newAttrs = attrs.filter(a => a !== attr);
+  localStorage.setItem('qcol_ignored_attrs', JSON.stringify(newAttrs));
+  let reasons = {};
+  const reasonsRaw = localStorage.getItem('qcol_ignored_attrs_reasons');
+  if (reasonsRaw) try { reasons = JSON.parse(reasonsRaw); } catch(e) {}
+  delete reasons[attr];
+  localStorage.setItem('qcol_ignored_attrs_reasons', JSON.stringify(reasons));
+  loadIgnoredAttrsTable();
+  notify(`✅ "${attr}" eliminado de la lista de ignorados`);
+  window.parent.postMessage({ type: 'QCOL_REFRESH_IGNORED', attrs: newAttrs }, '*');
+}
+
+function resetMistralCalls() {
+  localStorage.setItem('qcol_mistral_calls', '0');
+  updateMistralUI();
+  notify('Contador de llamadas reiniciado');
+}
+
+function syncIgnoredAttrsWithCloud() {
+  const engineURL = localStorage.getItem('qcol_colab_url');
+  if (!engineURL) {
+    notify('❌ No hay URL del compilador configurada');
+    return;
+  }
+  notify('☁️ Sincronizando con la nube...');
+  fetch(engineURL.replace(/\/$/, '') + '/run/get_ignored_attrs', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ data: [] })
+  })
+  .then(res => res.json())
+  .then(raw => {
+    const cloudList = raw.data ? raw.data[0] : raw;
+    if (Array.isArray(cloudList)) {
+      let local = [];
+      const localRaw = localStorage.getItem('qcol_ignored_attrs');
+      try { local = localRaw ? JSON.parse(localRaw) : []; } catch(e) {}
+      const merged = [...new Set([...local, ...cloudList])];
+      localStorage.setItem('qcol_ignored_attrs', JSON.stringify(merged));
+      loadIgnoredAttrsTable();
+      notify(`✅ Sincronizado: ${merged.length} atributos ignorados`);
+      window.parent.postMessage({ type: 'QCOL_REFRESH_IGNORED', attrs: merged }, '*');
+    } else {
+      notify('⚠️ Formato de respuesta inesperado');
+    }
+  })
+  .catch(e => notify('❌ Error sincronizando: ' + e.message));
 }
 
 function loadSaved() {
@@ -817,6 +1230,24 @@ function loadSaved() {
     document.getElementById('plt-title').value = cfg.authorTitle || '';
     document.getElementById('plt-version').value = cfg.version || '2.0.0';
   }
+  // Inicializar valores por defecto de Mistral
+  if (localStorage.getItem('qcol_mistral_enabled') === null) {
+    localStorage.setItem('qcol_mistral_enabled', 'true');
+  }
+  if (localStorage.getItem('qcol_mistral_model') === null) {
+    localStorage.setItem('qcol_mistral_model', 'mistral-large-latest');
+  }
+  if (localStorage.getItem('qcol_mistral_timeout') === null) {
+    localStorage.setItem('qcol_mistral_timeout', '10');
+  }
+  loadMistralSettings();
+
+  // Conectar automáticamente si hay URL guardada
+  const savedUrl = localStorage.getItem('qcol_colab_url');
+  if (savedUrl) {
+    document.getElementById('colab-url').value = savedUrl;
+    setTimeout(() => checkEngine(), 1000);
+  }
 }
 
 // ══ HELPERS ══
@@ -829,44 +1260,7 @@ function getConfig() { return JSON.parse(localStorage.getItem('qcol_cfg') || '{}
 function getUsers() { return JSON.parse(localStorage.getItem('qcol_users') || '[]'); }
 function saveUsersFn(u) { localStorage.setItem('qcol_users', JSON.stringify(u)); }
 
-// ══ COLAB ══
-async function testColab() {
-  const url = document.getElementById('colab-url').value.trim().replace(/\/$/,'');
-  if (!url) { notify('Ingresa la URL'); return; }
-  document.getElementById('colab-dot').className = 'sdot warn';
-  document.getElementById('colab-status').textContent = 'Probando...';
-  addColabLog('Conectando a: ' + url);
-  try {
-    const res = await fetch(url + '/health', { signal: AbortSignal.timeout(10000) });
-    if (res.ok) {
-      const d = await res.json();
-      document.getElementById('colab-dot').className = 'sdot ok';
-      document.getElementById('colab-status').textContent = '✅ Conectado — ' + d.engine;
-      document.getElementById('colab-sub').textContent = d.libs?.join(', ') || '';
-      addColabLog('✅ Compilador activo: ' + d.engine);
-      notify('✅ Compilador HuggingFace conectado');
-      addSysLog('Compilador HuggingFace: ' + url, 'ok');
-    } else throw new Error('HTTP ' + res.status);
-  } catch(e) {
-    document.getElementById('colab-dot').className = 'sdot err';
-    document.getElementById('colab-status').textContent = '❌ Error: ' + e.message;
-    addColabLog('❌ Error: ' + e.message);
-    notify('❌ ' + e.message);
-  }
-}
-
-function saveColab() {
-  const url = document.getElementById('colab-url').value.trim();
-  localStorage.setItem('qcol_colab_url', url);
-  postToCore('QCOL_SAVE_CONFIG', { key: 'colab_url', value: url });
-  notify('✅ URL del compilador guardada');
-  addSysLog('Compilador HuggingFace URL guardada', 'ok');
-}
-
-// copyColabCode removed - using HuggingFace
-
-// downloadColabNb removed — usando HuggingFace
-
+// ══ COLAB (funciones antiguas, se mantienen pero ya no se usan directamente) ══
 function downloadTemplate(lib) {
   const installs = {
     qiskit: '!pip install qiskit qiskit-aer qiskit-ibm-runtime matplotlib numpy scipy sympy -q',
@@ -928,7 +1322,6 @@ async function testGH() {
 }
 function openGH() { const gh = getGH(); window.open(`https://github.com/${gh.user}/${gh.repo}`, '_blank'); }
 
-// ── SUBIR ARCHIVO A GITHUB VÍA API ─────────────────
 function previewUpload(input) {
   const preview = document.getElementById('gh-file-preview');
   if (input.files.length > 0) {
@@ -936,7 +1329,6 @@ function previewUpload(input) {
     const kb = (f.size/1024).toFixed(1);
     preview.textContent = `📄 ${f.name} — ${kb} KB`;
     preview.style.color = 'var(--gr)';
-    // Sugerir carpeta según tipo
     const folder = document.getElementById('gh-folder');
     if (!folder.value) {
       if (f.name.endsWith('.pdf')) folder.value = 'docs/';
@@ -980,7 +1372,6 @@ async function uploadToGitHub() {
   notify('📤 Subiendo a GitHub...');
 
   try {
-    // Leer archivo como base64
     const base64 = await new Promise((res, rej) => {
       const reader = new FileReader();
       reader.onload = () => res(reader.result.split(',')[1]);
@@ -988,7 +1379,6 @@ async function uploadToGitHub() {
       reader.readAsDataURL(file);
     });
 
-    // Verificar si el archivo ya existe (para actualizar)
     let sha = undefined;
     try {
       const check = await fetch(apiURL, {
@@ -1004,7 +1394,6 @@ async function uploadToGitHub() {
       }
     } catch(e) {}
 
-    // Subir o actualizar
     const body = { message: msg, content: base64 };
     if (sha) body.sha = sha;
 
@@ -1024,7 +1413,6 @@ async function uploadToGitHub() {
       addGHLog(`📎 URL: ${d.content?.html_url || '—'}`, 'ok');
       notify(`✅ ${file.name} subido a GitHub`);
       addSysLog(`Archivo subido a GitHub: ${path}`, 'ok');
-      // Limpiar
       fileInput.value = '';
       document.getElementById('gh-file-preview').textContent = '';
     } else {
@@ -1165,7 +1553,7 @@ function renderUsers() {
   const tbody = document.getElementById('users-tbody');
   if (!tbody) return;
   const all = getUsers();
-  let r = `<tr><td>franci_laffita — Franci Laffita</td><td><span class="rb rbf">FUNDADOR</span></td><td style="color:var(--gr)">✅</td><td>—</td></tr>`;
+  let r = `<tr><td style="font-size:.62rem;">franci_laffita — Franci Laffita</td><td><span class="rb rbf">FUNDADOR</span></td><td style="color:var(--gr)">✅</td><td>—</td></tr>`;
   all.forEach(u => {
     const upb = u.canUpload ? `<button class="bsm" onclick="toggleUp('${u.username}',false)">✕Up</button>`
       : `<button class="bsm" onclick="toggleUp('${u.username}',true)">+Up</button>`;
@@ -1175,7 +1563,8 @@ function renderUsers() {
     r += `<tr><td style="font-size:.62rem;">${u.username}<br><span style="color:var(--mu);font-size:.58rem;">${u.name}</span></td>
       <td><span class="rb ${u.role==='admin'?'rba':'rbu'}">${u.role.toUpperCase()}</span></td>
       <td style="color:${u.canUpload?'var(--gr)':'var(--mu)'}">${u.canUpload?'✅':'❌'}</td>
-      <td>${rb}${upb}<button class="bsm red" onclick="delUser('${u.username}')">✕</button></td></tr>`;
+      <td>${rb}${upb}<button class="bsm red" onclick="delUser('${u.username}')">✕</button></td>
+    </tr>`;
   });
   tbody.innerHTML = r;
 }
@@ -1204,7 +1593,6 @@ function changeFounderPass() {
 }
 
 // ══ PROJECTS ══
-// Proyectos — comienzan VACÍOS. El fundador/admin los agrega desde aquí.
 function getProjs() { return JSON.parse(localStorage.getItem('qcol_projs')||'[]'); }
 function renderProjs() {
   const tbody=document.getElementById('projs-tbody');if(!tbody)return;
@@ -1253,15 +1641,13 @@ function saveSystem() {
   addSysLog('Sistema actualizado','ok');
 }
 
-// ══ MONITOR ══════════════════════════════════════
-
+// ══ MONITOR ══
 function getMonitorConfig(){
   return JSON.parse(localStorage.getItem('qcol_monitor_cfg')||'{"maxRuns":50,"maxQubits":20,"maxTime":60,"mode":"open"}');
 }
 function getMonitorData(){
   return JSON.parse(localStorage.getItem('qcol_monitor_data')||'{"runs":[],"total":0}');
 }
-
 function saveMonitorConfig(){
   const cfg = {
     maxRuns:   parseInt(document.getElementById('mon-max-runs')?.value||'50'),
@@ -1280,7 +1666,6 @@ function saveMonitorConfig(){
   addSysLog('Monitor: límites actualizados','ok');
   syncMonitorToGitHub();
 }
-
 function loadMonitorConfig(){
   const cfg = getMonitorConfig();
   const mr = document.getElementById('mon-max-runs');
@@ -1294,7 +1679,6 @@ function loadMonitorConfig(){
   if(mm) mm.value = cfg.mode||'open';
   if(eu) eu.textContent = (localStorage.getItem('qcol_colab_url')||'Sin configurar').substring(0,35)+'...';
 }
-
 function refreshMonitor(){
   const data = getMonitorData();
   const today = new Date().toDateString();
@@ -1308,7 +1692,6 @@ function refreshMonitor(){
   if(tot) tot.textContent = data.total||0;
   loadMonitorConfig();
 }
-
 function loadUserStats(){
   const data = getMonitorData();
   const runs = data.runs||[];
@@ -1317,7 +1700,6 @@ function loadUserStats(){
       '<div style="color:var(--mu);padding:.5rem;">Sin datos de uso aún.</div>';
     return;
   }
-  // Agrupar por usuario
   const byUser = {};
   runs.forEach(r=>{
     if(!byUser[r.user]) byUser[r.user]={runs:0,libs:{},lastRun:r.ts,qubits:0};
@@ -1344,11 +1726,10 @@ function loadUserStats(){
         <th style="padding:.3rem .5rem;text-align:left;color:var(--bl2);">Libs usadas</th>
         <th style="padding:.3rem .5rem;color:var(--bl2);">Qubits</th>
         <th style="padding:.3rem .5rem;color:var(--bl2);">Último uso</th>
-      </tr></thead>
+        </tr></thead>
       <tbody>${rows}</tbody>
-    </table>`;
+      </table>`;
 }
-
 function loadHistorial(){
   const data = getMonitorData();
   let runs = data.runs||[];
@@ -1365,7 +1746,6 @@ function loadHistorial(){
     return `[${d}] ${ok} <span style="color:var(--bl2);">${r.user}</span> · ${r.lib} · ${r.qubits}q · ${r.time}s`;
   }).join('\n');
 }
-
 function exportMonitorData(){
   const data = getMonitorData();
   const runs = data.runs||[];
@@ -1377,7 +1757,6 @@ function exportMonitorData(){
   a.download='qcol_monitor_'+new Date().toISOString().split('T')[0]+'.csv';a.click();
   notify('📥 CSV exportado');
 }
-
 async function syncMonitorToGitHub(){
   const gh=getGH();
   if(!gh.token||!gh.user||!gh.repo){ notify('Configura el token GitHub primero'); return; }
@@ -1400,7 +1779,6 @@ async function syncMonitorToGitHub(){
     else{const e=await res.json();notify('❌ '+e.message);}
   }catch(e){notify('❌ '+e.message);}
 }
-
 async function loadMonitorFromGitHub(){
   const gh=getGH();
   if(!gh.user||!gh.repo) return;
@@ -1418,7 +1796,6 @@ async function loadMonitorFromGitHub(){
     }
   }catch(e){}
 }
-
 function clearMonitorData(){
   if(!confirm('¿Limpiar todo el historial de ejecuciones?')) return;
   localStorage.setItem('qcol_monitor_data',JSON.stringify({runs:[],total:0}));
@@ -1492,7 +1869,6 @@ function downloadAll() {
 
 function getCustomModules(){return JSON.parse(localStorage.getItem('qcol_custom_modules')||'[]');}
 function saveCustomModules(m){localStorage.setItem('qcol_custom_modules',JSON.stringify(m));}
-
 function createModule(){
   const name=document.getElementById('nm-name').value.trim();
   const id=document.getElementById('nm-id').value.trim().replace(/\s/g,'-').toLowerCase();
@@ -1510,7 +1886,6 @@ function createModule(){
   addSysLog('Módulo creado: '+name+' → '+file,'ok');
   ['nm-name','nm-id','nm-file','nm-icon','nm-desc'].forEach(k=>document.getElementById(k).value='');
 }
-
 function renderCustomModules(){
   const div=document.getElementById('custom-modules-list');if(!div)return;
   const mods=getCustomModules();
@@ -1524,7 +1899,6 @@ function renderCustomModules(){
     <button class="bsm red" onclick="deleteModule(${i})">✕ Eliminar</button>
   </div>`).join('');
 }
-
 function deleteModule(i){
   if(!confirm('¿Eliminar este módulo del menú?'))return;
   const mods=getCustomModules();mods.splice(i,1);saveCustomModules(mods);renderCustomModules();notify('Módulo eliminado del menú');addSysLog('Módulo eliminado','warn');
@@ -1539,8 +1913,35 @@ loadMonitorConfig();
 refreshMonitor();
 loadMonitorFromGitHub();
 
-// Pedir configuración al core
 postToCore('QCOL_GET_CONFIG');
+
+const toggle = document.getElementById('mistral-toggle');
+if (toggle) toggle.addEventListener('change', saveMistralSettings);
+updateMistralUI();
+
+// ══ VALIDACIÓN VISUAL DEL CAMPO API KEY ══
+const mistralKeyField = document.getElementById('mistral-key');
+if (mistralKeyField) {
+  mistralKeyField.addEventListener('input', function(e) {
+    const val = e.target.value;
+    if (/[^\x00-\xFF]/.test(val)) {
+      e.target.style.borderColor = 'var(--rd)';
+      if (!document.getElementById('mistral-key-warning')) {
+        const warn = document.createElement('div');
+        warn.id = 'mistral-key-warning';
+        warn.style.color = 'var(--rd)';
+        warn.style.fontSize = '.58rem';
+        warn.style.marginTop = '.25rem';
+        warn.textContent = '⚠️ La API key contiene caracteres no ASCII (posiblemente una letra griega θ). Limpia o regenera la clave.';
+        e.target.parentNode.appendChild(warn);
+      }
+    } else {
+      e.target.style.borderColor = '';
+      const warn = document.getElementById('mistral-key-warning');
+      if (warn) warn.remove();
+    }
+  });
+}
 </script>
 </body>
 </html>

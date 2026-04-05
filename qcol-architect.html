@@ -439,6 +439,157 @@ const MAX_QUBITS = 20;
 let blochStates = {};
 let currentBlochQubit = 0;
 
+// ═══════════════════════════════════════════════════════════
+// VARIABLES GLOBALES PARA EL SISTEMA DE CLASIFICACIÓN (sin valores estáticos)
+// ═══════════════════════════════════════════════════════════
+let QCOL_IGNORED_ATTRS = new Set();   // atributos que ya sabemos que son innecesarios
+
+// Función para cargar atributos ignorados desde localStorage y desde la nube
+async function loadIgnoredAttrs() {
+    // Cargar desde localStorage primero
+    const local = localStorage.getItem('qcol_ignored_attrs');
+    if (local) {
+        try {
+            const arr = JSON.parse(local);
+            QCOL_IGNORED_ATTRS = new Set(arr);
+        } catch(e) {}
+    }
+    // Si hay URL del Space configurada, intentar descargar la lista global
+    if (engineURL && engineURL.trim()) {
+        try {
+            const base = engineURL.replace(/\/+$/, '');
+            const res = await fetch(base + '/run/get_ignored_attrs', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ data: [] })
+            });
+            if (res.ok) {
+                const raw = await res.json();
+                const cloudList = raw.data ? raw.data[0] : raw;
+                if (Array.isArray(cloudList)) {
+                    cloudList.forEach(attr => QCOL_IGNORED_ATTRS.add(attr));
+                    // Guardar fusión en localStorage
+                    localStorage.setItem('qcol_ignored_attrs', JSON.stringify([...QCOL_IGNORED_ATTRS]));
+                }
+            }
+        } catch(e) { /* silencioso */ }
+    }
+}
+
+// ══ Sincronizar atributos ignorados entre pestañas ══
+window.addEventListener('storage', (e) => {
+    if (e.key === 'qcol_ignored_attrs') {
+        loadIgnoredAttrs().then(() => {
+            if (pyodide) injectIgnoredAttrsIntoPython(pyodide);
+        });
+    }
+});
+
+// Función para guardar un atributo ignorado localmente y en la nube
+async function saveIgnoredAttrLocal(attr, reason) {
+    QCOL_IGNORED_ATTRS.add(attr);
+    localStorage.setItem('qcol_ignored_attrs', JSON.stringify([...QCOL_IGNORED_ATTRS]));
+    // Si hay Space configurado, enviar a la nube
+    if (engineURL && engineURL.trim()) {
+        try {
+            const base = engineURL.replace(/\/+$/, '');
+            const payload = {
+                data: [{
+                    attribute: attr,
+                    reason: reason,
+                    classified_by: 'mistral-small-latest',
+                    timestamp: new Date().toISOString(),
+                    version: 'qcol-v1'
+                }]
+            };
+            await fetch(base + '/run/save_ignored_attr', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+        } catch(e) { /* silencioso */ }
+    }
+    // Mostrar mensaje discreto en el panel de salida
+    const out = document.getElementById('out-body');
+    if (out) {
+        out.innerHTML += `<span class="ok">✅ Atributo ignorado permanentemente: ${attr}</span>\n`;
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Función para clasificar un error con Mistral 3 (lee configuración actualizada)
+// ═══════════════════════════════════════════════════════════════════════
+async function callMistralClassifier(errorPayload) {
+    // Leer configuración actual desde localStorage
+    const apiKey = localStorage.getItem('qcol_mistral_key') || '';
+    const enabled = localStorage.getItem('qcol_mistral_enabled') === 'true';
+    if (!enabled || !apiKey) return null;
+    const model = localStorage.getItem('qcol_mistral_model') || 'mistral-small-latest';
+    const timeoutSec = parseInt(localStorage.getItem('qcol_mistral_timeout') || '10');
+    const timeoutMs = timeoutSec * 1000;
+    const customPrompt = localStorage.getItem('qcol_mistral_prompt') || '';
+
+    const defaultPrompt = `Eres un clasificador de errores de Qiskit. Recibirás el traceback de un error Python. Tu única tarea es responder con UN SOLO JSON sin markdown: {"classification": "unnecessary" | "critical", "attribute": "nombre_del_atributo", "reason": "explicación corta"}. Un error es unnecessary si el atributo o método que falla NO afecta la estructura del circuito cuántico (puertas, qubits, conexiones). Es critical si sí la afecta.`;
+    const systemPrompt = customPrompt || defaultPrompt;
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+        const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify({
+                model: model,
+                messages: [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: JSON.stringify(errorPayload) }
+                ],
+                temperature: 0.1,
+                max_tokens: 200
+            }),
+            signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+        if (!response.ok) {
+            const errData = await response.json().catch(() => ({}));
+            console.error('Mistral API error:', errData);
+            return null;
+        }
+        const data = await response.json();
+        const content = data.choices[0]?.message?.content;
+        if (!content) return null;
+        const jsonMatch = content.match(/\{.*\}/s);
+        if (!jsonMatch) return null;
+        return JSON.parse(jsonMatch[0]);
+    } catch (err) {
+        console.error('Mistral fetch error:', err);
+        return null;
+    } finally {
+        clearTimeout(timeoutId);
+    }
+}
+
+// Inyectar la lista de atributos ignorados en el namespace de Python antes de cada ejecución
+async function injectIgnoredAttrsIntoPython(py) {
+    if (!py) return;
+    const attrsList = JSON.stringify([...QCOL_IGNORED_ATTRS]);
+    await py.runPythonAsync(`
+import sys
+_IGNORED_ATTRS = set(${attrsList})
+# Parchear __getattr__ de QuantumCircuit para ignorar esos atributos
+if 'QuantumCircuit' in globals():
+    _orig_getattr = QuantumCircuit.__getattr__
+    def _patched_getattr(self, name):
+        if name in _IGNORED_ATTRS:
+            return self
+        return _orig_getattr(self, name)
+    QuantumCircuit.__getattr__ = _patched_getattr
+`);
+}
+
 // Definición de puertas (colores originales)
 const GATES = {
   '1q': [
@@ -1139,6 +1290,8 @@ async function initPyodide() {
         await pyodide.loadPackage('matplotlib');
         await pyodide.loadPackage('pandas');
         await pyodide.loadPackage('scikit-learn');
+        // Inyectar la lista de atributos ignorados en el mock recién cargado
+        await injectIgnoredAttrsIntoPython(pyodide);
         out.innerHTML = '<span class="ok">✅ Pyodide listo (numpy, scipy, matplotlib disponibles localmente)</span>\n';
         notify('✅ Pyodide listo');
         // Forzar sincronización inicial si hay código
@@ -1171,22 +1324,16 @@ function mapOpNameToGateId(opName) {
 // ═══════════════════════════════════════════════════════════════════
 function preprocessCode(code) {
     // 1. Reemplazar caracteres Unicode no-ASCII en identificadores
-    //    (p.ej. nombres de clase con ₄ ₂ ǃ ƒ etc.) por equivalentes ASCII.
-    //    Estrategia: reemplazar secuencias de caracteres no-ASCII en posiciones
-    //    de nombre de identificador por su representación ASCII transliterada.
-    //    Para caracteres sin equivalente claro, usar underscore.
     let out = '';
     for (let i = 0; i < code.length; i++) {
         const cp = code.codePointAt(i);
         if (cp > 127) {
-            // Caracteres Unicode que son subíndices/superíndices numéricos
             const subscripts   = '₀₁₂₃₄₅₆₇₈₉';
             const superscripts = '⁰¹²³⁴⁵⁶⁷⁸⁹';
             const subIdx = subscripts.indexOf(code[i]);
             const supIdx = superscripts.indexOf(code[i]);
             if (subIdx >= 0) { out += subIdx; continue; }
             if (supIdx >= 0) { out += supIdx; continue; }
-            // Caracteres latinos extendidos comunes → ASCII aproximado
             const latinMap = {
                 'ā':'a','á':'a','à':'a','â':'a','ä':'a','ã':'a',
                 'ē':'e','é':'e','è':'e','ê':'e','ë':'e',
@@ -1200,20 +1347,16 @@ function preprocessCode(code) {
                 'Ō':'O','Ó':'O','Ò':'O','Ô':'O','Ö':'O','Õ':'O',
                 'Ū':'U','Ú':'U','Ù':'U','Û':'U','Ü':'U',
                 'Ý':'Y','Ñ':'N','Ç':'C',
-                // Letras decoradas / exóticas comunes en código artístico
                 'ƒ':'f','Ƒ':'F','ƨ':'s','ƚ':'t','ƞ':'n',
                 'ǥ':'g','Ǥ':'G','ǀ':'l','ǁ':'ll','ǃ':'x',
                 'ș':'s','ț':'t','ș':'s',
                 'ł':'l','Ł':'L','ø':'o','Ø':'O','æ':'ae','Æ':'AE',
                 'đ':'d','Đ':'D','ħ':'h','Ħ':'H','ŧ':'t','Ŧ':'T',
-                // Letras con tildes/marcas decorativas
                 'ṕ':'p','Ṕ':'P','ḥ':'h','Ḥ':'H','ṡ':'s','Ṡ':'S',
                 'ẇ':'w','Ẇ':'W','ṙ':'r','Ṙ':'R','ẑ':'z','Ẑ':'Z',
                 'ū':'u','ṭ':'t','ā':'a','ī':'i','ē':'e','ō':'o',
                 'ÿ':'y','ẙ':'y',
-                // Caracteres de puntuación que pueden aparecer en nombres
                 'ʼ':"'",'ʻ':"'",'ʹ':"'",
-                // Greek en contexto de nombres
                 'α':'alpha','β':'beta','γ':'gamma','δ':'delta',
                 'θ':'theta','λ':'lam','μ':'mu','π':'pi','σ':'sigma',
                 'φ':'phi','ψ':'psi','ω':'omega',
@@ -1223,26 +1366,40 @@ function preprocessCode(code) {
             };
             const ch = code[i];
             if (latinMap[ch]) { out += latinMap[ch]; continue; }
-            // Cualquier otro carácter no-ASCII: reemplazar con '_'
             out += '_';
-            // Si es un surrogate pair, avanzar un carácter extra
             if (cp > 0xFFFF) i++;
         } else {
             out += code[i];
         }
     }
-
-    // 2. Eliminar decoradores problemáticos que no están definidos
-    //    (clases/funciones decoradas con @algo_desconocido)
     out = out.replace(/^@(?!property|staticmethod|classmethod|abstractmethod)[^\n]+\n/gm, '');
-
-    // 3. Reemplazar f-strings inválidas (raras, pero posibles con código exótico)
-    //    No necesario si ya normalizamos Unicode.
-
     return out;
 }
 
-async function syncWithPyodide() {
+// ═══════════════════════════════════════════════════════════════════
+// MEJORADA: extrae el atributo problemático del traceback
+// ═══════════════════════════════════════════════════════════════════
+function extractOffendingAttribute(errorText) {
+    // Atributo de AttributeError: 'X' object has no attribute 'Y'
+    let match = errorText.match(/has no attribute ['"]([^'"]+)['"]/);
+    if (match) return match[1];
+    // NameError: name 'X' is not defined
+    match = errorText.match(/NameError: name ['"]([^'"]+)['"] is not defined/);
+    if (match) return match[1];
+    // TypeError: '...' object is not subscriptable/iterable/callable (no atributo concreto)
+    if (errorText.includes('object is not subscriptable') || 
+        errorText.includes('object is not iterable') ||
+        errorText.includes('object is not callable')) {
+        return 'unknown_attribute';
+    }
+    // Atributo en mensaje con punto (ej. 'obj.attr')
+    match = errorText.match(/'(\w+)' object has no attribute '(\w+)'/);
+    if (match) return match[2];
+    return null;
+}
+
+// Versión modificada de syncWithPyodide con el sistema de clasificación
+async function syncWithPyodide(retryCount = 0) {
     if (isUpdatingFromCircuit) return;
     isUpdatingFromCircuit = true;
     const rawCode = document.getElementById('code-ta').value;
@@ -1251,7 +1408,6 @@ async function syncWithPyodide() {
     out.innerHTML += '<span class="inf">🔄 Sincronizando código → circuito visual...</span>\n';
     try {
         const py = await initPyodide();
-        // ── CAPA 0: pre-procesar en JS antes de enviar a Python
         const code = preprocessCode(rawCode);
         py.globals.set('_pending_user_code', code);
         const result = await py.runPythonAsync(`
@@ -1269,7 +1425,6 @@ def _sanitize(code):
     lines = code.splitlines()
     out = []
     for line in lines:
-        # Saltar líneas con caracteres de control peligrosos (no imprimibles)
         safe = ''.join(c if (ord(c) < 128 or c in '\\n\\t') else '_' for c in line)
         out.append(safe)
     return '\\n'.join(out)
@@ -1296,25 +1451,22 @@ except Exception as _e:
 
 # ── Buscar circuito en el namespace ───────────────────────────
 if _error is None:
-    # Nombres comunes primero
     for _cname in ['circuit','qc','circ','qcirc','c','circ1','qcircuit','qc1','main_circuit']:
         _obj = _ns.get(_cname)
         if _obj is not None and hasattr(_obj, 'data') and isinstance(_obj.data, list):
             _circuit = _obj
             break
-    # Si no, buscar cualquier QuantumCircuit en el namespace
     if _circuit is None:
         for _v in list(_ns.values()):
             if hasattr(_v, 'data') and hasattr(_v, 'num_qubits') and isinstance(getattr(_v,'data',[]), list):
                 _circuit = _v
                 break
     if _circuit is None:
-        # CAPA 3: modo degradado — intentar parsear qubits del texto del código
         import re as _re
         _m = _re.search(r'QuantumCircuit\\s*\\((\\d+)', _clean_code)
         if _m:
             _num_qubits = int(_m.group(1))
-            _error = None   # no reportar error, mostrar circuito vacío
+            _error = None
         else:
             _error = "No se encontró QuantumCircuit en el código.\\nUsa: qc = QuantumCircuit(n)"
     else:
@@ -1328,7 +1480,6 @@ if _error is None:
         except:
             _data = []
 
-# ── Serializar resultado ───────────────────────────────────────
 def _safe_gate(op):
     try:
         name = str(op.name)
@@ -1377,12 +1528,49 @@ json.dumps({
             out.innerHTML += `<span class="ok">✅ Sincronizado — ${data.num_qubits} qubits · ${newGates.length} puertas</span>\n`;
             notify(`Circuito actualizado: ${newGates.length} puertas`);
         } else {
-            // Mostrar error pero de forma compacta (no catastrófica)
-            const errMsg = data.error || 'Sin circuito detectado';
-            out.innerHTML += `<span class="er">⚠️ Aviso (circuito no extraído):<br><small>${escapeHtml(errMsg.slice(0,300))}</small></span>\n`;
+            // Hubo un error, ver si podemos clasificarlo
+            const errText = data.error || '';
+            const offendingAttr = extractOffendingAttribute(errText);
+            // Leer estado actual de clasificación desde localStorage
+            const mistralEnabled = localStorage.getItem('qcol_mistral_enabled') === 'true';
+            if (offendingAttr && QCOL_IGNORED_ATTRS.has(offendingAttr)) {
+                // Ya está en la lista de ignorados, reintentar silenciosamente
+                out.innerHTML += `<span class="inf">ℹ️ Atributo '${offendingAttr}' ya clasificado como innecesario. Reintentando...</span>\n`;
+                isUpdatingFromCircuit = false;
+                setTimeout(() => syncWithPyodide(), 500);
+                return;
+            }
+            if (mistralEnabled && offendingAttr && retryCount === 0) {
+                out.innerHTML += `<span class="inf">🧠 Consultando a Mistral 3 sobre el error...</span>\n`;
+                const errorPayload = {
+                    error_type: errText.match(/^\w+Error/)?.[0] || 'Error',
+                    error_msg: errText,
+                    offending_line: '',
+                    attribute_name: offendingAttr,
+                    timestamp: new Date().toISOString(),
+                    code_hash: btoa(rawCode.slice(0,200)).slice(0,20),
+                    already_known: false
+                };
+                const classification = await callMistralClassifier(errorPayload);
+                if (classification && classification.classification === 'unnecessary') {
+                    const attr = classification.attribute || offendingAttr;
+                    const reason = classification.reason || 'Clasificado por Mistral';
+                    await saveIgnoredAttrLocal(attr, reason);
+                    // Reinyectar la nueva lista en Pyodide
+                    await injectIgnoredAttrsIntoPython(py);
+                    out.innerHTML += `<span class="ok">✅ Atributo '${attr}' clasificado como innecesario. Reintentando sincronización...</span>\n`;
+                    isUpdatingFromCircuit = false;
+                    setTimeout(() => syncWithPyodide(), 500);
+                    return;
+                } else {
+                    out.innerHTML += `<span class="er">⚠️ Mistral clasificó el error como crítico o no se pudo clasificar. Mostrando error original.</span>\n`;
+                }
+            }
+            // Si llegamos aquí, mostramos el error
+            out.innerHTML += `<span class="er">❌ Error en el código:<br>${escapeHtml(errText.slice(0,800))}</span>\n`;
         }
     } catch (err) {
-        out.innerHTML += `<span class="er">❌ Error interno: ${err.message}</span>`;
+        out.innerHTML += `<span class="er">❌ Error interno: ${err.message}</span>\n`;
     } finally {
         isUpdatingFromCircuit = false;
     }
@@ -1414,18 +1602,13 @@ async function runServerCode() {
     try {
         let res, d;
         if (isHF) {
-            // fn_index:1 → gr.Interface(run_circuit, api_name="run") — segundo evento registrado en app.py
             res = await fetchWithRetry(engineURL + '/run/predict', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ data: [code], fn_index: 1 })
+                body: JSON.stringify({ data: [code], fn_index: 0 })
             }, 3, 30000);
             const raw = await res.json();
-            // Gradio envuelve la respuesta en data[]; el payload puede ser dict o string JSON
-            const payload = raw.data ? raw.data[0] : raw;
-            d = (typeof payload === 'string')
-                ? (() => { try { return JSON.parse(payload); } catch(e) { return { success: false, output: payload }; } })()
-                : payload;
+            d = raw.data ? raw.data[0] : raw;
         } else {
             res = await fetchWithRetry(engineURL + '/run', {
                 method: 'POST',
@@ -1442,69 +1625,8 @@ async function runServerCode() {
             setRunSt('idle', 'Listo');
             logMonitorRun({ success: true, lib: curLib, qubits: circuit.qubits, time: parseFloat(el) });
         } else {
-            // ── Sistema IA: clasificar el error con Mistral antes de mostrar ──
-            const errText = d.output || '';
-            const mistralKey = localStorage.getItem('qcol_mistral_key') || '';
-            const mistralOn  = localStorage.getItem('qcol_mistral_enabled') !== 'false';
-            if (mistralKey && mistralOn && errText) {
-                out.innerHTML += `<span class="inf">🧠 Analizando error con IA...</span>\n`;
-                try {
-                    const attrMatch = errText.match(/(?:AttributeError|has no attribute|unexpected keyword argument)[^\n'"]*['"]([^'"]+)['"]/);
-                    const attrName  = attrMatch ? attrMatch[1] : null;
-                    // Si el atributo ya está clasificado como innecesario, ignorar silenciosamente
-                    const ignored = JSON.parse(localStorage.getItem('qcol_ignored_attrs') || '[]');
-                    if (attrName && ignored.includes(attrName)) {
-                        out.innerHTML += `<span class="ok">✅ Atributo '${escapeHtml(attrName)}' ignorado (clasificado previamente).</span>\n`;
-                        setRunSt('idle', 'Ignorado');
-                    } else {
-                        const mistralRes = await fetch('https://api.mistral.ai/v1/chat/completions', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${mistralKey}` },
-                            body: JSON.stringify({
-                                model: 'mistral-small-latest',
-                                max_tokens: 120,
-                                messages: [
-                                    { role: 'system', content: 'Eres un clasificador de errores de Qiskit. Responde SOLO con JSON sin markdown: {"classification":"unnecessary"|"critical","attribute":"nombre","reason":"explicacion corta"}. unnecessary = el atributo/método fallido NO afecta la estructura del circuito. critical = sí la afecta.' },
-                                    { role: 'user', content: JSON.stringify({ error: errText.slice(0, 600), attribute: attrName }) }
-                                ]
-                            })
-                        });
-                        const mj = await mistralRes.json();
-                        const mText = mj.choices?.[0]?.message?.content || '{}';
-                        let mData = {};
-                        try { mData = JSON.parse(mText.replace(/```json|```/g, '').trim()); } catch(e) {}
-                        if (mData.classification === 'unnecessary') {
-                            const attr = mData.attribute || attrName || 'unknown';
-                            // Guardar localmente
-                            const list = JSON.parse(localStorage.getItem('qcol_ignored_attrs') || '[]');
-                            if (!list.includes(attr)) { list.push(attr); localStorage.setItem('qcol_ignored_attrs', JSON.stringify(list)); }
-                            // Guardar en la nube (HuggingFace Space — endpoint health como proxy simple)
-                            try {
-                                await fetch(engineURL + '/health/predict', {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ data: [JSON.stringify({ action: 'save_ignored', attribute: attr, reason: mData.reason, ts: new Date().toISOString() })], fn_index: 2 })
-                                });
-                            } catch(e) { /* silencioso si falla el cloud */ }
-                            out.innerHTML += `<span class="ok">🧠 IA: atributo '<b>${escapeHtml(attr)}</b>' marcado como innecesario y guardado permanentemente.<br><small>${escapeHtml(mData.reason||'')}</small></span>\n`;
-                            setRunSt('idle', 'Error ignorado');
-                            // Actualizar la tabla del Fundador si está abierta
-                            if (typeof refreshIgnoredAttrsTable === 'function') refreshIgnoredAttrsTable();
-                        } else {
-                            out.innerHTML += `<span class="er">${formatError(errText, code)}</span>`;
-                            if (mData.reason) out.innerHTML += `<span class="inf">🧠 IA: ${escapeHtml(mData.reason)}</span>\n`;
-                            setRunSt('err', 'Error crítico');
-                        }
-                    }
-                } catch(aiErr) {
-                    // Si Mistral falla, mostrar el error original normalmente
-                    out.innerHTML += `<span class="er">${formatError(errText, code)}</span>`;
-                    setRunSt('err', 'Error');
-                }
-            } else {
-                out.innerHTML += `<span class="er">${formatError(d.output, code)}</span>`;
-                setRunSt('err', 'Error');
-            }
+            out.innerHTML += `<span class="er">${formatError(d.output, code)}</span>`;
+            setRunSt('err', 'Error');
         }
     } catch (e) {
         out.innerHTML += `<span class="er">❌ ${e.name === 'AbortError' ? 'Tiempo agotado tras 3 intentos (30s c/u)' : e.message}</span>`;
@@ -1956,6 +2078,11 @@ function initResize() {
 }
 
 function init() {
+    // Cargar atributos ignorados antes de cualquier sincronización
+    loadIgnoredAttrs().then(() => {
+        // Si ya tenemos Pyodide cargado, inyectar la lista
+        if (pyodide) injectIgnoredAttrsIntoPython(pyodide);
+    });
     for (let i = 0; i < circuit.qubits; i++) blochStates[i] = { theta: 0, phi: 0 };
     buildPalette();
     renderCircuit();
@@ -1999,7 +2126,6 @@ function init() {
     renderSaveList();
     renderQueue();
     
-    // Inicializar Pyodide en segundo plano
     setTimeout(() => { initPyodide().catch(console.error); }, 1000);
 }
 
@@ -2037,18 +2163,16 @@ async function checkEngine() {
             setStatus(`⏳ Intento ${attempt}/3...`, 'badge-warn');
             const controller = new AbortController();
             const tid = setTimeout(() => controller.abort(), 30000);
-            // fn_index:2 → gr.Interface(health_check, api_name="health") — tercer evento registrado en app.py
-            const res = await fetch(engineURL + '/run/predict', {
+            const res = await fetch(engineURL + '/health/predict', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ data: [''], fn_index: 2 }),
+                body: JSON.stringify({ data: [''] }),
                 signal: controller.signal
             });
             clearTimeout(tid);
             if (res.ok) {
                 const raw = await res.json();
-                const payload = raw.data ? raw.data[0] : raw;
-                const d = (typeof payload === 'string') ? (() => { try { return JSON.parse(payload); } catch(e) { return {}; } })() : payload;
+                const d = raw.data ? raw.data[0] : raw;
                 engineOK = true;
                 setStatus('● COMPILADOR ACTIVO', 'badge-on');
                 const libs = (d.libs || []).slice(0,4).join(', ');
@@ -2103,153 +2227,6 @@ setTimeout(() => {
     const url = localStorage.getItem('qcol_colab_url') || '';
     if (url) { engineURL = url; checkEngine(); }
 }, 800);
-
-// ══════════════════════════════════════════════════
-// SISTEMA IA — Mistral: cargar atributos ignorados al arrancar
-// ══════════════════════════════════════════════════
-async function loadIgnoredAttrsFromCloud() {
-    // Fusionar lista local con nube (si el engine está disponible)
-    const local = JSON.parse(localStorage.getItem('qcol_ignored_attrs') || '[]');
-    QCOL_IGNORED_ATTRS = new Set(local);
-    if (!engineURL) return;
-    try {
-        // health usa fn_index:2; la lista de attrs se mantiene local
-        // La nube se sincroniza cuando Mistral clasifica un error nuevo
-        console.log('[QCOL-IA] Atributos ignorados cargados:', QCOL_IGNORED_ATTRS.size);
-    } catch(e) { /* silencioso */ }
-}
-
-function refreshIgnoredAttrsTable() {
-    const tbody = document.getElementById('ia-attrs-tbody');
-    if (!tbody) return;
-    const list = JSON.parse(localStorage.getItem('qcol_ignored_attrs') || '[]');
-    if (list.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="3" style="color:var(--mu);text-align:center;padding:.5rem;">Sin atributos clasificados aún</td></tr>';
-        return;
-    }
-    tbody.innerHTML = list.map((a, i) => {
-        const name = typeof a === 'string' ? a : (a.attribute || a);
-        const reason = typeof a === 'object' ? (a.reason || '—') : '—';
-        return `<tr style="border-bottom:1px solid var(--bd);">
-            <td style="padding:.3rem .5rem;font-family:var(--mono);font-size:.6rem;color:var(--cy);">${name}</td>
-            <td style="padding:.3rem .5rem;font-size:.55rem;color:var(--tx2);">${reason}</td>
-            <td style="padding:.3rem .5rem;">
-                <button onclick="removeIgnoredAttr(${i})" style="background:rgba(255,68,102,.15);border:1px solid rgba(255,68,102,.3);color:#ff8899;border-radius:4px;padding:.15rem .4rem;font-size:.5rem;cursor:pointer;">✕</button>
-            </td>
-        </tr>`;
-    }).join('');
-    document.getElementById('ia-count').textContent = list.length;
-}
-
-function removeIgnoredAttr(idx) {
-    const list = JSON.parse(localStorage.getItem('qcol_ignored_attrs') || '[]');
-    list.splice(idx, 1);
-    localStorage.setItem('qcol_ignored_attrs', JSON.stringify(list));
-    QCOL_IGNORED_ATTRS = new Set(list.map(a => typeof a === 'string' ? a : a.attribute));
-    refreshIgnoredAttrsTable();
-    notify('Atributo eliminado de la lista');
-}
-
-function openIAPanel() {
-    let panel = document.getElementById('ia-panel-overlay');
-    if (panel) { panel.style.display = 'flex'; refreshIgnoredAttrsTable(); return; }
-    
-    panel = document.createElement('div');
-    panel.id = 'ia-panel-overlay';
-    panel.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9000;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(8px);';
-    panel.innerHTML = `
-    <div style="background:#0a0e1a;border:1px solid #1a3a5c;border-radius:14px;padding:1.2rem;width:min(95vw,540px);max-height:85vh;overflow-y:auto;font-family:'Exo 2',sans-serif;">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;border-bottom:1px solid #1a2a48;padding-bottom:.7rem;">
-            <span style="font-family:'Orbitron',monospace;font-size:.75rem;color:#00ffdd;">🧠 IA RESOLVER — Mistral 3</span>
-            <button onclick="document.getElementById('ia-panel-overlay').style.display='none'" style="background:none;border:none;color:#4a7a9b;cursor:pointer;font-size:1rem;">✕</button>
-        </div>
-
-        <!-- API Key Mistral -->
-        <div style="background:#0d1220;border:1px solid #1a2a48;border-radius:8px;padding:.9rem;margin-bottom:.8rem;">
-            <div style="font-family:'Orbitron',monospace;font-size:.6rem;color:#00aaff;margin-bottom:.6rem;">🔑 API KEY MISTRAL</div>
-            <input id="ia-mistral-key" type="password" placeholder="Pega tu Mistral API key aquí..."
-                style="width:100%;background:rgba(0,0,0,.4);border:1px solid #1a3a5c;border-radius:6px;padding:.45rem .7rem;color:#dce8ff;font-family:'JetBrains Mono',monospace;font-size:.7rem;outline:none;box-sizing:border-box;"
-                value="${localStorage.getItem('qcol_mistral_key') || ''}">
-            <div style="display:flex;gap:.4rem;margin-top:.5rem;align-items:center;">
-                <button onclick="saveMistralKey()" style="padding:.3rem .7rem;background:linear-gradient(135deg,#003388,#0088ff);border:none;border-radius:5px;color:#fff;font-family:'Orbitron',monospace;font-size:.52rem;cursor:pointer;">💾 GUARDAR</button>
-                <a href="https://console.mistral.ai/api-keys/" target="_blank" style="font-size:.52rem;color:#0088ff;text-decoration:none;">Obtener key →</a>
-                <div style="margin-left:auto;display:flex;align-items:center;gap:.4rem;">
-                    <span style="font-size:.55rem;color:#4a7a9b;">Sistema IA</span>
-                    <div id="ia-toggle" onclick="toggleMistral()" style="width:32px;height:16px;border-radius:8px;cursor:pointer;transition:all .2s;background:${localStorage.getItem('qcol_mistral_enabled') === 'false' ? '#1a2a48' : '#00ff88'};border:1px solid ${localStorage.getItem('qcol_mistral_enabled') === 'false' ? '#1a3a5c' : '#00ff88'};position:relative;">
-                        <div style="width:12px;height:12px;background:#fff;border-radius:50%;position:absolute;top:1px;transition:left .2s;left:${localStorage.getItem('qcol_mistral_enabled') === 'false' ? '1px' : '17px'};"></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Atributos ignorados -->
-        <div style="background:#0d1220;border:1px solid #1a2a48;border-radius:8px;padding:.9rem;margin-bottom:.8rem;">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem;">
-                <div style="font-family:'Orbitron',monospace;font-size:.6rem;color:#00aaff;">📋 ATRIBUTOS IGNORADOS <span id="ia-count" style="color:#00ffdd;">0</span></div>
-                <button onclick="loadIgnoredAttrsFromCloud();refreshIgnoredAttrsTable();" style="padding:.2rem .5rem;background:rgba(0,136,255,.1);border:1px solid #1a3a5c;border-radius:4px;color:#4a7a9b;font-size:.5rem;cursor:pointer;">🔄 Sync</button>
-            </div>
-            <table style="width:100%;border-collapse:collapse;">
-                <thead>
-                    <tr style="border-bottom:1px solid #1a2a48;">
-                        <th style="text-align:left;padding:.25rem .5rem;font-family:'Orbitron',monospace;font-size:.5rem;color:#4a7a9b;">ATRIBUTO</th>
-                        <th style="text-align:left;padding:.25rem .5rem;font-family:'Orbitron',monospace;font-size:.5rem;color:#4a7a9b;">RAZÓN IA</th>
-                        <th style="width:40px;"></th>
-                    </tr>
-                </thead>
-                <tbody id="ia-attrs-tbody"></tbody>
-            </table>
-        </div>
-
-        <!-- Estado -->
-        <div style="font-size:.52rem;color:#4a7a9b;text-align:center;">
-            Los atributos marcados como innecesarios se ignoran globalmente en todo el ecosistema QCOL.
-            Mistral 3 los clasifica automáticamente cuando el servidor devuelve un error.
-        </div>
-    </div>`;
-    document.body.appendChild(panel);
-    refreshIgnoredAttrsTable();
-}
-
-function saveMistralKey() {
-    const key = document.getElementById('ia-mistral-key').value.trim();
-    if (key) {
-        localStorage.setItem('qcol_mistral_key', key);
-        notify('✅ API key de Mistral guardada');
-    } else {
-        localStorage.removeItem('qcol_mistral_key');
-        notify('Key eliminada');
-    }
-}
-
-function toggleMistral() {
-    const current = localStorage.getItem('qcol_mistral_enabled') !== 'false';
-    localStorage.setItem('qcol_mistral_enabled', current ? 'false' : 'true');
-    // Re-renderizar el toggle
-    document.getElementById('ia-panel-overlay').style.display = 'none';
-    setTimeout(openIAPanel, 100);
-    notify(current ? '⏸ IA Resolver desactivado' : '▶ IA Resolver activado');
-}
-
-// Variable global de atributos ignorados
-let QCOL_IGNORED_ATTRS = new Set(JSON.parse(localStorage.getItem('qcol_ignored_attrs') || '[]'));
-
-// Añadir botón IA en la barra de herramientas al cargar
-setTimeout(() => {
-    const toolbar = document.querySelector('.toolbar');
-    if (toolbar && !document.getElementById('btn-ia-panel')) {
-        const sep = document.createElement('div'); sep.className = 'sep';
-        const btn = document.createElement('button');
-        btn.id = 'btn-ia-panel';
-        btn.className = 'bsm';
-        btn.textContent = '🧠 IA';
-        btn.title = 'Configurar sistema IA Resolver (Mistral)';
-        btn.onclick = openIAPanel;
-        btn.style.cssText = 'background:rgba(189,147,249,.1);border-color:rgba(189,147,249,.4);color:#bd93f9;';
-        toolbar.appendChild(sep);
-        toolbar.appendChild(btn);
-    }
-    loadIgnoredAttrsFromCloud();
-}, 1200);
 
 init();
 </script>
