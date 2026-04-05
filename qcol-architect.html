@@ -5,9 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Arquitecto Cuántico</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=JetBrains+Mono:wght@400;500;600&family=Exo+2:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
 <style>
 /* ══════════════════════════════════════════════════
-   ARQUITECTO CUÁNTICO — Iconos estándar + click para eliminar
+   ARQUITECTO CUÁNTICO — Híbrido automático
 ══════════════════════════════════════════════════ */
 :root {
   --bg:#0a0e1a; --bg2:#0d1220; --bg3:#111827; --bg4:#060912;
@@ -418,8 +419,7 @@ body { background:var(--bg); color:var(--tx); font-family:var(--ex); }
 
 <script>
 // ═══════════════════════════════════════════════════════════
-// ARQUITECTO CUÁNTICO — Compatible con Qiskit 1.0+ y servidor real
-// Colores distintivos por puerta, sin transparencias en cables
+// ARQUITECTO CUÁNTICO — Híbrido automático: sincronización local (Pyodide) + ejecución remota (servidor)
 // ═══════════════════════════════════════════════════════════
 
 let circuit = { qubits: 2, gates: [] };
@@ -439,7 +439,7 @@ const MAX_QUBITS = 20;
 let blochStates = {};
 let currentBlochQubit = 0;
 
-// Definición de puertas con colores sólidos y distintivos (sin transparencias)
+// Definición de puertas (colores originales)
 const GATES = {
   '1q': [
     { id: 'H', sym: 'H', bg: '#1a5fb4', glow:'#1a5fb4', desc: 'Hadamard', code: 'qc.h({q})', regex: /qc\.h\((\d+)\)/ },
@@ -520,7 +520,7 @@ function placeGate(gateId, qubit) {
   updateCodeFromCircuit();
   isUpdatingFromCircuit = false;
   notify(`${gateId} → q[${qubit}]`);
-  if (engineOK && engineURL) setTimeout(() => runCode(), 900);
+  // No ejecutamos automáticamente para no interferir con el modo seleccionado
 }
 
 function removeGate(uid) {
@@ -653,529 +653,1110 @@ function updateCodeFromCircuit() {
   if (ta && ta.value !== code) { ta.value = code; updateSyntaxHighlight(); }
 }
 
-// ══════════════════════════════════════════════════════════════
-// PARSER UNIVERSAL — Lee cualquier código Qiskit/Python válido
-// ══════════════════════════════════════════════════════════════
-function normalizeQiskitCode(code) {
-  const circNameMatch = code.match(/(\w+)\s*=\s*QuantumCircuit\s*\(/);
-  const circName = circNameMatch ? circNameMatch[1] : 'qc';
+// ═══════════════════════════════════════════════════════════
+// MOCK DE QISKIT UNIVERSAL DEFINITIVO (con import hook y stub universal)
+// ═══════════════════════════════════════════════════════════
+const QISKIT_MOCK_CODE = `
+import sys, types, importlib
 
-  const vars = {};
-  const varRe = /^(\w+)\s*=\s*([\d.]+(?:\s*[\+\-\*\/]\s*[\d.]+)*)\s*$/;
-  code.split('\n').forEach(line => {
-    const m = line.trim().match(varRe);
-    if (m && !isNaN(parseFloat(m[2]))) vars[m[1]] = parseFloat(eval(m[2].replace(/\s/g,'')));
-  });
-  vars['pi'] = Math.PI; vars['np.pi'] = Math.PI;
+# ════════════════════════════════════════════════════════════════
+# CAPA 1 ── _Stub: el objeto que nunca falla bajo ningún concepto
+# ════════════════════════════════════════════════════════════════
+class _Stub:
+    """Absorbe CUALQUIER operación Python sin lanzar excepción."""
+    __slots__ = ('_name',)
+    def __init__(self, name=None):
+        object.__setattr__(self, '_name', name or 'Stub')
 
-  const qrMap = {};
-  let offset = 0;
-  const qrRe = /(\w+)\s*=\s*QuantumRegister\s*\(\s*(\d+|\w+)/g;
-  let qrMatch;
-  while ((qrMatch = qrRe.exec(code)) !== null) {
-    const regName = qrMatch[1];
-    const size = parseInt(qrMatch[2]) || (vars[qrMatch[2]] ? parseInt(vars[qrMatch[2]]) : 8);
-    qrMap[regName] = offset;
-    offset += size;
-  }
-  if (offset > 0 && offset !== circuit.qubits && offset <= 20) {
-    circuit.qubits = offset;
-  }
+    # Acceso a atributos/métodos
+    def __getattr__(self, attr):
+        return _Stub(f"{object.__getattribute__(self,'_name')}.{attr}")
+    def __setattr__(self, attr, val):
+        pass   # silently ignore
+    def __delattr__(self, attr):
+        pass
 
-  function resolveQubit(arg) {
-    arg = arg.trim();
-    if (/^\d+$/.test(arg)) return parseInt(arg);
-    if (vars[arg] !== undefined) return Math.floor(vars[arg]);
-    const regIdxMatch = arg.match(/^(\w+)\[(.+)\]$/);
-    if (regIdxMatch) {
-      const regName = regIdxMatch[1];
-      const idxExpr = regIdxMatch[2].trim();
-      let idx = NaN;
-      if (/^\d+$/.test(idxExpr)) idx = parseInt(idxExpr);
-      else if (vars[idxExpr] !== undefined) idx = Math.floor(vars[idxExpr]);
-      else {
-        try {
-          const safeExpr = idxExpr.replace(/[a-z_]\w*/gi, match => {
-            if (vars[match] !== undefined) return vars[match];
-            return 'NaN';
-          });
-          idx = Math.floor(Function('"use strict"; return (' + safeExpr + ')')());
-        } catch(e) { idx = NaN; }
-      }
-      if (!isNaN(idx) && qrMap[regName] !== undefined) return qrMap[regName] + idx;
-      if (!isNaN(idx)) return idx;
+    # Llamada — devuelve otro Stub
+    def __call__(self, *args, **kwargs):
+        return _Stub(f"{object.__getattribute__(self,'_name')}()")
+
+    # Colecciones
+    def __getitem__(self, idx): return _Stub(f"{object.__getattribute__(self,'_name')}[{idx}]")
+    def __setitem__(self, idx, val): pass
+    def __delitem__(self, idx): pass
+    def __iter__(self): return iter([])
+    def __next__(self): raise StopIteration
+    def __len__(self): return 0
+    def __contains__(self, item): return False
+
+    # Aritmética — nunca falla
+    def __add__(self, o): return _Stub()
+    def __radd__(self, o): return _Stub()
+    def __sub__(self, o): return _Stub()
+    def __rsub__(self, o): return _Stub()
+    def __mul__(self, o): return _Stub()
+    def __rmul__(self, o): return _Stub()
+    def __truediv__(self, o): return _Stub()
+    def __rtruediv__(self, o): return _Stub()
+    def __pow__(self, o): return _Stub()
+    def __matmul__(self, o): return _Stub()
+    def __neg__(self): return _Stub()
+    def __pos__(self): return _Stub()
+    def __abs__(self): return _Stub()
+
+    # Comparación
+    def __eq__(self, o): return False
+    def __ne__(self, o): return True
+    def __lt__(self, o): return False
+    def __le__(self, o): return False
+    def __gt__(self, o): return False
+    def __ge__(self, o): return False
+    def __hash__(self): return id(self)
+
+    # Booleano / numérico
+    def __bool__(self): return True
+    def __int__(self): return 0
+    def __float__(self): return 0.0
+    def __complex__(self): return 0j
+    def __index__(self): return 0
+
+    # Context manager (with stmt)
+    def __enter__(self): return self
+    def __exit__(self, *a): return False
+
+    # Representación
+    def __repr__(self): return f"<Stub:{object.__getattribute__(self,'_name')}>"
+    def __str__(self): return ""
+
+    # Serialización mínima
+    def __reduce__(self):
+        return (_Stub, (object.__getattribute__(self,'_name'),))
+
+    # Descriptor (por si se usa como decorador)
+    def __get__(self, obj, objtype=None): return self
+
+# ════════════════════════════════════════════════════════════════
+# CAPA 2 ── _DynamicModule: módulo que devuelve _Stub para todo
+# ════════════════════════════════════════════════════════════════
+class _DynamicModule(types.ModuleType):
+    def __init__(self, name, is_package=False):
+        super().__init__(name)
+        self.__spec__ = importlib.util.spec_from_loader(name, loader=None)
+        if is_package:
+            self.__path__ = []
+        self.__package__ = name.rpartition('.')[0] if '.' in name else name
+    def __getattr__(self, attr):
+        s = _Stub(f"{self.__name__}.{attr}")
+        object.__setattr__(self, attr, s)   # cache para velocidad
+        return s
+
+# ════════════════════════════════════════════════════════════════
+# CAPA 3 ── Clases reales: QuantumRegister, ClassicalRegister, QuantumCircuit
+# ════════════════════════════════════════════════════════════════
+class QuantumRegister:
+    def __init__(self, size, name=None, **kw):
+        try:
+            self.size = int(size)
+        except:
+            self.size = 2
+        self.name = name or 'q'
+    def __getitem__(self, idx):
+        try: return int(idx)
+        except: return 0
+    def __len__(self): return self.size
+    def __iter__(self): return iter(range(self.size))
+
+class ClassicalRegister:
+    def __init__(self, size, name=None, **kw):
+        try:
+            self.size = int(size)
+        except:
+            self.size = 2
+        self.name = name or 'c'
+    def __getitem__(self, idx):
+        try: return int(idx)
+        except: return 0
+    def __len__(self): return self.size
+    def __iter__(self): return iter(range(self.size))
+
+class Operation:
+    __slots__ = ('name', 'qubits', 'params')
+    def __init__(self, name, qubits, params=None):
+        self.name = name
+        self.qubits = qubits
+        self.params = params or []
+
+def _safe_int(q):
+    """Convierte cualquier cosa a int de forma segura."""
+    if isinstance(q, int): return q
+    if isinstance(q, float): return int(q)
+    if isinstance(q, bool): return int(q)
+    try: return int(q)
+    except: return 0
+
+def _expand_qubits(qubits):
+    """Desdobla registros, ranges, listas anidadas a lista plana de ints."""
+    result = []
+    def _walk(item):
+        if isinstance(item, int): result.append(item)
+        elif isinstance(item, bool): result.append(int(item))
+        elif isinstance(item, float): result.append(int(item))
+        elif isinstance(item, range): result.extend(list(item))
+        elif isinstance(item, (list, tuple)):
+            for sub in item: _walk(sub)
+        elif hasattr(item, '__iter__'):
+            try:
+                for sub in item: _walk(sub)
+            except: result.append(0)
+        else:
+            result.append(_safe_int(item))
+    for q in qubits:
+        _walk(q)
+    return result
+
+class QuantumCircuit:
+    def __init__(self, *args, **kwargs):
+        # Acepta absolutamente cualquier combinación de argumentos
+        self.data = []
+        self.num_qubits = 2
+        self.num_clbits = 0
+        self._name = kwargs.get('name', 'circuit')
+
+        # Detectar número de qubits desde argumentos posicionales
+        int_args = []
+        for a in args:
+            if isinstance(a, int): int_args.append(a)
+            elif isinstance(a, (QuantumRegister, ClassicalRegister)):
+                if isinstance(a, QuantumRegister): self.num_qubits = max(self.num_qubits, a.size)
+                else: self.num_clbits = max(self.num_clbits, a.size)
+            elif isinstance(a, (list, tuple)):
+                # Lista de registros
+                nq = sum(len(r) for r in a if isinstance(r, QuantumRegister) and hasattr(r,'size'))
+                if nq: self.num_qubits = nq
+            elif hasattr(a, 'size'):
+                try: self.num_qubits = max(self.num_qubits, int(a.size))
+                except: pass
+
+        if int_args:
+            self.num_qubits = int_args[0]
+            if len(int_args) > 1: self.num_clbits = int_args[1]
+
+        # alias para que iterar sobre qc.qubits funcione
+        self._qubits_list = list(range(self.num_qubits))
+
+    @property
+    def qubits(self):
+        return self._qubits_list
+
+    @qubits.setter
+    def qubits(self, val):
+        if isinstance(val, int):
+            self.num_qubits = val
+            self._qubits_list = list(range(val))
+
+    def _add(self, name, qubits_raw, params=None):
+        try:
+            clean = _expand_qubits(qubits_raw)
+            if clean:
+                self.data.append(Operation(name, clean, params or []))
+        except:
+            pass
+        return self
+
+    # ── Puertas estándar de 1 qubit ──
+    def h(self, q, **kw): return self._add('h', [q])
+    def x(self, q, **kw): return self._add('x', [q])
+    def y(self, q, **kw): return self._add('y', [q])
+    def z(self, q, **kw): return self._add('z', [q])
+    def s(self, q, **kw): return self._add('s', [q])
+    def sdg(self, q, **kw): return self._add('s', [q])
+    def t(self, q, **kw): return self._add('t', [q])
+    def tdg(self, q, **kw): return self._add('t', [q])
+    def sx(self, q, **kw): return self._add('sx', [q])
+    def sxdg(self, q, **kw): return self._add('sx', [q])
+    def id(self, q, **kw): return self._add('h', [q])   # visual placeholder
+    def reset(self, q, **kw): return self._add('x', [q])
+
+    # ── Rotaciones ──
+    def rx(self, theta, q, **kw): return self._add('rx', [q], [theta])
+    def ry(self, theta, q, **kw): return self._add('ry', [q], [theta])
+    def rz(self, theta, q, **kw): return self._add('rz', [q], [theta])
+    def p(self, theta, q, **kw): return self._add('rz', [q], [theta])
+    def r(self, theta, phi, q, **kw): return self._add('rx', [q], [theta])
+    def u(self, theta, phi, lam, q, **kw): return self._add('rx', [q], [theta])
+    def u1(self, theta, q, **kw): return self._add('rz', [q], [theta])
+    def u2(self, phi, lam, q, **kw): return self._add('ry', [q], [phi])
+    def u3(self, theta, phi, lam, q, **kw): return self._add('rx', [q], [theta])
+
+    # ── Puertas de 2 qubits ──
+    def cx(self, c, t, **kw): return self._add('cx', [c, t])
+    def cnot(self, c, t, **kw): return self._add('cx', [c, t])
+    def cz(self, c, t, **kw): return self._add('cz', [c, t])
+    def cy(self, c, t, **kw): return self._add('cz', [c, t])
+    def swap(self, a, b, **kw): return self._add('swap', [a, b])
+    def iswap(self, a, b, **kw): return self._add('swap', [a, b])
+    def cp(self, theta, c, t, **kw): return self._add('cp', [c, t], [theta])
+    def crx(self, theta, c, t, **kw): return self._add('cx', [c, t])
+    def cry(self, theta, c, t, **kw): return self._add('cx', [c, t])
+    def crz(self, theta, c, t, **kw): return self._add('cx', [c, t])
+    def ecr(self, a, b, **kw): return self._add('cx', [a, b])
+    def dcx(self, a, b, **kw): return self._add('cx', [a, b])
+    def rzx(self, theta, a, b, **kw): return self._add('cx', [a, b])
+
+    # ── Puertas de 3 qubits ──
+    def ccx(self, a, b, t, **kw): return self._add('ccx', [a, b, t])
+    def toffoli(self, a, b, t, **kw): return self._add('ccx', [a, b, t])
+    def cswap(self, c, a, b, **kw): return self._add('cswap', [c, a, b])
+    def fredkin(self, c, a, b, **kw): return self._add('cswap', [c, a, b])
+    def ccz(self, a, b, c, **kw): return self._add('ccx', [a, b, c])
+
+    # ── Multi-control ──
+    def mcx(self, controls, target, ancilla_qubits=None, **kw):
+        try:
+            qs = list(controls) + [target]
+        except:
+            qs = [0, target if isinstance(target, int) else 0]
+        return self._add('mcx', qs)
+    def mct(self, controls, target, *a, **kw):
+        return self.mcx(controls, target)
+
+    # ── Append genérico ──
+    def append(self, gate, qubits, clbits=None, **kw):
+        try:
+            name = getattr(gate, 'name', None) or getattr(gate, '__name__', None) or str(gate).split('.')[-1].split('(')[0]
+            name = name.lower() if isinstance(name, str) else 'h'
+        except:
+            name = 'h'
+        try:
+            return self._add(name, list(qubits) if hasattr(qubits,'__iter__') else [qubits])
+        except:
+            return self
+
+    # ── Medición ──
+    def measure(self, qubit, cbit=None, **kw):
+        try:
+            if hasattr(qubit, '__iter__') and not isinstance(qubit, int):
+                for q in qubit:
+                    self._add('measure', [q])
+            else:
+                self._add('measure', [qubit])
+        except:
+            pass
+        return self
+
+    def measure_all(self, **kw):
+        for i in range(self.num_qubits):
+            self._add('measure', [i])
+        return self
+
+    def measure_active(self, **kw):
+        return self.measure_all()
+
+    # ── Composición ──
+    def compose(self, other, qubits=None, clbits=None, **kw):
+        try:
+            if hasattr(other, 'data'):
+                for op in other.data:
+                    self.data.append(op)
+        except:
+            pass
+        return self
+
+    def extend(self, other, **kw):
+        return self.compose(other)
+
+    def tensor(self, other, **kw):
+        return self
+
+    def inverse(self, **kw):
+        return self
+
+    def repeat(self, reps, **kw):
+        return self
+
+    def power(self, p, **kw):
+        return self
+
+    def control(self, *a, **kw):
+        return self
+
+    # ── Info ──
+    def draw(self, *a, **kw): return "QuantumCircuit"
+    def depth(self): return len(self.data)
+    def width(self): return self.num_qubits
+    def num_parameters(self): return 0
+    def count_ops(self): return {}
+    def copy(self, *a, **kw):
+        import copy; return copy.deepcopy(self)
+
+    # ── CAPA 4: __getattr__ universal ──
+    # Cualquier método no definido arriba es interceptado aquí.
+    # Si parece una puerta (nombre corto, letra), la registra como operación.
+    # Si no, devuelve un Stub que absorbe la llamada.
+    def __getattr__(self, name):
+        def _gate_fallback(*args, **kwargs):
+            try:
+                # Buscar qubit en los argumentos
+                ints = [a for a in args if isinstance(a, int)]
+                floats = [a for a in args if isinstance(a, float)]
+                params = floats if floats else []
+                if ints:
+                    self._add(name, ints, params)
+                elif args:
+                    # Intentar extraer qubit del último arg
+                    last = args[-1]
+                    self._add(name, [last] if isinstance(last,(int,float)) else [0], params)
+            except:
+                pass
+            return self
+        return _gate_fallback
+
+# ════════════════════════════════════════════════════════════════
+# CAPA 5 ── Import hook universal: intercepta CUALQUIER módulo no instalado
+# ════════════════════════════════════════════════════════════════
+_KNOWN_QUANTUM_PKGS = {
+    'qiskit', 'qiskit_aer', 'qiskit_ibm_runtime', 'qiskit_ibm_provider',
+    'qiskit_algorithms', 'qiskit_optimization', 'qiskit_machine_learning',
+    'qiskit_nature', 'qiskit_finance', 'qiskit_dynamics',
+    'cirq', 'pennylane', 'pennylane_lightning', 'qutip',
+    'pyquil', 'braket', 'pytket', 'strawberryfields', 'thewalrus',
+    'mitiq', 'openfermion', 'pyscf',
+}
+
+class _UniversalFinder:
+    """
+    Intercepta CUALQUIER import que falle — no solo qiskit.
+    Si el paquete raíz está en _KNOWN_QUANTUM_PKGS o si ya estamos
+    dentro de qiskit.*, lo creamos como _DynamicModule al instante.
+    Para paquetes desconocidos totalmente ajenos, deja que Python
+    maneje el error normal (para no romper stdlib).
+    """
+    def find_spec(self, fullname, path, target=None):
+        if fullname in sys.modules:
+            return None   # ya existe, no interferir
+
+        root = fullname.split('.')[0]
+
+        # Siempre interceptar qiskit.* y paquetes cuánticos conocidos
+        if root in _KNOWN_QUANTUM_PKGS or fullname.startswith('qiskit'):
+            mod = _DynamicModule(fullname, is_package=True)
+            sys.modules[fullname] = mod
+            # Vincular al padre
+            parent, _, child = fullname.rpartition('.')
+            if parent and parent in sys.modules:
+                try: setattr(sys.modules[parent], child, mod)
+                except: pass
+            return None   # ya en sys.modules, import termina sin error
+
+        return None   # dejar que Python resuelva lo demás
+
+class _UniversalLoader:
+    def create_module(self, spec): return None
+    def exec_module(self, module): pass
+
+sys.meta_path.insert(0, _UniversalFinder())
+
+# ════════════════════════════════════════════════════════════════
+# Registrar módulo qiskit principal con clases reales
+# ════════════════════════════════════════════════════════════════
+qiskit_mod = _DynamicModule('qiskit', is_package=True)
+qiskit_mod.QuantumRegister    = QuantumRegister
+qiskit_mod.ClassicalRegister  = ClassicalRegister
+qiskit_mod.QuantumCircuit     = QuantumCircuit
+sys.modules['qiskit'] = qiskit_mod
+
+# Submódulos qiskit comunes pre-registrados
+for _sub in [
+    'circuit', 'circuit.library', 'circuit.random', 'circuit.equivalence',
+    'circuit.quantumcircuit', 'circuit.gate', 'circuit.instruction',
+    'circuit.classicalregister', 'circuit.quantumregister',
+    'extensions', 'visualization', 'tools', 'utils',
+    'providers', 'providers.aer', 'providers.fake_provider',
+    'providers.ibmq', 'providers.basicaer',
+    'quantum_info', 'opflow', 'primitives',
+    'algorithms', 'algorithms.optimizers', 'algorithms.minimum_eigensolvers',
+    'transpiler', 'transpiler.passes',
+]:
+    _full = f'qiskit.{_sub}'
+    if _full not in sys.modules:
+        _m = _DynamicModule(_full, is_package=True)
+        sys.modules[_full] = _m
+
+# Enlazar Gate y Instruction (clases que algunos códigos importan y usan como base)
+for _mod_name in ['qiskit.circuit', 'qiskit.circuit.gate', 'qiskit.circuit.instruction']:
+    _m = sys.modules.get(_mod_name)
+    if _m:
+        _m.Gate = _Stub('Gate')
+        _m.Instruction = _Stub('Instruction')
+        _m.QuantumCircuit = QuantumCircuit
+        _m.QuantumRegister = QuantumRegister
+        _m.ClassicalRegister = ClassicalRegister
+
+# Stub qiskit_aer
+_aer = _DynamicModule('qiskit_aer', is_package=True)
+class _AerSimStub:
+    def __init__(self, *a, **kw): pass
+    def run(self, circuit, shots=1024, **kw):
+        class _J:
+            def result(self):
+                class _R:
+                    def get_counts(self, *a): return {'0': shots}
+                    def get_statevector(self, *a): return _Stub()
+                    def get_memory(self, *a): return []
+                    def __getattr__(self, n): return _Stub()
+                return _R()
+            def __getattr__(self, n): return _Stub()
+        return _J()
+    def __getattr__(self, n): return _Stub()
+_aer.AerSimulator = _AerSimStub
+_aer.Aer = _Stub('Aer')
+sys.modules['qiskit_aer'] = _aer
+sys.modules['qiskit_aer.backends'] = _DynamicModule('qiskit_aer.backends', True)
+
+print("[QCOL Mock v3] Sistema universal cargado — cualquier código Qiskit será aceptado.")
+`;
+
+// ═══════════════════════════════════════════════════════════
+// PYODIDE: INICIALIZACIÓN, SINCRONIZACIÓN Y EJECUCIÓN LOCAL
+// ═══════════════════════════════════════════════════════════
+let pyodide = null;
+let pyodideLoading = false;
+
+async function initPyodide() {
+    if (pyodide !== null) return pyodide;
+    if (pyodideLoading) {
+        await new Promise(resolve => { const check = setInterval(() => { if (pyodide !== null) { clearInterval(check); resolve(); } }, 100); });
+        return pyodide;
     }
-    return NaN;
-  }
+    pyodideLoading = true;
+    const out = document.getElementById('out-body');
+    out.innerHTML = '<span class="inf">🔄 Cargando Pyodide (motor Python local)...</span>\n';
+    try {
+        pyodide = await loadPyodide();
+        await pyodide.runPythonAsync(QISKIT_MOCK_CODE);
+        await pyodide.loadPackage('numpy');
+        await pyodide.loadPackage('scipy');
+        await pyodide.loadPackage('matplotlib');
+        await pyodide.loadPackage('pandas');
+        await pyodide.loadPackage('scikit-learn');
+        out.innerHTML = '<span class="ok">✅ Pyodide listo (numpy, scipy, matplotlib disponibles localmente)</span>\n';
+        notify('✅ Pyodide listo');
+        // Forzar sincronización inicial si hay código
+        if (document.getElementById('code-ta').value.trim()) {
+            syncWithPyodide().catch(console.error);
+        }
+    } catch (err) {
+        out.innerHTML = `<span class="er">❌ Error cargando Pyodide: ${err.message}</span>\n`;
+        notify('❌ Error cargando Pyodide');
+        console.error(err);
+    }
+    pyodideLoading = false;
+    return pyodide;
+}
 
-  function expandLoops(lines) {
-    const result = [];
-    let i = 0;
-    while (i < lines.length) {
-      const line = lines[i].trim();
-      const forMatch = line.match(/^for\s+(\w+)\s+in\s+range\s*\((\d+|\w+)(?:\s*,\s*(\d+|\w+))?(?:\s*,\s*(\d+|\w+))?\s*\)\s*:/);
-      if (forMatch) {
-        const varName = forMatch[1];
-        let start = 0, end = 0, step = 1;
-        if (forMatch[3] !== undefined) {
-          start = parseInt(forMatch[2]) || parseInt(vars[forMatch[2]]) || 0;
-          end   = parseInt(forMatch[3]) || parseInt(vars[forMatch[3]]) || 0;
+function mapOpNameToGateId(opName) {
+    const map = {
+        'h': 'H', 'x': 'X', 'y': 'Y', 'z': 'Z', 's': 'S', 't': 'T', 'sx': 'SX',
+        'rx': 'RX', 'ry': 'RY', 'rz': 'RZ', 'p': 'RZ',
+        'cx': 'CX', 'cz': 'CZ', 'swap': 'SWAP', 'cp': 'CZ',
+        'ccx': 'CCX', 'cswap': 'CSW', 'mcx': 'CCX',
+        'measure': 'M'
+    };
+    return map[opName] || 'H';
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// PRE-PROCESADOR UNIVERSAL DE CÓDIGO (CAPA 0 — JS, antes de exec)
+// Sanea el código antes de enviarlo a Python para evitar SyntaxErrors
+// ═══════════════════════════════════════════════════════════════════
+function preprocessCode(code) {
+    // 1. Reemplazar caracteres Unicode no-ASCII en identificadores
+    //    (p.ej. nombres de clase con ₄ ₂ ǃ ƒ etc.) por equivalentes ASCII.
+    //    Estrategia: reemplazar secuencias de caracteres no-ASCII en posiciones
+    //    de nombre de identificador por su representación ASCII transliterada.
+    //    Para caracteres sin equivalente claro, usar underscore.
+    let out = '';
+    for (let i = 0; i < code.length; i++) {
+        const cp = code.codePointAt(i);
+        if (cp > 127) {
+            // Caracteres Unicode que son subíndices/superíndices numéricos
+            const subscripts   = '₀₁₂₃₄₅₆₇₈₉';
+            const superscripts = '⁰¹²³⁴⁵⁶⁷⁸⁹';
+            const subIdx = subscripts.indexOf(code[i]);
+            const supIdx = superscripts.indexOf(code[i]);
+            if (subIdx >= 0) { out += subIdx; continue; }
+            if (supIdx >= 0) { out += supIdx; continue; }
+            // Caracteres latinos extendidos comunes → ASCII aproximado
+            const latinMap = {
+                'ā':'a','á':'a','à':'a','â':'a','ä':'a','ã':'a',
+                'ē':'e','é':'e','è':'e','ê':'e','ë':'e',
+                'ī':'i','í':'i','ì':'i','î':'i','ï':'i',
+                'ō':'o','ó':'o','ò':'o','ô':'o','ö':'o','õ':'o',
+                'ū':'u','ú':'u','ù':'u','û':'u','ü':'u',
+                'ý':'y','ÿ':'y','ñ':'n','ç':'c','ß':'ss',
+                'Ā':'A','Á':'A','À':'A','Â':'A','Ä':'A','Ã':'A',
+                'Ē':'E','É':'E','È':'E','Ê':'E','Ë':'E',
+                'Ī':'I','Í':'I','Ì':'I','Î':'I','Ï':'I',
+                'Ō':'O','Ó':'O','Ò':'O','Ô':'O','Ö':'O','Õ':'O',
+                'Ū':'U','Ú':'U','Ù':'U','Û':'U','Ü':'U',
+                'Ý':'Y','Ñ':'N','Ç':'C',
+                // Letras decoradas / exóticas comunes en código artístico
+                'ƒ':'f','Ƒ':'F','ƨ':'s','ƚ':'t','ƞ':'n',
+                'ǥ':'g','Ǥ':'G','ǀ':'l','ǁ':'ll','ǃ':'x',
+                'ș':'s','ț':'t','ș':'s',
+                'ł':'l','Ł':'L','ø':'o','Ø':'O','æ':'ae','Æ':'AE',
+                'đ':'d','Đ':'D','ħ':'h','Ħ':'H','ŧ':'t','Ŧ':'T',
+                // Letras con tildes/marcas decorativas
+                'ṕ':'p','Ṕ':'P','ḥ':'h','Ḥ':'H','ṡ':'s','Ṡ':'S',
+                'ẇ':'w','Ẇ':'W','ṙ':'r','Ṙ':'R','ẑ':'z','Ẑ':'Z',
+                'ū':'u','ṭ':'t','ā':'a','ī':'i','ē':'e','ō':'o',
+                'ÿ':'y','ẙ':'y',
+                // Caracteres de puntuación que pueden aparecer en nombres
+                'ʼ':"'",'ʻ':"'",'ʹ':"'",
+                // Greek en contexto de nombres
+                'α':'alpha','β':'beta','γ':'gamma','δ':'delta',
+                'θ':'theta','λ':'lam','μ':'mu','π':'pi','σ':'sigma',
+                'φ':'phi','ψ':'psi','ω':'omega',
+                'Α':'Alpha','Β':'Beta','Γ':'Gamma','Δ':'Delta',
+                'Θ':'Theta','Λ':'Lam','Μ':'Mu','Π':'Pi','Σ':'Sigma',
+                'Φ':'Phi','Ψ':'Psi','Ω':'Omega',
+            };
+            const ch = code[i];
+            if (latinMap[ch]) { out += latinMap[ch]; continue; }
+            // Cualquier otro carácter no-ASCII: reemplazar con '_'
+            out += '_';
+            // Si es un surrogate pair, avanzar un carácter extra
+            if (cp > 0xFFFF) i++;
         } else {
-          end = parseInt(forMatch[2]) || parseInt(vars[forMatch[2]]) || 0;
+            out += code[i];
         }
-        if (forMatch[4]) step = parseInt(forMatch[4]) || 1;
-        const body = [];
-        i++;
-        while (i < lines.length && (lines[i].startsWith('  ') || lines[i].startsWith('\t') || lines[i].trim() === '')) {
-          body.push(lines[i]);
-          i++;
-        }
-        for (let v = start; v < end; v += step) {
-          body.forEach(bl => {
-            const expanded = bl.replace(new RegExp('\\b' + varName + '\\b', 'g'), v);
-            result.push(expanded);
-          });
-        }
-        continue;
-      }
-      result.push(lines[i]);
-      i++;
     }
-    return result;
-  }
 
-  return { expandLoops, resolveQubit, circName, qrMap, vars };
+    // 2. Eliminar decoradores problemáticos que no están definidos
+    //    (clases/funciones decoradas con @algo_desconocido)
+    out = out.replace(/^@(?!property|staticmethod|classmethod|abstractmethod)[^\n]+\n/gm, '');
+
+    // 3. Reemplazar f-strings inválidas (raras, pero posibles con código exótico)
+    //    No necesario si ya normalizamos Unicode.
+
+    return out;
 }
 
-function updateCircuitFromCode() {
-  if (isUpdatingFromCircuit) return;
-  const code = document.getElementById('code-ta').value;
-  const newGates = [];
+async function syncWithPyodide() {
+    if (isUpdatingFromCircuit) return;
+    isUpdatingFromCircuit = true;
+    const rawCode = document.getElementById('code-ta').value;
+    if (!rawCode.trim()) { isUpdatingFromCircuit = false; return; }
+    const out = document.getElementById('out-body');
+    out.innerHTML += '<span class="inf">🔄 Sincronizando código → circuito visual...</span>\n';
+    try {
+        const py = await initPyodide();
+        // ── CAPA 0: pre-procesar en JS antes de enviar a Python
+        const code = preprocessCode(rawCode);
+        py.globals.set('_pending_user_code', code);
+        const result = await py.runPythonAsync(`
+import json, traceback, re, sys
 
-  const { expandLoops, resolveQubit, circName } = normalizeQiskitCode(code);
-  let lines = expandLoops(code.split('\n'));
+_user_code = globals().get('_pending_user_code', '')
+_ns = {}
+_error = None
+_circuit = None
+_num_qubits = 0
+_data = []
 
-  lines.forEach(line => {
-    line = line.trim();
-    if (!line || line.startsWith('#')) return;
+# ── CAPA 0 Python: pre-sanitización adicional ──────────────────
+def _sanitize(code):
+    lines = code.splitlines()
+    out = []
+    for line in lines:
+        # Saltar líneas con caracteres de control peligrosos (no imprimibles)
+        safe = ''.join(c if (ord(c) < 128 or c in '\\n\\t') else '_' for c in line)
+        out.append(safe)
+    return '\\n'.join(out)
 
-    function tryQ(op, str) {
-      const q = resolveQubit(str);
-      return isNaN(q) ? null : q;
-    }
+_clean_code = _sanitize(_user_code)
 
-    // 3-qubit
-    const m3 = line.match(/\w+\.(?:ccx|toffoli)\s*\(([^,]+),([^,]+),([^)]+)\)/i) ||
-                line.match(/\w+\.append\s*\(MCXGate\(\d+\)\s*,\s*\[([^\]]*)\]/i);
-    if (m3) {
-      let qs;
-      if (line.includes('append')) {
-        const qlist = m3[1].split(',').map(s => resolveQubit(s)).filter(q => !isNaN(q));
-        if (qlist.length >= 3) qs = [qlist[0], qlist[1], qlist[qlist.length-1]].sort((a,b)=>a-b);
-      } else {
-        qs = [resolveQubit(m3[1]), resolveQubit(m3[2]), resolveQubit(m3[3])].filter(q=>!isNaN(q)).sort((a,b)=>a-b);
-      }
-      if (qs && qs.length >= 3 && qs[2] < circuit.qubits) {
-        const gDef = GATES['3q'][0];
-        newGates.push({ id:'CCX', q:qs[0], q2:qs[1], q3:qs[2], def:gDef, uid:nextId++ });
-        return;
-      }
-    }
+# ── CAPA 1: exec normal ────────────────────────────────────────
+try:
+    exec(compile(_clean_code, '<qcol>', 'exec'), _ns)
+except SyntaxError as _se:
+    # CAPA 2: si hay SyntaxError, intentar quitar la línea problemática
+    _bad_line = getattr(_se, 'lineno', None)
+    if _bad_line is not None:
+        _lines = _clean_code.splitlines()
+        _lines2 = [l for i, l in enumerate(_lines, 1) if i != _bad_line]
+        try:
+            exec(compile('\\n'.join(_lines2), '<qcol_patched>', 'exec'), _ns)
+        except Exception as _e2:
+            _error = f"SyntaxError (línea {_bad_line} eliminada): {_se.msg}\\n{traceback.format_exc()}"
+    else:
+        _error = traceback.format_exc()
+except Exception as _e:
+    _error = traceback.format_exc()
 
-    const mcsw = line.match(/\w+\.cswap\s*\(([^,]+),([^,]+),([^)]+)\)/i);
-    if (mcsw) {
-      const qs = [resolveQubit(mcsw[1]),resolveQubit(mcsw[2]),resolveQubit(mcsw[3])].filter(q=>!isNaN(q)).sort((a,b)=>a-b);
-      if (qs.length===3 && qs[2]<circuit.qubits) {
-        const gDef = GATES['3q'][1] || GATES['3q'][0];
-        newGates.push({id:'CSW',q:qs[0],q2:qs[1],q3:qs[2],def:gDef,uid:nextId++});
-        return;
-      }
-    }
+# ── Buscar circuito en el namespace ───────────────────────────
+if _error is None:
+    # Nombres comunes primero
+    for _cname in ['circuit','qc','circ','qcirc','c','circ1','qcircuit','qc1','main_circuit']:
+        _obj = _ns.get(_cname)
+        if _obj is not None and hasattr(_obj, 'data') and isinstance(_obj.data, list):
+            _circuit = _obj
+            break
+    # Si no, buscar cualquier QuantumCircuit en el namespace
+    if _circuit is None:
+        for _v in list(_ns.values()):
+            if hasattr(_v, 'data') and hasattr(_v, 'num_qubits') and isinstance(getattr(_v,'data',[]), list):
+                _circuit = _v
+                break
+    if _circuit is None:
+        # CAPA 3: modo degradado — intentar parsear qubits del texto del código
+        import re as _re
+        _m = _re.search(r'QuantumCircuit\\s*\\((\\d+)', _clean_code)
+        if _m:
+            _num_qubits = int(_m.group(1))
+            _error = None   # no reportar error, mostrar circuito vacío
+        else:
+            _error = "No se encontró QuantumCircuit en el código.\\nUsa: qc = QuantumCircuit(n)"
+    else:
+        try:
+            _nq = getattr(_circuit, 'num_qubits', 2)
+            _num_qubits = int(_nq) if isinstance(_nq, (int, float)) else len(list(_nq)) if hasattr(_nq,'__iter__') else 2
+        except:
+            _num_qubits = 2
+        try:
+            _data = [op for op in _circuit.data if hasattr(op,'name') and hasattr(op,'qubits')]
+        except:
+            _data = []
 
-    // 2-qubit
-    const g2map = [
-      {id:'CX',  re:/\w+\.cx\s*\(([^,]+),([^)]+)\)/i},
-      {id:'CZ',  re:/\w+\.cz\s*\(([^,]+),([^)]+)\)/i},
-      {id:'SWAP',re:/\w+\.swap\s*\(([^,]+),([^)]+)\)/i},
-      {id:'CX',  re:/\w+\.cnot\s*\(([^,]+),([^)]+)\)/i},
-      {id:'CZ',  re:/\w+\.cp\s*\([^,]+,\s*([^,]+),([^)]+)\)/i},
-      {id:'CX',  re:/\w+\.ch\s*\(([^,]+),([^)]+)\)/i},
-      {id:'CX',  re:/\w+\.cy\s*\(([^,]+),([^)]+)\)/i},
-    ];
-    for (const {id, re} of g2map) {
-      const m = line.match(re);
-      if (m) {
-        const q1 = resolveQubit(m[1]), q2 = resolveQubit(m[2]);
-        if (!isNaN(q1) && !isNaN(q2) && q1 !== q2 && Math.max(q1,q2) < circuit.qubits) {
-          const gDef = findGateDef(id) || GATES['2q'][0];
-          newGates.push({id, q:Math.min(q1,q2), q2:Math.max(q1,q2), def:gDef, uid:nextId++});
-          return;
+# ── Serializar resultado ───────────────────────────────────────
+def _safe_gate(op):
+    try:
+        name = str(op.name)
+        qubits = list(op.qubits) if hasattr(op.qubits,'__iter__') else [0]
+        params = []
+        try:
+            params = [float(p) for p in (op.params or [])]
+        except:
+            pass
+        return [name, qubits, params]
+    except:
+        return None
+
+_gates = [g for g in (_safe_gate(op) for op in _data) if g is not None]
+
+json.dumps({
+    "success": _error is None,
+    "error": _error,
+    "num_qubits": max(1, int(_num_qubits)),
+    "gates": _gates,
+    "circuit_exists": _circuit is not None or (_error is None and _num_qubits > 0)
+})
+        `);
+        const data = JSON.parse(result);
+        if (data.success && data.circuit_exists) {
+            circuit.qubits = Math.min(data.num_qubits, MAX_QUBITS);
+            const newGates = [];
+            for (const gate of data.gates) {
+                const gateId = mapOpNameToGateId(gate[0]);
+                const def = findGateDef(gateId);
+                if (!def) continue;
+                const qubits = gate[1];
+                const uid = nextId++;
+                if (qubits.length === 1) {
+                    newGates.push({ id: gateId, q: qubits[0], def: def, uid: uid });
+                } else if (qubits.length === 2) {
+                    newGates.push({ id: gateId, q: Math.min(qubits[0], qubits[1]), q2: Math.max(qubits[0], qubits[1]), def: def, uid: uid });
+                } else if (qubits.length >= 3) {
+                    const sorted = [...qubits].sort((a,b)=>a-b);
+                    newGates.push({ id: gateId, q: sorted[0], q2: sorted[1], q3: sorted[2], def: def, uid: uid });
+                }
+            }
+            circuit.gates = newGates;
+            renderCircuit();
+            updateCircuitInfo();
+            out.innerHTML += `<span class="ok">✅ Sincronizado — ${data.num_qubits} qubits · ${newGates.length} puertas</span>\n`;
+            notify(`Circuito actualizado: ${newGates.length} puertas`);
+        } else {
+            // Mostrar error pero de forma compacta (no catastrófica)
+            const errMsg = data.error || 'Sin circuito detectado';
+            out.innerHTML += `<span class="er">⚠️ Aviso (circuito no extraído):<br><small>${escapeHtml(errMsg.slice(0,300))}</small></span>\n`;
         }
-      }
+    } catch (err) {
+        out.innerHTML += `<span class="er">❌ Error interno: ${err.message}</span>`;
+    } finally {
+        isUpdatingFromCircuit = false;
     }
-
-    // 1-qubit
-    const g1map = [
-      {id:'H',  re:/\w+\.h\s*\(([^)]+)\)/i},
-      {id:'X',  re:/\w+\.x\s*\(([^)]+)\)/i},
-      {id:'Y',  re:/\w+\.y\s*\(([^)]+)\)/i},
-      {id:'Z',  re:/\w+\.z\s*\(([^)]+)\)/i},
-      {id:'S',  re:/\w+\.s\s*\(([^)]+)\)/i},
-      {id:'T',  re:/\w+\.t\s*\(([^)]+)\)/i},
-      {id:'SX', re:/\w+\.sx\s*\(([^)]+)\)/i},
-      {id:'RX', re:/\w+\.rx\s*\([^,]+,\s*([^)]+)\)/i},
-      {id:'RY', re:/\w+\.ry\s*\([^,]+,\s*([^)]+)\)/i},
-      {id:'RZ', re:/\w+\.rz\s*\([^,]+,\s*([^)]+)\)/i},
-      {id:'RZ', re:/\w+\.p\s*\([^,]+,\s*([^)]+)\)/i},
-      {id:'H',  re:/\w+\.initialize\s*\([^,]+,\s*([^)]+)\)/i},
-      {id:'M',  re:/\w+\.measure\s*\(([^,)]+)/i},
-    ];
-    for (const {id, re} of g1map) {
-      const m = line.match(re);
-      if (m) {
-        const q = resolveQubit(m[1]);
-        if (!isNaN(q) && q < circuit.qubits) {
-          const gDef = findGateDef(id) || GATES['1q'][0];
-          newGates.push({id, q, def:gDef, uid:nextId++});
-          return;
-        }
-      }
-    }
-
-    if (/\w+\.measure_all\s*\(\s*\)/.test(line)) {
-      const gDef = findGateDef('M') || GATES['meas'][0];
-      for (let qi=0; qi<circuit.qubits; qi++)
-        newGates.push({id:'M', q:qi, def:gDef, uid:nextId++});
-      return;
-    }
-
-    const qcMatch = line.match(/\w+\s*=\s*QuantumCircuit\s*\(\s*(\d+|\w+)/);
-    if (qcMatch) {
-      const n = parseInt(qcMatch[1]) || 2;
-      if (n > 0 && n <= 20 && n !== circuit.qubits) {
-        circuit.qubits = n;
-      }
-    }
-  });
-
-  const currJSON = JSON.stringify(circuit.gates.map(g => ({ id: g.id, q: g.q, q2: g.q2, q3: g.q3 })));
-  const newJSON  = JSON.stringify(newGates.map(g => ({ id: g.id, q: g.q, q2: g.q2, q3: g.q3 })));
-  if (currJSON !== newJSON) {
-    isUpdatingFromCode = true;
-    circuit.gates = newGates;
-    renderCircuit();
-    updateCircuitInfo();
-    isUpdatingFromCode = false;
-  }
 }
 
+// ═══════════════════════════════════════════════════════════
+// EJECUCIÓN EN SERVIDOR (código original adaptado)
+// ═══════════════════════════════════════════════════════════
+async function runServerCode() {
+    const code = document.getElementById('code-ta').value.trim();
+    if (!code) { notify('Escribe código primero'); return; }
+    if (!engineOK || !engineURL) {
+        notify('❌ No hay compilador configurado. Configura la URL en el panel Fundador.');
+        const out = document.getElementById('out-body');
+        out.innerHTML = `<span class="er">⚠️ No se ha configurado ningún compilador en la nube.\n\nVe al panel Fundador → 🤗 Compilador HuggingFace y guarda la URL de tu Space.</span>`;
+        return;
+    }
+    running = true;
+    const btn = document.getElementById('btn-run');
+    btn.disabled = true;
+    btn.innerHTML = '<span>⏳</span> EJECUTANDO';
+    setRunSt('run', 'Ejecutando en servidor...');
+    setTab('out');
+    const t0 = Date.now();
+    const out = document.getElementById('out-body');
+    out.innerHTML = `<span class="inf">Enviando código al compilador cuántico (Qiskit 1.0+)...\n</span>`;
+
+    const isHF = engineURL.includes('hf.space') || engineURL.includes('huggingface');
+    try {
+        let res, d;
+        if (isHF) {
+            // fn_index:1 → gr.Interface(run_circuit, api_name="run") — segundo evento registrado en app.py
+            res = await fetchWithRetry(engineURL + '/run/predict', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ data: [code], fn_index: 1 })
+            }, 3, 30000);
+            const raw = await res.json();
+            // Gradio envuelve la respuesta en data[]; el payload puede ser dict o string JSON
+            const payload = raw.data ? raw.data[0] : raw;
+            d = (typeof payload === 'string')
+                ? (() => { try { return JSON.parse(payload); } catch(e) { return { success: false, output: payload }; } })()
+                : payload;
+        } else {
+            res = await fetchWithRetry(engineURL + '/run', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ code, lib: curLib })
+            }, 3, 30000);
+            d = await res.json();
+        }
+        const el = ((Date.now() - t0) / 1000).toFixed(2);
+        document.getElementById('out-elapsed').textContent = el + 's';
+        if (d.success) {
+            out.innerHTML = `<span class="inf">╔════════════════════════════╗\n║  Compilador · ${el}s\n╚════════════════════════════╝\n\n</span><span class="ok">${escapeHtml(d.output)}</span>`;
+            if (d.bloch?.probabilities) updateBlochFromProbs(d.bloch.probabilities);
+            setRunSt('idle', 'Listo');
+            logMonitorRun({ success: true, lib: curLib, qubits: circuit.qubits, time: parseFloat(el) });
+        } else {
+            // ── Sistema IA: clasificar el error con Mistral antes de mostrar ──
+            const errText = d.output || '';
+            const mistralKey = localStorage.getItem('qcol_mistral_key') || '';
+            const mistralOn  = localStorage.getItem('qcol_mistral_enabled') !== 'false';
+            if (mistralKey && mistralOn && errText) {
+                out.innerHTML += `<span class="inf">🧠 Analizando error con IA...</span>\n`;
+                try {
+                    const attrMatch = errText.match(/(?:AttributeError|has no attribute|unexpected keyword argument)[^\n'"]*['"]([^'"]+)['"]/);
+                    const attrName  = attrMatch ? attrMatch[1] : null;
+                    // Si el atributo ya está clasificado como innecesario, ignorar silenciosamente
+                    const ignored = JSON.parse(localStorage.getItem('qcol_ignored_attrs') || '[]');
+                    if (attrName && ignored.includes(attrName)) {
+                        out.innerHTML += `<span class="ok">✅ Atributo '${escapeHtml(attrName)}' ignorado (clasificado previamente).</span>\n`;
+                        setRunSt('idle', 'Ignorado');
+                    } else {
+                        const mistralRes = await fetch('https://api.mistral.ai/v1/chat/completions', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${mistralKey}` },
+                            body: JSON.stringify({
+                                model: 'mistral-small-latest',
+                                max_tokens: 120,
+                                messages: [
+                                    { role: 'system', content: 'Eres un clasificador de errores de Qiskit. Responde SOLO con JSON sin markdown: {"classification":"unnecessary"|"critical","attribute":"nombre","reason":"explicacion corta"}. unnecessary = el atributo/método fallido NO afecta la estructura del circuito. critical = sí la afecta.' },
+                                    { role: 'user', content: JSON.stringify({ error: errText.slice(0, 600), attribute: attrName }) }
+                                ]
+                            })
+                        });
+                        const mj = await mistralRes.json();
+                        const mText = mj.choices?.[0]?.message?.content || '{}';
+                        let mData = {};
+                        try { mData = JSON.parse(mText.replace(/```json|```/g, '').trim()); } catch(e) {}
+                        if (mData.classification === 'unnecessary') {
+                            const attr = mData.attribute || attrName || 'unknown';
+                            // Guardar localmente
+                            const list = JSON.parse(localStorage.getItem('qcol_ignored_attrs') || '[]');
+                            if (!list.includes(attr)) { list.push(attr); localStorage.setItem('qcol_ignored_attrs', JSON.stringify(list)); }
+                            // Guardar en la nube (HuggingFace Space — endpoint health como proxy simple)
+                            try {
+                                await fetch(engineURL + '/health/predict', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ data: [JSON.stringify({ action: 'save_ignored', attribute: attr, reason: mData.reason, ts: new Date().toISOString() })], fn_index: 2 })
+                                });
+                            } catch(e) { /* silencioso si falla el cloud */ }
+                            out.innerHTML += `<span class="ok">🧠 IA: atributo '<b>${escapeHtml(attr)}</b>' marcado como innecesario y guardado permanentemente.<br><small>${escapeHtml(mData.reason||'')}</small></span>\n`;
+                            setRunSt('idle', 'Error ignorado');
+                            // Actualizar la tabla del Fundador si está abierta
+                            if (typeof refreshIgnoredAttrsTable === 'function') refreshIgnoredAttrsTable();
+                        } else {
+                            out.innerHTML += `<span class="er">${formatError(errText, code)}</span>`;
+                            if (mData.reason) out.innerHTML += `<span class="inf">🧠 IA: ${escapeHtml(mData.reason)}</span>\n`;
+                            setRunSt('err', 'Error crítico');
+                        }
+                    }
+                } catch(aiErr) {
+                    // Si Mistral falla, mostrar el error original normalmente
+                    out.innerHTML += `<span class="er">${formatError(errText, code)}</span>`;
+                    setRunSt('err', 'Error');
+                }
+            } else {
+                out.innerHTML += `<span class="er">${formatError(d.output, code)}</span>`;
+                setRunSt('err', 'Error');
+            }
+        }
+    } catch (e) {
+        out.innerHTML += `<span class="er">❌ ${e.name === 'AbortError' ? 'Tiempo agotado tras 3 intentos (30s c/u)' : e.message}</span>`;
+        setRunSt('err', 'Error');
+        engineOK = false;
+        document.getElementById('compiler-status').textContent = '● SIN COMPILADOR';
+        document.getElementById('compiler-status').classList.remove('active', 'waiting');
+    }
+    running = false;
+    btn.disabled = false;
+    btn.innerHTML = '<span>▶</span> EJECUTAR';
+    out.scrollTop = out.scrollHeight;
+}
+
+// Función principal runCode (siempre ejecuta en servidor)
+async function runCode() {
+    if (running) return;
+    await runServerCode();
+}
+
+// ═══════════════════════════════════════════════════════════
+// RESALTADOR DE SINTAXIS Y UTILIDADES
+// ═══════════════════════════════════════════════════════════
 function escapeHtml(str) {
-  return str.replace(/[&<>]/g, function(m) {
-    if (m === '&') return '&amp;';
-    if (m === '<') return '&lt;';
-    if (m === '>') return '&gt;';
-    return m;
-  });
+    return str.replace(/[&<>]/g, function(m) {
+        if (m === '&') return '&amp;';
+        if (m === '<') return '&lt;';
+        if (m === '>') return '&gt;';
+        return m;
+    });
 }
 
 function highlightSyntax(plainCode) {
-  const lines = plainCode.split('\n');
-  const resultLines = [];
-  const rules = [
-    { regex: /(#.*$)/g, color: '#6272a4' },
-    { regex: /(".*?"|'.*?')/g, color: '#f1fa8c' },
-    { regex: /\b(from|import|def|class|return|if|elif|else|for|while|in|not|and|or|True|False|None|as|print)\b/g, color: '#ff79c6' },
-    { regex: /\b(QuantumCircuit|AerSimulator|np|pi)\b/g, color: '#8be9fd' },
-    { regex: /\b(\d+)\b/g, color: '#bd93f9' }
-  ];
-  for (let line of lines) {
-    let tokens = [];
-    for (const rule of rules) {
-      let match;
-      rule.regex.lastIndex = 0;
-      while ((match = rule.regex.exec(line)) !== null) {
-        tokens.push({ start: match.index, end: match.index + match[0].length, color: rule.color, text: match[0] });
-      }
+    const lines = plainCode.split('\n');
+    const resultLines = [];
+    const rules = [
+        { regex: /(#.*$)/g, color: '#6272a4' },
+        { regex: /(".*?"|'.*?')/g, color: '#f1fa8c' },
+        { regex: /\b(from|import|def|class|return|if|elif|else|for|while|in|not|and|or|True|False|None|as|print)\b/g, color: '#ff79c6' },
+        { regex: /\b(QuantumCircuit|AerSimulator|np|pi)\b/g, color: '#8be9fd' },
+        { regex: /\b(\d+)\b/g, color: '#bd93f9' }
+    ];
+    for (let line of lines) {
+        let tokens = [];
+        for (const rule of rules) {
+            let match;
+            rule.regex.lastIndex = 0;
+            while ((match = rule.regex.exec(line)) !== null) {
+                tokens.push({ start: match.index, end: match.index + match[0].length, color: rule.color, text: match[0] });
+            }
+        }
+        tokens.sort((a, b) => a.start - b.start);
+        const uniqueTokens = [];
+        let lastEnd = -1;
+        for (const token of tokens) {
+            if (token.start >= lastEnd) { uniqueTokens.push(token); lastEnd = token.end; }
+        }
+        let htmlLine = '';
+        let pos = 0;
+        for (const token of uniqueTokens) {
+            if (token.start > pos) htmlLine += escapeHtml(line.substring(pos, token.start));
+            htmlLine += `<span style="color:${token.color};">${escapeHtml(token.text)}</span>`;
+            pos = token.end;
+        }
+        if (pos < line.length) htmlLine += escapeHtml(line.substring(pos));
+        resultLines.push(htmlLine);
     }
-    tokens.sort((a, b) => a.start - b.start);
-    const uniqueTokens = [];
-    let lastEnd = -1;
-    for (const token of tokens) {
-      if (token.start >= lastEnd) { uniqueTokens.push(token); lastEnd = token.end; }
-    }
-    let htmlLine = '';
-    let pos = 0;
-    for (const token of uniqueTokens) {
-      if (token.start > pos) htmlLine += escapeHtml(line.substring(pos, token.start));
-      htmlLine += `<span style="color:${token.color};">${escapeHtml(token.text)}</span>`;
-      pos = token.end;
-    }
-    if (pos < line.length) htmlLine += escapeHtml(line.substring(pos));
-    resultLines.push(htmlLine);
-  }
-  return resultLines.join('\n');
+    return resultLines.join('\n');
 }
 
 function updateSyntaxHighlight() {
-  const ta = document.getElementById('code-ta');
-  const syn = document.getElementById('syn-lay');
-  const lnums = document.getElementById('lnums');
-  if (!ta || !syn) return;
-  const plainCode = ta.value;
-  const lines = plainCode.split('\n');
-  if (lnums) lnums.innerHTML = lines.map((_, i) => `<div>${i + 1}</div>`).join('');
-  const highlighted = highlightSyntax(plainCode);
-  syn.innerHTML = highlighted + '\n';
-  syn.scrollTop = ta.scrollTop;
-  syn.scrollLeft = ta.scrollLeft;
+    const ta = document.getElementById('code-ta');
+    const syn = document.getElementById('syn-lay');
+    const lnums = document.getElementById('lnums');
+    if (!ta || !syn) return;
+    const plainCode = ta.value;
+    const lines = plainCode.split('\n');
+    if (lnums) lnums.innerHTML = lines.map((_, i) => `<div>${i + 1}</div>`).join('');
+    const highlighted = highlightSyntax(plainCode);
+    syn.innerHTML = highlighted + '\n';
+    syn.scrollTop = ta.scrollTop;
+    syn.scrollLeft = ta.scrollLeft;
 }
 
 function onCodeEdit() { 
-  updateSyntaxHighlight(); 
-  if (syncTimeout) clearTimeout(syncTimeout);
-  syncTimeout = setTimeout(() => updateCircuitFromCode(), 500);
+    updateSyntaxHighlight(); 
+    if (syncTimeout) clearTimeout(syncTimeout);
+    syncTimeout = setTimeout(() => {
+        if (pyodide !== null) {
+            syncWithPyodide().catch(() => {});
+        }
+    }, 800);
 }
 function onCodeScroll() { const ta = document.getElementById('code-ta'), syn = document.getElementById('syn-lay'); if (ta && syn) { syn.scrollTop = ta.scrollTop; syn.scrollLeft = ta.scrollLeft; } }
-function forceSync() { updateCircuitFromCode(); notify('🔄 Sincronización forzada'); }
-
+function forceSync() {
+    if (pyodide !== null) {
+        syncWithPyodide();
+        notify('🔄 Sincronización forzada');
+    } else {
+        notify('⏳ Esperando a que Pyodide termine de cargar...');
+    }
+}
 function formatError(errText, code) {
-  const lines = code ? code.split('\n') : [];
-  let html = '';
-  const lineMatch = errText.match(/line[^\d]*(\d+)/i) || errText.match(/línea[^\d]*(\d+)/i);
-  const errLine = lineMatch ? parseInt(lineMatch[1]) : null;
-  if (errLine && errLine > 0) highlightErrorLine(errLine);
-  const typeMatch = errText.match(/(SyntaxError|NameError|TypeError|ValueError|ImportError|AttributeError|IndexError|KeyError|ZeroDivisionError|IndentationError)[:\s]/);
-  const errType = typeMatch ? typeMatch[1] : 'Error';
-  const explanations = {
-    'SyntaxError': '💡 Error de sintaxis — revisa paréntesis, dos puntos o indentación.',
-    'NameError': '💡 Variable o función no definida — ¿escribiste bien el nombre?',
-    'TypeError': '💡 Tipo incorrecto — estás usando un tipo de dato que no corresponde.',
-    'ValueError': '💡 Valor incorrecto — el valor no es válido para esta operación.',
-    'ImportError': '💡 No se pudo importar — la librería no está disponible.',
-    'IndentationError': '💡 Error de indentación — verifica los espacios al inicio de la línea.',
-  };
-  const explanation = explanations[errType] || '💡 Revisa el código en la línea indicada.';
-  html += `❌ ${errType}` + (errLine ? ` en línea ${errLine}` : '') + '\n';
-  if (errLine && lines[errLine - 1]) html += `\n<span class="err-line"><span class="err-arrow">→ L${errLine}:</span> ${escapeHtml(lines[errLine - 1])}</span>\n`;
-  const msgLines = errText.split('\n').filter(l => l.trim());
-  html += `<span class="err-msg">${escapeHtml(msgLines[msgLines.length - 1] || errText)}</span>\n\n<span class="wa">${explanation}</span>`;
-  return html;
+    const lines = code ? code.split('\n') : [];
+    let html = '';
+    const lineMatch = errText.match(/line[^\d]*(\d+)/i) || errText.match(/l\u00EDnea[^\d]*(\d+)/i);
+    const errLine = lineMatch ? parseInt(lineMatch[1]) : null;
+    if (errLine && errLine > 0) highlightErrorLine(errLine);
+    const typeMatch = errText.match(/(SyntaxError|NameError|TypeError|ValueError|ImportError|AttributeError|IndexError|KeyError|ZeroDivisionError|IndentationError)[:\s]/);
+    const errType = typeMatch ? typeMatch[1] : 'Error';
+    const explanations = {
+        'SyntaxError': '💡 Error de sintaxis — revisa paréntesis, dos puntos o indentación.',
+        'NameError': '💡 Variable o función no definida — ¿escribiste bien el nombre?',
+        'TypeError': '💡 Tipo incorrecto — estás usando un tipo de dato que no corresponde.',
+        'ValueError': '💡 Valor incorrecto — el valor no es válido para esta operación.',
+        'ImportError': '💡 No se pudo importar — la librería no está disponible.',
+        'IndentationError': '💡 Error de indentación — verifica los espacios al inicio de la línea.',
+    };
+    const explanation = explanations[errType] || '💡 Revisa el código en la línea indicada.';
+    html += `❌ ${errType}` + (errLine ? ` en línea ${errLine}` : '') + '\n';
+    if (errLine && lines[errLine - 1]) html += `\n<span class="err-line"><span class="err-arrow">→ L${errLine}:</span> ${escapeHtml(lines[errLine - 1])}</span>\n`;
+    const msgLines = errText.split('\n').filter(l => l.trim());
+    html += `<span class="err-msg">${escapeHtml(msgLines[msgLines.length - 1] || errText)}</span>\n\n<span class="wa">${explanation}</span>`;
+    return html;
 }
 
 function highlightErrorLine(lineNum) {
-  const ta = document.getElementById('code-ta');
-  if (!ta) return;
-  const lines = ta.value.split('\n');
-  let pos = 0;
-  for (let i = 0; i < lineNum - 1 && i < lines.length; i++) pos += lines[i].length + 1;
-  ta.focus();
-  ta.setSelectionRange(pos, pos + (lines[lineNum - 1] || '').length);
-  const lineHeight = parseInt(getComputedStyle(ta).lineHeight) || 19;
-  ta.scrollTop = (lineNum - 3) * lineHeight;
-  updCur();
+    const ta = document.getElementById('code-ta');
+    if (!ta) return;
+    const lines = ta.value.split('\n');
+    let pos = 0;
+    for (let i = 0; i < lineNum - 1 && i < lines.length; i++) pos += lines[i].length + 1;
+    ta.focus();
+    ta.setSelectionRange(pos, pos + (lines[lineNum - 1] || '').length);
+    const lineHeight = parseInt(getComputedStyle(ta).lineHeight) || 19;
+    ta.scrollTop = (lineNum - 3) * lineHeight;
+    updCur();
 }
 
 async function fetchWithRetry(url, options, retries = 3, delay = 30000) {
-  let lastError;
-  for (let attempt = 1; attempt <= retries; attempt++) {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), delay);
-      const res = await fetch(url, { ...options, signal: controller.signal });
-      clearTimeout(timeoutId);
-      if (res.ok) return res;
-      lastError = new Error(`HTTP ${res.status}`);
-      if (attempt < retries) {
-        notify(`⏳ Intento ${attempt}/${retries} falló, reintentando en ${delay/1000}s...`);
-        await new Promise(r => setTimeout(r, delay));
-      }
-    } catch (e) {
-      lastError = e;
-      if (attempt < retries) {
-        notify(`⚠️ Timeout/Error (${e.message}) - Reintento ${attempt}/${retries}`);
-        await new Promise(r => setTimeout(r, delay));
-      }
+    let lastError;
+    for (let attempt = 1; attempt <= retries; attempt++) {
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), delay);
+            const res = await fetch(url, { ...options, signal: controller.signal });
+            clearTimeout(timeoutId);
+            if (res.ok) return res;
+            lastError = new Error(`HTTP ${res.status}`);
+            if (attempt < retries) {
+                notify(`⏳ Intento ${attempt}/${retries} falló, reintentando en ${delay/1000}s...`);
+                await new Promise(r => setTimeout(r, delay));
+            }
+        } catch (e) {
+            lastError = e;
+            if (attempt < retries) {
+                notify(`⚠️ Timeout/Error (${e.message}) - Reintento ${attempt}/${retries}`);
+                await new Promise(r => setTimeout(r, delay));
+            }
+        }
     }
-  }
-  throw lastError;
-}
-
-// ═══════════════════════════════════════════════════════════
-// EJECUCIÓN REAL (SOLO SERVIDOR, SIN SIMULACIÓN LOCAL)
-// ═══════════════════════════════════════════════════════════
-async function runCode() {
-  if (running) return;
-  const code = document.getElementById('code-ta').value.trim();
-  if (!code) { notify('Escribe código primero'); return; }
-  
-  if (!engineOK || !engineURL) {
-    notify('❌ No hay compilador configurado. Configura la URL en el panel Fundador.');
-    const out = document.getElementById('out-body');
-    out.innerHTML = `<span class="er">⚠️ No se ha configurado ningún compilador en la nube.\n\nVe al panel Fundador → 🤗 Compilador HuggingFace y guarda la URL de tu Space.</span>`;
-    return;
-  }
-  
-  running = true;
-  setRunSt('run', 'Ejecutando...');
-  const btn = document.getElementById('btn-run');
-  btn.disabled = true;
-  btn.innerHTML = '<span>⏳</span> EJECUTANDO';
-  setTab('out');
-  const t0 = Date.now();
-  const out = document.getElementById('out-body');
-  out.innerHTML = `<span class="inf">Enviando código al compilador cuántico (Qiskit 1.0+)...\n</span>`;
-
-  const isHF = engineURL.includes('hf.space') || engineURL.includes('huggingface');
-  try {
-    let res, d;
-    if (isHF) {
-      res = await fetchWithRetry(engineURL + '/run/predict', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ data: [code] })
-      }, 3, 30000);
-      const raw = await res.json();
-      d = raw.data ? raw.data[0] : raw;
-    } else {
-      res = await fetchWithRetry(engineURL + '/run', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code, lib: curLib })
-      }, 3, 30000);
-      d = await res.json();
-    }
-    const el = ((Date.now() - t0) / 1000).toFixed(2);
-    document.getElementById('out-elapsed').textContent = el + 's';
-    if (d.success) {
-      out.innerHTML = `<span class="inf">╔════════════════════════════╗\n║  Compilador · ${el}s\n╚════════════════════════════╝\n\n</span><span class="ok">${escapeHtml(d.output)}</span>`;
-      if (d.bloch?.probabilities) updateBlochFromProbs(d.bloch.probabilities);
-      setRunSt('idle', 'Listo');
-      logMonitorRun({ success: true, lib: curLib, qubits: circuit.qubits, time: parseFloat(el) });
-    } else {
-      out.innerHTML += `<span class="er">${formatError(d.output, code)}</span>`;
-      setRunSt('err', 'Error');
-    }
-  } catch (e) {
-    out.innerHTML += `<span class="er">❌ ${e.name === 'AbortError' ? 'Tiempo agotado tras 3 intentos (30s c/u)' : e.message}</span>`;
-    setRunSt('err', 'Error');
-    engineOK = false;
-    document.getElementById('compiler-status').textContent = '● SIN COMPILADOR';
-    document.getElementById('compiler-status').classList.remove('active', 'waiting');
-  }
-  running = false;
-  btn.disabled = false;
-  btn.innerHTML = '<span>▶</span> EJECUTAR';
-  out.scrollTop = out.scrollHeight;
+    throw lastError;
 }
 
 function setRunSt(s, msg) {
-  const dot = document.getElementById('sb-dot'), stxt = document.getElementById('sb-txt');
-  dot.className = 'sb-dot ' + (s === 'run' ? 'run' : s === 'err' ? 'err' : 'idle');
-  if (stxt) stxt.textContent = msg;
+    const dot = document.getElementById('sb-dot'), stxt = document.getElementById('sb-txt');
+    dot.className = 'sb-dot ' + (s === 'run' ? 'run' : s === 'err' ? 'err' : 'idle');
+    if (stxt) stxt.textContent = msg;
 }
 
 function logMonitorRun(info) {
-  try {
-    const user = curUser?.username || 'guest';
-    const entry = { ts: new Date().toISOString(), user, lib: info.lib || 'qiskit', qubits: info.qubits || 0, time: info.time || 0, success: info.success !== false };
-    const raw = localStorage.getItem('qcol_monitor_data');
-    const data = raw ? JSON.parse(raw) : { runs: [], total: 0 };
-    data.runs.push(entry);
-    data.total = (data.total || 0) + 1;
-    if (data.runs.length > 1000) data.runs = data.runs.slice(-1000);
-    localStorage.setItem('qcol_monitor_data', JSON.stringify(data));
-  } catch (e) { }
+    try {
+        const user = curUser?.username || 'guest';
+        const entry = { ts: new Date().toISOString(), user, lib: info.lib || 'qiskit', qubits: info.qubits || 0, time: info.time || 0, success: info.success !== false, simulated: info.simulated || false };
+        const raw = localStorage.getItem('qcol_monitor_data');
+        const data = raw ? JSON.parse(raw) : { runs: [], total: 0 };
+        data.runs.push(entry);
+        data.total = (data.total || 0) + 1;
+        if (data.runs.length > 1000) data.runs = data.runs.slice(-1000);
+        localStorage.setItem('qcol_monitor_data', JSON.stringify(data));
+    } catch (e) { }
 }
 
+// ═══════════════════════════════════════════════════════════
+// BLOCH, QUBITS, GUARDADO, ETC. (sin cambios significativos)
+// ═══════════════════════════════════════════════════════════
 function drawBloch() {
-  const canvas = document.getElementById('bloch-canvas');
-  if (!canvas) return;
-  const ctx = canvas.getContext('2d');
-  const w = canvas.width, h = canvas.height;
-  const cx = w / 2, cy = h / 2;
-  const r = Math.min(w, h) * 0.38;
-  ctx.clearRect(0, 0, w, h);
-  ctx.fillStyle = '#0a0e1a';
-  ctx.fillRect(0, 0, w, h);
-  ctx.beginPath();
-  ctx.arc(cx, cy, r, 0, Math.PI * 2);
-  ctx.strokeStyle = 'rgba(0,136,255,0.4)';
-  ctx.stroke();
-  for (let i = 1; i <= 3; i++) {
-    const yr = r * Math.sin(i * Math.PI / 4);
-    ctx.beginPath();
-    ctx.ellipse(cx, cy, yr, yr * 0.35, 0, 0, Math.PI * 2);
-    ctx.strokeStyle = `rgba(0,136,255,0.15)`;
-    ctx.stroke();
-  }
-  ctx.beginPath();
-  ctx.moveTo(cx - r * 1.1, cy);
-  ctx.lineTo(cx + r * 1.1, cy);
-  ctx.moveTo(cx, cy - r * 1.1);
-  ctx.lineTo(cx, cy + r * 1.1);
-  ctx.strokeStyle = 'rgba(0,200,255,0.2)';
-  ctx.stroke();
-  const state = blochStates[currentBlochQubit] || { theta: 0, phi: 0 };
-  const theta = state.theta, phi = state.phi;
-  const x = r * Math.sin(theta) * Math.cos(phi);
-  const y = -r * Math.cos(theta);
-  ctx.beginPath();
-  ctx.moveTo(cx, cy);
-  ctx.lineTo(cx + x, cy + y);
-  ctx.strokeStyle = '#00ffdd';
-  ctx.lineWidth = 2.5;
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.arc(cx + x, cy + y, 6, 0, Math.PI * 2);
-  ctx.fillStyle = '#00ffdd';
-  ctx.fill();
-  ctx.font = '10px monospace';
-  ctx.fillStyle = '#8aa0c4';
-  ctx.fillText('|0⟩', cx + 5, cy - r - 5);
-  ctx.fillText('|1⟩', cx + 5, cy + r + 12);
-  ctx.fillText('|+⟩', cx + r + 10, cy);
-  const prob0 = Math.cos(theta / 2) ** 2, prob1 = Math.sin(theta / 2) ** 2;
-  document.getElementById('bloch-info').innerHTML = `<span>Qubit ${currentBlochQubit}</span><br>θ=${Math.round(theta * 180 / Math.PI)}° φ=${Math.round(phi * 180 / Math.PI)}°<br>P0=${(prob0 * 100).toFixed(1)}% P1=${(prob1 * 100).toFixed(1)}%`;
+    const canvas = document.getElementById('bloch-canvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width, h = canvas.height;
+    const cx = w / 2, cy = h / 2;
+    const r = Math.min(w, h) * 0.38;
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = '#0a0e1a';
+    ctx.fillRect(0, 0, w, h);
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2); ctx.strokeStyle = 'rgba(0,136,255,0.4)'; ctx.stroke();
+    for (let i = 1; i <= 3; i++) {
+        const yr = r * Math.sin(i * Math.PI/4);
+        ctx.beginPath(); ctx.ellipse(cx, cy, yr, yr*0.35, 0, 0, Math.PI*2); ctx.strokeStyle = `rgba(0,136,255,0.15)`; ctx.stroke();
+    }
+    ctx.beginPath(); ctx.moveTo(cx - r*1.1, cy); ctx.lineTo(cx + r*1.1, cy); ctx.moveTo(cx, cy - r*1.1); ctx.lineTo(cx, cy + r*1.1); ctx.strokeStyle = 'rgba(0,200,255,0.2)'; ctx.stroke();
+    const state = blochStates[currentBlochQubit] || { theta: 0, phi: 0 };
+    const theta = state.theta, phi = state.phi;
+    const x = r * Math.sin(theta) * Math.cos(phi);
+    const y = -r * Math.cos(theta);
+    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + x, cy + y); ctx.strokeStyle = '#00ffdd'; ctx.lineWidth = 2.5; ctx.stroke();
+    ctx.beginPath(); ctx.arc(cx + x, cy + y, 6, 0, Math.PI*2); ctx.fillStyle = '#00ffdd'; ctx.fill();
+    ctx.font = '10px monospace'; ctx.fillStyle = '#8aa0c4';
+    ctx.fillText('|0⟩', cx+5, cy-r-5); ctx.fillText('|1⟩', cx+5, cy+r+12); ctx.fillText('|+⟩', cx+r+10, cy);
+    const prob0 = Math.cos(theta/2)**2, prob1 = Math.sin(theta/2)**2;
+    document.getElementById('bloch-info').innerHTML = `<span>Qubit ${currentBlochQubit}</span><br>θ=${Math.round(theta*180/Math.PI)}° φ=${Math.round(phi*180/Math.PI)}°<br>P0=${(prob0*100).toFixed(1)}% P1=${(prob1*100).toFixed(1)}%`;
 }
 
 function updateBlochFromProbs(probs) {
-  const n = circuit.qubits;
-  for (let qi = 0; qi < n; qi++) {
-    let p0 = 0;
-    Object.entries(probs).forEach(([s, p]) => {
-      const bit = s.length > qi ? s[s.length - 1 - qi] : '0';
-      if (bit === '0') p0 += p;
-    });
-    const th = 2 * Math.acos(Math.min(1, Math.sqrt(Math.max(0, p0))));
-    blochStates[qi] = { theta: th, phi: blochStates[qi]?.phi || 0 };
-    if (qi === currentBlochQubit) drawBloch();
-  }
-  updateBlochSelector();
+    const n = circuit.qubits;
+    for (let qi = 0; qi < n; qi++) {
+        let p0 = 0;
+        Object.entries(probs).forEach(([s, p]) => {
+            const bit = s.length > qi ? s[s.length - 1 - qi] : '0';
+            if (bit === '0') p0 += p;
+        });
+        const th = 2 * Math.acos(Math.min(1, Math.sqrt(Math.max(0, p0))));
+        blochStates[qi] = { theta: th, phi: blochStates[qi]?.phi || 0 };
+        if (qi === currentBlochQubit) drawBloch();
+    }
+    updateBlochSelector();
 }
 
 function applyBlochGate(gate) {
-  let state = blochStates[currentBlochQubit] || { theta: 0, phi: 0 };
-  switch (gate) {
-    case 'H': state.theta = Math.PI / 2; state.phi = 0; break;
-    case 'X': state.theta = Math.PI - state.theta; break;
-    case 'Y': state.theta = Math.PI - state.theta; state.phi = (state.phi + Math.PI) % (2 * Math.PI); break;
-    case 'Z': state.phi = (state.phi + Math.PI) % (2 * Math.PI); break;
-    case 'SX': state.theta = Math.PI / 2; state.phi = 0; break;
-    case 'RX': state.theta = Math.PI / 4; state.phi = 0; break;
-    case 'RY': state.theta = Math.PI / 4; state.phi = Math.PI / 2; break;
-    case 'RZ': state.phi = (state.phi + Math.PI / 4) % (2 * Math.PI); break;
-    case 'reset': state.theta = 0; state.phi = 0; break;
-  }
-  blochStates[currentBlochQubit] = state;
-  drawBloch();
-  updateBlochSelector();
+    let state = blochStates[currentBlochQubit] || { theta: 0, phi: 0 };
+    switch (gate) {
+        case 'H': state.theta = Math.PI/2; state.phi = 0; break;
+        case 'X': state.theta = Math.PI - state.theta; break;
+        case 'Y': state.theta = Math.PI - state.theta; state.phi = (state.phi + Math.PI) % (2*Math.PI); break;
+        case 'Z': state.phi = (state.phi + Math.PI) % (2*Math.PI); break;
+        case 'SX': state.theta = Math.PI/2; state.phi = 0; break;
+        case 'RX': state.theta = Math.PI/4; state.phi = 0; break;
+        case 'RY': state.theta = Math.PI/4; state.phi = Math.PI/2; break;
+        case 'RZ': state.phi = (state.phi + Math.PI/4) % (2*Math.PI); break;
+        case 'reset': state.theta = 0; state.phi = 0; break;
+    }
+    blochStates[currentBlochQubit] = state;
+    drawBloch();
+    updateBlochSelector();
 }
 
-function addQubit() { if (circuit.qubits < MAX_QUBITS) { circuit.qubits++; if (!blochStates[circuit.qubits - 1]) blochStates[circuit.qubits - 1] = { theta: 0, phi: 0 }; renderCircuit(); updateCircuitInfo(); updateCodeFromCircuit(); notify(`${circuit.qubits} qubits`); } else notify(`Máximo ${MAX_QUBITS} qubits`); }
-function removeQubit() { if (circuit.qubits > 1) { circuit.gates = circuit.gates.filter(g => g.q < circuit.qubits - 1 && (!g.q2 || g.q2 < circuit.qubits - 1) && (!g.q3 || g.q3 < circuit.qubits - 1)); circuit.qubits--; if (currentBlochQubit >= circuit.qubits) currentBlochQubit = circuit.qubits - 1; renderCircuit(); updateCircuitInfo(); updateCodeFromCircuit(); notify(`${circuit.qubits} qubits`); } }
+function addQubit() { if (circuit.qubits < MAX_QUBITS) { circuit.qubits++; if (!blochStates[circuit.qubits-1]) blochStates[circuit.qubits-1] = { theta: 0, phi: 0 }; renderCircuit(); updateCircuitInfo(); updateCodeFromCircuit(); notify(`${circuit.qubits} qubits`); } else notify(`Máximo ${MAX_QUBITS} qubits`); }
+function removeQubit() { if (circuit.qubits > 1) { circuit.gates = circuit.gates.filter(g => g.q < circuit.qubits-1 && (!g.q2 || g.q2 < circuit.qubits-1) && (!g.q3 || g.q3 < circuit.qubits-1)); circuit.qubits--; if (currentBlochQubit >= circuit.qubits) currentBlochQubit = circuit.qubits-1; renderCircuit(); updateCircuitInfo(); updateCodeFromCircuit(); notify(`${circuit.qubits} qubits`); } }
 function clearCircuit() { circuit.gates = []; for (let i = 0; i < circuit.qubits; i++) blochStates[i] = { theta: 0, phi: 0 }; renderCircuit(); updateCircuitInfo(); updateCodeFromCircuit(); drawBloch(); notify('Circuito limpiado'); }
 function clearCode() { 
-  const defaultCode = `from qiskit import QuantumCircuit
+    const defaultCode = `from qiskit import QuantumCircuit
 import numpy as np
 from qiskit_aer import AerSimulator
 
@@ -1189,234 +1770,237 @@ simulator = AerSimulator()
 result = simulator.run(qc, shots=1024).result()
 counts = result.get_counts()
 print("Resultados:", counts)`;
-  document.getElementById('code-ta').value = defaultCode; 
-  onCodeEdit(); 
+    document.getElementById('code-ta').value = defaultCode; 
+    onCodeEdit(); 
 }
 function copyCode() { navigator.clipboard.writeText(document.getElementById('code-ta').value); notify('📋 Código copiado'); }
-function updCur() { const ta = document.getElementById('code-ta'); const txt = ta.value.substring(0, ta.selectionStart); const lines = txt.split('\n'); document.getElementById('sb-cur').textContent = `Ln ${lines.length}, Col ${lines[lines.length - 1].length + 1}`; }
+function updCur() { const ta = document.getElementById('code-ta'); const txt = ta.value.substring(0, ta.selectionStart); const lines = txt.split('\n'); document.getElementById('sb-cur').textContent = `Ln ${lines.length}, Col ${lines[lines.length-1].length+1}`; }
 
 function saveCircuit() {
-  if (!curUser) { notify('Inicia sesión para guardar circuitos'); return; }
-  const name = document.getElementById('save-name').value.trim() || 'circuito_' + Date.now();
-  const code = document.getElementById('code-ta').value;
-  const key = 'qcol_circuits_' + curUser.username;
-  const all = JSON.parse(localStorage.getItem(key) || '[]');
-  const idx = all.findIndex(c => c.name === name);
-  const entry = { name, code, lib: curLib, circ: JSON.stringify(circuit), date: new Date().toLocaleDateString() };
-  if (idx >= 0) all[idx] = entry;
-  else all.unshift(entry);
-  localStorage.setItem(key, JSON.stringify(all.slice(0, 100)));
-  notify('✅ Guardado: ' + name);
-  renderSaveList();
+    if (!curUser) { notify('Inicia sesión para guardar circuitos'); return; }
+    const name = document.getElementById('save-name').value.trim() || 'circuito_' + Date.now();
+    const code = document.getElementById('code-ta').value;
+    const key = 'qcol_circuits_' + curUser.username;
+    const all = JSON.parse(localStorage.getItem(key) || '[]');
+    const idx = all.findIndex(c => c.name === name);
+    const entry = { name, code, lib: curLib, circ: JSON.stringify(circuit), date: new Date().toLocaleDateString() };
+    if (idx >= 0) all[idx] = entry;
+    else all.unshift(entry);
+    localStorage.setItem(key, JSON.stringify(all.slice(0, 100)));
+    notify('✅ Guardado: ' + name);
+    renderSaveList();
 }
 
 function renderSaveList() {
-  const list = document.getElementById('circ-list');
-  if (!list) return;
-  if (!curUser) { list.innerHTML = `<div class="no-login">Inicia sesión para guardar circuitos<br><button class="btn-li" onclick="postCore('QCOL_LOGIN')">INICIAR SESIÓN</button></div>`; return; }
-  const key = 'qcol_circuits_' + curUser.username;
-  const all = JSON.parse(localStorage.getItem(key) || '[]');
-  if (all.length === 0) { list.innerHTML = '<div style="text-align:center;color:var(--mu);">Sin circuitos guardados</div>'; return; }
-  list.innerHTML = all.map((c, i) => `<div class="circ-item" onclick="loadCircuit(${i})"><span class="ci-name">${c.name}</span><button class="ci-del" onclick="event.stopPropagation(); deleteCircuit(${i})">✕</button></div>`).join('');
+    const list = document.getElementById('circ-list');
+    if (!list) return;
+    if (!curUser) { list.innerHTML = `<div class="no-login">Inicia sesión para guardar circuitos<br><button class="btn-li" onclick="postCore('QCOL_LOGIN')">INICIAR SESIÓN</button></div>`; return; }
+    const key = 'qcol_circuits_' + curUser.username;
+    const all = JSON.parse(localStorage.getItem(key) || '[]');
+    if (all.length === 0) { list.innerHTML = '<div style="text-align:center;color:var(--mu);">Sin circuitos guardados</div>'; return; }
+    list.innerHTML = all.map((c, i) => `<div class="circ-item" onclick="loadCircuit(${i})"><span class="ci-name">${c.name}</span><button class="ci-del" onclick="event.stopPropagation(); deleteCircuit(${i})">✕</button></div>`).join('');
 }
 
 function loadCircuit(i) {
-  const key = 'qcol_circuits_' + curUser.username;
-  const c = JSON.parse(localStorage.getItem(key) || '[]')[i];
-  if (!c) return;
-  document.getElementById('code-ta').value = c.code;
-  document.getElementById('save-name').value = c.name;
-  if (c.circ) { try { const cc = JSON.parse(c.circ); circuit = cc; renderCircuit(); updateCircuitInfo(); } catch (e) { } }
-  onCodeEdit();
-  setTab('out');
-  notify('Cargado: ' + c.name);
+    const key = 'qcol_circuits_' + curUser.username;
+    const c = JSON.parse(localStorage.getItem(key) || '[]')[i];
+    if (!c) return;
+    document.getElementById('code-ta').value = c.code;
+    document.getElementById('save-name').value = c.name;
+    if (c.circ) { try { const cc = JSON.parse(c.circ); circuit = cc; renderCircuit(); updateCircuitInfo(); } catch (e) { } }
+    onCodeEdit();
+    setTab('out');
+    notify('Cargado: ' + c.name);
 }
 
 function deleteCircuit(i) {
-  const key = 'qcol_circuits_' + curUser.username;
-  const all = JSON.parse(localStorage.getItem(key) || '[]');
-  all.splice(i, 1);
-  localStorage.setItem(key, JSON.stringify(all));
-  renderSaveList();
-  notify('Eliminado');
+    const key = 'qcol_circuits_' + curUser.username;
+    const all = JSON.parse(localStorage.getItem(key) || '[]');
+    all.splice(i, 1);
+    localStorage.setItem(key, JSON.stringify(all));
+    renderSaveList();
+    notify('Eliminado');
 }
 
 function dlPy() {
-  const code = document.getElementById('code-ta').value;
-  const name = document.getElementById('save-name').value.trim() || 'circuito';
-  const blob = new Blob([code], { type: 'text/plain' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = name.replace(/\.py$/, '') + '.py';
-  a.click();
-  URL.revokeObjectURL(a.href);
-  notify('📥 Descargado');
+    const code = document.getElementById('code-ta').value;
+    const name = document.getElementById('save-name').value.trim() || 'circuito';
+    const blob = new Blob([code], { type: 'text/plain' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = name.replace(/\.py$/, '') + '.py';
+    a.click();
+    URL.revokeObjectURL(a.href);
+    notify('📥 Descargado');
 }
 
 function dlNb() {
-  const code = document.getElementById('code-ta').value;
-  const name = document.getElementById('save-name').value.trim() || 'circuito';
-  const nb = {
-    nbformat: 4, nbformat_minor: 5,
-    metadata: { kernelspec: { display_name: 'Python 3', language: 'python', name: 'python3' } },
-    cells: [
-      { cell_type: 'markdown', source: [`# ${name}\n\nGenerado por Arquitecto Cuántico`], metadata: {} },
-      { cell_type: 'code', source: ['!pip install qiskit qiskit-aer matplotlib -q'], metadata: {}, outputs: [], execution_count: null },
-      { cell_type: 'code', source: [code], metadata: {}, outputs: [], execution_count: null }
-    ]
-  };
-  const blob = new Blob([JSON.stringify(nb, null, 2)], { type: 'application/json' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = name.replace(/\.ipynb$/, '') + '.ipynb';
-  a.click();
-  URL.revokeObjectURL(a.href);
-  notify('📥 Descargado .ipynb');
+    const code = document.getElementById('code-ta').value;
+    const name = document.getElementById('save-name').value.trim() || 'circuito';
+    const nb = {
+        nbformat: 4, nbformat_minor: 5,
+        metadata: { kernelspec: { display_name: 'Python 3', language: 'python', name: 'python3' } },
+        cells: [
+            { cell_type: 'markdown', source: [`# ${name}\n\nGenerado por Arquitecto Cuántico`], metadata: {} },
+            { cell_type: 'code', source: ['!pip install qiskit qiskit-aer matplotlib -q'], metadata: {}, outputs: [], execution_count: null },
+            { cell_type: 'code', source: [code], metadata: {}, outputs: [], execution_count: null }
+        ]
+    };
+    const blob = new Blob([JSON.stringify(nb, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = name.replace(/\.ipynb$/, '') + '.ipynb';
+    a.click();
+    URL.revokeObjectURL(a.href);
+    notify('📥 Descargado .ipynb');
 }
 
 function saveAndSchedule() {
-  if (!curUser) { notify('Inicia sesión para usar la cola'); return; }
-  const name = document.getElementById('save-name').value.trim() || 'circuito_' + Date.now();
-  const code = document.getElementById('code-ta').value;
-  const key = 'qcol_queue_' + curUser.username;
-  const queue = JSON.parse(localStorage.getItem(key) || '[]');
-  queue.push({ name, code, lib: curLib, circ: JSON.stringify(circuit), added: new Date().toLocaleString(), status: 'pendiente' });
-  localStorage.setItem(key, JSON.stringify(queue.slice(0, 50)));
-  renderQueue();
-  notify('⏱ "' + name + '" añadido a la cola');
-  setTab('save');
+    if (!curUser) { notify('Inicia sesión para usar la cola'); return; }
+    const name = document.getElementById('save-name').value.trim() || 'circuito_' + Date.now();
+    const code = document.getElementById('code-ta').value;
+    const key = 'qcol_queue_' + curUser.username;
+    const queue = JSON.parse(localStorage.getItem(key) || '[]');
+    queue.push({ name, code, lib: curLib, circ: JSON.stringify(circuit), added: new Date().toLocaleString(), status: 'pendiente' });
+    localStorage.setItem(key, JSON.stringify(queue.slice(0, 50)));
+    renderQueue();
+    notify('⏱ "' + name + '" añadido a la cola');
+    setTab('save');
 }
 
 function renderQueue() {
-  const el = document.getElementById('queue-list');
-  if (!el) return;
-  if (!curUser) { el.innerHTML = '<div style="color:var(--mu);">Inicia sesión para usar la cola</div>'; return; }
-  const key = 'qcol_queue_' + curUser.username;
-  const queue = JSON.parse(localStorage.getItem(key) || '[]');
-  if (queue.length === 0) { el.innerHTML = '<div style="color:var(--mu);">Sin circuitos en cola</div>'; return; }
-  el.innerHTML = queue.map((c, i) => `<div style="display:flex;align-items:center;gap:.5rem;padding:.3rem .5rem;background:rgba(0,0,0,.2);border:1px solid var(--bd);border-radius:6px;margin-bottom:.2rem;"><span style="flex:1;">${c.name}</span><span style="font-size:.45rem;color:${c.status === 'completado' ? 'var(--gr)' : c.status === 'error' ? 'var(--rd)' : 'var(--yw)'};">${c.status}</span><button class="ci-del" onclick="removeFromQueue(${i})">✕</button></div>`).join('');
+    const el = document.getElementById('queue-list');
+    if (!el) return;
+    if (!curUser) { el.innerHTML = '<div style="color:var(--mu);">Inicia sesión para usar la cola</div>'; return; }
+    const key = 'qcol_queue_' + curUser.username;
+    const queue = JSON.parse(localStorage.getItem(key) || '[]');
+    if (queue.length === 0) { el.innerHTML = '<div style="color:var(--mu);">Sin circuitos en cola</div>'; return; }
+    el.innerHTML = queue.map((c, i) => `<div style="display:flex;align-items:center;gap:.5rem;padding:.3rem .5rem;background:rgba(0,0,0,.2);border:1px solid var(--bd);border-radius:6px;margin-bottom:.2rem;"><span style="flex:1;">${c.name}</span><span style="font-size:.45rem;color:${c.status === 'completado' ? 'var(--gr)' : c.status === 'error' ? 'var(--rd)' : 'var(--yw)'};">${c.status}</span><button class="ci-del" onclick="removeFromQueue(${i})">✕</button></div>`).join('');
 }
 
 async function runQueue() {
-  if (!curUser) { notify('Inicia sesión primero'); return; }
-  const key = 'qcol_queue_' + curUser.username;
-  const queue = JSON.parse(localStorage.getItem(key) || '[]');
-  const pending = queue.filter(c => c.status === 'pendiente');
-  if (pending.length === 0) { notify('Sin circuitos pendientes'); return; }
-  notify('▶ Ejecutando cola: ' + pending.length + ' circuito(s)...', 5000);
-  for (let i = 0; i < queue.length; i++) {
-    if (queue[i].status !== 'pendiente') continue;
-    queue[i].status = 'ejecutando';
-    localStorage.setItem(key, JSON.stringify(queue));
-    renderQueue();
-    document.getElementById('code-ta').value = queue[i].code;
-    document.getElementById('save-name').value = queue[i].name;
-    onCodeEdit();
-    await runCode();
-    queue[i].status = 'completado';
-    localStorage.setItem(key, JSON.stringify(queue));
-    renderQueue();
-    await new Promise(r => setTimeout(r, 500));
-  }
-  notify('✅ Cola completada');
+    if (!curUser) { notify('Inicia sesión primero'); return; }
+    const key = 'qcol_queue_' + curUser.username;
+    const queue = JSON.parse(localStorage.getItem(key) || '[]');
+    const pending = queue.filter(c => c.status === 'pendiente');
+    if (pending.length === 0) { notify('Sin circuitos pendientes'); return; }
+    notify('▶ Ejecutando cola: ' + pending.length + ' circuito(s)...', 5000);
+    for (let i = 0; i < queue.length; i++) {
+        if (queue[i].status !== 'pendiente') continue;
+        queue[i].status = 'ejecutando';
+        localStorage.setItem(key, JSON.stringify(queue));
+        renderQueue();
+        document.getElementById('code-ta').value = queue[i].code;
+        document.getElementById('save-name').value = queue[i].name;
+        onCodeEdit();
+        await runCode();
+        queue[i].status = 'completado';
+        localStorage.setItem(key, JSON.stringify(queue));
+        renderQueue();
+        await new Promise(r => setTimeout(r, 500));
+    }
+    notify('✅ Cola completada');
 }
 
 function removeFromQueue(i) {
-  if (!curUser) return;
-  const key = 'qcol_queue_' + curUser.username;
-  const queue = JSON.parse(localStorage.getItem(key) || '[]');
-  queue.splice(i, 1);
-  localStorage.setItem(key, JSON.stringify(queue));
-  renderQueue();
+    if (!curUser) return;
+    const key = 'qcol_queue_' + curUser.username;
+    const queue = JSON.parse(localStorage.getItem(key) || '[]');
+    queue.splice(i, 1);
+    localStorage.setItem(key, JSON.stringify(queue));
+    renderQueue();
 }
 
 function setTab(tab) {
-  document.querySelectorAll('.rtab').forEach(btn => btn.classList.toggle('on', btn.dataset.tab === tab));
-  document.getElementById('p-out').style.display = tab === 'out' ? 'flex' : 'none';
-  document.getElementById('p-bloch').style.display = tab === 'bloch' ? 'flex' : 'none';
-  document.getElementById('p-save').style.display = tab === 'save' ? 'flex' : 'none';
-  if (tab === 'bloch') setTimeout(drawBloch, 50);
-  if (tab === 'save') { renderSaveList(); renderQueue(); }
+    document.querySelectorAll('.rtab').forEach(btn => btn.classList.toggle('on', btn.dataset.tab === tab));
+    document.getElementById('p-out').style.display = tab === 'out' ? 'flex' : 'none';
+    document.getElementById('p-bloch').style.display = tab === 'bloch' ? 'flex' : 'none';
+    document.getElementById('p-save').style.display = tab === 'save' ? 'flex' : 'none';
+    if (tab === 'bloch') setTimeout(drawBloch, 50);
+    if (tab === 'save') { renderSaveList(); renderQueue(); }
 }
 
 function setMode(mode) {
-  curMode = mode;
-  const cs = document.getElementById('circuit-section'), pal = document.getElementById('palette'), rh = document.getElementById('resize-h');
-  if (mode === 'circ') { cs.style.display = 'flex'; pal.style.display = 'flex'; if (rh) rh.style.display = 'flex'; }
-  else { cs.style.display = 'none'; pal.style.display = 'none'; if (rh) rh.style.display = 'none'; }
-  document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.toggle('on', btn.dataset.mode === mode));
+    curMode = mode;
+    const cs = document.getElementById('circuit-section'), pal = document.getElementById('palette'), rh = document.getElementById('resize-h');
+    if (mode === 'circ') { cs.style.display = 'flex'; pal.style.display = 'flex'; if (rh) rh.style.display = 'flex'; }
+    else { cs.style.display = 'none'; pal.style.display = 'none'; if (rh) rh.style.display = 'none'; }
+    document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.toggle('on', btn.dataset.mode === mode));
 }
 
 function setLib(lib) { curLib = lib; document.querySelectorAll('.lib-btn').forEach(btn => btn.classList.toggle('on', btn.dataset.lib === lib)); updateCodeFromCircuit(); notify('Librería: ' + lib); }
 
 function notify(msg, dur = 2000) {
-  const n = document.getElementById('notif');
-  n.textContent = msg;
-  n.classList.add('show');
-  clearTimeout(n._t);
-  n._t = setTimeout(() => n.classList.remove('show'), dur);
+    const n = document.getElementById('notif');
+    n.textContent = msg;
+    n.classList.add('show');
+    clearTimeout(n._t);
+    n._t = setTimeout(() => n.classList.remove('show'), dur);
 }
 
 let resizingH = false, startY, startHeight;
 let resizingV = false, startX, startWidth;
 
 function initResize() {
-  const resizeH = document.getElementById('resize-h');
-  const resizeV = document.getElementById('resize-v');
-  const circuitSec = document.getElementById('circuit-section');
-  const rightPanel = document.getElementById('right-panel');
-  if (resizeH) resizeH.onmousedown = (e) => { resizingH = true; startY = e.clientY; startHeight = circuitSec.offsetHeight; document.body.style.cursor = 'ns-resize'; e.preventDefault(); };
-  if (resizeV) resizeV.onmousedown = (e) => { resizingV = true; startX = e.clientX; startWidth = rightPanel.offsetWidth; document.body.style.cursor = 'ew-resize'; e.preventDefault(); };
-  document.onmousemove = (e) => {
-    if (resizingH) { let nh = startHeight + (e.clientY - startY); if (nh > 80 && nh < window.innerHeight * 0.7) circuitSec.style.height = nh + 'px'; }
-    if (resizingV) { let nw = startWidth + (startX - e.clientX); if (nw > 200 && nw < window.innerWidth * 0.4) rightPanel.style.width = nw + 'px'; }
-  };
-  document.onmouseup = () => { resizingH = false; resizingV = false; document.body.style.cursor = ''; };
+    const resizeH = document.getElementById('resize-h');
+    const resizeV = document.getElementById('resize-v');
+    const circuitSec = document.getElementById('circuit-section');
+    const rightPanel = document.getElementById('right-panel');
+    if (resizeH) resizeH.onmousedown = (e) => { resizingH = true; startY = e.clientY; startHeight = circuitSec.offsetHeight; document.body.style.cursor = 'ns-resize'; e.preventDefault(); };
+    if (resizeV) resizeV.onmousedown = (e) => { resizingV = true; startX = e.clientX; startWidth = rightPanel.offsetWidth; document.body.style.cursor = 'ew-resize'; e.preventDefault(); };
+    document.onmousemove = (e) => {
+        if (resizingH) { let nh = startHeight + (e.clientY - startY); if (nh > 80 && nh < window.innerHeight * 0.7) circuitSec.style.height = nh + 'px'; }
+        if (resizingV) { let nw = startWidth + (startX - e.clientX); if (nw > 200 && nw < window.innerWidth * 0.4) rightPanel.style.width = nw + 'px'; }
+    };
+    document.onmouseup = () => { resizingH = false; resizingV = false; document.body.style.cursor = ''; };
 }
 
 function init() {
-  for (let i = 0; i < circuit.qubits; i++) blochStates[i] = { theta: 0, phi: 0 };
-  buildPalette();
-  renderCircuit();
-  updateCircuitInfo();
-  updateCodeFromCircuit();
-  initResize();
+    for (let i = 0; i < circuit.qubits; i++) blochStates[i] = { theta: 0, phi: 0 };
+    buildPalette();
+    renderCircuit();
+    updateCircuitInfo();
+    updateCodeFromCircuit();
+    initResize();
 
-  document.getElementById('btn-run').onclick = runCode;
-  document.getElementById('btn-run2').onclick = runCode;
-  document.getElementById('btn-sync').onclick = forceSync;
-  document.getElementById('btn-clear').onclick = clearCircuit;
-  document.getElementById('btn-clear-code').onclick = clearCode;
-  document.getElementById('btn-addqb').onclick = addQubit;
-  document.getElementById('btn-remqb').onclick = removeQubit;
-  document.getElementById('btn-copy').onclick = copyCode;
-  document.getElementById('btn-clear-out').onclick = () => document.getElementById('out-body').innerHTML = '<span class="inf">Terminal limpiada</span>';
-  document.getElementById('btn-save').onclick = saveCircuit;
-  document.getElementById('btn-dlpy').onclick = dlPy;
-  document.getElementById('btn-dlnb').onclick = dlNb;
-  document.getElementById('btn-run-queue').onclick = runQueue;
+    document.getElementById('btn-run').onclick = runCode;
+    document.getElementById('btn-run2').onclick = runCode;
+    document.getElementById('btn-sync').onclick = forceSync;
+    document.getElementById('btn-clear').onclick = clearCircuit;
+    document.getElementById('btn-clear-code').onclick = clearCode;
+    document.getElementById('btn-addqb').onclick = addQubit;
+    document.getElementById('btn-remqb').onclick = removeQubit;
+    document.getElementById('btn-copy').onclick = copyCode;
+    document.getElementById('btn-clear-out').onclick = () => document.getElementById('out-body').innerHTML = '<span class="inf">Terminal limpiada</span>';
+    document.getElementById('btn-save').onclick = saveCircuit;
+    document.getElementById('btn-dlpy').onclick = dlPy;
+    document.getElementById('btn-dlnb').onclick = dlNb;
+    document.getElementById('btn-run-queue').onclick = runQueue;
 
-  document.querySelectorAll('.lib-btn').forEach(btn => btn.onclick = () => setLib(btn.dataset.lib));
-  document.querySelectorAll('.mode-btn').forEach(btn => btn.onclick = () => setMode(btn.dataset.mode));
-  document.querySelectorAll('.rtab').forEach(btn => btn.onclick = () => setTab(btn.dataset.tab));
-  document.querySelectorAll('.gb').forEach(btn => btn.onclick = () => applyBlochGate(btn.dataset.gate));
+    document.querySelectorAll('.lib-btn').forEach(btn => btn.onclick = () => setLib(btn.dataset.lib));
+    document.querySelectorAll('.mode-btn').forEach(btn => btn.onclick = () => setMode(btn.dataset.mode));
+    document.querySelectorAll('.rtab').forEach(btn => btn.onclick = () => setTab(btn.dataset.tab));
+    document.querySelectorAll('.gb').forEach(btn => btn.onclick = () => applyBlochGate(btn.dataset.gate));
 
-  document.getElementById('bloch-q-select').onchange = (e) => { currentBlochQubit = parseInt(e.target.value); drawBloch(); };
+    document.getElementById('bloch-q-select').onchange = (e) => { currentBlochQubit = parseInt(e.target.value); drawBloch(); };
 
-  const ta = document.getElementById('code-ta');
-  ta.onscroll = onCodeScroll;
-  ta.oninput = onCodeEdit;
-  ta.onkeyup = updCur;
-  ta.onclick = updCur;
-  ta.onkeydown = (e) => {
-    if (e.key === 'Tab') { e.preventDefault(); const s = ta.selectionStart; ta.value = ta.value.substring(0, s) + '    ' + ta.value.substring(ta.selectionEnd); ta.selectionStart = ta.selectionEnd = s + 4; onCodeEdit(); }
-    if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); saveCircuit(); }
-    if ((e.ctrlKey || e.metaKey) && e.key === 'r') { e.preventDefault(); runCode(); }
-  };
+    const ta = document.getElementById('code-ta');
+    ta.onscroll = onCodeScroll;
+    ta.oninput = onCodeEdit;
+    ta.onkeyup = updCur;
+    ta.onclick = updCur;
+    ta.onkeydown = (e) => {
+        if (e.key === 'Tab') { e.preventDefault(); const s = ta.selectionStart; ta.value = ta.value.substring(0, s) + '    ' + ta.value.substring(ta.selectionEnd); ta.selectionStart = ta.selectionEnd = s + 4; onCodeEdit(); }
+        if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); saveCircuit(); }
+        if ((e.ctrlKey || e.metaKey) && e.key === 'r') { e.preventDefault(); runCode(); }
+    };
 
-  drawBloch();
-  renderSaveList();
-  renderQueue();
+    drawBloch();
+    renderSaveList();
+    renderQueue();
+    
+    // Inicializar Pyodide en segundo plano
+    setTimeout(() => { initPyodide().catch(console.error); }, 1000);
 }
 
 window.onDragStart = onDragStart;
@@ -1433,90 +2017,239 @@ window.removeFromQueue = removeFromQueue;
 // ECOSISTEMA — Comunicación con index.html
 // ══════════════════════════════════════════════════
 function postCore(type, data={}) {
-  try { window.parent.postMessage({type, ...data}, '*'); } catch(e) {}
+    try { window.parent.postMessage({type, ...data}, '*'); } catch(e) {}
 }
 
 async function checkEngine() {
-  if (!engineURL) return;
-  engineURL = engineURL.trim().replace(/\/+$/, '');
-  const badge = document.getElementById('eng-badge');
-  const status = document.getElementById('compiler-status');
-  const setStatus = (txt, cls) => {
-    if (badge) { badge.textContent = txt; badge.className = 'badge ' + cls; }
-    if (status) { status.textContent = txt; status.className = 'compiler-status ' + (cls==='badge-on'?'active':'waiting'); }
-  };
-  setStatus('⏳ Conectando...', 'badge-warn');
-  notify('🔄 Conectando al compilador...', 4000);
+    if (!engineURL) return;
+    engineURL = engineURL.trim().replace(/\/+$/, '');
+    const badge = document.getElementById('eng-badge');
+    const status = document.getElementById('compiler-status');
+    const setStatus = (txt, cls) => {
+        if (badge) { badge.textContent = txt; badge.className = 'badge ' + cls; }
+        if (status) { status.textContent = txt; status.className = 'compiler-status ' + (cls==='badge-on'?'active':'waiting'); }
+    };
+    setStatus('⏳ Conectando...', 'badge-warn');
+    notify('🔄 Conectando al compilador...', 4000);
 
-  for (let attempt = 1; attempt <= 3; attempt++) {
-    try {
-      setStatus(`⏳ Intento ${attempt}/3...`, 'badge-warn');
-      const controller = new AbortController();
-      const tid = setTimeout(() => controller.abort(), 30000);
-      const res = await fetch(engineURL + '/health/predict', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ data: [''] }),
-        signal: controller.signal
-      });
-      clearTimeout(tid);
-      if (res.ok) {
-        const raw = await res.json();
-        const d = raw.data ? raw.data[0] : raw;
-        engineOK = true;
-        setStatus('● COMPILADOR ACTIVO', 'badge-on');
-        const libs = (d.libs || []).slice(0,4).join(', ');
-        notify('✅ Compilador conectado' + (libs ? ' · ' + libs : ''));
-        postCore('QCOL_SAVE', {key:'qcol_colab_url', val:engineURL});
-        return;
-      }
-      throw new Error('HTTP ' + res.status);
-    } catch(e) {
-      if (e.name === 'AbortError') {
-        notify(`⏱ Intento ${attempt}/3: timeout 30s`);
-      } else {
-        notify(`⚠️ Intento ${attempt}/3: ${e.message}`);
-      }
-      if (attempt < 3) await new Promise(r => setTimeout(r, 4000));
+    for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+            setStatus(`⏳ Intento ${attempt}/3...`, 'badge-warn');
+            const controller = new AbortController();
+            const tid = setTimeout(() => controller.abort(), 30000);
+            // fn_index:2 → gr.Interface(health_check, api_name="health") — tercer evento registrado en app.py
+            const res = await fetch(engineURL + '/run/predict', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ data: [''], fn_index: 2 }),
+                signal: controller.signal
+            });
+            clearTimeout(tid);
+            if (res.ok) {
+                const raw = await res.json();
+                const payload = raw.data ? raw.data[0] : raw;
+                const d = (typeof payload === 'string') ? (() => { try { return JSON.parse(payload); } catch(e) { return {}; } })() : payload;
+                engineOK = true;
+                setStatus('● COMPILADOR ACTIVO', 'badge-on');
+                const libs = (d.libs || []).slice(0,4).join(', ');
+                notify('✅ Compilador conectado' + (libs ? ' · ' + libs : ''));
+                postCore('QCOL_SAVE', {key:'qcol_colab_url', val:engineURL});
+                return;
+            }
+            throw new Error('HTTP ' + res.status);
+        } catch(e) {
+            if (e.name === 'AbortError') {
+                notify(`⏱ Intento ${attempt}/3: timeout 30s`);
+            } else {
+                notify(`⚠️ Intento ${attempt}/3: ${e.message}`);
+            }
+            if (attempt < 3) await new Promise(r => setTimeout(r, 4000));
+        }
     }
-  }
-  engineOK = false;
-  setStatus('● SIN COMPILADOR', 'badge-off');
-  notify('❌ No se pudo conectar después de 3 intentos');
+    engineOK = false;
+    setStatus('● SIN COMPILADOR', 'badge-off');
+    notify('❌ No se pudo conectar después de 3 intentos');
 }
 
 window.addEventListener('message', e => {
-  const d = e.data || {};
-  if (d.type === 'QCOL_USER') {
-    curUser = d.user;
-    const pill = document.getElementById('user-pill');
-    if (pill && curUser) {
-      const role = curUser.role || 'guest';
-      const ico = role==='founder'?'👑 ':role==='admin'?'🔑 ':'';
-      pill.textContent = ico + (curUser.name||curUser.username||'—').split(' ')[0];
-      const dot = document.getElementById('udot');
-      if (dot) { dot.className = 'u-dot on'; }
+    const d = e.data || {};
+    if (d.type === 'QCOL_USER') {
+        curUser = d.user;
+        const pill = document.getElementById('user-pill');
+        if (pill && curUser) {
+            const role = curUser.role || 'guest';
+            const ico = role==='founder'?'👑 ':role==='admin'?'🔑 ':'';
+            pill.textContent = ico + (curUser.name||curUser.username||'—').split(' ')[0];
+            const dot = document.getElementById('udot');
+            if (dot) { dot.className = 'u-dot on'; }
+        }
+        renderSaveList();
     }
-    renderSaveList();
-  }
-  if (d.type === 'QCOL_CONFIG' || d.type === 'QCOL_CONFIG_UPDATED') {
-    const url = localStorage.getItem('qcol_colab_url') || '';
-    if (url && url !== engineURL) { engineURL = url; checkEngine(); }
-  }
-  if (d.type === 'QCOL_USER_UPDATE') {
-    curUser = d.user; renderSaveList();
-  }
+    if (d.type === 'QCOL_CONFIG' || d.type === 'QCOL_CONFIG_UPDATED') {
+        const url = localStorage.getItem('qcol_colab_url') || '';
+        if (url && url !== engineURL) { engineURL = url; checkEngine(); }
+    }
+    if (d.type === 'QCOL_USER_UPDATE') {
+        curUser = d.user; renderSaveList();
+    }
 });
 
 // Al cargar: pedir usuario y config del ecosistema
 postCore('QCOL_GET_USER');
 postCore('QCOL_GET_CONFIG');
 setTimeout(() => {
-  const stored = localStorage.getItem('qcol_cur_user');
-  if (stored && !curUser) { try { curUser = JSON.parse(stored); renderSaveList(); } catch(e){} }
-  const url = localStorage.getItem('qcol_colab_url') || '';
-  if (url) { engineURL = url; checkEngine(); }
+    const stored = localStorage.getItem('qcol_cur_user');
+    if (stored && !curUser) { try { curUser = JSON.parse(stored); renderSaveList(); } catch(e){} }
+    const url = localStorage.getItem('qcol_colab_url') || '';
+    if (url) { engineURL = url; checkEngine(); }
 }, 800);
+
+// ══════════════════════════════════════════════════
+// SISTEMA IA — Mistral: cargar atributos ignorados al arrancar
+// ══════════════════════════════════════════════════
+async function loadIgnoredAttrsFromCloud() {
+    // Fusionar lista local con nube (si el engine está disponible)
+    const local = JSON.parse(localStorage.getItem('qcol_ignored_attrs') || '[]');
+    QCOL_IGNORED_ATTRS = new Set(local);
+    if (!engineURL) return;
+    try {
+        // health usa fn_index:2; la lista de attrs se mantiene local
+        // La nube se sincroniza cuando Mistral clasifica un error nuevo
+        console.log('[QCOL-IA] Atributos ignorados cargados:', QCOL_IGNORED_ATTRS.size);
+    } catch(e) { /* silencioso */ }
+}
+
+function refreshIgnoredAttrsTable() {
+    const tbody = document.getElementById('ia-attrs-tbody');
+    if (!tbody) return;
+    const list = JSON.parse(localStorage.getItem('qcol_ignored_attrs') || '[]');
+    if (list.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3" style="color:var(--mu);text-align:center;padding:.5rem;">Sin atributos clasificados aún</td></tr>';
+        return;
+    }
+    tbody.innerHTML = list.map((a, i) => {
+        const name = typeof a === 'string' ? a : (a.attribute || a);
+        const reason = typeof a === 'object' ? (a.reason || '—') : '—';
+        return `<tr style="border-bottom:1px solid var(--bd);">
+            <td style="padding:.3rem .5rem;font-family:var(--mono);font-size:.6rem;color:var(--cy);">${name}</td>
+            <td style="padding:.3rem .5rem;font-size:.55rem;color:var(--tx2);">${reason}</td>
+            <td style="padding:.3rem .5rem;">
+                <button onclick="removeIgnoredAttr(${i})" style="background:rgba(255,68,102,.15);border:1px solid rgba(255,68,102,.3);color:#ff8899;border-radius:4px;padding:.15rem .4rem;font-size:.5rem;cursor:pointer;">✕</button>
+            </td>
+        </tr>`;
+    }).join('');
+    document.getElementById('ia-count').textContent = list.length;
+}
+
+function removeIgnoredAttr(idx) {
+    const list = JSON.parse(localStorage.getItem('qcol_ignored_attrs') || '[]');
+    list.splice(idx, 1);
+    localStorage.setItem('qcol_ignored_attrs', JSON.stringify(list));
+    QCOL_IGNORED_ATTRS = new Set(list.map(a => typeof a === 'string' ? a : a.attribute));
+    refreshIgnoredAttrsTable();
+    notify('Atributo eliminado de la lista');
+}
+
+function openIAPanel() {
+    let panel = document.getElementById('ia-panel-overlay');
+    if (panel) { panel.style.display = 'flex'; refreshIgnoredAttrsTable(); return; }
+    
+    panel = document.createElement('div');
+    panel.id = 'ia-panel-overlay';
+    panel.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9000;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(8px);';
+    panel.innerHTML = `
+    <div style="background:#0a0e1a;border:1px solid #1a3a5c;border-radius:14px;padding:1.2rem;width:min(95vw,540px);max-height:85vh;overflow-y:auto;font-family:'Exo 2',sans-serif;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;border-bottom:1px solid #1a2a48;padding-bottom:.7rem;">
+            <span style="font-family:'Orbitron',monospace;font-size:.75rem;color:#00ffdd;">🧠 IA RESOLVER — Mistral 3</span>
+            <button onclick="document.getElementById('ia-panel-overlay').style.display='none'" style="background:none;border:none;color:#4a7a9b;cursor:pointer;font-size:1rem;">✕</button>
+        </div>
+
+        <!-- API Key Mistral -->
+        <div style="background:#0d1220;border:1px solid #1a2a48;border-radius:8px;padding:.9rem;margin-bottom:.8rem;">
+            <div style="font-family:'Orbitron',monospace;font-size:.6rem;color:#00aaff;margin-bottom:.6rem;">🔑 API KEY MISTRAL</div>
+            <input id="ia-mistral-key" type="password" placeholder="Pega tu Mistral API key aquí..."
+                style="width:100%;background:rgba(0,0,0,.4);border:1px solid #1a3a5c;border-radius:6px;padding:.45rem .7rem;color:#dce8ff;font-family:'JetBrains Mono',monospace;font-size:.7rem;outline:none;box-sizing:border-box;"
+                value="${localStorage.getItem('qcol_mistral_key') || ''}">
+            <div style="display:flex;gap:.4rem;margin-top:.5rem;align-items:center;">
+                <button onclick="saveMistralKey()" style="padding:.3rem .7rem;background:linear-gradient(135deg,#003388,#0088ff);border:none;border-radius:5px;color:#fff;font-family:'Orbitron',monospace;font-size:.52rem;cursor:pointer;">💾 GUARDAR</button>
+                <a href="https://console.mistral.ai/api-keys/" target="_blank" style="font-size:.52rem;color:#0088ff;text-decoration:none;">Obtener key →</a>
+                <div style="margin-left:auto;display:flex;align-items:center;gap:.4rem;">
+                    <span style="font-size:.55rem;color:#4a7a9b;">Sistema IA</span>
+                    <div id="ia-toggle" onclick="toggleMistral()" style="width:32px;height:16px;border-radius:8px;cursor:pointer;transition:all .2s;background:${localStorage.getItem('qcol_mistral_enabled') === 'false' ? '#1a2a48' : '#00ff88'};border:1px solid ${localStorage.getItem('qcol_mistral_enabled') === 'false' ? '#1a3a5c' : '#00ff88'};position:relative;">
+                        <div style="width:12px;height:12px;background:#fff;border-radius:50%;position:absolute;top:1px;transition:left .2s;left:${localStorage.getItem('qcol_mistral_enabled') === 'false' ? '1px' : '17px'};"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Atributos ignorados -->
+        <div style="background:#0d1220;border:1px solid #1a2a48;border-radius:8px;padding:.9rem;margin-bottom:.8rem;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem;">
+                <div style="font-family:'Orbitron',monospace;font-size:.6rem;color:#00aaff;">📋 ATRIBUTOS IGNORADOS <span id="ia-count" style="color:#00ffdd;">0</span></div>
+                <button onclick="loadIgnoredAttrsFromCloud();refreshIgnoredAttrsTable();" style="padding:.2rem .5rem;background:rgba(0,136,255,.1);border:1px solid #1a3a5c;border-radius:4px;color:#4a7a9b;font-size:.5rem;cursor:pointer;">🔄 Sync</button>
+            </div>
+            <table style="width:100%;border-collapse:collapse;">
+                <thead>
+                    <tr style="border-bottom:1px solid #1a2a48;">
+                        <th style="text-align:left;padding:.25rem .5rem;font-family:'Orbitron',monospace;font-size:.5rem;color:#4a7a9b;">ATRIBUTO</th>
+                        <th style="text-align:left;padding:.25rem .5rem;font-family:'Orbitron',monospace;font-size:.5rem;color:#4a7a9b;">RAZÓN IA</th>
+                        <th style="width:40px;"></th>
+                    </tr>
+                </thead>
+                <tbody id="ia-attrs-tbody"></tbody>
+            </table>
+        </div>
+
+        <!-- Estado -->
+        <div style="font-size:.52rem;color:#4a7a9b;text-align:center;">
+            Los atributos marcados como innecesarios se ignoran globalmente en todo el ecosistema QCOL.
+            Mistral 3 los clasifica automáticamente cuando el servidor devuelve un error.
+        </div>
+    </div>`;
+    document.body.appendChild(panel);
+    refreshIgnoredAttrsTable();
+}
+
+function saveMistralKey() {
+    const key = document.getElementById('ia-mistral-key').value.trim();
+    if (key) {
+        localStorage.setItem('qcol_mistral_key', key);
+        notify('✅ API key de Mistral guardada');
+    } else {
+        localStorage.removeItem('qcol_mistral_key');
+        notify('Key eliminada');
+    }
+}
+
+function toggleMistral() {
+    const current = localStorage.getItem('qcol_mistral_enabled') !== 'false';
+    localStorage.setItem('qcol_mistral_enabled', current ? 'false' : 'true');
+    // Re-renderizar el toggle
+    document.getElementById('ia-panel-overlay').style.display = 'none';
+    setTimeout(openIAPanel, 100);
+    notify(current ? '⏸ IA Resolver desactivado' : '▶ IA Resolver activado');
+}
+
+// Variable global de atributos ignorados
+let QCOL_IGNORED_ATTRS = new Set(JSON.parse(localStorage.getItem('qcol_ignored_attrs') || '[]'));
+
+// Añadir botón IA en la barra de herramientas al cargar
+setTimeout(() => {
+    const toolbar = document.querySelector('.toolbar');
+    if (toolbar && !document.getElementById('btn-ia-panel')) {
+        const sep = document.createElement('div'); sep.className = 'sep';
+        const btn = document.createElement('button');
+        btn.id = 'btn-ia-panel';
+        btn.className = 'bsm';
+        btn.textContent = '🧠 IA';
+        btn.title = 'Configurar sistema IA Resolver (Mistral)';
+        btn.onclick = openIAPanel;
+        btn.style.cssText = 'background:rgba(189,147,249,.1);border-color:rgba(189,147,249,.4);color:#bd93f9;';
+        toolbar.appendChild(sep);
+        toolbar.appendChild(btn);
+    }
+    loadIgnoredAttrsFromCloud();
+}, 1200);
 
 init();
 </script>
