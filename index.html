@@ -57,7 +57,8 @@ body::before{content:'';position:fixed;inset:0;
   cursor:pointer;transition:all .2s;white-space:nowrap;}
 .hbtn:hover{border-color:var(--bl);color:var(--bl2);}
 .hbtn.ai-btn{background:linear-gradient(135deg,rgba(0,136,255,.15),rgba(0,200,255,.08));
-  border-color:rgba(0,200,255,.4);color:var(--bl2);animation:pb 2.5s infinite;}
+  border-color:rgba(0,200,255,.4);color:var(--bl2);animation:pb 2.5s infinite;
+  display:inline-flex;align-items:center;gap:4px;}
 @keyframes pb{0%,100%{border-color:rgba(0,200,255,.35);}50%{border-color:rgba(0,200,255,.9);box-shadow:0 0 12px rgba(0,200,255,.25);}}
 .user-chip{display:flex;align-items:center;gap:.4rem;padding:.28rem .7rem;
   background:var(--s2);border:1px solid var(--b2);border-radius:20px;
@@ -84,7 +85,7 @@ body::before{content:'';position:fixed;inset:0;
 .btn-cancel{display:block;margin-top:.7rem;width:100%;padding:.5rem;background:transparent;border:1px solid var(--b);border-radius:8px;color:var(--mu);font-family:var(--orb);font-size:.6rem;cursor:pointer;}
 .btn-cancel:hover{border-color:var(--bl);color:var(--bl2);}
 
-/* AI PANEL */
+/* AI PANEL (QuantumChat) */
 #ai-panel-wrapper{display:none;position:fixed;bottom:1.2rem;right:1.2rem;z-index:600;width:340px;}
 #ai-panel-wrapper.open{display:block;}
 .ai-panel{background:var(--s);border:1px solid rgba(0,136,255,.45);border-radius:16px;display:flex;flex-direction:column;height:460px;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.6);animation:su .3s ease;}
@@ -217,7 +218,6 @@ body::before{content:'';position:fixed;inset:0;
 <!-- SPLASH — solo QCOL grande -->
 <div id="splash">
   <div class="splash-inner">
-    <!-- Logo circuito cuántico grande -->
     <div style="margin-bottom:1.5rem;">
       <svg width="110" height="110" viewBox="0 0 40 40" fill="none"
         style="filter:drop-shadow(0 0 22px rgba(0,200,255,.6))">
@@ -234,14 +234,12 @@ body::before{content:'';position:fixed;inset:0;
         <text x="20.5" y="22" text-anchor="middle" font-family="monospace" font-size="4.5" font-weight="bold" fill="#00ff88">X</text>
         <rect x="28" y="9" width="7" height="6" rx="1.5" fill="rgba(255,215,0,.12)" stroke="#ffd700" stroke-width="1.2"/>
         <text x="31.5" y="14" text-anchor="middle" font-family="monospace" font-size="4.5" font-weight="bold" fill="#ffd700">M</text>
-        <!-- Gear top-right -->
         <g transform="translate(28,18) scale(.68)">
           <circle cx="6" cy="6" r="3.5" fill="none" stroke="#00ccff" stroke-width="1.8"/>
           <path d="M6 0v2M6 10v2M0 6h2M10 6h2M1.8 1.8l1.4 1.4M8.8 8.8l1.4 1.4M1.8 10.2l1.4-1.4M8.8 3.2l1.4-1.4" stroke="#00ccff" stroke-width="1.3" stroke-linecap="round"/>
         </g>
       </svg>
     </div>
-    <!-- CAMBIO 5: Solo QCOL grande, sin subtítulo -->
     <div class="splash-qcol">
       <span class="splash-q">Q</span><span class="splash-c">COL</span>
     </div>
@@ -252,13 +250,10 @@ body::before{content:'';position:fixed;inset:0;
   </div>
 </div>
 
-<!-- NOTIFICACIÓN -->
 <div class="notif" id="notif"></div>
 
-<!-- HEADER GLOBAL — CAMBIO 5: sin subtítulo bajo el logo -->
 <div id="qcol-header" style="display:none;">
   <div class="logo" onclick="QCOL.nav('home')">
-    <!-- Logo: circuito + engranaje -->
     <svg class="logo-icon" width="38" height="38" viewBox="0 0 40 40" fill="none">
       <line x1="3" y1="12" x2="37" y2="12" stroke="#0055aa" stroke-width="1.2" stroke-dasharray="2 2"/>
       <line x1="3" y1="20" x2="37" y2="20" stroke="#0055aa" stroke-width="1.2" stroke-dasharray="2 2"/>
@@ -280,32 +275,43 @@ body::before{content:'';position:fixed;inset:0;
       <div class="logo-qcol">
         <span class="logo-q">Q</span><span class="logo-col">COL</span>
       </div>
-      <!-- CAMBIO 5: Sin logo-sub aquí -->
     </div>
   </div>
   <div class="hdr-right">
     <div id="hdr-engine-badge" style="display:none;padding:.22rem .55rem;background:rgba(0,255,136,.08);border:1px solid rgba(0,255,136,.3);border-radius:4px;font-family:var(--orb);font-size:.46rem;color:var(--gr);">● COMPILADOR</div>
-    <button class="hbtn ai-btn" onclick="QCOL.toggleAI()">⚛ IA</button>
+    <button class="hbtn ai-btn" onclick="QCOL.toggleAI()">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" style="vertical-align:middle;">
+        <circle cx="12" cy="12" r="10" stroke="#00ffdd" stroke-width="1.4"/>
+        <path d="M8 12h8M12 8l4 4-4 4" stroke="#00ffdd" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="12" cy="12" r="2.5" fill="rgba(0,255,221,.2)" stroke="#00ffdd" stroke-width="1"/>
+      </svg>
+      QuantumChat
+    </button>
     <div id="hdr-user-area">
       <button class="hbtn" onclick="QCOL.openAuth('login')">ENTRAR</button>
     </div>
   </div>
 </div>
 
-<!-- AI PANEL FLOTANTE -->
 <div id="ai-panel-wrapper">
   <div class="ai-panel">
     <div class="ai-hdr">
       <div class="ai-title">
-        <div class="ai-dot"></div>⚛ QCOL AI
-        <span id="ai-prov-lbl" style="font-size:.46rem;color:var(--mu);margin-left:.3rem;">(demo)</span>
+        <div class="ai-dot"></div>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="margin-right:4px;">
+          <circle cx="12" cy="12" r="10" stroke="#00ffdd" stroke-width="1.5"/>
+          <path d="M8 12h8M12 8l4 4-4 4" stroke="#00ffdd" stroke-width="1.4" stroke-linecap="round"/>
+          <circle cx="12" cy="12" r="2" fill="#00ffdd" opacity=".5"/>
+        </svg>
+        QuantumChat
+        <span id="ai-prov-lbl" style="font-size:.46rem;color:var(--mu);margin-left:.3rem;"></span>
       </div>
       <button class="ai-close-btn" onclick="QCOL.toggleAI()">✕</button>
     </div>
     <div class="ai-msgs" id="ai-messages">
       <div class="ai-msg bot">
-        <div class="ai-lbl">QCOL AI</div>
-        ¡Hola! Soy el asistente de QCOL. Pregúntame sobre Qiskit, Cirq, PennyLane, circuitos cuánticos o física cuántica. ⚛
+        <div class="ai-lbl">QUANTUMCHAT</div>
+        ¡Hola! Soy QuantumChat, tu asistente de computación cuántica. Puedo ayudarte con Qiskit, Cirq, PennyLane, notación de Dirac |ψ⟩, circuitos cuánticos, algoritmos y física cuántica. ⚛
       </div>
     </div>
     <div class="ai-loading" id="ai-loading">
@@ -323,7 +329,6 @@ body::before{content:'';position:fixed;inset:0;
   </div>
 </div>
 
-<!-- AUTH MODAL -->
 <div class="modal-ov" id="auth-modal">
   <div class="modal">
     <div id="auth-login">
@@ -363,10 +368,8 @@ body::before{content:'';position:fixed;inset:0;
   </div>
 </div>
 
-<!-- CONTENEDOR DE MÓDULOS -->
 <div id="module-container">
 
-  <!-- MENÚ PRINCIPAL -->
   <div class="screen active" id="screen-home">
     <div class="menu-hero">
       <h1>⚛ QUANTUM COMPUTING OPEN LAB</h1>
@@ -396,7 +399,6 @@ body::before{content:'';position:fixed;inset:0;
     </div>
   </div>
 
-  <!-- PROYECTOS -->
   <div class="screen" id="screen-projects">
     <div class="screen-hdr">
       <button class="btn-back" onclick="QCOL.nav('home')">← MENÚ</button>
@@ -406,46 +408,54 @@ body::before{content:'';position:fixed;inset:0;
           <path d="M3 9h18M9 21V9" stroke="#00ccff" stroke-width="1.5"/>
         </svg>PROYECTOS
       </div>
-      <button class="hbtn ai-btn" style="margin-left:auto;" onclick="QCOL.toggleAI()">⚛ IA</button>
+      <button class="hbtn ai-btn" onclick="QCOL.toggleAI()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" style="vertical-align:middle;margin-right:3px;">
+          <circle cx="12" cy="12" r="10" stroke="#00ffdd" stroke-width="1.4"/>
+          <path d="M8 12h8M12 8l4 4-4 4" stroke="#00ffdd" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="12" cy="12" r="2.5" fill="rgba(0,255,221,.2)" stroke="#00ffdd" stroke-width="1"/>
+        </svg>
+        QuantumChat
+      </button>
     </div>
     <div class="module-iframe-wrap" id="projects-wrap">
       <div id="projects-ph"></div>
     </div>
   </div>
 
-  <!-- ARQUITECTO -->
   <div class="screen" id="screen-architect">
     <div class="screen-hdr">
       <button class="btn-back" onclick="QCOL.nav('home')">← MENÚ</button>
       <div class="screen-title">
-        <!-- CAMBIO 1: icono engranaje + circuito -->
         <svg width="18" height="18" viewBox="0 0 40 40" fill="none">
-          <!-- Circuito base -->
           <line x1="2" y1="14" x2="38" y2="14" stroke="#004488" stroke-width="1.5" stroke-dasharray="3 2"/>
           <line x1="2" y1="26" x2="38" y2="26" stroke="#004488" stroke-width="1.5" stroke-dasharray="3 2"/>
           <rect x="5" y="10" width="8" height="8" rx="2" fill="rgba(0,136,255,.2)" stroke="#0088ff" stroke-width="1.5"/>
           <text x="9" y="16" text-anchor="middle" font-family="monospace" font-size="5" font-weight="bold" fill="#00ccff">H</text>
-          <!-- Engranaje solapado -->
           <g transform="translate(23,15) scale(1.1)">
             <circle cx="6" cy="6" r="3.5" fill="none" stroke="#00ccff" stroke-width="1.8"/>
             <path d="M6 0v2M6 10v2M0 6h2M10 6h2M1.8 1.8l1.4 1.4M8.8 8.8l1.4 1.4M1.8 10.2l1.4-1.4M8.8 3.2l1.4-1.4"
               stroke="#00ccff" stroke-width="1.3" stroke-linecap="round"/>
           </g>
-          <!-- CNOT connector -->
           <circle cx="9" cy="26" r="2.5" fill="#00ffdd"/>
           <line x1="9" y1="18" x2="9" y2="23.5" stroke="#00ffdd" stroke-width="1.2"/>
         </svg>
         ⚙️ ARQUITECTO CUÁNTICO
       </div>
       <div id="arch-badge" style="display:none;padding:.22rem .5rem;background:rgba(0,255,136,.08);border:1px solid rgba(0,255,136,.3);border-radius:4px;font-family:var(--orb);font-size:.46rem;color:var(--gr);">● COMPILADOR</div>
-      <button class="hbtn ai-btn" style="margin-left:auto;" onclick="QCOL.toggleAI()">⚛ IA</button>
+      <button class="hbtn ai-btn" onclick="QCOL.toggleAI()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" style="vertical-align:middle;margin-right:3px;">
+          <circle cx="12" cy="12" r="10" stroke="#00ffdd" stroke-width="1.4"/>
+          <path d="M8 12h8M12 8l4 4-4 4" stroke="#00ffdd" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="12" cy="12" r="2.5" fill="rgba(0,255,221,.2)" stroke="#00ffdd" stroke-width="1"/>
+        </svg>
+        QuantumChat
+      </button>
     </div>
     <div class="module-iframe-wrap" id="architect-wrap">
       <div id="architect-ph"></div>
     </div>
   </div>
 
-  <!-- ARQUITECTO PRO -->
   <div class="screen" id="screen-architect-pro">
     <div class="screen-hdr">
       <button class="btn-back" onclick="QCOL.nav('home')">← MENÚ</button>
@@ -463,14 +473,20 @@ body::before{content:'';position:fixed;inset:0;
         ⚙️ ARQUITECTO PROFESIONAL
         <span style="font-family:var(--orb);font-size:.5rem;color:var(--pu);padding:.1rem .38rem;border:1px solid rgba(189,147,249,.3);border-radius:3px;">ADMIN+</span>
       </div>
-      <button class="hbtn ai-btn" style="margin-left:auto;" onclick="QCOL.toggleAI()">⚛ IA</button>
+      <button class="hbtn ai-btn" onclick="QCOL.toggleAI()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" style="vertical-align:middle;margin-right:3px;">
+          <circle cx="12" cy="12" r="10" stroke="#00ffdd" stroke-width="1.4"/>
+          <path d="M8 12h8M12 8l4 4-4 4" stroke="#00ffdd" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="12" cy="12" r="2.5" fill="rgba(0,255,221,.2)" stroke="#00ffdd" stroke-width="1"/>
+        </svg>
+        QuantumChat
+      </button>
     </div>
     <div class="module-iframe-wrap" id="architect-pro-wrap">
       <div id="architect-pro-ph"></div>
     </div>
   </div>
 
-  <!-- CAMBIO 2: LIBRERÍA Y TUTORIALES (nombre actualizado) -->
   <div class="screen" id="screen-library">
     <div class="screen-hdr">
       <button class="btn-back" onclick="QCOL.nav('home')">← MENÚ</button>
@@ -482,14 +498,20 @@ body::before{content:'';position:fixed;inset:0;
         </svg>
         LIBRERÍA Y TUTORIALES
       </div>
-      <button class="hbtn ai-btn" style="margin-left:auto;" onclick="QCOL.toggleAI()">⚛ IA</button>
+      <button class="hbtn ai-btn" onclick="QCOL.toggleAI()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" style="vertical-align:middle;margin-right:3px;">
+          <circle cx="12" cy="12" r="10" stroke="#00ffdd" stroke-width="1.4"/>
+          <path d="M8 12h8M12 8l4 4-4 4" stroke="#00ffdd" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="12" cy="12" r="2.5" fill="rgba(0,255,221,.2)" stroke="#00ffdd" stroke-width="1"/>
+        </svg>
+        QuantumChat
+      </button>
     </div>
     <div class="module-iframe-wrap" id="library-wrap">
       <div id="library-ph"></div>
     </div>
   </div>
 
-  <!-- MI CUENTA -->
   <div class="screen" id="screen-account">
     <div class="screen-hdr">
       <button class="btn-back" onclick="QCOL.nav('home')">← MENÚ</button>
@@ -500,25 +522,38 @@ body::before{content:'';position:fixed;inset:0;
         </svg>
         MI CUENTA
       </div>
-      <button class="hbtn ai-btn" style="margin-left:auto;" onclick="QCOL.toggleAI()">⚛ IA</button>
+      <button class="hbtn ai-btn" onclick="QCOL.toggleAI()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" style="vertical-align:middle;margin-right:3px;">
+          <circle cx="12" cy="12" r="10" stroke="#00ffdd" stroke-width="1.4"/>
+          <path d="M8 12h8M12 8l4 4-4 4" stroke="#00ffdd" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="12" cy="12" r="2.5" fill="rgba(0,255,221,.2)" stroke="#00ffdd" stroke-width="1"/>
+        </svg>
+        QuantumChat
+      </button>
     </div>
     <div class="module-iframe-wrap" id="account-wrap">
       <div id="account-ph"></div>
     </div>
   </div>
 
-  <!-- PANEL FUNDADOR -->
   <div class="screen" id="screen-founder">
     <div class="screen-hdr">
       <button class="btn-back" onclick="QCOL.nav('home')">← MENÚ</button>
       <div class="screen-title">👑 PANEL FUNDADOR</div>
+      <button class="hbtn ai-btn" onclick="QCOL.toggleAI()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" style="vertical-align:middle;margin-right:3px;">
+          <circle cx="12" cy="12" r="10" stroke="#00ffdd" stroke-width="1.4"/>
+          <path d="M8 12h8M12 8l4 4-4 4" stroke="#00ffdd" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="12" cy="12" r="2.5" fill="rgba(0,255,221,.2)" stroke="#00ffdd" stroke-width="1"/>
+        </svg>
+        QuantumChat
+      </button>
     </div>
     <div class="module-iframe-wrap" id="founder-wrap">
       <div id="founder-ph"></div>
     </div>
   </div>
 
-  <!-- AYUDA -->
   <div class="screen" id="screen-help">
     <div class="screen-hdr">
       <button class="btn-back" onclick="QCOL.nav('home')">← MENÚ</button>
@@ -529,25 +564,26 @@ body::before{content:'';position:fixed;inset:0;
         </svg>
         AYUDA
       </div>
-      <button class="hbtn ai-btn" style="margin-left:auto;" onclick="QCOL.toggleAI()">⚛ IA</button>
+      <button class="hbtn ai-btn" onclick="QCOL.toggleAI()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" style="vertical-align:middle;margin-right:3px;">
+          <circle cx="12" cy="12" r="10" stroke="#00ffdd" stroke-width="1.4"/>
+          <path d="M8 12h8M12 8l4 4-4 4" stroke="#00ffdd" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="12" cy="12" r="2.5" fill="rgba(0,255,221,.2)" stroke="#00ffdd" stroke-width="1"/>
+        </svg>
+        QuantumChat
+      </button>
     </div>
     <div class="module-iframe-wrap" id="help-wrap">
       <div id="help-ph"></div>
     </div>
   </div>
 
-</div><!-- end module-container -->
+</div>
 
 <script>
-// ════════════════════════════════════════════════════
-// QCOL CORE v2.1
-// ════════════════════════════════════════════════════
 const QCOL = (() => {
 
   const VERSION = '2.1.0';
-
-  // Nombres de archivos de cada módulo
-  // Para actualizar un módulo: cambia solo su archivo en GitHub
   const MODULES = {
     projects:       'qcol-projects.html',
     architect:      'qcol-architect.html',
@@ -563,6 +599,115 @@ const QCOL = (() => {
   let aiCfg = JSON.parse(localStorage.getItem('qcol_ai') || '{}');
   let aiHistory = [];
 
+  // ══════════════════════════════════════════════
+  // BASE DE DATOS COMPARTIDA — GitHub como storage
+  // ══════════════════════════════════════════════
+  const DB_PATH = 'data/qcol_db.json';
+  let _db = null;
+  let _dbSyncing = false;
+
+  function getGH() {
+      return JSON.parse(localStorage.getItem('qcol_gh') || '{}');
+  }
+
+  async function dbLoad() {
+      const gh = getGH();
+      if (!gh.user || !gh.repo) return null;
+      try {
+          const ts = Date.now();
+          const url = `https://raw.githubusercontent.com/${gh.user}/${gh.repo}/main/${DB_PATH}?t=${ts}`;
+          const res = await fetch(url);
+          if (!res.ok) return null;
+          _db = await res.json();
+          return _db;
+      } catch(e) {
+          console.warn('dbLoad error:', e);
+          return null;
+      }
+  }
+
+  async function dbSave(newData) {
+      if (_dbSyncing) return false;
+      _dbSyncing = true;
+      const gh = getGH();
+      if (!gh.token || !gh.user || !gh.repo) { _dbSyncing = false; return false; }
+      try {
+          const apiURL = `https://api.github.com/repos/${gh.user}/${gh.repo}/contents/${DB_PATH}`;
+          const headers = {
+              'Authorization': `token ${gh.token}`,
+              'Accept': 'application/vnd.github.v3+json',
+              'Content-Type': 'application/json'
+          };
+          let sha = null;
+          const check = await fetch(apiURL, { headers });
+          if (check.ok) { const j = await check.json(); sha = j.sha; }
+          
+          const content = btoa(unescape(encodeURIComponent(JSON.stringify(newData, null, 2))));
+          const body = { message: 'QCOL DB update', content };
+          if (sha) body.sha = sha;
+          
+          const res = await fetch(apiURL, {
+              method: 'PUT', headers,
+              body: JSON.stringify(body)
+          });
+          _dbSyncing = false;
+          return res.ok;
+      } catch(e) {
+          console.error('dbSave error:', e);
+          _dbSyncing = false;
+          return false;
+      }
+  }
+
+  async function dbGet(section) {
+      if (!_db) await dbLoad();
+      return _db?.[section] || null;
+  }
+
+  async function dbSet(section, value) {
+      if (!_db) await dbLoad();
+      if (!_db) _db = { version:1, config:{}, users:[], circuits:{}, notebooks:{}, ai_history:{} };
+      _db[section] = value;
+      return dbSave(_db);
+  }
+
+  async function dbInit() {
+      const data = await dbLoad();
+      if (!data) {
+          const empty = {
+              version: 1,
+              config: {
+                  colab_url: localStorage.getItem('qcol_colab_url') || '',
+                  mistral_key: localStorage.getItem('qcol_mistral_key') || '',
+                  mistral_enabled: localStorage.getItem('qcol_mistral_enabled') === 'true',
+                  mistral_model: localStorage.getItem('qcol_mistral_model') || 'deepseek-chat',
+                  mistral_timeout: parseInt(localStorage.getItem('qcol_mistral_timeout') || '10'),
+                  ignored_attrs: JSON.parse(localStorage.getItem('qcol_ignored_attrs') || '[]'),
+                  ignored_attrs_reasons: JSON.parse(localStorage.getItem('qcol_ignored_attrs_reasons') || '{}')
+              },
+              users: JSON.parse(localStorage.getItem('qcol_users') || '[]'),
+              circuits: {},
+              notebooks: {},
+              ai_history: {}
+          };
+          await dbSave(empty);
+          _db = empty;
+      }
+      if (_db?.config) {
+          const c = _db.config;
+          if (c.colab_url)       localStorage.setItem('qcol_colab_url',         c.colab_url);
+          if (c.mistral_key)     localStorage.setItem('qcol_mistral_key',        c.mistral_key);
+          if (c.mistral_model)   localStorage.setItem('qcol_mistral_model',      c.mistral_model);
+          if (c.mistral_enabled !== undefined) localStorage.setItem('qcol_mistral_enabled', c.mistral_enabled);
+          if (c.ignored_attrs)   localStorage.setItem('qcol_ignored_attrs',      JSON.stringify(c.ignored_attrs));
+          if (c.ignored_attrs_reasons) localStorage.setItem('qcol_ignored_attrs_reasons', JSON.stringify(c.ignored_attrs_reasons));
+      }
+      if (_db?.users?.length) {
+          localStorage.setItem('qcol_users', JSON.stringify(_db.users));
+      }
+      broadcast({ type: 'QCOL_CONFIG_UPDATED', db: _db });
+  }
+
   // ── MENSAJERÍA INTER-MÓDULO ──
   window.addEventListener('message', e => {
     const d = e.data; if (!d?.type) return;
@@ -576,13 +721,29 @@ const QCOL = (() => {
     if (d.type === 'QCOL_SAVE') {
       const val = typeof d.val === 'object' ? JSON.stringify(d.val) : d.val;
       localStorage.setItem(d.key, val);
+      
+      const CONFIG_KEYS = {
+          'qcol_colab_url': 'colab_url',
+          'qcol_mistral_key': 'mistral_key',
+          'qcol_mistral_enabled': 'mistral_enabled',
+          'qcol_mistral_model': 'mistral_model',
+          'qcol_mistral_timeout': 'mistral_timeout',
+          'qcol_ignored_attrs': 'ignored_attrs',
+          'qcol_ignored_attrs_reasons': 'ignored_attrs_reasons'
+      };
+      if (CONFIG_KEYS[d.key] && _db) {
+          if (!_db.config) _db.config = {};
+          let parsedVal = d.val;
+          try { parsedVal = typeof d.val === 'string' ? JSON.parse(d.val) : d.val; } catch(e) {}
+          _db.config[CONFIG_KEYS[d.key]] = parsedVal;
+          dbSave(_db);
+      }
+      
       if (d.key === 'qcol_colab_url') checkEngine();
       if (d.key === 'qcol_ai') { aiCfg = d.val; setupAI(); }
       if (d.key === 'qcol_fp') notify('✅ Contraseña fundador actualizada');
-      // Propagar cambio de config a todos los módulos
       broadcast({ type:'QCOL_CONFIG_UPDATED', key: d.key });
     }
-    // Monitor: el arquitecto registra ejecuciones — el core las persiste
     if (d.type === 'QCOL_MONITOR_RUN') {
       try {
         const raw  = localStorage.getItem('qcol_monitor_data');
@@ -592,6 +753,34 @@ const QCOL = (() => {
         if (data.runs.length > 1000) data.runs = data.runs.slice(-1000);
         localStorage.setItem('qcol_monitor_data', JSON.stringify(data));
       } catch(e) {}
+    }
+    if (d.type === 'QCOL_SAVE_CIRCUIT' && d.username) {
+        dbGet('circuits').then(circuits => {
+            const all = circuits || {};
+            if (!all[d.username]) all[d.username] = [];
+            all[d.username].push(d.circuit);
+            if (all[d.username].length > 100) all[d.username] = all[d.username].slice(-100);
+            dbSet('circuits', all);
+        });
+    }
+    if (d.type === 'QCOL_SAVE_NOTEBOOK' && d.username) {
+        dbGet('notebooks').then(nbs => {
+            const all = nbs || {};
+            if (!all[d.username]) all[d.username] = [];
+            const idx = all[d.username].findIndex(n => n._uid === d.notebook._uid);
+            if (idx >= 0) all[d.username][idx] = d.notebook;
+            else all[d.username].unshift(d.notebook);
+            dbSet('notebooks', all);
+        });
+    }
+    // NUEVO HANDLER: Obtener sección de la base de datos
+    if (d.type === 'QCOL_GET_DB') {
+        dbGet(d.section).then(data => {
+            if (data && d.section === 'users') {
+                localStorage.setItem('qcol_users', JSON.stringify(data));
+            }
+            broadcast({ type: 'QCOL_DB_DATA', section: d.section, data });
+        });
     }
   });
 
@@ -607,7 +796,6 @@ const QCOL = (() => {
         type: 'QCOL_CONFIG',
         user: curUser,
         version: VERSION,
-        // Los módulos solo saben que tienen un "compilador" sin nombre
         engineReady: !!localStorage.getItem('qcol_colab_url'),
         ghUser: (JSON.parse(localStorage.getItem('qcol_gh')||'{}').user)||'laffitacamargof-create',
         ghRepo: (JSON.parse(localStorage.getItem('qcol_gh')||'{}').repo)||'quantum-computing-open-lab',
@@ -615,7 +803,6 @@ const QCOL = (() => {
     } catch(e) {}
   }
 
-  // ── NAVEGACIÓN ──
   function nav(screen) {
     const s = screen.replace(/_/g, '-');
     document.querySelectorAll('.screen').forEach(x => x.classList.remove('active'));
@@ -625,18 +812,13 @@ const QCOL = (() => {
     if (s !== 'home') loadModule(s);
   }
 
-  // ── CARGA DE MÓDULOS ──
   function loadModule(screen) {
-    if (iframes[screen]) return; // Ya cargado
-
+    if (iframes[screen]) return;
     const wrapId = screen + '-wrap';
-    const phId   = screen + '-ph';
     const wrap   = document.getElementById(wrapId);
     if (!wrap) return;
-
     const file = MODULES[screen];
     if (!file) return;
-
     const iframe = document.createElement('iframe');
     iframe.className = 'module-iframe';
     iframe.setAttribute('data-qcol', screen);
@@ -645,19 +827,15 @@ const QCOL = (() => {
       iframes[screen] = iframe;
       setTimeout(() => { sendCfg(iframe.contentWindow); broadcast({type:'QCOL_USER_UPDATE',user:curUser}); }, 200);
     };
-    iframe.onerror = () => {
-      wrap.innerHTML = renderPH(screen);
-    };
-
-    // Primero mostrar spinner, luego iframe
+    iframe.onerror = () => { wrap.innerHTML = renderPH(screen); };
     wrap.innerHTML = `<div class="module-placeholder">
       <div style="width:36px;height:36px;border:3px solid rgba(0,136,255,.2);border-top-color:var(--bl);border-radius:50%;animation:sp .8s linear infinite;margin-bottom:.8rem;"></div>
       <div style="font-family:var(--orb);font-size:.65rem;color:var(--mu);letter-spacing:.1em;">CARGANDO...</div>
     </div>
     <style>@keyframes sp{to{transform:rotate(360deg);}}</style>`;
-
     setTimeout(() => { wrap.innerHTML = ''; wrap.appendChild(iframe); }, 100);
   }
+
   function renderPH(screen) {
     const info = {
       projects:       { icon:'📂', title:'PROYECTOS',              desc:'Explora y ejecuta los notebooks del laboratorio.' },
@@ -684,9 +862,6 @@ const QCOL = (() => {
     const isAdm = role === 'admin' || role === 'founder';
     const isF   = role === 'founder';
 
-
-
-
     const cards = [
       {
         screen:'projects',
@@ -694,7 +869,7 @@ const QCOL = (() => {
           <rect x="3" y="3" width="18" height="18" rx="3" stroke="#00ccff" stroke-width="1.5"/>
           <path d="M3 9h18M9 21V9" stroke="#00ccff" stroke-width="1.5"/></svg>`,
         title:'PROYECTOS', badge:'', badgeTxt:'',
-        desc:'Publica y explora proyectos de computación cuántica de la comunidad.',
+        desc:'Explora y publica proyectos de computación cuántica. Comparte algoritmos, circuitos y notebooks con la comunidad QCOL.',
         delay:.05, show:true,
       },
       {
@@ -714,7 +889,7 @@ const QCOL = (() => {
               stroke="#00ccff" stroke-width="1.3" stroke-linecap="round"/>
           </g></svg>`,
         title:'⚙️ ARQUITECTO CUÁNTICO', badge:'badge-new', badgeTxt:'CUÁNTICO',
-        desc:'Escribe y ejecuta código cuántico. Elige entre Qiskit, Cirq, PennyLane o QuTiP. Guarda tus circuitos.',
+        desc:'Editor visual de circuitos cuánticos con ejecución real en la nube. Soporta Qiskit, Cirq, PennyLane y QuTiP. Guarda tus circuitos en tu cuenta.',
         delay:.1, show:true,
       },
       {
@@ -728,9 +903,11 @@ const QCOL = (() => {
             <circle cx="6" cy="6" r="3.5" fill="none" stroke="#bd93f9" stroke-width="1.8"/>
             <path d="M6 0v2M6 10v2M0 6h2M10 6h2M1.8 1.8l1.4 1.4M8.8 8.8l1.4 1.4M1.8 10.2l1.4-1.4M8.8 3.2l1.4-1.4" stroke="#bd93f9" stroke-width="1.3" stroke-linecap="round"/>
           </g></svg>`,
-        title:'⚙️ ARQUITECTO PROFESIONAL', badge:'badge-pro', badgeTxt:'ADMIN+',
-        desc:'Crea y edita Notebooks completos. Disponible solo para administradores y fundador.',
-        delay:.15, show:true, locked:!isAdm,
+        title:'ARQUITECTO PROFESIONAL', badge:'badge-pro', badgeTxt:'ADMIN+',
+        desc:'Crea y edita Notebooks cuánticos completos. Exporta a .ipynb. Solo para administradores y Fundador.',
+        delay:.15,
+        show: isAdm,
+        locked: false,
       },
       {
         screen:'library',
@@ -740,7 +917,7 @@ const QCOL = (() => {
           <path d="M8 7h8M8 11h8M8 15h5" stroke="#00ccff" stroke-width="1"/>
         </svg>`,
         title:'LIBRERÍA Y TUTORIALES', badge:'', badgeTxt:'',
-        desc:'Videos y PDFs educativos de computación cuántica.',
+        desc:'Recursos educativos: tutoriales interactivos, PDFs y videos sobre computación cuántica desde fundamentos hasta algoritmos avanzados.',
         delay:.2, show:true,
       },
       {
@@ -760,14 +937,11 @@ const QCOL = (() => {
         screen: isF ? 'founder' : null,
         onClick: isF ? null : "QCOL.openAuth('founder')",
         icon:`<svg width="26" height="26" viewBox="0 0 48 48" fill="none">
-          <!-- Panel de control -->
           <rect x="4" y="8" width="40" height="32" rx="4" fill="rgba(189,147,249,.08)" stroke="#bd93f9" stroke-width="1.8"/>
-          <!-- Líneas de panel -->
           <rect x="9" y="14" width="12" height="7" rx="2" fill="rgba(189,147,249,.15)" stroke="#bd93f9" stroke-width="1.2"/>
           <rect x="27" y="14" width="12" height="7" rx="2" fill="rgba(189,147,249,.15)" stroke="#bd93f9" stroke-width="1.2"/>
           <line x1="9" y1="27" x2="21" y2="27" stroke="#bd93f9" stroke-width="1.2" stroke-linecap="round"/>
           <line x1="9" y1="31" x2="17" y2="31" stroke="rgba(189,147,249,.5)" stroke-width="1" stroke-linecap="round"/>
-          <!-- Engranaje superpuesto abajo-derecha -->
           <circle cx="34" cy="30" r="6" fill="rgba(10,14,26,.9)"/>
           <circle cx="34" cy="30" r="3.5" fill="none" stroke="#bd93f9" stroke-width="1.5"/>
           <circle cx="34" cy="30" r="1.2" fill="#bd93f9"/>
@@ -777,8 +951,9 @@ const QCOL = (() => {
             stroke="#bd93f9" stroke-width="1.3" stroke-linecap="round"/>
         </svg>`,
         title:'CONFIGURACIÓN', badge:'badge-admin', badgeTxt:'SISTEMA',
-        desc:'Configuración y gestión del ecosistema.',
-        delay:.3, show: true,
+        desc:'Panel de control del ecosistema QCOL. Usuarios, compilador, IA y GitHub.',
+        delay:.3,
+        show: isF,
       },
       {
         screen:'help',
@@ -787,7 +962,7 @@ const QCOL = (() => {
           <path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3M12 17h.01" stroke="#00ccff" stroke-width="1.5" stroke-linecap="round"/>
         </svg>`,
         title:'AYUDA', badge:'', badgeTxt:'',
-        desc:'Guía de uso y documentación del ecosistema.',
+        desc:'Documentación completa, guías de inicio rápido y preguntas frecuentes sobre el ecosistema QCOL.',
         delay:.35, show:true,
       },
     ];
@@ -824,7 +999,13 @@ const QCOL = (() => {
     const users = JSON.parse(localStorage.getItem('qcol_users') || '[]');
     const f = users.find(x => x.username === u && x.password === p);
     if (!f) return notify('Usuario o contraseña incorrectos');
-    curUser = f; closeAuth(); updateUI(); renderMenu();
+    curUser = f;
+    dbLoad().then(data => {
+        if (data?.users) {
+            localStorage.setItem('qcol_users', JSON.stringify(data.users));
+        }
+    });
+    closeAuth(); updateUI(); renderMenu();
     notify(`¡Bienvenido, ${f.name}!`);
     broadcast({ type:'QCOL_USER_UPDATE', user:curUser });
   }
@@ -839,6 +1020,11 @@ const QCOL = (() => {
     const nu = { name, username:u, password:p, role:'user', canUpload:false, joined:new Date().toLocaleDateString() };
     users.push(nu);
     localStorage.setItem('qcol_users', JSON.stringify(users));
+    dbGet('users').then(dbUsers => {
+        const merged = dbUsers || [];
+        if (!merged.find(u => u.username === nu.username)) merged.push(nu);
+        dbSet('users', merged);
+    });
     curUser = nu; closeAuth(); updateUI(); renderMenu();
     notify(`¡Bienvenido, ${name}!`);
     broadcast({ type:'QCOL_USER_UPDATE', user:curUser });
@@ -902,7 +1088,6 @@ const QCOL = (() => {
     document.getElementById('ai-panel-wrapper').classList.toggle('open');
   }
 
-  // Respuestas demo — se usan cuando no hay API key configurada
   const DEMO = {
     qiskit:'from qiskit import QuantumCircuit\nqc = QuantumCircuit(2)\nqc.h(0)\nqc.cx(0,1)\nprint(qc.draw())',
     qubit:'Un qubit: α|0⟩+β|1⟩ donde |α|²+|β|²=1\nBloch: Norte=|0⟩, Sur=|1⟩, Ecuador=superposición',
@@ -922,25 +1107,39 @@ const QCOL = (() => {
     addAIMsg(msg, 'usr');
     document.getElementById('ai-loading').classList.add('show');
 
+    let reply = '';
+
     if (aiCfg.key && aiCfg.provider !== 'none') {
       try {
         const resp = await callAI(msg);
         document.getElementById('ai-loading').classList.remove('show');
         addAIMsg(resp, 'bot');
+        reply = resp;
         aiHistory.push({role:'user',content:msg},{role:'assistant',content:resp});
         if (aiHistory.length > 12) aiHistory = aiHistory.slice(-12);
       } catch(e) {
         document.getElementById('ai-loading').classList.remove('show');
-        addAIMsg('Error de conexión con el asistente. Inténtalo de nuevo.', 'bot');
+        const errMsg = 'Error de conexión con el asistente. Inténtalo de nuevo.';
+        addAIMsg(errMsg, 'bot');
+        reply = errMsg;
       }
     } else {
-      setTimeout(() => {
-        document.getElementById('ai-loading').classList.remove('show');
-        const ml = msg.toLowerCase();
-        let r = 'Puedo ayudarte con Qiskit, Cirq, PennyLane, QuTiP, circuitos cuánticos y física cuántica. ⚛';
-        for (const [k,v] of Object.entries(DEMO)) { if (ml.includes(k)) { r = v; break; } }
-        addAIMsg(r, 'bot');
-      }, 900);
+      await new Promise(resolve => setTimeout(resolve, 900));
+      document.getElementById('ai-loading').classList.remove('show');
+      const ml = msg.toLowerCase();
+      let r = 'Puedo ayudarte con Qiskit, Cirq, PennyLane, QuTiP, circuitos cuánticos y física cuántica. ⚛';
+      for (const [k,v] of Object.entries(DEMO)) { if (ml.includes(k)) { r = v; break; } }
+      addAIMsg(r, 'bot');
+      reply = r;
+    }
+
+    if (curUser?.username && _db) {
+        if (!_db.ai_history) _db.ai_history = {};
+        if (!_db.ai_history[curUser.username]) _db.ai_history[curUser.username] = [];
+        _db.ai_history[curUser.username].push({ q: msg, a: reply, ts: Date.now() });
+        if (_db.ai_history[curUser.username].length > 200) 
+            _db.ai_history[curUser.username] = _db.ai_history[curUser.username].slice(-200);
+        dbSave(_db);
     }
   }
 
@@ -948,27 +1147,21 @@ const QCOL = (() => {
     const temp   = aiCfg.temp   || 0.7;
     const tokens = aiCfg.tokens || 600;
     const lang   = aiCfg.lang   || 'es';
-
-    // Ajustar prompt con idioma
     const langNote = lang==='es' ? ' Responde siempre en español.'
                    : lang==='en' ? ' Always respond in English.'
                    : ' Respond in both Spanish and English.';
     const sys = (aiCfg.prompt || 'Eres el asistente de QCOL, ecosistema de computación cuántica. Responde de forma concisa y técnica.') + langNote;
-
     const msgs = [
       { role:'system', content:sys },
       ...aiHistory.slice(-6),
       { role:'user', content:msg },
     ];
-
     const endpoints = {
       mistral:     'https://api.mistral.ai/v1/chat/completions',
       groq:        'https://api.groq.com/openai/v1/chat/completions',
       openai:      'https://api.openai.com/v1/chat/completions',
     };
-
     if (aiCfg.provider === 'huggingface') {
-      // HuggingFace Inference API
       const model = aiCfg.model || 'mistralai/Mistral-7B-Instruct-v0.3';
       const url = `https://api-inference.huggingface.co/models/${model}`;
       const prompt = msgs.map(m => `${m.role}: ${m.content}`).join('\n') + '\nassistant:';
@@ -982,14 +1175,11 @@ const QCOL = (() => {
       if (!res.ok) throw new Error(d.error || 'Error HuggingFace');
       return Array.isArray(d) ? d[0].generated_text.split('assistant:').pop().trim() : d.generated_text;
     }
-
     const url = endpoints[aiCfg.provider];
     if (!url) throw new Error('Proveedor no soportado');
-
     const defaultModel = aiCfg.provider==='mistral' ? 'mistral-large-latest'
                        : aiCfg.provider==='groq'    ? 'llama3-70b-8192'
                        : 'gpt-4o-mini';
-
     const res = await fetch(url, {
       method:'POST',
       headers:{'Authorization':'Bearer '+aiCfg.key,'Content-Type':'application/json'},
@@ -1010,11 +1200,10 @@ const QCOL = (() => {
     const msgs = document.getElementById('ai-messages');
     const d = document.createElement('div');
     d.className = 'ai-msg ' + role;
-    d.innerHTML = `<div class="ai-lbl">${role==='bot'?'QCOL AI':'TÚ'}</div>${text.replace(/\n/g,'<br>')}`;
+    d.innerHTML = `<div class="ai-lbl">${role==='bot'?'QUANTUMCHAT':'TÚ'}</div>${text.replace(/\n/g,'<br>')}`;
     msgs.appendChild(d); msgs.scrollTop = msgs.scrollHeight;
   }
 
-  // ── COMPILADOR ──
   async function checkEngine() {
     const url = localStorage.getItem('qcol_colab_url');
     if (!url) return;
@@ -1027,15 +1216,13 @@ const QCOL = (() => {
     } catch(e) {}
   }
 
-  // ── NOTIFY ──
   function notify(msg) {
     const n = document.getElementById('notif');
     n.textContent = msg; n.classList.add('show');
     clearTimeout(n._t); n._t = setTimeout(() => n.classList.remove('show'), 3200);
   }
 
-  // ── INIT ──
-  function init() {
+  async function init() {
     const msgs = ['INICIANDO...', 'CARGANDO MÓDULOS...', 'LISTO'];
     let i = 0;
     const sp = document.getElementById('splash-msg');
@@ -1049,9 +1236,14 @@ const QCOL = (() => {
     }, 650);
 
     setupAI();
-    renderMenu();
+    await dbInit().then(() => {
+        renderMenu();
+        checkEngine();
+    }).catch(() => {
+        renderMenu();
+        checkEngine();
+    });
     updateUI();
-    checkEngine();
 
     document.getElementById('auth-modal').addEventListener('click', e => {
       if (e.target === document.getElementById('auth-modal')) closeAuth();

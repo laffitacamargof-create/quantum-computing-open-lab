@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QCOL Proyectos</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=JetBrains+Mono:wght@400;500&family=Exo+2:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#010608;--s:#071220;--s2:#0c1c30;--b:#0d2a4a;--b2:#1a3a5c;--bl:#0088ff;--bl2:#00ccff;--gr:#00ff88;--gd:#ffd700;--rd:#ff4466;--tx:#ddeeff;--mu:#4a7a9b;--orb:'Orbitron',monospace;--mono:'JetBrains Mono',monospace;--exo:'Exo 2',sans-serif;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--tx);font-family:var(--exo);min-height:100vh;}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,136,255,.03)1px,transparent 1px),linear-gradient(90deg,rgba(0,136,255,.03)1px,transparent 1px);background-size:40px 40px;pointer-events:none;}
+.notif{position:fixed;top:.8rem;right:.8rem;z-index:999;padding:.55rem 1rem;background:rgba(4,14,28,.97);border:1px solid var(--bl2);border-radius:8px;font-family:var(--orb);font-size:.6rem;color:var(--bl2);transform:translateX(130%);transition:transform .3s;}
+.notif.show{transform:translateX(0);}
+.admin-bar{display:none;background:rgba(255,215,0,.05);border-bottom:1px solid rgba(255,215,0,.15);padding:.5rem 1.3rem;font-family:var(--orb);font-size:.56rem;color:var(--gd);align-items:center;gap:.5rem;}
+.admin-bar.show{display:flex;}
+.toolbar{display:flex;align-items:center;gap:.7rem;padding:.85rem 1.3rem;background:var(--s);border-bottom:1px solid var(--b);flex-wrap:wrap;position:sticky;top:0;z-index:10;}
+.search-box{display:flex;align-items:center;gap:.4rem;background:rgba(0,0,0,.35);border:1px solid var(--b2);border-radius:7px;padding:.32rem .7rem;flex:1;max-width:300px;}
+.search-box input{background:transparent;border:none;color:var(--tx);font-family:var(--exo);font-size:.75rem;outline:none;width:100%;}
+.search-box input::placeholder{color:var(--mu);}
+.filter-btns{display:flex;gap:.3rem;}
+.fbtn{padding:.28rem .65rem;background:transparent;border:1px solid var(--b2);border-radius:5px;color:var(--mu);font-family:var(--orb);font-size:.52rem;cursor:pointer;transition:all .2s;}
+.fbtn.on{background:rgba(0,136,255,.15);border-color:var(--bl);color:var(--bl2);}
+.btn{padding:.32rem .75rem;border:none;border-radius:6px;font-family:var(--orb);font-size:.55rem;cursor:pointer;transition:all .2s;white-space:nowrap;}
+.btn-pri{background:linear-gradient(135deg,#003388,var(--bl));color:#fff;}
+.btn-pri:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,136,255,.4);}
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:5rem 2rem;text-align:center;gap:1.2rem;min-height:55vh;}
+.empty-icon{font-size:3.5rem;opacity:.4;}
+.empty-title{font-family:var(--orb);font-size:.95rem;color:var(--mu);}
+.empty-desc{font-size:.74rem;color:var(--mu);max-width:380px;line-height:1.75;opacity:.7;}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:1rem;padding:1.3rem;max-width:1200px;margin:0 auto;width:100%;}
+.card{background:var(--s);border:1px solid var(--b);border-radius:13px;overflow:hidden;transition:all .3s;animation:fu .4s ease both;}
+@keyframes fu{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+.card:hover{border-color:rgba(0,136,255,.5);transform:translateY(-3px);box-shadow:0 12px 32px rgba(0,136,255,.1);}
+.card-hdr{padding:.75rem 1rem;background:var(--s2);border-bottom:1px solid var(--b);display:flex;align-items:center;justify-content:space-between;}
+.tbadge{font-family:var(--orb);font-size:.5rem;padding:.13rem .42rem;border-radius:4px;}
+.tnb{background:rgba(0,136,255,.15);color:var(--bl2);border:1px solid rgba(0,136,255,.3);}
+.tpdf{background:rgba(255,68,102,.12);color:#ff8899;border:1px solid rgba(255,68,102,.3);}
+.tvid{background:rgba(0,255,136,.1);color:var(--gr);border:1px solid rgba(0,255,136,.3);}
+.card-tags{font-family:var(--mono);font-size:.5rem;color:var(--mu);}
+.card-body{padding:1rem;}
+.card-title{font-family:var(--orb);font-size:.72rem;color:var(--tx);margin-bottom:.35rem;}
+.card-desc{font-size:.68rem;color:var(--mu);line-height:1.65;margin-bottom:.8rem;}
+.card-meta{display:flex;gap:.85rem;font-size:.6rem;color:var(--mu);margin-bottom:.75rem;font-family:var(--mono);}
+.card-actions{display:flex;gap:.4rem;}
+.btn-exec{flex:1;padding:.52rem;background:linear-gradient(135deg,rgba(0,136,255,.18),rgba(0,200,255,.08));border:1px solid rgba(0,136,255,.4);border-radius:7px;color:var(--bl2);font-family:var(--orb);font-size:.58rem;cursor:pointer;transition:all .2s;}
+.btn-exec:hover{background:rgba(0,136,255,.28);}
+.btn-del{padding:.52rem .65rem;background:rgba(255,68,102,.08);border:1px solid rgba(255,68,102,.2);border-radius:7px;color:#ff8899;font-family:var(--orb);font-size:.58rem;cursor:pointer;}
+.btn-del:hover{background:rgba(255,68,102,.18);}
+.modal-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:500;align-items:center;justify-content:center;}
+.modal-ov.open{display:flex;}
+.modal{background:var(--s);border:1px solid rgba(0,136,255,.35);border-radius:14px;padding:1.7rem;width:min(500px,92vw);max-height:90vh;overflow-y:auto;animation:su .3s ease;}
+@keyframes su{from{transform:translateY(16px);opacity:0;}to{transform:translateY(0);opacity:1;}}
+.modal-title{font-family:var(--orb);font-size:.88rem;color:var(--bl2);margin-bottom:1.2rem;}
+.fg{margin-bottom:.8rem;}
+.fl{font-family:var(--orb);font-size:.52rem;color:var(--mu);letter-spacing:.1em;display:block;margin-bottom:.25rem;}
+.fi{width:100%;background:rgba(0,0,0,.4);border:1px solid var(--b2);border-radius:7px;padding:.5rem .8rem;color:var(--tx);font-family:var(--exo);font-size:.78rem;outline:none;}
+.fi:focus{border-color:rgba(0,136,255,.7);}
+select.fi{cursor:pointer;}
+textarea.fi{resize:vertical;min-height:70px;line-height:1.6;}
+.btn-row{display:flex;gap:.5rem;margin-top:.8rem;}
+.btn-cancel{padding:.45rem .9rem;background:transparent;border:1px solid var(--b2);border-radius:7px;color:var(--mu);font-family:var(--orb);font-size:.58rem;cursor:pointer;}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:.7rem;}
+</style>
+</head>
+<body>
+<div class="notif" id="notif"></div>
+<div class="admin-bar" id="admin-bar">
+  👑 Modo administrador — Gestiona proyectos del laboratorio
+  <button class="btn btn-pri" style="margin-left:auto;" onclick="openAdd()">+ AGREGAR</button>
+</div>
+<div class="toolbar">
+  <div class="search-box">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="8" stroke="#4a7a9b" stroke-width="2"/><path d="M21 21l-4.35-4.35" stroke="#4a7a9b" stroke-width="2" stroke-linecap="round"/></svg>
+    <input id="search" placeholder="Buscar..." oninput="render()">
+  </div>
+  <div class="filter-btns">
+    <button class="fbtn on" onclick="setF('all',this)">Todo</button>
+    <button class="fbtn" onclick="setF('nb',this)">Notebooks</button>
+    <button class="fbtn" onclick="setF('pdf',this)">PDFs</button>
+    <button class="fbtn" onclick="setF('video',this)">Videos</button>
+  </div>
+</div>
+<div id="content"></div>
+
+<!-- MODAL AGREGAR -->
+<div class="modal-ov" id="add-modal">
+  <div class="modal">
+    <div class="modal-title">➕ Agregar Proyecto</div>
+    <div class="fg"><label class="fl">TÍTULO</label><input class="fi" id="a-t" placeholder="Nombre del proyecto"></div>
+    <div class="fg"><label class="fl">TIPO</label>
+      <select class="fi" id="a-type">
+        <option value="nb">Notebook .ipynb</option>
+        <option value="pdf">PDF / LaTeX</option>
+        <option value="video">Video</option>
+      </select>
+    </div>
+    <div class="fg"><label class="fl">ID DEL ARCHIVO (sin extensión, sin espacios)</label><input class="fi" id="a-id" placeholder="ej: circuito_bell"></div>
+    <div class="fg"><label class="fl">DESCRIPCIÓN</label><textarea class="fi" id="a-desc" placeholder="Breve descripción"></textarea></div>
+    <div class="fg"><label class="fl">TAGS</label><input class="fi" id="a-tags" placeholder="Qiskit · LaTeX"></div>
+    <div class="g2">
+      <div class="fg"><label class="fl">CELDAS / PÁGINAS</label><input class="fi" id="a-size" type="number" value="10"></div>
+      <div class="fg"><label class="fl">TIEMPO (min)</label><input class="fi" id="a-time" type="number" value="15"></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-pri" onclick="addProj()">✅ Guardar</button>
+      <button class="btn-cancel" onclick="closeAdd()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let curUser=null,isAdmin=false,cfg={},filt='all';
+function postCore(t,d={}){window.parent.postMessage({type:t,...d},'*');}
+function notify(msg){const n=document.getElementById('notif');n.textContent=msg;n.classList.add('show');clearTimeout(n._t);n._t=setTimeout(()=>n.classList.remove('show'),3000);postCore('QCOL_NOTIFY',{msg});}
+window.addEventListener('message',e=>{
+  const d=e.data;if(!d?.type)return;
+  if(d.type==='QCOL_CONFIG'){cfg=d;}
+  if(d.type==='QCOL_USER_UPDATE'){
+    curUser=d.user;isAdmin=curUser?.role==='admin'||curUser?.role==='founder';
+    document.getElementById('admin-bar').classList.toggle('show',isAdmin);render();
+  }
+});
+postCore('QCOL_GET_CONFIG');
+function getP(){return JSON.parse(localStorage.getItem('qcol_projs')||'[]');}
+function saveP(p){localStorage.setItem('qcol_projs',JSON.stringify(p));}
+function setF(f,el){filt=f;document.querySelectorAll('.fbtn').forEach(b=>b.classList.remove('on'));el.classList.add('on');render();}
+function render(){
+  const q=document.getElementById('search').value.toLowerCase();
+  const all=getP().filter(p=>{
+    const mf=filt==='all'||p.type===filt;
+    const mq=!q||p.title.toLowerCase().includes(q)||(p.desc||'').toLowerCase().includes(q)||(p.tags||'').toLowerCase().includes(q);
+    return mf&&mq;
+  });
+  const c=document.getElementById('content');
+  if(all.length===0){
+    c.innerHTML=`<div class="empty"><div class="empty-icon">📂</div>
+      <div class="empty-title">${q?'Sin resultados':'Sin proyectos aún'}</div>
+      <div class="empty-desc">${q?'No se encontraron proyectos con "'+q+'"':isAdmin?'Usa el botón + AGREGAR para publicar el primer proyecto.':'El administrador aún no ha publicado proyectos.'}</div>
+    </div>`;return;
+  }
+  c.innerHTML='<div class="grid">'+all.map(p=>{
+    const tl=p.type==='nb'?'NOTEBOOK':p.type==='pdf'?'PDF LaTeX':'VIDEO';
+    const tc=p.type==='nb'?'tnb':p.type==='pdf'?'tpdf':'tvid';
+    const meta=p.type==='nb'?`<span>⚛ ${p.size||10} celdas</span><span>⏱ ${p.time||10} min</span>`:p.type==='pdf'?`<span>📄 ${p.size||10} pág</span><span>⏱ ${p.time||10} min</span>`:`<span>▶ Video</span><span>⏱ ${p.time||10} min</span>`;
+    const del=isAdmin?`<button class="btn-del" onclick="delP('${p.id}')">🗑</button>`:'';
+    const exec=p.type==='nb'?'▶ EJECUTAR':p.type==='pdf'?'📖 VER':'▶ VER';
+    return`<div class="card"><div class="card-hdr"><span class="tbadge ${tc}">${tl}</span><span class="card-tags">${p.tags||''}</span></div>
+      <div class="card-body"><div class="card-title">${p.title}</div><p class="card-desc">${p.desc||''}</p>
+      <div class="card-meta">${meta}</div>
+      <div class="card-actions"><button class="btn-exec" onclick="execP('${p.id}','${p.type}')">${exec}</button>${del}</div></div></div>`;
+  }).join('')+'</div>';
+}
+function execP(id,type){
+  const p=getP().find(x=>x.id===id);if(!p)return;
+  if(type==='nb'){
+    // Si admin/founder → abrir en Arquitecto Pro con las celdas
+    if(isAdmin){
+      postCore('QCOL_LOAD_NB',{nb:p});
+      postCore('QCOL_NAV',{screen:'architect-pro'});
+      notify('Abriendo en Arquitecto Pro...');
+    } else {
+      // Usuario normal → abrir en Arquitecto básico
+      postCore('QCOL_NAV',{screen:'architect'});
+      notify('Abriendo en el editor...');
+    }
+  }
+  else if(type==='pdf'){
+    const gh=cfg.ghUser||'laffitacamargof-create',repo=cfg.ghRepo||'quantum-computing-open-lab';
+    window.open(`https://github.com/${gh}/${repo}/blob/main/docs/${id}.pdf`,'_blank');
+  }else notify('Video: '+p.title);
+}
+function delP(id){
+  if(!isAdmin||!confirm('¿Eliminar?'))return;
+  saveP(getP().filter(x=>x.id!==id));notify('Eliminado');render();
+}
+function openAdd(){document.getElementById('add-modal').classList.add('open');}
+function closeAdd(){document.getElementById('add-modal').classList.remove('open');}
+function addProj(){
+  const t=document.getElementById('a-t').value.trim(),id=document.getElementById('a-id').value.trim().replace(/\s/g,'_').toLowerCase(),type=document.getElementById('a-type').value,desc=document.getElementById('a-desc').value.trim(),tags=document.getElementById('a-tags').value.trim(),size=parseInt(document.getElementById('a-size').value)||10,time=parseInt(document.getElementById('a-time').value)||15;
+  if(!t||!id){notify('Título e ID son obligatorios');return;}
+  const all=getP();if(all.find(p=>p.id===id)){notify('ID ya existe');return;}
+  all.push({id,title:t,type,desc,tags,size,time,added:new Date().toLocaleDateString()});
+  saveP(all);closeAdd();notify('✅ Proyecto agregado: '+t);render();
+  ['a-t','a-id','a-desc','a-tags'].forEach(k=>document.getElementById(k).value='');
+}
+document.getElementById('add-modal').addEventListener('click',e=>{if(e.target===document.getElementById('add-modal'))closeAdd();});
+render();
+</script>
+</body>
+</html>

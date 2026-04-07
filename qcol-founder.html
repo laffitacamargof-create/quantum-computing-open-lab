@@ -482,25 +482,24 @@ textarea.fi{resize:vertical;min-height:70px;line-height:1.6;}
   <div class="sec">
     <div class="sec-title">🧠 IA Resolver — Clasificación automática de errores</div>
     <div class="alert alert-info">
-      El editor <strong>Arquitecto Cuántico</strong> puede consultar a <strong>Mistral 3</strong> para clasificar atributos no reconocidos durante la sincronización.
+      El editor <strong>Arquitecto Cuántico</strong> puede consultar a <strong>DeepSeek</strong> para clasificar atributos no reconocidos durante la sincronización.
       Los atributos considerados <strong>innecesarios</strong> para dibujar el circuito se ignorarán permanentemente, evitando futuras consultas.
     </div>
 
     <div class="grid2">
       <div>
         <div class="fg">
-          <label class="fl">🔑 API Key de Mistral</label>
-          <input class="fi" id="mistral-key" type="password" placeholder="Ingresa tu API key de Mistral">
+          <label class="fl">🔑 API Key de DeepSeek</label>
+          <input class="fi" id="mistral-key" type="password" placeholder="Ingresa tu API key de DeepSeek">
           <div style="font-size:.58rem;color:var(--mu);margin-top:.25rem;">
-            Obtén tu clave gratis en <a onclick="window.open('https://console.mistral.ai','_blank')" style="color:var(--gr);cursor:pointer;">console.mistral.ai</a> → API Keys → Create
+            Obtén tu clave gratis en <a onclick="window.open('https://platform.deepseek.com/api_keys','_blank')" style="color:var(--gr);cursor:pointer;">platform.deepseek.com/api_keys</a>
           </div>
         </div>
         <div class="fg">
-          <label class="fl">🤖 Modelo de Mistral</label>
+          <label class="fl">🤖 Modelo de IA</label>
           <select class="fi" id="mistral-model">
-            <option value="mistral-large-latest">Mistral Large (mejor calidad)</option>
-            <option value="mistral-small-latest">Mistral Small (más rápido)</option>
-            <option value="open-mistral-nemo">Mistral Nemo (rápido y eficiente)</option>
+            <option value="deepseek-chat">DeepSeek Chat (recomendado)</option>
+            <option value="deepseek-coder">DeepSeek Coder</option>
           </select>
         </div>
         <div class="fg">
@@ -510,14 +509,13 @@ textarea.fi{resize:vertical;min-height:70px;line-height:1.6;}
         <div class="btn-row">
           <button class="btn btn-pri" onclick="saveMistralSettings()">💾 Guardar configuración</button>
           <button class="btn btn-ok" onclick="testMistralConnection()">🧪 Probar conexión</button>
-          <button class="btn btn-sec" onclick="resetMistralPrompt()">🔄 Restaurar prompt por defecto</button>
         </div>
       </div>
       <div>
         <div class="tog-row">
           <div>
             <div class="tog-name">🧠 Clasificación automática de errores</div>
-            <div class="tog-desc">Permite a Mistral 3 clasificar errores y silenciar los innecesarios</div>
+            <div class="tog-desc">Permite a DeepSeek clasificar errores y silenciar los innecesarios</div>
           </div>
           <label class="tog">
             <input type="checkbox" id="mistral-toggle">
@@ -545,7 +543,7 @@ textarea.fi{resize:vertical;min-height:70px;line-height:1.6;}
   </div>
 
   <div class="sec">
-    <div class="sec-title">📊 Estadísticas de llamadas a Mistral</div>
+    <div class="sec-title">📊 Estadísticas de llamadas a DeepSeek</div>
     <div class="status-row">
       <div class="sdot ok"></div>
       <div class="stxt" id="mistral-calls-count">0 llamadas realizadas</div>
@@ -556,7 +554,7 @@ textarea.fi{resize:vertical;min-height:70px;line-height:1.6;}
   <div class="sec">
     <div class="sec-title">📋 Atributos ignorados permanentemente</div>
     <div class="alert alert-info">
-      Estos atributos/métodos han sido clasificados como <strong>innecesarios</strong> por Mistral y serán ignorados en el editor.
+      Estos atributos/métodos han sido clasificados como <strong>innecesarios</strong> por DeepSeek y serán ignorados en el editor.
       Puedes eliminarlos de la lista si quieres que se reconsideren.
     </div>
     <div id="ignored-attrs-table" style="font-size:.65rem;color:var(--mu);">
@@ -565,16 +563,23 @@ textarea.fi{resize:vertical;min-height:70px;line-height:1.6;}
   </div>
 </div>
 
-<!-- ════════════ USUARIOS ════════════ -->
+<!-- ════════════ USUARIOS (MODIFICADO) ════════════ -->
 <div class="panel" id="tab-users">
   <div class="grid2">
     <div class="sec">
-      <div class="sec-title">👥 Usuarios registrados</div>
+      <div class="sec-title" style="justify-content:space-between;">
+        <span>👥 Usuarios registrados</span>
+        <button class="btn btn-ok" style="padding:.2rem .6rem; font-size:.5rem;" onclick="syncUsersFromCloud()">🔄 Sincronizar desde nube</button>
+      </div>
       <div style="overflow-x:auto;">
         <table class="tbl" id="users-tbl">
           <thead><tr><th>USUARIO</th><th>ROL</th><th>UPLOAD</th><th>ACCIONES</th></tr></thead>
           <tbody id="users-tbody">
-            <tr><td style="font-size:.62rem;">franci_laffita — Franci Laffita</td><td><span class="rb rbf">FUNDADOR</span></td><td style="color:var(--gr)">✅</td><td>—</td></tr>
+            <tr><td style="font-size:.62rem;">franci_laffita — Franci Laffita</td>
+              <td><span class="rb rbf">FUNDADOR</span></td>
+              <td style="color:var(--gr)">✅</td>
+              <td>—</td>
+            </tr>
           </tbody>
         </table>
       </div>
@@ -842,6 +847,20 @@ window.addEventListener('message', (e) => {
   if (d.type === 'QCOL_USER_UPDATE') {
     currentUser = d.user;
   }
+  // Nuevo: respuesta desde el core con datos de la base de datos (usuarios)
+  if (d.type === 'QCOL_DB_RESPONSE' && d.section === 'users' && d.data) {
+    try {
+      const usersFromCloud = JSON.parse(d.data);
+      if (Array.isArray(usersFromCloud)) {
+        localStorage.setItem('qcol_users', JSON.stringify(usersFromCloud));
+        renderUsers();
+        notify('✅ Usuarios sincronizados desde GitHub');
+        addSysLog('Usuarios sincronizados desde la nube', 'ok');
+      }
+    } catch(e) {
+      console.error('Error al parsear usuarios desde la nube', e);
+    }
+  }
 });
 
 let currentUser = null;
@@ -962,135 +981,91 @@ function saveColab() {
   setTimeout(() => checkEngine(), 500);
 }
 
-// ══ CONSTANTE PROMPT POR DEFECTO ══
-const DEFAULT_PROMPT = `Eres un asistente especializado en el editor "Arquitecto Cuántico" del ecosistema QCOL (Quantum Computing Open Lab). Este editor dibuja circuitos cuánticos a partir de código Python (Qiskit). Tu única tarea es clasificar si un atributo o método es ESENCIAL o NO ESENCIAL para poder dibujar el circuito (es decir, para conocer las puertas, sus qubits y sus conexiones). Responde únicamente con "SI" o "NO".
-
-Reglas de clasificación:
-- RESPUESTA "SI" (esencial) si el atributo es:
-  * Un método de puerta: h, x, y, z, s, t, sx, rx, ry, rz, p, cx, cz, swap, cp, ccx, cswap, mcx, append, measure, measure_all.
-  * Una propiedad fundamental: num_qubits, qubits, data (la lista de operaciones), clbits, name (cuando se usa para identificar una puerta).
-  * Un método que añade una operación al circuito (como qc.append(gate, qubits)).
-  * Cualquier cosa que directamente afecte a la estructura del circuito.
-
-- RESPUESTA "NO" (no esencial) si el atributo es:
-  * Métodos de simulación: run, result, get_counts, statevector, save_statevector, AerSimulator.
-  * Métodos de visualización: draw, plot_histogram, plot_bloch_multivector, figure, show.
-  * Metadatos: definition, label, properties, settings, configuration, __dict__, __class__.
-  * Atributos internos de Python: __name__, __module__, __doc__, __dict__, __weakref__.
-  * Cualquier cosa relacionada con el simulador o con la salida de resultados (no con la construcción del circuito).
-  * Errores de lógica del usuario (por ejemplo, intentar acceder a 'operation' en un objeto que no tiene ese atributo). En ese caso, responde "NO" porque no es esencial para el dibujo.
-
-Si no estás seguro, responde "NO".`;
-
-// ══ CARGAR CONFIGURACIÓN DE MISTRAL (CON LIMPIEZA) ══
+// ══ CARGAR CONFIGURACIÓN DE MISTRAL (AHORA DEEPSEEK) ══
 function loadMistralSettings() {
   const enabled = localStorage.getItem('qcol_mistral_enabled') === 'true';
-  let key = localStorage.getItem('qcol_mistral_key') || '';
-  const model = localStorage.getItem('qcol_mistral_model') || 'mistral-large-latest';
+  const key = localStorage.getItem('qcol_mistral_key') || '';
+  const model = localStorage.getItem('qcol_mistral_model') || 'deepseek-chat';
   const timeout = localStorage.getItem('qcol_mistral_timeout') || '10';
-  let prompt = localStorage.getItem('qcol_mistral_prompt');
-  
-  // Limpiar key y prompt de caracteres no ASCII
-  const cleanedKey = key.replace(/[^\x00-\xFF]/g, '');
-  if (cleanedKey !== key) {
-    localStorage.setItem('qcol_mistral_key', cleanedKey);
-    key = cleanedKey;
-    notify('⚠️ Se ha limpiado la API key de caracteres no ASCII.');
-  }
-  if (prompt) {
-    const cleanedPrompt = prompt.replace(/[^\x00-\xFF]/g, '');
-    if (cleanedPrompt !== prompt) {
-      localStorage.setItem('qcol_mistral_prompt', cleanedPrompt);
-      prompt = cleanedPrompt;
-      notify('⚠️ Se ha limpiado el prompt de caracteres no ASCII.');
-    }
-  }
-  
-  // Si no hay prompt guardado, usar el por defecto
-  if (!prompt) {
-    prompt = DEFAULT_PROMPT;
-    localStorage.setItem('qcol_mistral_prompt', prompt);
-  }
-  
+  const prompt = localStorage.getItem('qcol_mistral_prompt') || '';
   document.getElementById('mistral-toggle').checked = enabled;
   document.getElementById('mistral-key').value = key;
   document.getElementById('mistral-model').value = model;
   document.getElementById('mistral-timeout').value = timeout;
   document.getElementById('mistral-prompt').value = prompt;
-  
   updateMistralUI();
 }
 
-// ══ GUARDAR CONFIGURACIÓN DE MISTRAL (CON LIMPIEZA) ══
-function cleanNonASCII(str) {
-  return str.replace(/[^\x00-\xFF]/g, '');
-}
-
+// MEJORA: sanitizar API key al guardar y mostrar preview
 function saveMistralSettings() {
-  let apiKey = document.getElementById('mistral-key').value.trim();
-  let prompt = document.getElementById('mistral-prompt').value;
-  const cleanedKey = cleanNonASCII(apiKey);
-  const cleanedPrompt = cleanNonASCII(prompt);
-  
-  if (cleanedKey !== apiKey) {
-    notify('⚠️ La API key contenía caracteres no ASCII. Se han eliminado automáticamente.');
-    document.getElementById('mistral-key').value = cleanedKey;
-  }
-  if (cleanedPrompt !== prompt) {
-    notify('⚠️ El prompt contenía caracteres no ASCII. Se han eliminado automáticamente.');
-    document.getElementById('mistral-prompt').value = cleanedPrompt;
-  }
-  
-  localStorage.setItem('qcol_mistral_enabled', document.getElementById('mistral-toggle').checked);
-  localStorage.setItem('qcol_mistral_key', cleanedKey);
-  localStorage.setItem('qcol_mistral_model', document.getElementById('mistral-model').value);
-  localStorage.setItem('qcol_mistral_timeout', document.getElementById('mistral-timeout').value);
-  localStorage.setItem('qcol_mistral_prompt', cleanedPrompt);
-  
-  updateMistralUI();
-  notify('✅ Configuración de Mistral guardada');
-  addSysLog('Mistral: configuración actualizada', 'ok');
+    // Obtener la clave del campo
+    let rawKey = document.getElementById('mistral-key').value;
+    // Limpiar: eliminar espacios, comillas dobles/simples, saltos de línea, tabuladores
+    let cleanKey = rawKey.replace(/[\s"'\n\r\t]/g, '').trim();
+    // Actualizar el campo visual con la clave limpia
+    document.getElementById('mistral-key').value = cleanKey;
+    
+    const enabled = document.getElementById('mistral-toggle').checked;
+    const model = document.getElementById('mistral-model').value;
+    const timeout = document.getElementById('mistral-timeout').value;
+    let prompt = document.getElementById('mistral-prompt').value;
+    
+    localStorage.setItem('qcol_mistral_enabled', enabled);
+    localStorage.setItem('qcol_mistral_key', cleanKey);
+    localStorage.setItem('qcol_mistral_model', model);
+    localStorage.setItem('qcol_mistral_timeout', timeout);
+    localStorage.setItem('qcol_mistral_prompt', prompt);
+    
+    updateMistralUI();
+    // Mostrar los primeros 8 caracteres de la clave (para debug)
+    const keyPreview = cleanKey.slice(0, 8) + (cleanKey.length > 8 ? '...' : '');
+    notify(`✅ Configuración de DeepSeek guardada — clave: ${keyPreview}`);
+    addSysLog('DeepSeek: configuración actualizada', 'ok');
 }
 
-function resetMistralPrompt() {
-  localStorage.setItem('qcol_mistral_prompt', DEFAULT_PROMPT);
-  document.getElementById('mistral-prompt').value = DEFAULT_PROMPT;
-  notify('✅ Prompt restaurado al valor por defecto');
-  addSysLog('Mistral: prompt restaurado', 'ok');
-}
-
+// MEJORA: test con DeepSeek, sanitización y lectura como texto
 async function testMistralConnection() {
-  let apiKey = localStorage.getItem('qcol_mistral_key');
-  if (!apiKey) { notify('❌ No hay API key configurada'); return; }
-  // Limpiar de nuevo por si acaso
-  apiKey = cleanNonASCII(apiKey);
-  if (apiKey !== localStorage.getItem('qcol_mistral_key')) {
-    localStorage.setItem('qcol_mistral_key', apiKey);
-    notify('⚠️ Se ha limpiado la API key de caracteres no ASCII.');
-  }
-  const model = localStorage.getItem('qcol_mistral_model') || 'mistral-large-latest';
-  notify('🔄 Probando conexión con Mistral...');
-  try {
-    const res = await fetch('https://api.mistral.ai/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: model,
-        messages: [{ role: 'user', content: 'Di "OK"' }],
-        max_tokens: 5
-      })
-    });
-    const data = await res.json();
-    if (res.ok) {
-      notify('✅ Conexión exitosa con Mistral');
-      addSysLog('Mistral: conexión probada correctamente', 'ok');
-    } else {
-      throw new Error(data.error?.message || 'Error desconocido');
+    // Leer y sanitizar la API key
+    let apiKey = localStorage.getItem('qcol_mistral_key');
+    if (!apiKey) { notify('❌ No hay API key configurada'); return; }
+    apiKey = apiKey.replace(/[\s"'\n\r\t]/g, '').trim();
+    // Forzar endpoint y modelo de DeepSeek
+    const url = 'https://api.deepseek.com/v1/chat/completions';
+    const model = 'deepseek-chat';
+    notify(`🔄 Probando conexión con DeepSeek (clave: ${apiKey.slice(0,8)}...)`);
+    try {
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                model: model,
+                messages: [{ role: 'user', content: 'Di "OK"' }],
+                max_tokens: 5
+            })
+        });
+        // Leer como texto primero para depurar
+        const text = await res.text();
+        console.log('Respuesta cruda de DeepSeek:', text);
+        if (res.ok) {
+            try {
+                const data = JSON.parse(text);
+                notify('✅ Conexión exitosa con DeepSeek');
+                addSysLog('DeepSeek: conexión probada correctamente', 'ok');
+            } catch (e) {
+                notify('⚠️ Respuesta no JSON: ' + text.substring(0, 100));
+                addSysLog('DeepSeek: respuesta no JSON', 'err');
+            }
+        } else {
+            notify(`❌ Error HTTP ${res.status}: ${text.substring(0, 200)}`);
+            addSysLog(`DeepSeek: HTTP ${res.status}`, 'err');
+        }
+    } catch (err) {
+        notify('❌ Error de red: ' + err.message);
+        addSysLog('DeepSeek: error de conexión', 'err');
     }
-  } catch (err) {
-    notify('❌ Error conectando con Mistral: ' + err.message);
-    addSysLog('Mistral: error de conexión', 'err');
-  }
 }
 
 function updateMistralUI() {
@@ -1131,7 +1106,7 @@ function loadIgnoredAttrsTable() {
     <thead><tr><th>Atributo</th><th>Razón</th><th>Fecha</th><th></th></tr></thead>
     <tbody>`;
   for (let attr of attrs) {
-    const reason = reasons[attr] || 'Clasificado por Mistral';
+    const reason = reasons[attr] || 'Clasificado por DeepSeek';
     const date = new Date().toLocaleDateString();
     html += `<tr>
       <td style="font-family:var(--mono);font-size:.65rem;">${escapeHtml(attr)}</td>
@@ -1140,7 +1115,8 @@ function loadIgnoredAttrsTable() {
       <td><button class="bsm red" onclick="removeIgnoredAttr('${escapeHtml(attr)}')">✕ Revertir</button></td>
     </tr>`;
   }
-  html += `</tbody></table>`;
+  html += `</tbody>
+  </table>`;
   container.innerHTML = html;
 }
 
@@ -1230,12 +1206,12 @@ function loadSaved() {
     document.getElementById('plt-title').value = cfg.authorTitle || '';
     document.getElementById('plt-version').value = cfg.version || '2.0.0';
   }
-  // Inicializar valores por defecto de Mistral
+  // Inicializar valores por defecto de DeepSeek
   if (localStorage.getItem('qcol_mistral_enabled') === null) {
     localStorage.setItem('qcol_mistral_enabled', 'true');
   }
   if (localStorage.getItem('qcol_mistral_model') === null) {
-    localStorage.setItem('qcol_mistral_model', 'mistral-large-latest');
+    localStorage.setItem('qcol_mistral_model', 'deepseek-chat');
   }
   if (localStorage.getItem('qcol_mistral_timeout') === null) {
     localStorage.setItem('qcol_mistral_timeout', '10');
@@ -1257,303 +1233,32 @@ function getGH() {
 }
 function getAI() { return JSON.parse(localStorage.getItem('qcol_ai') || '{}'); }
 function getConfig() { return JSON.parse(localStorage.getItem('qcol_cfg') || '{}'); }
-function getUsers() { return JSON.parse(localStorage.getItem('qcol_users') || '[]'); }
-function saveUsersFn(u) { localStorage.setItem('qcol_users', JSON.stringify(u)); }
 
-// ══ COLAB (funciones antiguas, se mantienen pero ya no se usan directamente) ══
-function downloadTemplate(lib) {
-  const installs = {
-    qiskit: '!pip install qiskit qiskit-aer qiskit-ibm-runtime matplotlib numpy scipy sympy -q',
-    cirq: '!pip install cirq cirq-core tensorflow-quantum matplotlib -q',
-    pennylane: '!pip install pennylane pennylane-lightning autograd matplotlib -q',
-    qutip: '!pip install qutip numpy scipy matplotlib -q',
-  };
-  const imports = {
-    qiskit: 'from qiskit import QuantumCircuit\nfrom qiskit_aer import AerSimulator\nimport numpy as np\nfrom numpy import pi\nimport matplotlib.pyplot as plt',
-    cirq: 'import cirq\nimport numpy as np\nimport matplotlib.pyplot as plt',
-    pennylane: 'import pennylane as qml\nimport numpy as np\nimport matplotlib.pyplot as plt',
-    qutip: 'import qutip as qt\nimport numpy as np\nimport matplotlib.pyplot as plt',
-  };
-  const nb = {
-    "nbformat":4,"nbformat_minor":0,
-    "metadata":{"kernelspec":{"display_name":"Python 3","language":"python","name":"python3"}},
-    "cells":[
-      {"cell_type":"markdown","source":[`# QCOL — Template ${lib.toUpperCase()}\n## Quantum Computing Open Lab\nPlantilla con ${lib} preinstalado`],"metadata":{}},
-      {"cell_type":"code","source":[installs[lib]],"metadata":{},"outputs":[],"execution_count":null},
-      {"cell_type":"code","source":[imports[lib]],"metadata":{},"outputs":[],"execution_count":null},
-      {"cell_type":"code","source":["# Tu código aquí"],"metadata":{},"outputs":[],"execution_count":null},
-    ]
-  };
-  const blob = new Blob([JSON.stringify(nb,null,2)],{type:'application/json'});
-  const a = document.createElement('a'); a.href=URL.createObjectURL(blob);
-  a.download = `QCOL_Template_${lib}.ipynb`; a.click();
-  notify('📥 Template ' + lib + ' descargado');
+// ══ USUARIOS (MODIFICADO) ══
+function getUsers() {
+    // Priorizar DB de GitHub si está disponible (lee desde localStorage, el core sincroniza)
+    const dbRaw = localStorage.getItem('qcol_users');
+    return dbRaw ? JSON.parse(dbRaw) : [];
 }
-
-// ══ GITHUB ══
-function saveGH() {
-  const gh = {
-    user: document.getElementById('gh-user').value.trim(),
-    repo: document.getElementById('gh-repo').value.trim(),
-    branch: document.getElementById('gh-branch')?.value.trim() || 'main',
-    token: document.getElementById('gh-token').value.trim(),
-  };
-  localStorage.setItem('qcol_gh', JSON.stringify(gh));
-  postToCore('QCOL_SAVE_CONFIG', { key: 'gh_config', value: gh });
-  notify('✅ GitHub guardado');
-  addSysLog('GitHub: ' + gh.user + '/' + gh.repo, 'ok');
+function saveUsersFn(u) {
+    localStorage.setItem('qcol_users', JSON.stringify(u));
+    // Propagar a GitHub vía core
+    window.parent.postMessage({ type: 'QCOL_SAVE', key: 'qcol_users', val: JSON.stringify(u) }, '*');
+    // El core ya maneja la sincronización a GitHub
 }
-async function testGH() {
-  const gh = getGH();
-  try {
-    const res = await fetch(`https://api.github.com/repos/${gh.user}/${gh.repo}`);
-    if (res.ok) {
-      const d = await res.json();
-      document.getElementById('gh-dot').className = 'sdot ok';
-      document.getElementById('gh-status').textContent = '✅ ' + d.full_name;
-      notify('✅ Repositorio verificado');
-      addSysLog('GitHub verificado: ' + d.full_name, 'ok');
-    } else throw new Error('Repositorio no encontrado');
-  } catch(e) {
-    document.getElementById('gh-dot').className = 'sdot err';
-    document.getElementById('gh-status').textContent = '❌ ' + e.message;
-    notify('❌ ' + e.message);
-  }
+function syncUsersFromCloud() {
+    window.parent.postMessage({ type: 'QCOL_GET_DB', section: 'users' }, '*');
+    notify('🔄 Sincronizando usuarios desde GitHub...');
 }
-function openGH() { const gh = getGH(); window.open(`https://github.com/${gh.user}/${gh.repo}`, '_blank'); }
-
-function previewUpload(input) {
-  const preview = document.getElementById('gh-file-preview');
-  if (input.files.length > 0) {
-    const f = input.files[0];
-    const kb = (f.size/1024).toFixed(1);
-    preview.textContent = `📄 ${f.name} — ${kb} KB`;
-    preview.style.color = 'var(--gr)';
-    const folder = document.getElementById('gh-folder');
-    if (!folder.value) {
-      if (f.name.endsWith('.pdf')) folder.value = 'docs/';
-      else if (f.name.endsWith('.ipynb')) folder.value = 'notebooks/';
-      else if (f.name.endsWith('.html')) folder.value = '';
-      else if (f.name.endsWith('.py')) folder.value = '';
-    }
-  }
-}
-
-function addGHLog(msg, type='info') {
-  const log = document.getElementById('gh-upload-log');
-  if (!log) return;
-  const t = new Date().toLocaleTimeString();
-  const colors = {ok:'var(--gr)', err:'var(--rd)', info:'var(--mu)', warn:'#d29922'};
-  log.innerHTML += `\n<span style="color:${colors[type]||colors.info}">[${t}] ${msg}</span>`;
-  log.scrollTop = log.scrollHeight;
-}
-
-async function uploadToGitHub() {
-  const gh = getGH();
-  if (!gh.token) {
-    notify('❌ Configura el Token GitHub primero');
-    addGHLog('❌ Sin token GitHub', 'err');
-    return;
-  }
-
-  const fileInput = document.getElementById('gh-file-input');
-  if (!fileInput.files.length) {
-    notify('Selecciona un archivo primero');
-    return;
-  }
-
-  const file    = fileInput.files[0];
-  const folder  = document.getElementById('gh-folder').value.trim();
-  const msg     = document.getElementById('gh-commit-msg').value.trim() || 'Subido desde QCOL';
-  const path    = folder ? folder.replace(/\/?$/, '/') + file.name : file.name;
-  const apiURL  = `https://api.github.com/repos/${gh.user}/${gh.repo}/contents/${path}`;
-
-  addGHLog(`Subiendo: ${path}...`, 'info');
-  notify('📤 Subiendo a GitHub...');
-
-  try {
-    const base64 = await new Promise((res, rej) => {
-      const reader = new FileReader();
-      reader.onload = () => res(reader.result.split(',')[1]);
-      reader.onerror = rej;
-      reader.readAsDataURL(file);
-    });
-
-    let sha = undefined;
-    try {
-      const check = await fetch(apiURL, {
-        headers: {
-          'Authorization': `token ${gh.token}`,
-          'Accept': 'application/vnd.github.v3+json'
-        }
-      });
-      if (check.ok) {
-        const existing = await check.json();
-        sha = existing.sha;
-        addGHLog(`Archivo existe — actualizando...`, 'warn');
-      }
-    } catch(e) {}
-
-    const body = { message: msg, content: base64 };
-    if (sha) body.sha = sha;
-
-    const res = await fetch(apiURL, {
-      method: 'PUT',
-      headers: {
-        'Authorization': `token ${gh.token}`,
-        'Accept': 'application/vnd.github.v3+json',
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(body)
-    });
-
-    if (res.ok) {
-      const d = await res.json();
-      addGHLog(`✅ Subido: ${path}`, 'ok');
-      addGHLog(`📎 URL: ${d.content?.html_url || '—'}`, 'ok');
-      notify(`✅ ${file.name} subido a GitHub`);
-      addSysLog(`Archivo subido a GitHub: ${path}`, 'ok');
-      fileInput.value = '';
-      document.getElementById('gh-file-preview').textContent = '';
-    } else {
-      const err = await res.json();
-      const msg2 = err.message || 'Error desconocido';
-      addGHLog(`❌ Error: ${msg2}`, 'err');
-      notify(`❌ Error: ${msg2}`);
-      if (msg2.includes('Bad credentials')) {
-        addGHLog('💡 Verifica que el token tenga permiso "repo"', 'warn');
-      }
-    }
-  } catch(e) {
-    addGHLog(`❌ ${e.message}`, 'err');
-    notify('❌ ' + e.message);
-  }
-}
-
-// ══ AI ══
-function aiProviderChange() {
-  const p = document.getElementById('ai-prov').value;
-  const models = {
-    mistral:      'mistral-large-latest',
-    groq:         'llama3-70b-8192',
-    huggingface:  'mistralai/Mistral-7B-Instruct-v0.3',
-    openai:       'gpt-4o-mini',
-    gemini:       'gemini-pro',
-    none:         ''
-  };
-  const sel = document.getElementById('ai-model-sel');
-  const inp = document.getElementById('ai-model');
-  const hint = document.getElementById('ai-key-hint');
-  const hints = {
-    mistral:     'Mistral: <a onclick="window.open(\'https://console.mistral.ai\',\'_blank\')" style="color:var(--gr);cursor:pointer;">console.mistral.ai</a> → API Keys → Create',
-    groq:        'Groq: <a onclick="window.open(\'https://console.groq.com\',\'_blank\')" style="color:var(--gr);cursor:pointer;">console.groq.com</a> → API Keys → Create Key',
-    huggingface: 'HuggingFace: <a onclick="window.open(\'https://huggingface.co/settings/tokens\',\'_blank\')" style="color:var(--gr);cursor:pointer;">hf.co/settings/tokens</a> → New token',
-    openai:      'OpenAI: <a onclick="window.open(\'https://platform.openai.com/api-keys\',\'_blank\')" style="color:var(--gr);cursor:pointer;">platform.openai.com/api-keys</a>',
-    gemini:      'Google: <a onclick="window.open(\'https://aistudio.google.com/app/apikey\',\'_blank\')" style="color:var(--gr);cursor:pointer;">aistudio.google.com</a> (necesita VPN)',
-    none:        ''
-  };
-  if (inp) inp.value = models[p] || '';
-  if (sel) sel.value = models[p] || sel.options[0]?.value;
-  if (hint) hint.innerHTML = hints[p] || '';
-}
-
-const PROMPTS = {
-  quantum:   'Eres el asistente de QCOL (Quantum Computing Open Lab), creado por Franci Laffita Camargo, estudiante de Física Nuclear. Ayudas con Qiskit, Cirq, PennyLane, QuTiP, circuitos cuánticos y física cuántica. Responde en español, de forma concisa y técnicamente precisa.',
-  teacher:   'Eres un profesor experto en computación cuántica del ecosistema QCOL. Explicas conceptos de forma clara y pedagógica, con ejemplos prácticos. Usas analogías para hacer accesibles los conceptos difíciles. Responde siempre en español.',
-  concise:   'Eres el asistente cuántico de QCOL. Responde siempre en español, de forma muy concisa. Máximo 3-4 líneas por respuesta. Solo lo esencial. Para código Qiskit, muestra directamente el código.',
-  bilingual: 'You are the QCOL quantum computing assistant. Respond in both Spanish and English. First answer in Spanish, then provide the English translation. Be concise and technically precise.',
-  code:      'Eres el asistente de código cuántico de QCOL. Tu especialidad es generar código Qiskit y Cirq. Cuando te pidan un circuito o algoritmo, responde directamente con el código Python funcional, con comentarios breves. Usa siempre sintaxis moderna de Qiskit 1.x.'
-};
-
-function setPrompt(type) {
-  const el = document.getElementById('ai-prompt');
-  if (el && PROMPTS[type]) {
-    el.value = PROMPTS[type];
-    notify('Prompt: ' + type);
-  }
-}
-function saveAI() {
-  const ai = {
-    provider: document.getElementById('ai-prov').value,
-    key:      document.getElementById('ai-key').value.trim(),
-    model:    document.getElementById('ai-model').value.trim(),
-    prompt:   document.getElementById('ai-prompt').value.trim(),
-    temp:     parseFloat(document.getElementById('ai-temp')?.value || '0.7'),
-    tokens:   parseInt(document.getElementById('ai-tokens')?.value || '600'),
-    lang:     document.getElementById('ai-lang')?.value || 'es',
-  };
-  localStorage.setItem('qcol_ai', JSON.stringify(ai));
-  postToCore('QCOL_SAVE', { key: 'qcol_ai', val: ai });
-  notify('✅ IA guardada — ' + ai.provider + ' · ' + ai.model);
-  addSysLog('IA configurada: ' + ai.provider + ' · ' + ai.model, 'ok');
-  document.getElementById('ai-dot').className = ai.provider !== 'none' ? 'sdot ok' : 'sdot off';
-  document.getElementById('ai-status').textContent = ai.provider !== 'none'
-    ? '✅ ' + ai.provider + ' — ' + ai.model
-    : 'Sin configurar';
-}
-async function testAI() {
-  const ai = getAI();
-  if (ai.provider === 'none' || !ai.key) { notify('Configura la IA primero'); return; }
-  notify('Probando IA...');
-  const temp = ai.temp || 0.7;
-  const tokens = ai.tokens || 600;
-  try {
-    let url, body, headers;
-    headers = {'Content-Type':'application/json'};
-
-    if (ai.provider === 'mistral') {
-      url = 'https://api.mistral.ai/v1/chat/completions';
-      headers['Authorization'] = 'Bearer ' + ai.key;
-      body = { model: ai.model || 'mistral-large-latest',
-               messages:[{role:'user',content:'Di "QCOL OK"'}],
-               max_tokens:10, temperature: temp };
-    } else if (ai.provider === 'groq') {
-      url = 'https://api.groq.com/openai/v1/chat/completions';
-      headers['Authorization'] = 'Bearer ' + ai.key;
-      body = { model: ai.model || 'llama3-70b-8192',
-               messages:[{role:'user',content:'Di "QCOL OK"'}],
-               max_tokens:10, temperature: temp };
-    } else if (ai.provider === 'huggingface') {
-      url = `https://api-inference.huggingface.co/models/${ai.model || 'mistralai/Mistral-7B-Instruct-v0.3'}`;
-      headers['Authorization'] = 'Bearer ' + ai.key;
-      body = { inputs: 'Di "QCOL OK"', parameters: { max_new_tokens: 10 } };
-    } else if (ai.provider === 'openai') {
-      url = 'https://api.openai.com/v1/chat/completions';
-      headers['Authorization'] = 'Bearer ' + ai.key;
-      body = { model: ai.model || 'gpt-4o-mini',
-               messages:[{role:'user',content:'Di "QCOL OK"'}],
-               max_tokens:10, temperature: temp };
-    } else {
-      notify('Prueba manual para este proveedor'); return;
-    }
-
-    const res = await fetch(url, {
-      method:'POST', headers,
-      body:JSON.stringify(body),
-      signal:AbortSignal.timeout(15000)
-    });
-    const d = await res.json();
-    if (res.ok) {
-      const resp = d.choices?.[0]?.message?.content?.trim()
-                || d.generated_text
-                || '✅ OK';
-      notify('✅ IA conectada: ' + resp);
-      document.getElementById('ai-dot').className = 'sdot ok';
-      document.getElementById('ai-status').textContent = '✅ Conectada — ' + ai.provider + ' · ' + ai.model;
-      addSysLog('IA probada: ' + ai.provider + ' · ' + ai.model, 'ok');
-    } else throw new Error(d.error?.message || d.message || 'Error ' + res.status);
-  } catch(e) {
-    notify('❌ ' + e.message);
-    addSysLog('Error IA: ' + e.message, 'err');
-  }
-}
-
-// ══ USERS ══
 function renderUsers() {
   const tbody = document.getElementById('users-tbody');
   if (!tbody) return;
   const all = getUsers();
-  let r = `<tr><td style="font-size:.62rem;">franci_laffita — Franci Laffita</td><td><span class="rb rbf">FUNDADOR</span></td><td style="color:var(--gr)">✅</td><td>—</td></tr>`;
+  let r = `<tr><td style="font-size:.62rem;">franci_laffita — Franci Laffita</td>
+      <td><span class="rb rbf">FUNDADOR</span></td>
+      <td style="color:var(--gr)">✅</td>
+      <td>—</td>
+    </tr>`;
   all.forEach(u => {
     const upb = u.canUpload ? `<button class="bsm" onclick="toggleUp('${u.username}',false)">✕Up</button>`
       : `<button class="bsm" onclick="toggleUp('${u.username}',true)">+Up</button>`;
@@ -1726,9 +1431,9 @@ function loadUserStats(){
         <th style="padding:.3rem .5rem;text-align:left;color:var(--bl2);">Libs usadas</th>
         <th style="padding:.3rem .5rem;color:var(--bl2);">Qubits</th>
         <th style="padding:.3rem .5rem;color:var(--bl2);">Último uso</th>
-        </tr></thead>
+       </tr></thead>
       <tbody>${rows}</tbody>
-      </table>`;
+    </table>`;
 }
 function loadHistorial(){
   const data = getMonitorData();
@@ -1918,30 +1623,6 @@ postToCore('QCOL_GET_CONFIG');
 const toggle = document.getElementById('mistral-toggle');
 if (toggle) toggle.addEventListener('change', saveMistralSettings);
 updateMistralUI();
-
-// ══ VALIDACIÓN VISUAL DEL CAMPO API KEY ══
-const mistralKeyField = document.getElementById('mistral-key');
-if (mistralKeyField) {
-  mistralKeyField.addEventListener('input', function(e) {
-    const val = e.target.value;
-    if (/[^\x00-\xFF]/.test(val)) {
-      e.target.style.borderColor = 'var(--rd)';
-      if (!document.getElementById('mistral-key-warning')) {
-        const warn = document.createElement('div');
-        warn.id = 'mistral-key-warning';
-        warn.style.color = 'var(--rd)';
-        warn.style.fontSize = '.58rem';
-        warn.style.marginTop = '.25rem';
-        warn.textContent = '⚠️ La API key contiene caracteres no ASCII (posiblemente una letra griega θ). Limpia o regenera la clave.';
-        e.target.parentNode.appendChild(warn);
-      }
-    } else {
-      e.target.style.borderColor = '';
-      const warn = document.getElementById('mistral-key-warning');
-      if (warn) warn.remove();
-    }
-  });
-}
 </script>
 </body>
 </html>
