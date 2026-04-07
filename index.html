@@ -341,6 +341,7 @@ body::before{content:'';position:fixed;inset:0;
           onkeydown="if(event.key==='Enter')QCOL.doLogin()"></div>
       <button class="btn-submit" onclick="QCOL.doLogin()">ENTRAR AL LABORATORIO</button>
       <div class="modal-sw">¿Sin cuenta? <a onclick="QCOL.openAuth('register')">Crear cuenta</a></div>
+      <div class="modal-sw" style="margin-top:.3rem;"><a onclick="QCOL.openAuth('founder')">👑 Acceso fundador</a></div>
       <button class="btn-cancel" onclick="QCOL.closeAuth()">CANCELAR</button>
     </div>
     <div id="auth-register" style="display:none;">
@@ -354,6 +355,7 @@ body::before{content:'';position:fixed;inset:0;
         <input class="form-i" id="r-pass" type="password" placeholder="••••••••"></div>
       <button class="btn-submit" onclick="QCOL.doRegister()">CREAR MI CUENTA</button>
       <div class="modal-sw">¿Ya tienes? <a onclick="QCOL.openAuth('login')">Iniciar sesión</a></div>
+      <div class="modal-sw" style="margin-top:.3rem;"><a onclick="QCOL.openAuth('founder')">👑 Acceso fundador</a></div>
       <button class="btn-cancel" onclick="QCOL.closeAuth()">CANCELAR</button>
     </div>
     <div id="auth-founder" style="display:none;">
@@ -363,6 +365,7 @@ body::before{content:'';position:fixed;inset:0;
         <input class="form-i" id="f-pass" type="password" placeholder="••••••••"
           onkeydown="if(event.key==='Enter')QCOL.doFounder()"></div>
       <button class="btn-submit" onclick="QCOL.doFounder()">ACCEDER</button>
+      <div class="modal-sw"><a onclick="QCOL.openAuth('login')">← Volver al inicio de sesión</a></div>
       <button class="btn-cancel" onclick="QCOL.closeAuth()">CANCELAR</button>
     </div>
   </div>
@@ -773,7 +776,6 @@ const QCOL = (() => {
             dbSet('notebooks', all);
         });
     }
-    // NUEVO HANDLER: Obtener sección de la base de datos
     if (d.type === 'QCOL_GET_DB') {
         dbGet(d.section).then(data => {
             if (data && d.section === 'users') {
@@ -934,6 +936,7 @@ const QCOL = (() => {
         delay:.25, show:true,
       },
       {
+        // Tarjeta CONFIGURACIÓN: visible para todos, pero su acción depende de si es fundador
         screen: isF ? 'founder' : null,
         onClick: isF ? null : "QCOL.openAuth('founder')",
         icon:`<svg width="26" height="26" viewBox="0 0 48 48" fill="none">
@@ -953,7 +956,7 @@ const QCOL = (() => {
         title:'CONFIGURACIÓN', badge:'badge-admin', badgeTxt:'SISTEMA',
         desc:'Panel de control del ecosistema QCOL. Usuarios, compilador, IA y GitHub.',
         delay:.3,
-        show: isF,
+        show: true,   // ← Visible para todos
       },
       {
         screen:'help',
@@ -1038,7 +1041,7 @@ const QCOL = (() => {
       closeAuth(); updateUI(); renderMenu();
       notify('👑 Acceso fundador concedido');
       broadcast({ type:'QCOL_USER_UPDATE', user:curUser });
-      nav('founder');
+      // No se navega al panel de fundador automáticamente
     } else {
       notify('Contraseña incorrecta');
     }
