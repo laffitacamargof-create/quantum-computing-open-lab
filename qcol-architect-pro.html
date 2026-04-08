@@ -178,6 +178,7 @@ body{display:flex;flex-direction:column;overflow:hidden;}
 let STANDALONE = window.parent===window, curUser=null, engineURL='', engineOK=false, running=false, curView='notebook', cells=[], curCellId=null, execCounter=0, _initialized=false, lastSaveTime=Date.now();
 let undoStack=[], redoStack=[], isUndoRedo=false;
 let autoSaveTimer=null;
+let _expositionMode = false;
 
 function postCore(type,data){ try{ window.parent.postMessage({type,...data},'*'); }catch(e){} }
 function notify(msg,ms=2800){ const el=document.getElementById('notif'); el.textContent=msg; el.classList.add('show'); setTimeout(()=>el.classList.remove('show'),ms); }
@@ -359,7 +360,52 @@ async function runCell(id) {
   renderCellNum(id);
 }
 
-// resto de funciones auxiliares (renderCells, sync, etc.) se mantienen con pushUndo en modificaciones
+// Modo exposición
+function setExpositionMode(active) {
+    _expositionMode = active;
+    const saveBtn = document.querySelector('.tbtn[onclick="saveCurrentNb(true)"]');
+    const dlBtn = document.querySelector('.tbtn[onclick="downloadNb()"]');
+    const pubBtn = document.querySelector('.tbtn.pub');
+    const addCodeBtn = document.querySelector('.tbtn[onclick="addCellAt(-1,\'code\')"]');
+    const addMdBtn = document.querySelector('.tbtn[onclick="addCellAt(-1,\'markdown\')"]');
+    const addBigCode = document.querySelector('.nb-add-big[onclick="addCellAt(-1,\'code\')"]');
+    const addBigMd = document.querySelector('.nb-add-big[onclick="addCellAt(-1,\'markdown\')"]');
+    if(saveBtn) saveBtn.style.display = active ? 'none' : '';
+    if(dlBtn) dlBtn.style.display = active ? 'none' : '';
+    if(pubBtn) pubBtn.style.display = active ? 'none' : '';
+    if(addCodeBtn) addCodeBtn.style.display = active ? 'none' : '';
+    if(addMdBtn) addMdBtn.style.display = active ? 'none' : '';
+    if(addBigCode) addBigCode.style.display = active ? 'none' : '';
+    if(addBigMd) addBigMd.style.display = active ? 'none' : '';
+    let badge = document.getElementById('expo-badge');
+    if(active) {
+        if(!badge) {
+            badge = document.createElement('div');
+            badge.id = 'expo-badge';
+            badge.style.cssText = 'padding:.18rem .5rem;background:rgba(255,215,0,.12);border:1px solid rgba(255,215,0,.3);border-radius:4px;font-family:var(--orb);font-size:.46rem;color:#ffd700;margin-left:8px;';
+            badge.textContent = '👁 EXPOSICIÓN';
+            const topbar = document.getElementById('topbar');
+            if(topbar) topbar.appendChild(badge);
+        }
+        badge.style.display = '';
+    } else {
+        if(badge) badge.style.display = 'none';
+    }
+    document.querySelectorAll('.nb-cell').forEach(cell => {
+        const isMd = cell.querySelector('.ctb-md') !== null;
+        if(isMd) {
+            const rendered = cell.querySelector('.cell-md-rendered');
+            if(rendered) {
+                rendered.style.pointerEvents = active ? 'none' : '';
+                rendered.style.cursor = active ? 'default' : 'pointer';
+            }
+            const textarea = cell.querySelector('.cell-md-split-area');
+            if(textarea) textarea.disabled = active;
+        }
+    });
+}
+
+// resto de funciones auxiliares
 function renderCells(){ const scroll=document.getElementById('nb-scroll'); const bottom=scroll.querySelector('.nb-bottom'); scroll.querySelectorAll('.nb-cell,.add-cell-row').forEach(el=>el.remove()); if(cells.length===0){ const emptyDiv=document.createElement('div'); emptyDiv.className='empty-placeholder'; emptyDiv.innerHTML='✨ <strong>Sin celdas</strong><br><button class="nb-add-big" style="margin-top:1rem;" onclick="addCellAt(-1,\'code\')">＋ Añadir primera celda</button>'; scroll.insertBefore(emptyDiv,bottom); }else{ cells.forEach((cell,i)=>{ const row=buildAddRow(i-1); scroll.insertBefore(row,bottom); const el=buildCellEl(cell,i); scroll.insertBefore(el,bottom); }); const row=buildAddRow(cells.length-1); scroll.insertBefore(row,bottom); } if(curCellId) focusCell(curCellId); updateStatus(); }
 function buildAddRow(afterIdx){ const row=document.createElement('div'); row.className='add-cell-row'; row.innerHTML=`<div class="add-cell-line"></div><div class="add-cell-btns"><button class="add-btn" onclick="addCellAt(${afterIdx},'code')">＋ Código</button><button class="add-btn" onclick="addCellAt(${afterIdx},'markdown')">＋ Texto</button></div><div class="add-cell-line"></div>`; return row; }
 function buildCellEl(cell,i){ const el=document.createElement('div'); el.className='nb-cell'+(curCellId===cell.id?' active':''); el.dataset.id=cell.id; el.onclick=()=>focusCell(cell.id); const isCode=cell.type==='code'; const execLbl=cell.exec_count!==null?`[${cell.exec_count}]`:'[ ]'; const toolbar=`<div class="cell-toolbar"><button class="ct-btn" onclick="event.stopPropagation();moveCellUp('${cell.id}')">↑</button><button class="ct-btn" onclick="event.stopPropagation();moveCellDown('${cell.id}')">↓</button><button class="ct-btn" onclick="event.stopPropagation();changeCellType('${cell.id}')">${isCode?'Md':'{ }'}</button><button class="ct-btn danger" onclick="event.stopPropagation();deleteCell('${cell.id}')">✕</button></div>`;
@@ -367,12 +413,12 @@ function buildCellEl(cell,i){ const el=document.createElement('div'); el.classNa
 function syncCellCode(id){ const cell=cells.find(c=>c.id===id); if(!cell) return; if(cell.type==='code'){ const areaDiv=document.getElementById(`area-${id}`); if(areaDiv && areaDiv.cm) cell.code=areaDiv.cm.getValue(); } else { const ta=document.getElementById(`mta-${id}`); if(ta) cell.code=ta.value; } }
 function renderMarkdownSimple(text){ if(!text) return '<em>✏️ Doble clic para editar</em>'; try{ return marked.parse(text); }catch(e){ return `<pre>${escapeHtml(text)}</pre>`; } }
 async function renderMdPreview(cellId){ const cell=cells.find(c=>c.id===cellId); if(!cell||cell.type!=='markdown') return; const preview=document.getElementById(`md-preview-${cellId}`); if(!preview) return; const html=marked.parse(cell.code||''); preview.innerHTML=html; if(window.MathJax) await MathJax.typesetPromise([preview]); if(window.hljs) preview.querySelectorAll('pre code').forEach(block=>hljs.highlightElement(block)); }
-function editMd(id){ const cell=cells.find(c=>c.id===id); if(cell){ cell.mdEdit=true; renderCells(); focusCell(id); } }
-function addCellAt(afterIdx,type){ pushUndo(); const cell={id:'c'+Date.now()+Math.random().toString(36).slice(2,8),type,code:type==='code'?'':'',output:'',exec_count:null,mdEdit:false}; if(afterIdx===-1||afterIdx>=cells.length) cells.push(cell); else cells.splice(afterIdx+1,0,cell); renderCells(); focusCell(cell.id); updateStatus(); }
-function deleteCell(id){ pushUndo(); cells=cells.filter(c=>c.id!==id); if(curCellId===id) curCellId=cells[0]?.id||null; renderCells(); updateStatus(); if(cells.length===0) notify('💡 Añade una celda'); }
-function moveCellUp(id){ pushUndo(); const i=cells.findIndex(c=>c.id===id); if(i<=0) return; [cells[i-1],cells[i]]=[cells[i],cells[i-1]]; renderCells(); focusCell(id); }
-function moveCellDown(id){ pushUndo(); const i=cells.findIndex(c=>c.id===id); if(i<0||i>=cells.length-1) return; [cells[i],cells[i+1]]=[cells[i+1],cells[i]]; renderCells(); focusCell(id); }
-function changeCellType(id){ pushUndo(); const cell=cells.find(c=>c.id===id); if(!cell) return; cell.type=cell.type==='code'?'markdown':'code'; cell.mdEdit=true; renderCells(); focusCell(id); }
+function editMd(id){ if(_expositionMode) { notify('👁 Modo exposición — edición desactivada'); return; } const cell=cells.find(c=>c.id===id); if(cell){ cell.mdEdit=true; renderCells(); focusCell(id); } }
+function addCellAt(afterIdx,type){ if(_expositionMode) { notify('👁 Modo exposición — no se pueden añadir celdas'); return; } pushUndo(); const cell={id:'c'+Date.now()+Math.random().toString(36).slice(2,8),type,code:type==='code'?'':'',output:'',exec_count:null,mdEdit:false}; if(afterIdx===-1||afterIdx>=cells.length) cells.push(cell); else cells.splice(afterIdx+1,0,cell); renderCells(); focusCell(cell.id); updateStatus(); }
+function deleteCell(id){ if(_expositionMode) { notify('👁 Modo exposición — eliminación desactivada'); return; } pushUndo(); cells=cells.filter(c=>c.id!==id); if(curCellId===id) curCellId=cells[0]?.id||null; renderCells(); updateStatus(); if(cells.length===0) notify('💡 Añade una celda'); }
+function moveCellUp(id){ if(_expositionMode) return; pushUndo(); const i=cells.findIndex(c=>c.id===id); if(i<=0) return; [cells[i-1],cells[i]]=[cells[i],cells[i-1]]; renderCells(); focusCell(id); }
+function moveCellDown(id){ if(_expositionMode) return; pushUndo(); const i=cells.findIndex(c=>c.id===id); if(i<0||i>=cells.length-1) return; [cells[i],cells[i+1]]=[cells[i+1],cells[i]]; renderCells(); focusCell(id); }
+function changeCellType(id){ if(_expositionMode) { notify('👁 Modo exposición — cambio de tipo desactivado'); return; } pushUndo(); const cell=cells.find(c=>c.id===id); if(!cell) return; cell.type=cell.type==='code'?'markdown':'code'; cell.mdEdit=true; renderCells(); focusCell(id); }
 function focusCell(id){ curCellId=id; document.querySelectorAll('.nb-cell').forEach(el=>el.classList.toggle('active',el.dataset.id===id)); const area=document.getElementById(`area-${id}`); if(area && area.cm) area.cm.focus(); else{ const ta=document.getElementById(`mta-${id}`); if(ta) ta.focus(); } }
 function renderCellNum(id){ const cell=cells.find(c=>c.id===id); if(!cell) return; const numEl=document.querySelector(`[data-id="${id}"] .cell-num`); if(numEl) numEl.textContent=cell.exec_count!==null?`[${cell.exec_count}]`:'[ ]'; }
 async function runCurCell(){ if(curCellId) await runCell(curCellId); }
@@ -380,9 +426,8 @@ async function runAll(){ for(const cell of cells) if(cell.type==='code'&&cell.co
 function setSbRun(running,msg='',state=''){ const dot=document.getElementById('sb-dot'), txt=document.getElementById('sb-txt'); if(dot) dot.className='sb-dot '+(running?'sb-run':state==='err'?'sb-err':'sb-idle'); if(txt&&msg) txt.textContent=msg; }
 function updateStatus(){ document.getElementById('sb-cells-info').textContent=cells.length+' celdas'; }
 function autoSaveDebounced(){ if(autoSaveTimer) clearTimeout(autoSaveTimer); autoSaveTimer=setTimeout(()=>{ if(curUser && cells.length) saveCurrentNb(false); }, 2000); }
-
-// ✅ Función saveCurrentNb modificada: después de guardar en localStorage, envía mensaje al padre
 function saveCurrentNb(showNotify=true){
+  if(_expositionMode) { notify('👁 Modo exposición — guardado desactivado'); return; }
   if(!curUser) return;
   cells.forEach(c=>syncCellCode(c.id));
   const name=document.getElementById('nb-name-inp').value||'Sin título';
@@ -393,39 +438,117 @@ function saveCurrentNb(showNotify=true){
   if(existing>=0) nbs[existing]=entry;
   else nbs.unshift(entry);
   localStorage.setItem(key,JSON.stringify(nbs.slice(0,50)));
-  
-  // 🔹 PASO 5: Notificar al padre (arquitecto cuántico) para que guarde en GitHub
-  window.parent.postMessage({
-    type: 'QCOL_SAVE_NOTEBOOK',
-    username: curUser?.username,
-    notebook: { ...entry, savedAt: new Date().toLocaleDateString() }
-  }, '*');
-
+  window.parent.postMessage({ type: 'QCOL_SAVE_NOTEBOOK', username: curUser?.username, notebook: { ...entry, savedAt: new Date().toLocaleDateString() } }, '*');
   lastSaveTime=Date.now();
   const saveSpan=document.getElementById('sb-save-status');
   if(saveSpan) saveSpan.textContent='💾 Guardado';
   setTimeout(()=>{ if(saveSpan) saveSpan.textContent='✓'; },2000);
   if(showNotify) notify('💾 Guardado: '+name);
 }
-
-function newNotebook(){ if(cells.length>0 && !confirm('¿Guardar el actual antes de crear nuevo?')) return; saveCurrentNb(true); pushUndo(); cells=[]; execCounter=0; curCellId=null; document.getElementById('nb-name-inp').value='Nuevo Notebook'; addCellAt(-1,'code'); notify('✅ Nuevo notebook'); }
-function loadNb(name){ if(cells.length>0 && !confirm('Guardar actual antes de cargar?')) return; saveCurrentNb(false); const nbs=getSavedNbs(); const nb=nbs.find(n=>n.name===name); if(!nb) return; cells=nb.cells.map(c=>({...c,mdEdit:false})); document.getElementById('nb-name-inp').value=nb.name; renderCells(); if(cells[0]) focusCell(cells[0].id); setView('notebook'); notify('📂 Cargado: '+nb.name); }
-function deleteNb(name){ if(!confirm('¿Eliminar "'+name+'"?')) return; const key='qcol_nbs_'+(curUser?.username||'dev'); const nbs=getSavedNbs().filter(n=>n.name!==name); localStorage.setItem(key,JSON.stringify(nbs)); refreshNbs(); notify('🗑 Eliminado'); }
+function newNotebook(){ if(_expositionMode) { notify('👁 Modo exposición — no se puede crear nuevo'); return; } if(cells.length>0 && !confirm('¿Guardar el actual antes de crear nuevo?')) return; saveCurrentNb(true); pushUndo(); cells=[]; execCounter=0; curCellId=null; document.getElementById('nb-name-inp').value='Nuevo Notebook'; addCellAt(-1,'code'); notify('✅ Nuevo notebook'); }
+function loadNb(name){ if(_expositionMode) { notify('👁 Modo exposición — carga desactivada'); return; } if(cells.length>0 && !confirm('Guardar actual antes de cargar?')) return; saveCurrentNb(false); const nbs=getSavedNbs(); const nb=nbs.find(n=>n.name===name); if(!nb) return; cells=nb.cells.map(c=>({...c,mdEdit:false})); document.getElementById('nb-name-inp').value=nb.name; renderCells(); if(cells[0]) focusCell(cells[0].id); setView('notebook'); notify('📂 Cargado: '+nb.name); }
+function deleteNb(name){ if(_expositionMode) { notify('👁 Modo exposición — eliminación desactivada'); return; } if(!confirm('¿Eliminar "'+name+'"?')) return; const key='qcol_nbs_'+(curUser?.username||'dev'); const nbs=getSavedNbs().filter(n=>n.name!==name); localStorage.setItem(key,JSON.stringify(nbs)); refreshNbs(); notify('🗑 Eliminado'); }
 function getSavedNbs(){ if(!curUser) return []; const key='qcol_nbs_'+(curUser.username||'dev'); return JSON.parse(localStorage.getItem(key)||'[]'); }
 function refreshNbs(){ const grid=document.getElementById('nb-grid'); if(!grid) return; const nbs=getSavedNbs(); if(nbs.length===0){ grid.innerHTML='<div class="empty-placeholder">📓 Sin notebooks guardados</div>'; return; } grid.innerHTML=nbs.map(nb=>`<div class="nb-card"><div class="nb-card-hdr"><div class="nb-card-title">${escapeHtml(nb.name)}</div><div class="nb-card-badge">${nb.cells?.length||0} celdas</div></div><div class="nb-card-body"><div class="nb-card-meta">${new Date(nb.saved).toLocaleDateString()}</div><div class="nb-card-actions"><button class="btn-edit-nb" onclick="loadNb('${escapeHtml(nb.name)}')">📝 Editar</button><button class="btn-pub-nb" onclick="loadNb('${escapeHtml(nb.name)}');showPublish()">📤 Publicar</button><button class="btn-del-nb" onclick="deleteNb('${escapeHtml(nb.name)}')">🗑</button></div></div></div>`).join(''); }
-function importNb(){ document.getElementById('import-file').click(); }
-function handleImport(e){ const file=e.target.files[0]; if(!file) return; const reader=new FileReader(); reader.onload=ev=>{ try{ const nb=JSON.parse(ev.target.result); cells=[]; execCounter=0; const name=nb.metadata?.name||file.name.replace('.ipynb',''); document.getElementById('nb-name-inp').value=name; (nb.cells||[]).forEach(c=>{ const src=Array.isArray(c.source)?c.source.join(''):c.source||''; const type=c.cell_type==='markdown'?'markdown':'code'; cells.push({id:genId(),type,code:src,output:'',exec_count:null,mdEdit:false}); }); if(cells.length===0) addCellAt(-1,'code'); else { renderCells(); if(cells[0]) focusCell(cells[0].id); } setView('notebook'); notify(`✅ Importado: ${name} (${cells.length} celdas)`); }catch(err){ notify('❌ Error .ipynb: '+err.message); } }; reader.readAsText(file); e.target.value=''; }
-function downloadNb(){ const name=document.getElementById('nb-name-inp').value||'qcol_notebook'; cells.forEach(c=>syncCellCode(c.id)); const nb={nbformat:4,nbformat_minor:5,metadata:{name},cells:cells.map(c=>({cell_type:c.type==='markdown'?'markdown':'code',source:[c.code],metadata:{},outputs:[]}))}; const blob=new Blob([JSON.stringify(nb,null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name.replace(/\.ipynb$/,'')+'.ipynb'; a.click(); notify('📥 Descargado'); }
-function showPublish(){ document.getElementById('pub-title').value=document.getElementById('nb-name-inp').value||''; document.getElementById('pub-modal').classList.add('open'); }
+function importNb(){ if(_expositionMode) { notify('👁 Modo exposición — importación desactivada'); return; } document.getElementById('import-file').click(); }
+function handleImport(e){ if(_expositionMode) return; const file=e.target.files[0]; if(!file) return; const reader=new FileReader(); reader.onload=ev=>{ try{ const nb=JSON.parse(ev.target.result); cells=[]; execCounter=0; const name=nb.metadata?.name||file.name.replace('.ipynb',''); document.getElementById('nb-name-inp').value=name; (nb.cells||[]).forEach(c=>{ const src=Array.isArray(c.source)?c.source.join(''):c.source||''; const type=c.cell_type==='markdown'?'markdown':'code'; cells.push({id:genId(),type,code:src,output:'',exec_count:null,mdEdit:false}); }); if(cells.length===0) addCellAt(-1,'code'); else { renderCells(); if(cells[0]) focusCell(cells[0].id); } setView('notebook'); notify(`✅ Importado: ${name} (${cells.length} celdas)`); }catch(err){ notify('❌ Error .ipynb: '+err.message); } }; reader.readAsText(file); e.target.value=''; }
+function downloadNb(){ if(_expositionMode) { notify('👁 Modo exposición — descarga desactivada'); return; } const name=document.getElementById('nb-name-inp').value||'qcol_notebook'; cells.forEach(c=>syncCellCode(c.id)); const nb={nbformat:4,nbformat_minor:5,metadata:{name},cells:cells.map(c=>({cell_type:c.type==='markdown'?'markdown':'code',source:[c.code],metadata:{},outputs:[]}))}; const blob=new Blob([JSON.stringify(nb,null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name.replace(/\.ipynb$/,'')+'.ipynb'; a.click(); notify('📥 Descargado'); }
+function showPublish(){ if(_expositionMode) { notify('👁 Modo exposición — publicación desactivada'); return; } document.getElementById('pub-title').value=document.getElementById('nb-name-inp').value||''; document.getElementById('pub-modal').classList.add('open'); }
 function closePublish(){ document.getElementById('pub-modal').classList.remove('open'); }
-async function publishNb(){ if(!requireAuth()) return; saveCurrentNb(false); const title=document.getElementById('pub-title').value.trim()||'notebook'; const desc=document.getElementById('pub-desc').value; const token=document.getElementById('github-token').value.trim(); const contentBase64=btoa(unescape(encodeURIComponent(JSON.stringify({cells,title},null,2)))); if(token){ try{ const userResp=await fetch('https://api.github.com/user',{headers:{Authorization:`token ${token}`}}); if(!userResp.ok) throw new Error('Token inválido'); const user=await userResp.json(); const repo=`${user.login}/qcol-notebooks`; const path=`notebooks/${title.replace(/[^a-z0-9]/gi,'_')}.ipynb`; await fetch(`https://api.github.com/repos/${repo}/contents/${path}`,{method:'PUT',headers:{Authorization:`token ${token}`, 'Content-Type':'application/json'},body:JSON.stringify({message:'Publicar notebook QCOL',content:contentBase64,branch:'main'})}); notify(`✅ Publicado en GitHub: ${repo}`); }catch(err){ notify(`❌ GitHub error: ${err.message}`); } } else { downloadNb(); notify('📦 Descarga local .ipynb'); } closePublish(); }
+async function publishNb(){ if(_expositionMode) { notify('👁 Modo exposición — publicación desactivada'); return; } if(!requireAuth()) return; saveCurrentNb(false); const title=document.getElementById('pub-title').value.trim()||'notebook'; const desc=document.getElementById('pub-desc').value; const token=document.getElementById('github-token').value.trim(); const contentBase64=btoa(unescape(encodeURIComponent(JSON.stringify({cells,title},null,2)))); if(token){ try{ const userResp=await fetch('https://api.github.com/user',{headers:{Authorization:`token ${token}`}}); if(!userResp.ok) throw new Error('Token inválido'); const user=await userResp.json(); const repo=`${user.login}/qcol-notebooks`; const path=`notebooks/${title.replace(/[^a-z0-9]/gi,'_')}.ipynb`; await fetch(`https://api.github.com/repos/${repo}/contents/${path}`,{method:'PUT',headers:{Authorization:`token ${token}`, 'Content-Type':'application/json'},body:JSON.stringify({message:'Publicar notebook QCOL',content:contentBase64,branch:'main'})}); notify(`✅ Publicado en GitHub: ${repo}`); }catch(err){ notify(`❌ GitHub error: ${err.message}`); } } else { downloadNb(); notify('📦 Descarga local .ipynb'); } closePublish(); }
 function setView(v){ curView=v; document.getElementById('view-notebook').style.display=v==='notebook'?'flex':'none'; document.getElementById('view-manage').style.display=v==='manage'?'flex':'none'; document.getElementById('stab-1').classList.toggle('on',v==='notebook'); document.getElementById('stab-2').classList.toggle('on',v==='manage'); if(v==='manage') refreshNbs(); }
 function genId(){ return 'c'+Date.now()+Math.random().toString(36).slice(2,8); }
 function escapeHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function requireAuth(){ const role=curUser?.role||'guest'; if(role!=='admin'&&role!=='founder'){ notify('❌ Requiere Admin/Founder'); postCore('QCOL_LOGIN'); return false; } return true; }
-function showUI(user){ const newRole=user?.role||'guest'; if(_initialized && (newRole==='founder'||newRole==='admin') && (curUser?.role!=='founder' && curUser?.role!=='admin')) return; _initialized=true; curUser=user; if(newRole!=='admin'&&newRole!=='founder'){ document.getElementById('access-denied').classList.add('show'); ['topbar','secbar','main-area','statusbar'].forEach(id=>document.getElementById(id).style.display='none'); return; } document.getElementById('access-denied').classList.remove('show'); ['topbar','secbar','main-area','statusbar'].forEach(id=>document.getElementById(id).style.display='flex'); document.getElementById('user-pill').textContent=(curUser.name||'—').split(' ')[0]; document.getElementById('admin-pill').style.display=''; const storedURL=localStorage.getItem('qcol_colab_url'); if(storedURL){ engineURL=storedURL; checkEngine(); } refreshNbs(); if(cells.length===0) addCellAt(-1,'code'); }
-window.addEventListener('message',e=>{ const d=e.data||{}; if(d.type==='QCOL_USER') showUI(d.user); if(d.type==='QCOL_CONFIG_UPDATED'){ if(d.engineUrl){ engineURL=d.engineUrl; localStorage.setItem('qcol_colab_url',engineURL); checkEngine(); } } if(d.type==='QCOL_LOAD_NB' && d.nb){ if(!requireAuth()) return; const nb=d.nb; document.getElementById('nb-name-inp').value=nb.title||'Sin título'; if(nb.cells?.length){ cells=nb.cells.map(c=>({...c,id:genId(),mdEdit:false})); renderCells(); if(cells[0]) focusCell(cells[0].id); } else addCellAt(-1,'code'); setView('notebook'); notify('📂 Cargado'); } });
+
+// ==================== FIX 3: showUI corregido ====================
+function showUI(user){
+  const newRole = user?.role || 'guest';
+  // Solo bloquear re-entradas si ya hay sesión válida Y el nuevo rol es el mismo
+  const alreadyShowing = _initialized && (curUser?.role==='admin'||curUser?.role==='founder');
+  const sameUser = alreadyShowing && curUser?.username === user?.username;
+  if(sameUser) return; // misma sesión, no re-renderizar
+  _initialized = true;
+  curUser = user;
+  if(!user || (newRole!=='admin'&&newRole!=='founder')){
+    document.getElementById('access-denied').classList.add('show');
+    ['topbar','secbar','main-area','statusbar'].forEach(id=>document.getElementById(id).style.display='none');
+    return;
+  }
+  document.getElementById('access-denied').classList.remove('show');
+  ['topbar','secbar','main-area','statusbar'].forEach(id=>document.getElementById(id).style.display='flex');
+  document.getElementById('user-pill').textContent=(curUser.name||'—').split(' ')[0];
+  document.getElementById('admin-pill').style.display='';
+  const storedURL=localStorage.getItem('qcol_colab_url');
+  if(storedURL){ engineURL=storedURL; checkEngine(); }
+  refreshNbs();
+  if(cells.length===0) addCellAt(-1,'code');
+}
+
+// ==================== FIX 4: nuevo orden de mensajes y fallbacks ====================
+// Escuchar mensajes del core — PRIMERO registrar, LUEGO pedir
+window.addEventListener('message', e=>{
+    const d=e.data||{};
+    // Ambos tipos de mensaje de usuario
+    if(d.type==='QCOL_USER' || d.type==='QCOL_USER_UPDATE'){
+        const role=d.user?.role||'guest';
+        // Si hay usuario válido, mostrar
+        if(role==='admin'||role==='founder'){
+            showUI(d.user);
+        } else if(d.user === null || !d.user) {
+            // usuario deslogueado
+            _initialized = false;
+            showUI(null);
+        }
+    }
+    if(d.type==='QCOL_CONFIG_UPDATED'){
+        if(d.engineUrl){
+            engineURL=d.engineUrl;
+            localStorage.setItem('qcol_colab_url',engineURL);
+            checkEngine();
+        }
+    }
+    if(d.type==='QCOL_LOAD_NB' && d.nb){
+        if(!requireAuth()) return;
+        const nb=d.nb;
+        document.getElementById('nb-name-inp').value=nb.title||'Sin título';
+        if(nb.cells?.length){
+            cells=nb.cells.map(c=>({...c,id:genId(),mdEdit:false}));
+            renderCells();
+            if(cells[0]) focusCell(cells[0].id);
+        } else addCellAt(-1,'code');
+        setView('notebook');
+        if(d.expositionMode) { setExpositionMode(true); } else { setExpositionMode(false); }
+        notify('📂 Cargado' + (d.expositionMode ? ' (modo exposición)' : ''));
+    }
+});
+
+// Pedir usuario al core
 postCore('QCOL_GET_USER');
+
+// Fallback 1 — localStorage (funciona si el usuario estaba logueado antes)
+setTimeout(()=>{
+    if(!_initialized){
+        try {
+            const stored = localStorage.getItem('qcol_cur_user');
+            if(stored) { showUI(JSON.parse(stored)); }
+        } catch(e) {}
+    }
+}, 800);
+
+// Fallback 2 — si aun no hay respuesta después de 3s, mostrar pantalla de acceso denegado
+setTimeout(()=>{
+    if(!_initialized){
+        // No hay sesión — mostrar mensaje claro en lugar de negro
+        document.getElementById('access-denied').classList.add('show');
+        document.getElementById('access-denied').querySelector('.denied-desc').textContent =
+            'No hay sesión activa. Inicia sesión en el menú principal para acceder al Arquitecto Profesional.';
+        // También mostrar la topbar para que no sea negro total
+        document.getElementById('topbar').style.display='flex';
+        _initialized = true;
+    }
+}, 3000);
+
 document.addEventListener('keydown',e=>{ if((e.ctrlKey||e.metaKey)&&e.key==='z'&&!e.shiftKey){ e.preventDefault(); undo(); } else if((e.ctrlKey||e.metaKey)&&(e.key==='y'||(e.key==='z'&&e.shiftKey))){ e.preventDefault(); redo(); } if((e.ctrlKey||e.metaKey)&&e.key==='s'){ e.preventDefault(); saveCurrentNb(true); } });
 setInterval(()=>{ if(curUser&&cells.length){ const mins=Math.floor((Date.now()-lastSaveTime)/60000); const span=document.getElementById('sb-save-status'); if(span) span.textContent=mins>0?`⏱️ ${mins}min`:'✓'; } },60000);
 if(window.marked) marked.setOptions({highlight:function(code,lang){ if(lang&&hljs.getLanguage(lang)) return hljs.highlight(code,{language:lang}).value; return code; }});

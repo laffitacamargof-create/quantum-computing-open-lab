@@ -434,6 +434,7 @@ let curUser = null;
 let engineURL = '', engineOK = false;
 let running = false;
 let dragGate = null;
+let dragPlacedUid = null;   // uid de la puerta colocada que se está arrastrando
 let nextId = 1;
 let isUpdatingFromCode = false;
 let isUpdatingFromCircuit = false;
@@ -674,6 +675,12 @@ const GATES = {
     { id: 'CCX', sym: 'CCX', bg: '#005f6a', glow:'#005f6a', desc: 'Toffoli', code: 'qc.ccx({q},{q2},{q3})', regex: /qc\.ccx\((\d+),\s*(\d+),\s*(\d+)\)/, triple: true },
     { id: 'CSW', sym: 'CSW', bg: '#283593', glow:'#283593', desc: 'Fredkin (CSWAP)', code: 'qc.cswap({q},{q2},{q3})', regex: /qc\.cswap\((\d+),\s*(\d+),\s*(\d+)\)/, triple: true }
   ],
+  'nq': [
+    { id: 'MCX', sym: 'MCX', bg: '#005f6a', glow:'#00aaaa', desc: 'Multi-Control X (mcx)', code: 'qc.mcx([{q},{q2}], {q3})', regex: /qc\.mcx\(\[[\d,\s]+\],\s*(\d+)\)/, triple: true },
+    { id: 'CH',  sym: 'CH',  bg: '#1a5fb4', glow:'#4488cc', desc: 'Hadamard Controlada',   code: 'qc.ch({q},{q2})',         regex: /qc\.ch\((\d+),\s*(\d+)\)/,  multi: true },
+    { id: 'CY',  sym: 'CY',  bg: '#7a3e99', glow:'#aa66cc', desc: 'Pauli-Y Controlada',    code: 'qc.cy({q},{q2})',         regex: /qc\.cy\((\d+),\s*(\d+)\)/,  multi: true },
+    { id: 'RZZ', sym: 'Rzz', bg: '#5e35b1', glow:'#8860d0', desc: 'Rotación ZZ',           code: 'qc.rzz(np.pi/4,{q},{q2})',regex: /qc\.rzz\([^,]+,(\d+),\s*(\d+)\)/, multi: true },
+  ],
   'meas': [
     { id: 'M', sym: 'M', bg: '#6d4c41', glow:'#6d4c41', desc: 'Medir', code: 'qc.measure({q},{q})', regex: /qc\.measure\((\d+),\s*\d+\)/ }
   ]
@@ -689,6 +696,8 @@ function buildPalette() {
   GATES['2q'].forEach(g => { html += `<div class="pal-gate" draggable="true" data-gate="${g.id}" style="background:${g.bg};box-shadow:0 0 6px ${g.glow}" ondragstart="onDragStart(event)" ondragend="onDragEnd()"><span class="pal-gate-sym">${g.sym}</span><span class="pal-gate-lbl">${g.id}</span></div>`; });
   html += '</div></div><div class="pal-sec"><div class="pal-sec-lbl">3 QUBITS</div><div class="pal-grid">';
   GATES['3q'].forEach(g => { html += `<div class="pal-gate" draggable="true" data-gate="${g.id}" style="background:${g.bg};box-shadow:0 0 6px ${g.glow}" ondragstart="onDragStart(event)" ondragend="onDragEnd()"><span class="pal-gate-sym">${g.sym}</span><span class="pal-gate-lbl">${g.id}</span></div>`; });
+  html += '</div></div><div class="pal-sec"><div class="pal-sec-lbl">MULTI-Q</div><div class="pal-grid">';
+  GATES['nq'].forEach(g => { html += `<div class="pal-gate" draggable="true" data-gate="${g.id}" style="background:${g.bg};box-shadow:0 0 6px ${g.glow}" ondragstart="onDragStart(event)" ondragend="onDragEnd()"><span class="pal-gate-sym">${g.sym}</span><span class="pal-gate-lbl">${g.id}</span></div>`; });
   html += '</div></div><div class="pal-sec"><div class="pal-sec-lbl">MEDICIÓN</div><div class="pal-grid">';
   GATES['meas'].forEach(g => { html += `<div class="pal-gate" draggable="true" data-gate="${g.id}" style="background:${g.bg};box-shadow:0 0 6px ${g.glow}" ondragstart="onDragStart(event)" ondragend="onDragEnd()"><span class="pal-gate-sym">${g.sym}</span><span class="pal-gate-lbl">${g.id}</span></div>`; });
   html += '</div></div>';
@@ -697,9 +706,35 @@ function buildPalette() {
 
 function onDragStart(e) { dragGate = e.target.closest('.pal-gate')?.dataset.gate; if (dragGate) e.dataTransfer.setData('text/plain', dragGate); }
 function onDragEnd() { dragGate = null; }
+function onPlacedDragStart(e, uid) {
+    dragPlacedUid = uid;
+    dragGate = null;
+    e.dataTransfer.setData('text/plain', 'MOVE:' + uid);
+    e.dataTransfer.effectAllowed = 'move';
+}
+function onPlacedDragEnd() {
+    dragPlacedUid = null;
+}
 function onWireDragOver(e) { e.preventDefault(); e.currentTarget.classList.add('dh'); }
 function onWireDragLeave(e) { e.currentTarget.classList.remove('dh'); }
-function onWireDrop(e, qubit) { e.preventDefault(); e.currentTarget.classList.remove('dh'); const gateId = dragGate || e.dataTransfer.getData('text/plain'); if (gateId) placeGate(gateId, qubit); dragGate = null; }
+function onWireDrop(e, qubit) {
+    e.preventDefault();
+    e.currentTarget.classList.remove('dh');
+    const data = e.dataTransfer.getData('text/plain');
+    
+    // Mover puerta ya colocada
+    if (data.startsWith('MOVE:')) {
+        const uid = parseInt(data.replace('MOVE:', ''));
+        moveGate(uid, qubit);
+        dragPlacedUid = null;
+        return;
+    }
+    
+    // Colocar puerta nueva desde la paleta
+    const gateId = dragGate || data;
+    if (gateId) placeGate(gateId, qubit);
+    dragGate = null;
+}
 
 function findGateDef(id) { for (const cat of Object.values(GATES)) { const g = cat.find(g => g.id === id); if (g) return g; } return null; }
 
@@ -711,6 +746,13 @@ function placeGate(gateId, qubit) {
 
   if (circuit.gates.length >= MAX_GATES) {
     notify(`⛔ Límite de ${MAX_GATES} puertas alcanzado`);
+    isUpdatingFromCircuit = false;
+    return;
+  }
+
+  // Validar que el qubit no excede MAX_QUBITS - 1
+  if (qubit >= MAX_QUBITS) {
+    notify(`⛔ q[${qubit}] excede el máximo de ${MAX_QUBITS} qubits (q[0]–q[${MAX_QUBITS-1}])`);
     isUpdatingFromCircuit = false;
     return;
   }
@@ -733,7 +775,9 @@ function placeGate(gateId, qubit) {
     circuit.gates.push({ id: gateId, q: Math.min(qubit, q2), q2: Math.max(qubit, q2), def: def, uid: nextId++ });
   } else {
     if (gateId === 'M') {
-      // Medición: quitar M existente en este qubit y añadir al final
+      // Solo añadir M si ese cable tiene puertas
+      const hasGates = circuit.gates.some(g => g.id !== 'M' && g.q === qubit);
+      if (!hasGates) { notify('⚠️ Sin puertas en q[' + qubit + ']. Añade una puerta antes de medir.'); isUpdatingFromCircuit = false; return; }
       circuit.gates = circuit.gates.filter(g => !(g.id === 'M' && g.q === qubit));
       circuit.gates.push({ id: gateId, q: qubit, def: def, uid: nextId++ });
     } else {
@@ -763,11 +807,68 @@ function removeGate(uid) {
   isUpdatingFromCircuit = false;
 }
 
+function moveGate(uid, newQubit) {
+    if (isUpdatingFromCode) return;
+    isUpdatingFromCircuit = true;
+    
+    const gIdx = circuit.gates.findIndex(g => g.uid === uid);
+    if (gIdx < 0) { isUpdatingFromCircuit = false; return; }
+    const g = circuit.gates[gIdx];
+    
+    // Validar que el nuevo qubit existe
+    if (newQubit >= circuit.qubits || newQubit < 0) {
+        notify('⚠️ Qubit q[' + newQubit + '] no existe');
+        isUpdatingFromCircuit = false; return;
+    }
+    
+    // No mover después de mediciones del cable destino
+    // Si es una puerta normal, insertar antes del M del cable destino
+    if (g.id !== 'M') {
+        // Quitar del lugar actual
+        circuit.gates.splice(gIdx, 1);
+        // Cambiar qubit
+        g.q = newQubit;
+        if (g.q2 !== undefined) {
+            // Para puertas multi-qubit, ajustar q2
+            g.q2 = newQubit + 1 < circuit.qubits ? newQubit + 1 : newQubit - 1;
+        }
+        // Insertar antes del primer M del cable destino
+        const firstM = circuit.gates.findIndex(gg => gg.id === 'M' && gg.q === newQubit);
+        if (firstM >= 0) circuit.gates.splice(firstM, 0, g);
+        else circuit.gates.push(g);
+    } else {
+        // Es un medidor: mover solo si destino tiene puertas
+        const hasGates = circuit.gates.some(gg => gg.id !== 'M' && gg.q === newQubit);
+        if (!hasGates) { notify('⚠️ No hay puertas en q[' + newQubit + ']'); isUpdatingFromCircuit = false; return; }
+        circuit.gates.splice(gIdx, 1);
+        g.q = newQubit;
+        circuit.gates.push(g); // M siempre al final
+    }
+    
+    renderCircuit();
+    updateCircuitInfo();
+    updateCodeFromCircuit();
+    isUpdatingFromCircuit = false;
+    notify('Puerta movida a q[' + newQubit + ']');
+}
+
 function renderCircuit() {
   const container = document.getElementById('circuit-canvas');
   if (!container) return;
+  
+  // Sanitizar: remover puertas con qubits fuera de rango
+  circuit.gates = circuit.gates.filter(g => {
+      if (g.q >= circuit.qubits) return false;
+      if (g.q2 !== undefined && g.q2 >= circuit.qubits) return false;
+      if (g.q3 !== undefined && g.q3 >= circuit.qubits) return false;
+      return true;
+  });
+  
+  // Aplicar límite MAX_GATES al renderizar (aunque no al almacenar)
+  const gatesToRender = circuit.gates.slice(0, MAX_GATES);
+  
   const depth = Array(circuit.qubits).fill(0);
-  const placed = circuit.gates.map(g => {
+  const placed = gatesToRender.map(g => {
     let col;
     if (g.q3 !== undefined) { col = Math.max(depth[g.q], depth[g.q2], depth[g.q3]); depth[g.q] = col + 1; depth[g.q2] = col + 1; depth[g.q3] = col + 1; }
     else if (g.q2 !== undefined) { col = Math.max(depth[g.q], depth[g.q2]); depth[g.q] = col + 1; depth[g.q2] = col + 1; }
@@ -807,6 +908,18 @@ function renderCircuit() {
           <line x1="18" y1="${ROW_HEIGHT / 2 + height - 6}" x2="34" y2="${ROW_HEIGHT / 2 + height + 6}" stroke="${gCol}" stroke-width="2"/>
           <line x1="34" y1="${ROW_HEIGHT / 2 + height - 6}" x2="18" y2="${ROW_HEIGHT / 2 + height + 6}" stroke="${gCol}" stroke-width="2"/>
         </svg>`;
+      } else if (g.id === 'MCX') {
+          // MCX con N controles — expandir cables automáticamente
+          const allQ = [g.q, g.q2, g.q3].filter(x => x !== undefined).sort((a,b) => a-b);
+          const topY2 = allQ[0] * ROW_HEIGHT;
+          const h2 = (allQ[allQ.length-1] - allQ[0]) * ROW_HEIGHT;
+          svg = `<svg width="52" height="${ROW_HEIGHT + h2}" viewBox="0 0 52 ${ROW_HEIGHT + h2}" style="cursor:pointer;" onclick="removeGate(${g.uid})">
+              <line x1="26" y1="0" x2="26" y2="${ROW_HEIGHT + h2}" stroke="${gCol}" stroke-width="2.5"/>
+              ${allQ.slice(0,-1).map((q,i) => `<circle cx="26" cy="${ROW_HEIGHT/2 + (q - allQ[0]) * ROW_HEIGHT}" r="7" fill="${gCol}" stroke="rgba(255,255,255,.9)" stroke-width="1.5"/>`).join('')}
+              <circle cx="26" cy="${ROW_HEIGHT/2 + h2}" r="14" fill="none" stroke="${gCol}" stroke-width="2.5"/>
+              <line x1="18" y1="${ROW_HEIGHT/2 + h2}" x2="34" y2="${ROW_HEIGHT/2 + h2}" stroke="${gCol}" stroke-width="2"/>
+              <line x1="26" y1="${ROW_HEIGHT/2 + h2 - 10}" x2="26" y2="${ROW_HEIGHT/2 + h2 + 10}" stroke="${gCol}" stroke-width="2"/>
+          </svg>`;
       }
       html += `<div style="position:absolute; left:${left}px; top:${topY}px;">${svg}</div>`;
     } else if (g.q2 !== undefined) {
@@ -840,7 +953,15 @@ function renderCircuit() {
       html += `<div style="position:absolute; left:${left}px; top:${topY}px;">${svg}</div>`;
     } else {
       const yPos = g.q * ROW_HEIGHT;
-      html += `<div class="placed-gate" style="left:${left}px; top:${yPos + ROW_HEIGHT / 2}px; transform:translateY(-50%);" onclick="removeGate(${g.uid})"><div class="pg-box" style="background:${g.def.bg};box-shadow:0 0 6px ${g.def.glow}"><span class="pg-sym">${g.def.sym}</span></div></div>`;
+      html += `<div class="placed-gate" 
+          draggable="true"
+          data-uid="${g.uid}"
+          style="left:${left}px; top:${yPos + ROW_HEIGHT / 2}px; transform:translateY(-50%); cursor:grab;"
+          ondragstart="onPlacedDragStart(event, ${g.uid})"
+          ondragend="onPlacedDragEnd()"
+          onclick="removeGate(${g.uid})">
+          <div class="pg-box" style="background:${g.def.bg};box-shadow:0 0 6px ${g.def.glow}">
+          <span class="pg-sym">${g.def.sym}</span></div></div>`;
     }
   });
   html += `</div>`;
@@ -1135,13 +1256,29 @@ class QuantumCircuit:
     def ccz(self, a, b, c, **kw): return self._add('ccx', [a, b, c])
 
     def mcx(self, controls, target, ancilla_qubits=None, **kw):
-        try:
-            qs = list(controls) + [target]
-        except:
-            qs = [0, target if isinstance(target, int) else 0]
+        try: qs = list(controls) + [target]
+        except: qs = [0, target if isinstance(target, int) else 0]
         return self._add('mcx', qs)
     def mct(self, controls, target, *a, **kw):
         return self.mcx(controls, target)
+
+    def mcz(self, controls, target, **kw):
+        try: qs = list(controls) + [target]
+        except: qs = [0, int(target)]
+        return self._add('ccx', qs)
+
+    def mcp(self, theta, controls, target, **kw):
+        try: qs = list(controls) + [target]
+        except: qs = [0, int(target)]
+        return self._add('cp', qs, [theta])
+
+    def mcswap(self, controls, a, b, **kw):
+        try: qs = list(controls) + [int(a), int(b)]
+        except: qs = [0, 1, 2]
+        return self._add('cswap', qs)
+
+    def ch(self, c, t, **kw): return self._add('cx', [c, t])
+    def cu(self, theta, phi, lam, gamma, c, t, **kw): return self._add('cx', [c, t])
 
     def append(self, gate, qubits, clbits=None, **kw):
         try:
@@ -1311,6 +1448,30 @@ _aer.Aer = _Stub('Aer')
 sys.modules['qiskit_aer'] = _aer
 sys.modules['qiskit_aer.backends'] = _DynamicModule('qiskit_aer.backends', True)
 
+# ════════════════════════════════════════════════════════════════
+# Procesadores cuánticos fake (stub para que no fallen importaciones)
+# ════════════════════════════════════════════════════════════════
+class _FakeBackend:
+    """Procesador cuántico simulado para pruebas locales."""
+    name = 'fake_backend'
+    def __init__(self, *a, **kw): pass
+    def run(self, circuit, shots=1024, **kw):
+        return _AerSimStub().run(circuit, shots)
+    def __getattr__(self, n): return _Stub()
+
+# Registrar fakes más comunes en qiskit.providers.fake_provider
+try:
+    _fp = sys.modules['qiskit.providers.fake_provider']
+except KeyError:
+    _fp = _DynamicModule('qiskit.providers.fake_provider', is_package=True)
+    sys.modules['qiskit.providers.fake_provider'] = _fp
+    sys.modules['qiskit.providers'] = _DynamicModule('qiskit.providers', is_package=True)
+
+for _fname in ['FakeMontreal','FakeLima','FakeNairobi','FakeSherbrooke',
+               'FakeToronto','FakeMumbai','FakeBoeblingen','FakeGuadalupe',
+               'FakeVigo','FakeYorktown','FakeTenerife']:
+    setattr(_fp, _fname, _FakeBackend)
+
 print("[QCOL Mock v3] Sistema universal cargado — cualquier código Qiskit será aceptado.")
 `;
 
@@ -1357,7 +1518,10 @@ function mapOpNameToGateId(opName) {
         'h': 'H', 'x': 'X', 'y': 'Y', 'z': 'Z', 's': 'S', 't': 'T', 'sx': 'SX',
         'rx': 'RX', 'ry': 'RY', 'rz': 'RZ', 'p': 'RZ',
         'cx': 'CX', 'cz': 'CZ', 'swap': 'SWAP', 'cp': 'CZ',
-        'ccx': 'CCX', 'cswap': 'CSW', 'mcx': 'CCX',
+        'ccx': 'CCX', 'cswap': 'CSW', 'mcx': 'MCX',
+        'mcz': 'CCX', 'ch': 'CH', 'cy': 'CY',
+        'rzz': 'RZZ', 'rxx': 'RZZ', 'ryy': 'RZZ',
+        'cu': 'CX', 'crx': 'CX', 'cry': 'CX', 'crz': 'CX',
         'measure': 'M'
     };
     return map[opName] || 'H';
@@ -1557,7 +1721,7 @@ async function syncFromServer(reason) {
                 body: isHF
                     ? JSON.stringify({ data: [cleanCode], fn_index: 1 })
                     : JSON.stringify({ code: cleanCode, lib: curLib })
-            }, 2, 20000);
+            }, 2, 90000, 4000);
         const raw = await res.json();
         let d = isHF ? (raw.data ? raw.data[0] : raw) : raw;
         if (typeof d === 'string') { try { d = JSON.parse(d); } catch(e) {} }
@@ -1585,6 +1749,30 @@ async function syncFromServer(reason) {
         out.innerHTML += `<span class="er">⚠️ Corrector: ${e.message}</span>\n`;
         return false;
     }
+}
+
+// Patrones de lint estático para el editor
+const STATIC_LINT_RULES = [
+    { rx: /from qiskit import Aer\b/,         msg: '⚠️ "Aer" eliminado en Qiskit 1.x — usa: from qiskit_aer import AerSimulator' },
+    { rx: /from qiskit\.extensions/,           msg: '⚠️ qiskit.extensions no existe en Qiskit 1.x' },
+    { rx: /execute\s*\(/,                       msg: '⚠️ execute() eliminado — usa: AerSimulator().run(transpile(qc, sim))' },
+    { rx: /qasm_simulator|statevector_simulator/, msg: '⚠️ Backend de string obsoleto — usa: AerSimulator()' },
+    { rx: /\.qasm\(\)/,                         msg: '⚠️ qasm() obsoleto en Qiskit 1.x' },
+];
+
+function lintCode(code) {
+    const lines = code.split('\n');
+    const errors = [];
+    lines.forEach((line, i) => {
+        const trimmed = line.trim();
+        if (trimmed.startsWith('#')) return;
+        for (const rule of STATIC_LINT_RULES) {
+            if (rule.rx.test(line)) {
+                errors.push({ line: i + 1, msg: rule.msg });
+            }
+        }
+    });
+    return errors;
 }
 
 async function syncWithPyodide(retryCount = 0) {
@@ -1620,6 +1808,21 @@ try:
     _ns['cos'] = _np.cos
     _ns['sqrt'] = _np.sqrt
 except: pass
+
+# Procesadores cuánticos fake
+try:
+    from qiskit.providers.fake_provider import FakeMontreal, FakeLima, FakeNairobi, FakeSherbrooke
+    _ns['FakeMontreal'] = FakeMontreal
+    _ns['FakeLima'] = FakeLima
+    _ns['FakeNairobi'] = FakeNairobi
+    _ns['FakeSherbrooke'] = FakeSherbrooke
+except:
+    pass
+try:
+    from qiskit_ibm_runtime.fake_provider import FakeMontreal as FakeM2
+    _ns['FakeMontreal'] = FakeM2
+except:
+    pass
 
 for _rname in ['q', 'qr', 'cr', 'c', 'anc', 'aux']:
     if _rname not in _ns:
@@ -1714,11 +1917,14 @@ def _safe_gate(op):
     try:
         name = str(op.name)
         qubits = list(op.qubits) if hasattr(op.qubits,'__iter__') else [0]
-        # Auto-expandir num_qubits si hay qubit fuera de rango
+        # Auto-expandir num_qubits si hay qubit fuera de rango (máx 19)
         global _num_qubits
         for _q in qubits:
             if isinstance(_q, int) and _q >= _num_qubits:
-                _num_qubits = _q + 1
+                if _q >= 20:   # límite absoluto de qubits
+                    pass
+                else:
+                    _num_qubits = _q + 1
         params = []
         try:
             params = [float(p) for p in (op.params or [])]
@@ -1729,7 +1935,17 @@ def _safe_gate(op):
         return None
 
 _all = [g for g in (_safe_gate(op) for op in _data) if g is not None]
-_gates = [g for g in _all if g[0] != 'measure'] + [g for g in _all if g[0] == 'measure']
+# Deduplicar mediciones: solo una por qubit
+_non_m = [g for g in _all if g[0] != 'measure']
+_seen_q = set()
+_measures = []
+for _g in _all:
+    if _g[0] == 'measure':
+        _q = _g[1][0] if _g[1] else 0
+        if _q not in _seen_q:
+            _seen_q.add(_q)
+            _measures.append(_g)
+_gates = _non_m + _measures
 
 json.dumps({
     "success": _error is None,
@@ -1768,13 +1984,20 @@ json.dumps({
                     newGates.push({ id: gateId, q: sorted[0], q2: sorted[1], q3: sorted[2], def: def, uid: uid });
                 }
             }
-            // Mediciones siempre al final
+            // Deduplicar mediciones por qubit
             const _nonM = newGates.filter(g => g.id !== 'M');
-            const _meas  = newGates.filter(g => g.id === 'M');
-            circuit.gates = [..._nonM, ..._meas];
+            const _measTmp = newGates.filter(g => g.id === 'M');
+            const _seenM = new Set();
+            const _dedupGates = [..._nonM];
+            for (const g of _measTmp) {
+                if (!_seenM.has(g.q)) { _seenM.add(g.q); _dedupGates.push(g); }
+            }
+            // Quitar mediciones de cables sin puertas normales
+            const _qubitsWithGates = new Set(_nonM.map(g => g.q));
+            circuit.gates = _dedupGates.filter(g => g.id !== 'M' || _qubitsWithGates.has(g.q));
             
-            const _gCount = _nonM.length;
-            const _mCount = _meas.length;
+            const _gCount = circuit.gates.filter(g => g.id !== 'M').length;
+            const _mCount = circuit.gates.filter(g => g.id === 'M').length;
             
             renderCircuit();
             updateCircuitInfo();
@@ -1879,7 +2102,7 @@ async function runServerCode() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ data: [code], fn_index: 0 })
-            }, 3, 30000);
+            }, 3, 90000, 4000);
             const raw = await res.json();
             d = raw.data ? raw.data[0] : raw;
         } else {
@@ -1887,7 +2110,7 @@ async function runServerCode() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ code, lib: curLib })
-            }, 3, 30000);
+            }, 3, 90000, 4000);
             d = await res.json();
         }
         const el = ((Date.now() - t0) / 1000).toFixed(2);
@@ -2004,6 +2227,26 @@ function updateSyntaxHighlight() {
     }
     
     const highlighted = highlightSyntax(plainCode);
+    // Marcar líneas con errores de lint estático
+    const lintErrors = lintCode(plainCode);
+    if (lintErrors.length > 0) {
+        if (!_errorLine || _errorLine < 0) {
+            _errorLine = lintErrors[0].line;
+        }
+        const out = document.getElementById('out-body');
+        if (out && !out.innerHTML.includes('LINT')) {
+            const lintHtml = lintErrors.map(e => 
+                `<span class="wa" style="font-size:.6rem;">⚠️ L${e.line}: ${escapeHtml(e.msg)}</span>`
+            ).join('\n');
+            const div = document.createElement('span');
+            div.className = 'lint-hint wa';
+            div.innerHTML = lintHtml;
+            out.prepend(div);
+        }
+    } else {
+        document.querySelectorAll('.lint-hint').forEach(el => el.remove());
+    }
+    
     if (_errorLine > 0) {
         const hlLines = highlighted.split('\n');
         if (hlLines[_errorLine - 1] !== undefined) {
@@ -2110,25 +2353,29 @@ function highlightErrorLine(lineNum) {
     updCur();
 }
 
-async function fetchWithRetry(url, options, retries = 3, delay = 30000) {
+async function fetchWithRetry(url, options, retries = 2, timeout = 90000, retryWait = 4000) {
     let lastError;
     for (let attempt = 1; attempt <= retries; attempt++) {
         try {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), delay);
+            const timeoutId = setTimeout(() => controller.abort(), timeout);
             const res = await fetch(url, { ...options, signal: controller.signal });
             clearTimeout(timeoutId);
             if (res.ok) return res;
             lastError = new Error(`HTTP ${res.status}`);
+            if (res.status === 401 || res.status === 403) break;
             if (attempt < retries) {
-                notify(`⏳ Intento ${attempt}/${retries} falló, reintentando en ${delay/1000}s...`);
-                await new Promise(r => setTimeout(r, delay));
+                notify(`⚠️ Intento ${attempt}/${retries} — HTTP ${res.status}. Reintentando...`);
+                await new Promise(r => setTimeout(r, retryWait));
             }
         } catch (e) {
             lastError = e;
+            const isTimeout = e.name === 'AbortError';
             if (attempt < retries) {
-                notify(`⚠️ Timeout/Error (${e.message}) - Reintento ${attempt}/${retries}`);
-                await new Promise(r => setTimeout(r, delay));
+                notify(isTimeout
+                    ? `⏱ Intento ${attempt}/${retries}: servidor tardó más de ${timeout/1000}s. Reintentando...`
+                    : `⚠️ Intento ${attempt}/${retries}: ${e.message}`);
+                await new Promise(r => setTimeout(r, retryWait));
             }
         }
     }
@@ -2220,7 +2467,15 @@ function applyBlochGate(gate) {
 
 function addQubit() { if (circuit.qubits < MAX_QUBITS) { circuit.qubits++; if (!blochStates[circuit.qubits-1]) blochStates[circuit.qubits-1] = { theta: 0, phi: 0 }; renderCircuit(); updateCircuitInfo(); updateCodeFromCircuit(); notify(`${circuit.qubits} qubits`); } else notify(`Máximo ${MAX_QUBITS} qubits`); }
 function removeQubit() { if (circuit.qubits > 1) { circuit.gates = circuit.gates.filter(g => g.q < circuit.qubits-1 && (!g.q2 || g.q2 < circuit.qubits-1) && (!g.q3 || g.q3 < circuit.qubits-1)); circuit.qubits--; if (currentBlochQubit >= circuit.qubits) currentBlochQubit = circuit.qubits-1; renderCircuit(); updateCircuitInfo(); updateCodeFromCircuit(); notify(`${circuit.qubits} qubits`); } }
-function clearCircuit() { circuit.gates = []; for (let i = 0; i < circuit.qubits; i++) blochStates[i] = { theta: 0, phi: 0 }; renderCircuit(); updateCircuitInfo(); updateCodeFromCircuit(); drawBloch(); notify('Circuito limpiado'); }
+function clearCircuit() {
+    circuit.gates = [];
+    for (let i = 0; i < circuit.qubits; i++) blochStates[i] = { theta: 0, phi: 0 };
+    renderCircuit();
+    updateCircuitInfo();
+    updateCodeFromCircuit();
+    drawBloch();
+    notify('Puertas borradas — cables conservados');
+}
 function clearCode() { 
     const defaultCode = `from qiskit import QuantumCircuit
 import numpy as np
@@ -2479,10 +2734,13 @@ function init() {
 
 window.onDragStart = onDragStart;
 window.onDragEnd = onDragEnd;
+window.onPlacedDragStart = onPlacedDragStart;
+window.onPlacedDragEnd = onPlacedDragEnd;
 window.onWireDragOver = onWireDragOver;
 window.onWireDragLeave = onWireDragLeave;
 window.onWireDrop = onWireDrop;
 window.removeGate = removeGate;
+window.moveGate = moveGate;
 window.loadCircuit = loadCircuit;
 window.deleteCircuit = deleteCircuit;
 window.removeFromQueue = removeFromQueue;

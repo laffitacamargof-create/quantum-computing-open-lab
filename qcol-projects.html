@@ -1,15 +1,16 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>QCOL Proyectos</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QCOL Proyectos · Laboratorio Cuántico</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=JetBrains+Mono:wght@400;500&family=Exo+2:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#010608;--s:#071220;--s2:#0c1c30;--b:#0d2a4a;--b2:#1a3a5c;--bl:#0088ff;--bl2:#00ccff;--gr:#00ff88;--gd:#ffd700;--rd:#ff4466;--tx:#ddeeff;--mu:#4a7a9b;--orb:'Orbitron',monospace;--mono:'JetBrains Mono',monospace;--exo:'Exo 2',sans-serif;}
 *{margin:0;padding:0;box-sizing:border-box;}
 body{background:var(--bg);color:var(--tx);font-family:var(--exo);min-height:100vh;}
 body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,136,255,.03)1px,transparent 1px),linear-gradient(90deg,rgba(0,136,255,.03)1px,transparent 1px);background-size:40px 40px;pointer-events:none;}
-.notif{position:fixed;top:.8rem;right:.8rem;z-index:999;padding:.55rem 1rem;background:rgba(4,14,28,.97);border:1px solid var(--bl2);border-radius:8px;font-family:var(--orb);font-size:.6rem;color:var(--bl2);transform:translateX(130%);transition:transform .3s;}
+.notif{position:fixed;top:.8rem;right:.8rem;z-index:999;padding:.55rem 1rem;background:rgba(4,14,28,.97);border:1px solid var(--bl2);border-radius:8px;font-family:var(--orb);font-size:.6rem;color:var(--bl2);transform:translateX(130%);transition:transform .3s; backdrop-filter: blur(2px);}
 .notif.show{transform:translateX(0);}
 .admin-bar{display:none;background:rgba(255,215,0,.05);border-bottom:1px solid rgba(255,215,0,.15);padding:.5rem 1.3rem;font-family:var(--orb);font-size:.56rem;color:var(--gd);align-items:center;gap:.5rem;}
 .admin-bar.show{display:flex;}
@@ -46,14 +47,16 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .btn-exec:hover{background:rgba(0,136,255,.28);}
 .btn-del{padding:.52rem .65rem;background:rgba(255,68,102,.08);border:1px solid rgba(255,68,102,.2);border-radius:7px;color:#ff8899;font-family:var(--orb);font-size:.58rem;cursor:pointer;}
 .btn-del:hover{background:rgba(255,68,102,.18);}
-.modal-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:500;align-items:center;justify-content:center;}
+.btn-edit{padding:.52rem .65rem;background:rgba(0,255,136,.08);border:1px solid rgba(0,255,136,.2);border-radius:7px;color:#88ffaa;font-family:var(--orb);font-size:.58rem;cursor:pointer;}
+.btn-edit:hover{background:rgba(0,255,136,.18);}
+.modal-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:500;align-items:center;justify-content:center;backdrop-filter: blur(3px);}
 .modal-ov.open{display:flex;}
-.modal{background:var(--s);border:1px solid rgba(0,136,255,.35);border-radius:14px;padding:1.7rem;width:min(500px,92vw);max-height:90vh;overflow-y:auto;animation:su .3s ease;}
+.modal{background:var(--s);border:1px solid rgba(0,136,255,.45);border-radius:14px;padding:1.7rem;width:min(500px,92vw);max-height:90vh;overflow-y:auto;animation:su .3s ease;}
 @keyframes su{from{transform:translateY(16px);opacity:0;}to{transform:translateY(0);opacity:1;}}
 .modal-title{font-family:var(--orb);font-size:.88rem;color:var(--bl2);margin-bottom:1.2rem;}
 .fg{margin-bottom:.8rem;}
 .fl{font-family:var(--orb);font-size:.52rem;color:var(--mu);letter-spacing:.1em;display:block;margin-bottom:.25rem;}
-.fi{width:100%;background:rgba(0,0,0,.4);border:1px solid var(--b2);border-radius:7px;padding:.5rem .8rem;color:var(--tx);font-family:var(--exo);font-size:.78rem;outline:none;}
+.fi{width:100%;background:rgba(0,0,0,.5);border:1px solid var(--b2);border-radius:7px;padding:.5rem .8rem;color:var(--tx);font-family:var(--exo);font-size:.78rem;outline:none;}
 .fi:focus{border-color:rgba(0,136,255,.7);}
 select.fi{cursor:pointer;}
 textarea.fi{resize:vertical;min-height:70px;line-height:1.6;}
@@ -82,21 +85,21 @@ textarea.fi{resize:vertical;min-height:70px;line-height:1.6;}
 </div>
 <div id="content"></div>
 
-<!-- MODAL AGREGAR -->
+<!-- MODAL AGREGAR (solo admins) -->
 <div class="modal-ov" id="add-modal">
   <div class="modal">
     <div class="modal-title">➕ Agregar Proyecto</div>
     <div class="fg"><label class="fl">TÍTULO</label><input class="fi" id="a-t" placeholder="Nombre del proyecto"></div>
     <div class="fg"><label class="fl">TIPO</label>
       <select class="fi" id="a-type">
-        <option value="nb">Notebook .ipynb</option>
         <option value="pdf">PDF / LaTeX</option>
         <option value="video">Video</option>
+        <option value="nb" class="opt-nb" style="display:none;">Notebook .ipynb</option>
       </select>
     </div>
-    <div class="fg"><label class="fl">ID DEL ARCHIVO (sin extensión, sin espacios)</label><input class="fi" id="a-id" placeholder="ej: circuito_bell"></div>
+    <div class="fg"><label class="fl">ID DEL ARCHIVO (sin extensión, único)</label><input class="fi" id="a-id" placeholder="ej: algoritmo_shor"></div>
     <div class="fg"><label class="fl">DESCRIPCIÓN</label><textarea class="fi" id="a-desc" placeholder="Breve descripción"></textarea></div>
-    <div class="fg"><label class="fl">TAGS</label><input class="fi" id="a-tags" placeholder="Qiskit · LaTeX"></div>
+    <div class="fg"><label class="fl">TAGS</label><input class="fi" id="a-tags" placeholder="Qiskit · Algoritmos"></div>
     <div class="g2">
       <div class="fg"><label class="fl">CELDAS / PÁGINAS</label><input class="fi" id="a-size" type="number" value="10"></div>
       <div class="fg"><label class="fl">TIEMPO (min)</label><input class="fi" id="a-time" type="number" value="15"></div>
@@ -108,22 +111,63 @@ textarea.fi{resize:vertical;min-height:70px;line-height:1.6;}
   </div>
 </div>
 
+<!-- MODAL EDITAR (solo founder) -->
+<div class="modal-ov" id="edit-modal">
+  <div class="modal">
+    <div class="modal-title">✏️ Editar Proyecto</div>
+    <div class="fg"><label class="fl">TÍTULO</label><input class="fi" id="e-t" placeholder="Título del proyecto"></div>
+    <div class="fg"><label class="fl">TIPO</label>
+      <select class="fi" id="e-type">
+        <option value="pdf">PDF / LaTeX</option>
+        <option value="video">Video</option>
+        <option value="nb" class="opt-nb-edit" style="display:none;">Notebook .ipynb</option>
+      </select>
+    </div>
+    <div class="fg"><label class="fl">ID DEL ARCHIVO (único, no editable)</label><input class="fi" id="e-id" readonly disabled style="opacity:0.7;background:#0a1428;"></div>
+    <div class="fg"><label class="fl">DESCRIPCIÓN</label><textarea class="fi" id="e-desc" placeholder="Descripción"></textarea></div>
+    <div class="fg"><label class="fl">TAGS</label><input class="fi" id="e-tags" placeholder="tags"></div>
+    <div class="g2">
+      <div class="fg"><label class="fl">CELDAS / PÁGINAS</label><input class="fi" id="e-size" type="number"></div>
+      <div class="fg"><label class="fl">TIEMPO (min)</label><input class="fi" id="e-time" type="number"></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-pri" onclick="updateProj()">💾 Guardar cambios</button>
+      <button class="btn-cancel" onclick="closeEdit()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
 <script>
-let curUser=null,isAdmin=false,cfg={},filt='all';
+let curUser=null,isAdmin=false,isFounder=false,cfg={},filt='all';
+let editingProjId = null;
+
 function postCore(t,d={}){window.parent.postMessage({type:t,...d},'*');}
 function notify(msg){const n=document.getElementById('notif');n.textContent=msg;n.classList.add('show');clearTimeout(n._t);n._t=setTimeout(()=>n.classList.remove('show'),3000);postCore('QCOL_NOTIFY',{msg});}
+
 window.addEventListener('message',e=>{
   const d=e.data;if(!d?.type)return;
   if(d.type==='QCOL_CONFIG'){cfg=d;}
   if(d.type==='QCOL_USER_UPDATE'){
-    curUser=d.user;isAdmin=curUser?.role==='admin'||curUser?.role==='founder';
-    document.getElementById('admin-bar').classList.toggle('show',isAdmin);render();
+    curUser=d.user;
+    isAdmin = (curUser?.role==='admin' || curUser?.role==='founder');
+    isFounder = (curUser?.role==='founder');
+    // Mostrar/ocultar opción Notebook en ambos modales según rol (paso1)
+    document.querySelectorAll('.opt-nb').forEach(o => o.style.display = isAdmin ? '' : 'none');
+    document.querySelectorAll('.opt-nb-edit').forEach(o => o.style.display = isAdmin ? '' : 'none');
+    document.getElementById('admin-bar').classList.toggle('show', isAdmin);
+    render();
   }
 });
 postCore('QCOL_GET_CONFIG');
+
+// ==================== DATA ====================
 function getP(){return JSON.parse(localStorage.getItem('qcol_projs')||'[]');}
 function saveP(p){localStorage.setItem('qcol_projs',JSON.stringify(p));}
+
+// ==================== FILTROS ====================
 function setF(f,el){filt=f;document.querySelectorAll('.fbtn').forEach(b=>b.classList.remove('on'));el.classList.add('on');render();}
+
+// ==================== RENDER + PERMISOS (paso3) ====================
 function render(){
   const q=document.getElementById('search').value.toLowerCase();
   const all=getP().filter(p=>{
@@ -142,48 +186,141 @@ function render(){
     const tl=p.type==='nb'?'NOTEBOOK':p.type==='pdf'?'PDF LaTeX':'VIDEO';
     const tc=p.type==='nb'?'tnb':p.type==='pdf'?'tpdf':'tvid';
     const meta=p.type==='nb'?`<span>⚛ ${p.size||10} celdas</span><span>⏱ ${p.time||10} min</span>`:p.type==='pdf'?`<span>📄 ${p.size||10} pág</span><span>⏱ ${p.time||10} min</span>`:`<span>▶ Video</span><span>⏱ ${p.time||10} min</span>`;
-    const del=isAdmin?`<button class="btn-del" onclick="delP('${p.id}')">🗑</button>`:'';
-    const exec=p.type==='nb'?'▶ EJECUTAR':p.type==='pdf'?'📖 VER':'▶ VER';
+    
+    // Permisos específicos paso3
+    const canDelete = isFounder;      // solo founder puede eliminar
+    const canModify = isFounder;      // solo founder puede editar
+    
+    const delBtn = canDelete ? `<button class="btn-del" onclick="delProj('${p.id}')" title="Eliminar permanentemente">🗑</button>` : '';
+    const editBtn = canModify ? `<button class="btn-edit" onclick="editProj('${p.id}')" title="Editar proyecto">✏️</button>` : '';
+    
+    const execText = p.type==='nb'?'▶ EJECUTAR':p.type==='pdf'?'📖 VER':'▶ VER';
     return`<div class="card"><div class="card-hdr"><span class="tbadge ${tc}">${tl}</span><span class="card-tags">${p.tags||''}</span></div>
-      <div class="card-body"><div class="card-title">${p.title}</div><p class="card-desc">${p.desc||''}</p>
+      <div class="card-body"><div class="card-title">${escapeHtml(p.title)}</div><p class="card-desc">${escapeHtml(p.desc||'')}</p>
       <div class="card-meta">${meta}</div>
-      <div class="card-actions"><button class="btn-exec" onclick="execP('${p.id}','${p.type}')">${exec}</button>${del}</div></div></div>`;
+      <div class="card-actions"><button class="btn-exec" onclick="execP('${p.id}','${p.type}')">${execText}</button>${editBtn}${delBtn}</div></div></div>`;
   }).join('')+'</div>';
 }
+
+function escapeHtml(str){if(!str)return '';return str.replace(/[&<>]/g,function(m){if(m==='&')return '&amp;';if(m==='<')return '&lt;';if(m==='>')return '&gt;';return m;});}
+
+// ==================== EJECUTAR PROYECTO ====================
 function execP(id,type){
   const p=getP().find(x=>x.id===id);if(!p)return;
   if(type==='nb'){
-    // Si admin/founder → abrir en Arquitecto Pro con las celdas
     if(isAdmin){
       postCore('QCOL_LOAD_NB',{nb:p});
       postCore('QCOL_NAV',{screen:'architect-pro'});
       notify('Abriendo en Arquitecto Pro...');
     } else {
-      // Usuario normal → abrir en Arquitecto básico
       postCore('QCOL_NAV',{screen:'architect'});
-      notify('Abriendo en el editor...');
+      notify('Abriendo en editor Notebook...');
     }
   }
   else if(type==='pdf'){
     const gh=cfg.ghUser||'laffitacamargof-create',repo=cfg.ghRepo||'quantum-computing-open-lab';
     window.open(`https://github.com/${gh}/${repo}/blob/main/docs/${id}.pdf`,'_blank');
-  }else notify('Video: '+p.title);
+  } else if(type==='video'){
+    notify(`🎬 Video: ${p.title} — demo en desarrollo`);
+  } else notify('Formato no soportado');
 }
-function delP(id){
-  if(!isAdmin||!confirm('¿Eliminar?'))return;
-  saveP(getP().filter(x=>x.id!==id));notify('Eliminado');render();
+
+// ==================== DELETE (solo founder) ====================
+function delProj(id){
+  if(!isFounder){ notify('❌ Solo el founder puede eliminar proyectos'); return; }
+  if(!confirm('⚠️ Eliminar proyecto permanentemente?'))return;
+  const newProjs=getP().filter(x=>x.id!==id);
+  saveP(newProjs);
+  notify('🗑 Proyecto eliminado');
+  render();
 }
-function openAdd(){document.getElementById('add-modal').classList.add('open');}
-function closeAdd(){document.getElementById('add-modal').classList.remove('open');}
+
+// ==================== AGREGAR (solo admins, paso2) ====================
+function openAdd(){ if(!isAdmin){ notify('❌ Solo administradores pueden agregar proyectos'); return; } document.getElementById('add-modal').classList.add('open'); }
+function closeAdd(){ document.getElementById('add-modal').classList.remove('open'); }
 function addProj(){
-  const t=document.getElementById('a-t').value.trim(),id=document.getElementById('a-id').value.trim().replace(/\s/g,'_').toLowerCase(),type=document.getElementById('a-type').value,desc=document.getElementById('a-desc').value.trim(),tags=document.getElementById('a-tags').value.trim(),size=parseInt(document.getElementById('a-size').value)||10,time=parseInt(document.getElementById('a-time').value)||15;
+  if(!isAdmin){ notify('❌ Solo administradores pueden agregar proyectos'); return; }
+  const t=document.getElementById('a-t').value.trim();
+  let id=document.getElementById('a-id').value.trim().replace(/\s/g,'_').toLowerCase();
+  const type=document.getElementById('a-type').value;
+  const desc=document.getElementById('a-desc').value.trim();
+  const tags=document.getElementById('a-tags').value.trim();
+  const size=parseInt(document.getElementById('a-size').value)||10;
+  const time=parseInt(document.getElementById('a-time').value)||15;
   if(!t||!id){notify('Título e ID son obligatorios');return;}
-  const all=getP();if(all.find(p=>p.id===id)){notify('ID ya existe');return;}
+  const all=getP(); if(all.find(p=>p.id===id)){notify('⚠️ ID ya existe, elige otro');return;}
   all.push({id,title:t,type,desc,tags,size,time,added:new Date().toLocaleDateString()});
-  saveP(all);closeAdd();notify('✅ Proyecto agregado: '+t);render();
-  ['a-t','a-id','a-desc','a-tags'].forEach(k=>document.getElementById(k).value='');
+  saveP(all);
+  closeAdd();
+  notify(`✅ Proyecto "${t}" agregado`);
+  render();
+  document.getElementById('a-t').value='';
+  document.getElementById('a-id').value='';
+  document.getElementById('a-desc').value='';
+  document.getElementById('a-tags').value='';
+  document.getElementById('a-size').value='10';
+  document.getElementById('a-time').value='15';
+  document.getElementById('a-type').value='pdf';
 }
+
+// ==================== EDITAR (solo founder) ====================
+function editProj(id){
+  if(!isFounder){ notify('❌ Solo el founder puede editar proyectos'); return; }
+  const proj=getP().find(p=>p.id===id);
+  if(!proj){ notify('Proyecto no encontrado'); return; }
+  editingProjId=id;
+  // llenar modal de edición
+  document.getElementById('e-t').value=proj.title;
+  document.getElementById('e-type').value=proj.type;
+  document.getElementById('e-id').value=proj.id;
+  document.getElementById('e-desc').value=proj.desc||'';
+  document.getElementById('e-tags').value=proj.tags||'';
+  document.getElementById('e-size').value=proj.size||10;
+  document.getElementById('e-time').value=proj.time||15;
+  // mostrar modal
+  document.getElementById('edit-modal').classList.add('open');
+}
+function closeEdit(){ document.getElementById('edit-modal').classList.remove('open'); editingProjId=null; }
+function updateProj(){
+  if(!isFounder){ notify('Acción denegada: solo founder'); closeEdit(); return; }
+  if(!editingProjId){ notify('Error interno'); closeEdit(); return; }
+  const newTitle=document.getElementById('e-t').value.trim();
+  const newType=document.getElementById('e-type').value;
+  const newDesc=document.getElementById('e-desc').value.trim();
+  const newTags=document.getElementById('e-tags').value.trim();
+  const newSize=parseInt(document.getElementById('e-size').value)||10;
+  const newTime=parseInt(document.getElementById('e-time').value)||15;
+  if(!newTitle){ notify('El título no puede estar vacío'); return; }
+  let projects=getP();
+  const index=projects.findIndex(p=>p.id===editingProjId);
+  if(index===-1){ notify('Proyecto no existe'); closeEdit(); return; }
+  // preservar id y fecha original
+  projects[index]={...projects[index], title:newTitle, type:newType, desc:newDesc, tags:newTags, size:newSize, time:newTime};
+  saveP(projects);
+  notify('✏️ Proyecto actualizado');
+  closeEdit();
+  render();
+}
+
+// ==================== EVENTOS CIERRE MODALES ====================
 document.getElementById('add-modal').addEventListener('click',e=>{if(e.target===document.getElementById('add-modal'))closeAdd();});
+document.getElementById('edit-modal').addEventListener('click',e=>{if(e.target===document.getElementById('edit-modal'))closeEdit();});
+
+// ==================== INICIALIZAR + SEGURIDAD EXTRA ====================
+// Sincronizar visibilidad de opciones nb al cargar si el usuario ya está definido (postMessage puede llegar después)
+function syncNotebookOptionDelayed(){
+  const adminState=isAdmin;
+  document.querySelectorAll('.opt-nb').forEach(o => o.style.display = adminState ? '' : 'none');
+  document.querySelectorAll('.opt-nb-edit').forEach(o => o.style.display = adminState ? '' : 'none');
+}
+setInterval(syncNotebookOptionDelayed, 500); // respaldo ante cambios asíncronos
+
+// Prevenir manipulación desde consola: verificar en addProj y editProj ya está hecho
+// también proteger cualquier intento de renderizar botones no autorizados mediante re-render frecuente
+window.render=render;
+
+// Pequeño helper para asegurar que founder tiene todos los permisos pero admin (no founder) no tenga botones eliminar/editar
+// ya está implementado en render()
 render();
 </script>
 </body>
