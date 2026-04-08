@@ -1,0 +1,35 @@
+""")
+
+# Endpoints API
+gr.Interface(
+    fn=run_circuit,
+    inputs=gr.Textbox(visible=False),
+    outputs=gr.JSON(visible=False),
+    api_name="run"
+)
+gr.Interface(
+    fn=health_check,
+    inputs=gr.Textbox(visible=False),
+    outputs=gr.JSON(visible=False),
+    api_name="health"
+)
+gr.Interface(
+    fn=save_ignored_attr,
+    inputs=gr.JSON(visible=False),
+    outputs=gr.JSON(visible=False),
+    api_name="save_ignored_attr"
+)
+gr.Interface(
+    fn=get_ignored_attrs,
+    inputs=gr.JSON(visible=False),
+    outputs=gr.JSON(visible=False),
+    api_name="get_ignored_attrs"
+)
+gr.Interface(
+    fn=remove_ignored_attr,
+    inputs=gr.JSON(visible=False),
+    outputs=gr.JSON(visible=False),
+    api_name="remove_ignored_attr"
+)
+
+demo.launch(server_name="0.0.0.0", server_port=7860)
