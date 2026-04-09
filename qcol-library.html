@@ -34,7 +34,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .card-type-badge{position:absolute;top:.65rem;right:.65rem;padding:.1rem .35rem;border-radius:4px;font-family:var(--orb);font-size:.46rem;}
 .t-pdf{background:rgba(255,68,102,.12);color:#ff8899;border:1px solid rgba(255,68,102,.3);}
 .t-video{background:rgba(0,255,136,.1);color:var(--gr);border:1px solid rgba(0,255,136,.3);}
-.t-nb{background:rgba(0,136,255,.15);color:var(--bl2);border:1px solid rgba(0,136,255,.3);}
+.t-nb-hidden{background:rgba(0,136,255,.15);color:var(--bl2);border:1px solid rgba(0,136,255,.3);}
 .card-icon{font-size:2rem;margin-bottom:.65rem;}
 .card-title{font-family:var(--orb);font-size:.66rem;color:var(--tx);margin-bottom:.3rem;}
 .card-desc{font-size:.62rem;color:var(--mu);line-height:1.5;margin-bottom:.65rem;}
@@ -53,6 +53,19 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 select.fi{cursor:pointer;}
 .btn-row{display:flex;gap:.5rem;margin-top:.8rem;}
 .btn-cancel{padding:.45rem .9rem;background:transparent;border:1px solid var(--b2);border-radius:7px;color:var(--mu);font-family:var(--orb);font-size:.58rem;cursor:pointer;}
+@media(max-width:600px){
+  .grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:.65rem;padding:.9rem;}
+  .toolbar{padding:.6rem .9rem;gap:.4rem;}
+  .search-box{max-width:100%;flex:1;}
+  .filter-btns{flex-wrap:wrap;}
+  .fbtn{font-size:.48rem;padding:.22rem .5rem;}
+  .card-title{font-size:.62rem;}
+  .card-desc{font-size:.58rem;}
+}
+@media(max-width:420px){
+  .grid{grid-template-columns:1fr 1fr;}
+  .toolbar{flex-direction:column;align-items:flex-start;gap:.35rem;}
+}
 </style>
 </head>
 <body>
@@ -70,7 +83,7 @@ select.fi{cursor:pointer;}
     <button class="fbtn on" onclick="setF('all',this)">Todo</button>
     <button class="fbtn" onclick="setF('video',this)">Videos</button>
     <button class="fbtn" onclick="setF('pdf',this)">PDFs</button>
-    <button class="fbtn" onclick="setF('nb',this)">Notebooks</button>
+    
   </div>
 </div>
 <div id="content"></div>
@@ -83,7 +96,7 @@ select.fi{cursor:pointer;}
       <select class="fi" id="a-type">
         <option value="pdf">📄 PDF / Documento</option>
         <option value="video">🎬 Video</option>
-        <option value="nb">📓 Notebook</option>
+        
       </select>
     </div>
     <div class="fg"><label class="fl">ÍCONO (emoji)</label><input class="fi" id="a-icon" placeholder="📘" style="width:80px;text-align:center;font-size:1.2rem;"></div>
@@ -112,10 +125,52 @@ window.addEventListener('message',e=>{
 });
 postCore('QCOL_GET_CONFIG');
 function getItems(){return JSON.parse(localStorage.getItem('qcol_library')||'[]');}
-function saveItems(i){localStorage.setItem('qcol_library',JSON.stringify(i));}
+
+async function loadFromGitHub(){
+  const gh=JSON.parse(localStorage.getItem('qcol_gh')||'{}');
+  if(!gh.user||!gh.repo) return;
+  try{
+    const res=await fetch(`https://api.github.com/repos/${gh.user}/${gh.repo}/contents/data/library.json`,
+      {headers:{'Accept':'application/vnd.github.v3+json'}});
+    if(res.ok){
+      const d=await res.json();
+      const items=JSON.parse(atob(d.content.replace(/\n/g,'')));
+      localStorage.setItem('qcol_library',JSON.stringify(items));
+      render();
+    }
+  }catch(e){}
+}
+function saveItems(items){
+  localStorage.setItem('qcol_library',JSON.stringify(items));
+  // Notificar al core para sincronizar
+  if(window.parent) window.parent.postMessage({type:'QCOL_SAVE',key:'qcol_library',val:items},'*');
+  // Guardar en GitHub si hay token
+  const gh=JSON.parse(localStorage.getItem('qcol_gh')||'{}');
+  if(gh.token && gh.user && gh.repo){
+    syncLibraryToGitHub(items, gh);
+  }
+}
+
+async function syncLibraryToGitHub(items, gh){
+  try{
+    const content = btoa(unescape(encodeURIComponent(JSON.stringify(items,null,2))));
+    const path = 'data/library.json';
+    const apiURL = `https://api.github.com/repos/${gh.user}/${gh.repo}/contents/${path}`;
+    // Get SHA if exists
+    let sha;
+    try{
+      const check = await fetch(apiURL,{headers:{'Authorization':'token '+gh.token,'Accept':'application/vnd.github.v3+json'}});
+      if(check.ok){ const d=await check.json(); sha=d.sha; }
+    }catch(e){}
+    const body={message:'QCOL: actualizar librería',content};
+    if(sha) body.sha=sha;
+    const res=await fetch(apiURL,{method:'PUT',headers:{'Authorization':'token '+gh.token,'Accept':'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify(body)});
+    if(res.ok) console.log('✅ Librería sincronizada con GitHub');
+  }catch(e){ console.warn('GitHub sync:', e.message); }
+}
 const TYPE_ICONS={pdf:'📄',video:'🎬',nb:'📓'};
 const TYPE_LABELS={pdf:'PDF',video:'VIDEO',nb:'NOTEBOOK'};
-const TYPE_CLS={pdf:'t-pdf',video:'t-video',nb:'t-nb'};
+const TYPE_CLS={pdf:'t-pdf',video:'t-video',nb:'t-nb-hidden'};
 function setF(f,el){filt=f;document.querySelectorAll('.fbtn').forEach(b=>b.classList.remove('on'));el.classList.add('on');render();}
 function render(){
   const q=document.getElementById('search').value.toLowerCase();
@@ -167,6 +222,7 @@ function addItem(){
 }
 document.getElementById('add-modal').addEventListener('click',e=>{if(e.target===document.getElementById('add-modal'))closeAdd();});
 render();
+loadFromGitHub();
 </script>
 </body>
 </html>

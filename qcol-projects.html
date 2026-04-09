@@ -1,8 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>QCOL Proyectos · Laboratorio Cuántico</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=JetBrains+Mono:wght@400;500&family=Exo+2:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -151,7 +150,7 @@ window.addEventListener('message',e=>{
     curUser=d.user;
     isAdmin = (curUser?.role==='admin' || curUser?.role==='founder');
     isFounder = (curUser?.role==='founder');
-    // Mostrar/ocultar opción Notebook en ambos modales según rol (paso1)
+    // Mostrar/ocultar opción Notebook en ambos modales según rol
     document.querySelectorAll('.opt-nb').forEach(o => o.style.display = isAdmin ? '' : 'none');
     document.querySelectorAll('.opt-nb-edit').forEach(o => o.style.display = isAdmin ? '' : 'none');
     document.getElementById('admin-bar').classList.toggle('show', isAdmin);
@@ -167,7 +166,7 @@ function saveP(p){localStorage.setItem('qcol_projs',JSON.stringify(p));}
 // ==================== FILTROS ====================
 function setF(f,el){filt=f;document.querySelectorAll('.fbtn').forEach(b=>b.classList.remove('on'));el.classList.add('on');render();}
 
-// ==================== RENDER + PERMISOS (paso3) ====================
+// ==================== RENDER + PERMISOS ====================
 function render(){
   const q=document.getElementById('search').value.toLowerCase();
   const all=getP().filter(p=>{
@@ -187,42 +186,40 @@ function render(){
     const tc=p.type==='nb'?'tnb':p.type==='pdf'?'tpdf':'tvid';
     const meta=p.type==='nb'?`<span>⚛ ${p.size||10} celdas</span><span>⏱ ${p.time||10} min</span>`:p.type==='pdf'?`<span>📄 ${p.size||10} pág</span><span>⏱ ${p.time||10} min</span>`:`<span>▶ Video</span><span>⏱ ${p.time||10} min</span>`;
     
-    // Permisos específicos paso3
-    const canDelete = isFounder;      // solo founder puede eliminar
-    const canModify = isFounder;      // solo founder puede editar
-    
+    const canDelete = isFounder;
+    const canModify = isFounder;
     const delBtn = canDelete ? `<button class="btn-del" onclick="delProj('${p.id}')" title="Eliminar permanentemente">🗑</button>` : '';
     const editBtn = canModify ? `<button class="btn-edit" onclick="editProj('${p.id}')" title="Editar proyecto">✏️</button>` : '';
-    
     const execText = p.type==='nb'?'▶ EJECUTAR':p.type==='pdf'?'📖 VER':'▶ VER';
-    return`<div class="card"><div class="card-hdr"><span class="tbadge ${tc}">${tl}</span><span class="card-tags">${p.tags||''}</span></div>
+    return`<div class="card"><div class="card-hdr"><span class="tbadge ${tc}">${tl}</span><span class="card-tags">${escapeHtml(p.tags||'')}</span></div>
       <div class="card-body"><div class="card-title">${escapeHtml(p.title)}</div><p class="card-desc">${escapeHtml(p.desc||'')}</p>
       <div class="card-meta">${meta}</div>
-      <div class="card-actions"><button class="btn-exec" onclick="execP('${p.id}','${p.type}')">${execText}</button>${editBtn}${delBtn}</div></div></div>`;
+      <div class="card-actions"><button class="btn-exec" onclick="execProj('${p.id}')">${execText}</button>${editBtn}${delBtn}</div></div></div>`;
   }).join('')+'</div>';
 }
 
 function escapeHtml(str){if(!str)return '';return str.replace(/[&<>]/g,function(m){if(m==='&')return '&amp;';if(m==='<')return '&lt;';if(m==='>')return '&gt;';return m;});}
 
-// ==================== EJECUTAR PROYECTO ====================
-function execP(id,type){
-  const p=getP().find(x=>x.id===id);if(!p)return;
-  if(type==='nb'){
-    if(isAdmin){
-      postCore('QCOL_LOAD_NB',{nb:p});
-      postCore('QCOL_NAV',{screen:'architect-pro'});
-      notify('Abriendo en Arquitecto Pro...');
-    } else {
-      postCore('QCOL_NAV',{screen:'architect'});
-      notify('Abriendo en editor Notebook...');
+// ==================== NUEVA FUNCIÓN execProj (PASO 1) ====================
+function execProj(id) {
+    const projs = JSON.parse(localStorage.getItem('qcol_projs') || '[]');
+    const p = projs.find(x => x.id === id);
+    if (!p) { notify('Proyecto no encontrado'); return; }
+    
+    if (p.type === 'nb') {
+        // Enviar al core para que abra el arquitecto pro en modo exposición
+        window.parent.postMessage({
+            type: 'QCOL_OPEN_NB_EXPOSITION',
+            nb: p   // contiene cells, title, desc, etc.
+        }, '*');
+        notify('Abriendo notebook en modo exposición...');
+    } else if (p.type === 'pdf') {
+        const gh = cfg.ghUser || 'laffitacamargof-create';
+        const repo = cfg.ghRepo || 'quantum-computing-open-lab';
+        window.open(`https://github.com/${gh}/${repo}/blob/main/docs/${id}.pdf`, '_blank');
+    } else if (p.type === 'video') {
+        window.open(p.url || '#', '_blank');
     }
-  }
-  else if(type==='pdf'){
-    const gh=cfg.ghUser||'laffitacamargof-create',repo=cfg.ghRepo||'quantum-computing-open-lab';
-    window.open(`https://github.com/${gh}/${repo}/blob/main/docs/${id}.pdf`,'_blank');
-  } else if(type==='video'){
-    notify(`🎬 Video: ${p.title} — demo en desarrollo`);
-  } else notify('Formato no soportado');
 }
 
 // ==================== DELETE (solo founder) ====================
@@ -235,7 +232,7 @@ function delProj(id){
   render();
 }
 
-// ==================== AGREGAR (solo admins, paso2) ====================
+// ==================== AGREGAR (solo admins) ====================
 function openAdd(){ if(!isAdmin){ notify('❌ Solo administradores pueden agregar proyectos'); return; } document.getElementById('add-modal').classList.add('open'); }
 function closeAdd(){ document.getElementById('add-modal').classList.remove('open'); }
 function addProj(){
@@ -249,7 +246,10 @@ function addProj(){
   const time=parseInt(document.getElementById('a-time').value)||15;
   if(!t||!id){notify('Título e ID son obligatorios');return;}
   const all=getP(); if(all.find(p=>p.id===id)){notify('⚠️ ID ya existe, elige otro');return;}
-  all.push({id,title:t,type,desc,tags,size,time,added:new Date().toLocaleDateString()});
+  // para videos, si no se proporciona url, se asigna un placeholder
+  let url = '';
+  if(type==='video') url = `#video-${id}`;
+  all.push({id,title:t,type,desc,tags,size,time,url, added:new Date().toLocaleDateString()});
   saveP(all);
   closeAdd();
   notify(`✅ Proyecto "${t}" agregado`);
@@ -269,7 +269,6 @@ function editProj(id){
   const proj=getP().find(p=>p.id===id);
   if(!proj){ notify('Proyecto no encontrado'); return; }
   editingProjId=id;
-  // llenar modal de edición
   document.getElementById('e-t').value=proj.title;
   document.getElementById('e-type').value=proj.type;
   document.getElementById('e-id').value=proj.id;
@@ -277,7 +276,6 @@ function editProj(id){
   document.getElementById('e-tags').value=proj.tags||'';
   document.getElementById('e-size').value=proj.size||10;
   document.getElementById('e-time').value=proj.time||15;
-  // mostrar modal
   document.getElementById('edit-modal').classList.add('open');
 }
 function closeEdit(){ document.getElementById('edit-modal').classList.remove('open'); editingProjId=null; }
@@ -294,7 +292,6 @@ function updateProj(){
   let projects=getP();
   const index=projects.findIndex(p=>p.id===editingProjId);
   if(index===-1){ notify('Proyecto no existe'); closeEdit(); return; }
-  // preservar id y fecha original
   projects[index]={...projects[index], title:newTitle, type:newType, desc:newDesc, tags:newTags, size:newSize, time:newTime};
   saveP(projects);
   notify('✏️ Proyecto actualizado');
@@ -306,21 +303,15 @@ function updateProj(){
 document.getElementById('add-modal').addEventListener('click',e=>{if(e.target===document.getElementById('add-modal'))closeAdd();});
 document.getElementById('edit-modal').addEventListener('click',e=>{if(e.target===document.getElementById('edit-modal'))closeEdit();});
 
-// ==================== INICIALIZAR + SEGURIDAD EXTRA ====================
-// Sincronizar visibilidad de opciones nb al cargar si el usuario ya está definido (postMessage puede llegar después)
+// ==================== Sincronización inicial ====================
 function syncNotebookOptionDelayed(){
   const adminState=isAdmin;
   document.querySelectorAll('.opt-nb').forEach(o => o.style.display = adminState ? '' : 'none');
   document.querySelectorAll('.opt-nb-edit').forEach(o => o.style.display = adminState ? '' : 'none');
 }
-setInterval(syncNotebookOptionDelayed, 500); // respaldo ante cambios asíncronos
+setInterval(syncNotebookOptionDelayed, 500);
 
-// Prevenir manipulación desde consola: verificar en addProj y editProj ya está hecho
-// también proteger cualquier intento de renderizar botones no autorizados mediante re-render frecuente
 window.render=render;
-
-// Pequeño helper para asegurar que founder tiene todos los permisos pero admin (no founder) no tenga botones eliminar/editar
-// ya está implementado en render()
 render();
 </script>
 </body>

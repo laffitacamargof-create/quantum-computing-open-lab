@@ -719,12 +719,30 @@ const QCOL = (() => {
     if (d.type === 'QCOL_LOGIN')        openAuth('login');
     if (d.type === 'QCOL_TOGGLE_AI')    toggleAI();
     if (d.type === 'QCOL_GET_CONFIG')   sendCfg(e.source);
-    // FIX 1: Handler para QCOL_GET_USER
     if (d.type === 'QCOL_GET_USER') {
         try {
             e.source.postMessage({ type: 'QCOL_USER', user: curUser }, '*');
             e.source.postMessage({ type: 'QCOL_USER_UPDATE', user: curUser }, '*');
         } catch(err) {}
+    }
+    // NUEVO HANDLER: Abrir notebook en modo exposición en el arquitecto pro
+    if (d.type === 'QCOL_OPEN_NB_EXPOSITION') {
+        // Navegar al arquitecto pro
+        nav('architect-pro');
+        // Esperar que cargue el iframe y enviarle el notebook
+        const sendNb = () => {
+            const proIframe = iframes['architect-pro'];
+            if (proIframe) {
+                proIframe.contentWindow.postMessage({
+                    type: 'QCOL_LOAD_NB',
+                    nb: d.nb,
+                    expositionMode: true
+                }, '*');
+            } else {
+                setTimeout(sendNb, 400); // reintentar hasta que cargue
+            }
+        };
+        setTimeout(sendNb, 500);
     }
     if (d.type === 'QCOL_LOGOUT')       doLogout();
     if (d.type === 'QCOL_OPEN_FOUNDER') openAuth('founder');
@@ -1013,7 +1031,6 @@ const QCOL = (() => {
     const f = users.find(x => x.username === u && x.password === p);
     if (!f) return notify('Usuario o contraseña incorrectos');
     curUser = f;
-    // FIX 2: Guardar usuario en localStorage
     localStorage.setItem('qcol_cur_user', JSON.stringify(curUser));
     dbLoad().then(data => {
         if (data?.users) {
@@ -1041,7 +1058,6 @@ const QCOL = (() => {
         dbSet('users', merged);
     });
     curUser = nu;
-    // FIX 2: Guardar usuario en localStorage
     localStorage.setItem('qcol_cur_user', JSON.stringify(curUser));
     closeAuth(); updateUI(); renderMenu();
     notify(`¡Bienvenido, ${name}!`);
@@ -1053,7 +1069,6 @@ const QCOL = (() => {
     const fp = localStorage.getItem('qcol_fp') || '1027';
     if (p === fp) {
       curUser = { name:'Franci Laffita Camargo', username:'franci_laffita', role:'founder', canUpload:true };
-      // FIX 2: Guardar usuario en localStorage
       localStorage.setItem('qcol_cur_user', JSON.stringify(curUser));
       closeAuth(); updateUI(); renderMenu();
       notify('👑 Acceso fundador concedido');
@@ -1065,7 +1080,6 @@ const QCOL = (() => {
 
   function doLogout() {
     curUser = null;
-    // FIX 2: Eliminar usuario de localStorage
     localStorage.removeItem('qcol_cur_user');
     updateUI(); renderMenu(); nav('home');
     notify('Sesión cerrada');
