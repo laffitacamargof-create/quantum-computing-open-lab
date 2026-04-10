@@ -5,6 +5,22 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>QCOL — Quantum Computing Open Lab</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=JetBrains+Mono:wght@400;500&family=Exo+2:wght@300;400;500;600&display=swap" rel="stylesheet">
+<!-- CodeMirror 6 + marked -->
+<script type="importmap">
+  {
+    "imports": {
+      "codemirror": "https://esm.sh/codemirror@6.0.1",
+      "@codemirror/state": "https://esm.sh/@codemirror/state@6.5.2",
+      "@codemirror/view": "https://esm.sh/@codemirror/view@6.36.5",
+      "@codemirror/commands": "https://esm.sh/@codemirror/commands@6.8.1",
+      "@codemirror/lang-markdown": "https://esm.sh/@codemirror/lang-markdown@6.3.2",
+      "@codemirror/language": "https://esm.sh/@codemirror/language@6.11.0",
+      "@lezer/common": "https://esm.sh/@lezer/common@1.2.3",
+      "@lezer/highlight": "https://esm.sh/@lezer/highlight@1.2.1",
+      "marked": "https://esm.sh/marked@15.0.12"
+    }
+  }
+</script>
 <style>
 :root {
   --bg:#010608;--s:#071220;--s2:#0c1c30;--s3:#112240;
@@ -49,7 +65,6 @@ body::before{content:'';position:fixed;inset:0;
 .logo-qcol{display:flex;align-items:baseline;gap:0;}
 .logo-q{font-family:var(--orb);font-size:1.05rem;font-weight:900;color:#00ffdd;text-shadow:0 0 16px rgba(0,255,221,.5);}
 .logo-col{font-family:var(--orb);font-size:1.05rem;font-weight:900;color:var(--bl2);}
-/* CAMBIO 5: SIN subtítulo debajo del logo */
 
 .hdr-right{display:flex;align-items:center;gap:.55rem;margin-left:auto;}
 .hbtn{padding:.32rem .75rem;background:transparent;border:1px solid var(--b2);
@@ -86,9 +101,9 @@ body::before{content:'';position:fixed;inset:0;
 .btn-cancel:hover{border-color:var(--bl);color:var(--bl2);}
 
 /* AI PANEL (QuantumChat) */
-#ai-panel-wrapper{display:none;position:fixed;bottom:1.2rem;right:1.2rem;z-index:600;width:340px;}
+#ai-panel-wrapper{display:none;position:fixed;bottom:1.2rem;right:1.2rem;z-index:600;width:400px;}
 #ai-panel-wrapper.open{display:block;}
-.ai-panel{background:var(--s);border:1px solid rgba(0,136,255,.45);border-radius:16px;display:flex;flex-direction:column;height:460px;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.6);animation:su .3s ease;}
+.ai-panel{background:var(--s);border:1px solid rgba(0,136,255,.45);border-radius:16px;display:flex;flex-direction:column;height:500px;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.6);animation:su .3s ease;}
 .ai-hdr{padding:.82rem 1.1rem;background:linear-gradient(135deg,var(--s2),rgba(0,136,255,.12));border-bottom:1px solid var(--b);display:flex;align-items:center;justify-content:space-between;}
 .ai-title{display:flex;align-items:center;gap:.45rem;font-family:var(--orb);font-size:.7rem;color:var(--bl2);}
 .ai-dot{width:7px;height:7px;background:var(--gr);border-radius:50%;animation:pd 2s infinite;}
@@ -106,14 +121,20 @@ body::before{content:'';position:fixed;inset:0;
 .dots span:nth-child(2){animation-delay:.2s;}.dots span:nth-child(3){animation-delay:.4s;}
 @keyframes bounce{0%,100%{transform:translateY(0);}50%{transform:translateY(-5px);}}
 .ai-input-row{padding:.72rem;border-top:1px solid var(--b);display:flex;gap:.45rem;background:var(--s2);}
-.ai-input{flex:1;background:rgba(0,0,0,.35);border:1px solid var(--b2);border-radius:8px;padding:.48rem .8rem;color:var(--tx);font-family:var(--exo);font-size:.73rem;outline:none;}
-.ai-input:focus{border-color:rgba(0,136,255,.6);}
-.ai-input::placeholder{color:var(--mu);}
-.ai-send{padding:.48rem .85rem;background:var(--bl);border:none;border-radius:8px;color:white;cursor:pointer;font-size:.9rem;}
+/* Estilos para el editor CodeMirror */
+.cm-editor{background:rgba(0,0,0,.35) !important;border:1px solid var(--b2);border-radius:8px;font-family:var(--mono);font-size:.73rem;}
+.cm-editor.cm-focused{outline:none;border-color:rgba(0,136,255,.6);}
+.cm-editor .cm-content{color:var(--tx);padding:.3rem .5rem;}
+.cm-editor .cm-line{line-height:1.5;}
+.ai-send{padding:.48rem .85rem;background:var(--bl);border:none;border-radius:8px;color:white;cursor:pointer;font-size:.9rem;align-self:flex-start;}
 .ai-send:hover{background:var(--bl2);}
 .ai-status-bar{padding:.32rem .82rem;background:rgba(0,0,0,.3);border-top:1px solid var(--b);font-family:var(--mono);font-size:.52rem;color:var(--mu);display:flex;align-items:center;gap:.5rem;}
 .ai-status-dot{width:5px;height:5px;border-radius:50%;background:var(--mu);}
 .ai-status-dot.ok{background:var(--gr);}
+/* Markdown render styles dentro de mensajes bot */
+.ai-msg.bot p{margin:.4rem 0;}
+.ai-msg.bot code{background:rgba(0,0,0,.3);padding:.1rem .3rem;border-radius:3px;font-family:var(--mono);}
+.ai-msg.bot pre{background:rgba(0,0,0,.4);padding:.5rem;border-radius:6px;overflow-x:auto;}
 
 /* MODULE CONTAINER */
 #module-container{padding-top:58px;min-height:100vh;position:relative;z-index:1;}
@@ -199,7 +220,7 @@ body::before{content:'';position:fixed;inset:0;
   .screen-title { font-size:.72rem; }
   .module-iframe { min-height:calc(100vh - 110px); }
   #ai-panel-wrapper { width:calc(100vw - 1rem); right:.5rem; bottom:.5rem; }
-  .ai-panel { height:400px; }
+  .ai-panel { height:440px; }
 }
 @media(max-width:600px){
   .menu-grid { grid-template-columns:1fr 1fr; gap:.6rem; padding:0 .75rem; }
@@ -311,15 +332,14 @@ body::before{content:'';position:fixed;inset:0;
     <div class="ai-msgs" id="ai-messages">
       <div class="ai-msg bot">
         <div class="ai-lbl">QUANTUMCHAT</div>
-        ¡Hola! Soy QuantumChat, tu asistente de computación cuántica. Puedo ayudarte con Qiskit, Cirq, PennyLane, notación de Dirac |ψ⟩, circuitos cuánticos, algoritmos y física cuántica. ⚛
+        <div class="markdown-body">¡Hola! Soy QuantumChat, tu asistente de computación cuántica. Puedo ayudarte con Qiskit, Cirq, PennyLane, notación de Dirac |ψ⟩, circuitos cuánticos, algoritmos y física cuántica. ⚛</div>
       </div>
     </div>
     <div class="ai-loading" id="ai-loading">
       <div class="dots"><span></span><span></span><span></span></div>
     </div>
     <div class="ai-input-row">
-      <input class="ai-input" id="ai-input" placeholder="Pregunta sobre quantum..."
-        onkeydown="if(event.key==='Enter')QCOL.sendAI()">
+      <div id="ai-editor" style="flex:1;"></div>
       <button class="ai-send" onclick="QCOL.sendAI()">➤</button>
     </div>
     <div class="ai-status-bar">
@@ -473,7 +493,7 @@ body::before{content:'';position:fixed;inset:0;
             <path d="M6 0v2M6 10v2M0 6h2M10 6h2M1.8 1.8l1.4 1.4M8.8 8.8l1.4 1.4M1.8 10.2l1.4-1.4M8.8 3.2l1.4-1.4" stroke="#bd93f9" stroke-width="1.3" stroke-linecap="round"/>
           </g>
         </svg>
-        ⚙️ ARQUITECTO PROFESIONAL
+        📓 QUANTUM NOTEBOOK
         <span style="font-family:var(--orb);font-size:.5rem;color:var(--pu);padding:.1rem .38rem;border:1px solid rgba(189,147,249,.3);border-radius:3px;">ADMIN+</span>
       </div>
       <button class="hbtn ai-btn" onclick="QCOL.toggleAI()">
@@ -583,8 +603,14 @@ body::before{content:'';position:fixed;inset:0;
 
 </div>
 
-<script>
-const QCOL = (() => {
+<script type="module">
+  import { EditorView, basicSetup } from 'codemirror';
+  import { markdown } from '@codemirror/lang-markdown';
+  import { marked } from 'marked';
+
+  window.marked = marked;
+
+  const QCOL = (() => {
 
   const VERSION = '2.1.0';
   const MODULES = {
@@ -601,6 +627,9 @@ const QCOL = (() => {
   let iframes = {};
   let aiCfg = JSON.parse(localStorage.getItem('qcol_ai') || '{}');
   let aiHistory = [];
+
+  // CodeMirror editor instance
+  let cmEditor = null;
 
   // ══════════════════════════════════════════════
   // BASE DE DATOS COMPARTIDA — GitHub como storage
@@ -724,25 +753,6 @@ const QCOL = (() => {
             e.source.postMessage({ type: 'QCOL_USER', user: curUser }, '*');
             e.source.postMessage({ type: 'QCOL_USER_UPDATE', user: curUser }, '*');
         } catch(err) {}
-    }
-    // NUEVO HANDLER: Abrir notebook en modo exposición en el arquitecto pro
-    if (d.type === 'QCOL_OPEN_NB_EXPOSITION') {
-        // Navegar al arquitecto pro
-        nav('architect-pro');
-        // Esperar que cargue el iframe y enviarle el notebook
-        const sendNb = () => {
-            const proIframe = iframes['architect-pro'];
-            if (proIframe) {
-                proIframe.contentWindow.postMessage({
-                    type: 'QCOL_LOAD_NB',
-                    nb: d.nb,
-                    expositionMode: true
-                }, '*');
-            } else {
-                setTimeout(sendNb, 400); // reintentar hasta que cargue
-            }
-        };
-        setTimeout(sendNb, 500);
     }
     if (d.type === 'QCOL_LOGOUT')       doLogout();
     if (d.type === 'QCOL_OPEN_FOUNDER') openAuth('founder');
@@ -871,7 +881,7 @@ const QCOL = (() => {
     const info = {
       projects:       { icon:'📂', title:'PROYECTOS',              desc:'Explora y ejecuta los notebooks del laboratorio.' },
       architect:      { icon:'⚙️', title:'ARQUITECTO CUÁNTICO',    desc:'Editor de circuitos cuánticos con ejecución en la nube.' },
-      'architect-pro':{ icon:'⚙️', title:'ARQUITECTO PROFESIONAL', desc:'Crea y edita notebooks completos. Acceso Admin+.' },
+      'architect-pro':{ icon:'📓', title:'QUANTUM NOTEBOOK',       desc:'Crea y edita Notebooks cuánticos completos. Exporta a .ipynb. Acceso Admin+.' },
       library:        { icon:'📚', title:'LIBRERÍA Y TUTORIALES',  desc:'Videos, PDFs y notebooks educativos.' },
       account:        { icon:'👤', title:'MI CUENTA',              desc:'Tu perfil y circuitos guardados.' },
       founder:        { icon:'👑', title:'PANEL FUNDADOR',         desc:'Configuración y gestión del ecosistema.' },
@@ -920,7 +930,7 @@ const QCOL = (() => {
               stroke="#00ccff" stroke-width="1.3" stroke-linecap="round"/>
           </g></svg>`,
         title:'⚙️ ARQUITECTO CUÁNTICO', badge:'badge-new', badgeTxt:'CUÁNTICO',
-        desc:'Editor visual de circuitos cuánticos con ejecución real en la nube. Soporta Qiskit, Cirq, PennyLane y QuTiP. Guarda tus circuitos en tu cuenta.',
+        desc:'Editor visual de circuitos cuánticos con ejecución real en Python (Qiskit). Diseña y simula circuitos cuánticos, guárdalos en tu cuenta.',
         delay:.1, show:true,
       },
       {
@@ -934,7 +944,7 @@ const QCOL = (() => {
             <circle cx="6" cy="6" r="3.5" fill="none" stroke="#bd93f9" stroke-width="1.8"/>
             <path d="M6 0v2M6 10v2M0 6h2M10 6h2M1.8 1.8l1.4 1.4M8.8 8.8l1.4 1.4M1.8 10.2l1.4-1.4M8.8 3.2l1.4-1.4" stroke="#bd93f9" stroke-width="1.3" stroke-linecap="round"/>
           </g></svg>`,
-        title:'ARQUITECTO PROFESIONAL', badge:'badge-pro', badgeTxt:'ADMIN+',
+        title:'📓 QUANTUM NOTEBOOK', badge:'badge-pro', badgeTxt:'ADMIN+',
         desc:'Crea y edita Notebooks cuánticos completos. Exporta a .ipynb. Solo para administradores y Fundador.',
         delay:.15,
         show: isAdm,
@@ -984,7 +994,7 @@ const QCOL = (() => {
         title:'CONFIGURACIÓN', badge:'badge-admin', badgeTxt:'SISTEMA',
         desc:'Panel de control del ecosistema QCOL. Usuarios, compilador, IA y GitHub.',
         delay:.3,
-        show: true,
+        show: isF,   // ⬅️ solo visible cuando Fundador está activo
       },
       {
         screen:'help',
@@ -1137,9 +1147,10 @@ const QCOL = (() => {
   };
 
   async function sendAI() {
-    const inp = document.getElementById('ai-input');
-    const msg = inp.value.trim(); if (!msg) return;
-    inp.value = '';
+    if (!cmEditor) return;
+    const msg = cmEditor.state.doc.toString().trim();
+    if (!msg) return;
+    cmEditor.dispatch({ changes: { from: 0, to: cmEditor.state.doc.length, insert: '' } });
     addAIMsg(msg, 'usr');
     document.getElementById('ai-loading').classList.add('show');
 
@@ -1236,7 +1247,16 @@ const QCOL = (() => {
     const msgs = document.getElementById('ai-messages');
     const d = document.createElement('div');
     d.className = 'ai-msg ' + role;
-    d.innerHTML = `<div class="ai-lbl">${role==='bot'?'QUANTUMCHAT':'TÚ'}</div>${text.replace(/\n/g,'<br>')}`;
+    const lbl = role==='bot' ? 'QUANTUMCHAT' : 'TÚ';
+    const contentDiv = document.createElement('div');
+    contentDiv.className = 'markdown-body';
+    if (role === 'bot') {
+      contentDiv.innerHTML = marked.parse(text);
+    } else {
+      contentDiv.textContent = text;
+    }
+    d.innerHTML = `<div class="ai-lbl">${lbl}</div>`;
+    d.appendChild(contentDiv);
     msgs.appendChild(d); msgs.scrollTop = msgs.scrollHeight;
   }
 
@@ -1259,6 +1279,14 @@ const QCOL = (() => {
   }
 
   async function init() {
+    // Inicializar CodeMirror
+    const editorContainer = document.getElementById('ai-editor');
+    cmEditor = new EditorView({
+      doc: '',
+      extensions: [basicSetup, markdown()],
+      parent: editorContainer
+    });
+
     const msgs = ['INICIANDO...', 'CARGANDO MÓDULOS...', 'LISTO'];
     let i = 0;
     const sp = document.getElementById('splash-msg');
@@ -1291,6 +1319,7 @@ const QCOL = (() => {
 
 })();
 
+window.QCOL = QCOL;
 document.addEventListener('DOMContentLoaded', QCOL.init);
 </script>
 </body>
