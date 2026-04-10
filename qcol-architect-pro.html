@@ -10,7 +10,7 @@
 <script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/dist/highlight.min.js"></script>
 <style>
 /* ═══════════════════════════════════════════════════════════════
-   QUANTUM NOTEBOOK — Estilo QCOL unificado (v5.2 final)
+   QUANTUM NOTEBOOK — Estilo QCOL unificado (v5.3 final)
    ═══════════════════════════════════════════════════════════════ */
 :root{
   --bg:#0a0e1a;--bg2:#0d1117;--bg3:#0c1525;
@@ -142,7 +142,7 @@ body{display:flex;flex-direction:column;overflow:hidden;}
 .ctb-qk{color:var(--cy);}
 .ctb-md{color:rgba(0,255,136,.7);}
 
-/* Editor de código (CORREGIDO: position:relative en inner) */
+/* Editor de código (CORREGIDO) */
 .cell-code-area{position:relative;background:var(--bg2);
   border:1px solid var(--bd3);border-radius:6px;overflow:hidden;min-height:42px;
   transition:border-color .15s;}
@@ -495,7 +495,7 @@ textarea.fi{resize:vertical;min-height:58px;line-height:1.5;}
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" async></script>
 <script>
 // ═══════════════════════════════════════════════════════════════
-// QUANTUM NOTEBOOK v5.2 — Editor corregido + Estilo terminal unificado
+// QUANTUM NOTEBOOK v5.3 — Editor corregido + Estilo terminal unificado
 // ═══════════════════════════════════════════════════════════════
 let curUser=null,engineURL='',engineOK=false,running=false;
 let curView='notebook',cells=[],curCellId=null,execCounter=0;
