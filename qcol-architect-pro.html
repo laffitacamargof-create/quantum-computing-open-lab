@@ -10,7 +10,7 @@
 <script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/dist/highlight.min.js"></script>
 <style>
 /* ═══════════════════════════════════════════════════════════════
-   QUANTUM NOTEBOOK — Estilo QCOL unificado
+   QUANTUM NOTEBOOK — Estilo QCOL unificado (v5.1)
    ═══════════════════════════════════════════════════════════════ */
 :root{
   --bg:#0a0e1a;--bg2:#0d1117;--bg3:#0c1525;
@@ -169,7 +169,7 @@ body{display:flex;flex-direction:column;overflow:hidden;}
 .cell-textarea::-webkit-scrollbar{width:4px;height:4px;}
 .cell-textarea::-webkit-scrollbar-thumb{background:var(--bd2);border-radius:2px;}
 
-/* Output / terminal */
+/* Output / terminal (estilo Arquitecto Cuántico) */
 .cell-output-area{margin-top:.28rem;border-radius:6px;overflow:hidden;
   border:1px solid var(--bd3);background:#050810;}
 .out-header{display:flex;align-items:center;gap:.4rem;padding:.25rem .65rem;
@@ -495,7 +495,7 @@ textarea.fi{resize:vertical;min-height:58px;line-height:1.5;}
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" async></script>
 <script>
 // ═══════════════════════════════════════════════════════════════
-// QUANTUM NOTEBOOK v5.0 — Corrección de editor + UI mejorada
+// QUANTUM NOTEBOOK v5.1 — Editor corregido + Estilo terminal unificado
 // ═══════════════════════════════════════════════════════════════
 let curUser=null,engineURL='',engineOK=false,running=false;
 let curView='notebook',cells=[],curCellId=null,execCounter=0;
@@ -566,7 +566,6 @@ function restoreCell(id){
 
 // Motor (usa configuración global del Fundador)
 async function checkEngine(){
-  // La URL se obtiene del localStorage guardado por el panel Fundador
   const stored=localStorage.getItem('qcol_colab_url');
   if(stored) engineURL=stored;
   if(!engineURL) return;
@@ -612,7 +611,7 @@ function parseServerResponse(raw){
   return d;
 }
 
-// Render de output (terminal, circuito, bloch, probs)
+// Render de output (estilo Arquitecto Cuántico)
 function renderOutput(outArea, d, elapsed){
   if(!outArea)return;
   const t0=elapsed?`${elapsed}s`:null;
@@ -673,10 +672,16 @@ function renderOutput(outArea, d, elapsed){
 
 function buildTextOut(text){
   if(!text.trim())return'';
+  // Detectar si es un diccionario de resultados
   if(/^\{['"0-9a-zA-Z_,:\s]+\}$/.test(text.trim())){
     return`<div class="out-dict">${escH(text)}</div>`;
   }
-  return`<div class="out-stdout">${escH(text)}</div>`;
+  // Añadir bordes decorativos como en Arquitecto Cuántico
+  const lines=text.split('\n');
+  const decorated=lines.map(l=>`║ ${l}`).join('\n');
+  return`<div class="out-stdout">╔════════════════════════════╗
+${decorated}
+╚════════════════════════════╝</div>`;
 }
 
 function buildCircuitOut(text){
@@ -1023,23 +1028,14 @@ const BUILTINS=new Set(['print','len','range','int','float','str','list','dict',
 function highlight(code,isQk=false){
   const KW=['import','from','as','def','class','return','if','else','elif','for','while','in','not','and','or','True','False','None','with','try','except','finally','lambda','pass','break','continue','yield','raise','del','global','assert','is','async','await'];
   let h=escH(code);
-  // Comentarios
   h=h.replace(/(#[^\n]*)/g,'<span class="cmt">$1</span>');
-  // Strings multilinea
   h=h.replace(/("""[\s\S]*?"""|'''[\s\S]*?''')/g,'<span class="st">$1</span>');
-  // Strings normales
   h=h.replace(/("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')/g,(m)=>m.includes('class="')?m:`<span class="st">${m}</span>`);
-  // Números
   h=h.replace(/\b(\d+\.?\d*(?:[eEjJ][+-]?\d+)?)\b/g,(m)=>m.includes('class="')?m:`<span class="nm">${m}</span>`);
-  // Keywords
   KW.forEach(k=>{const re=new RegExp(`\\b(${k})\\b`,'g');h=h.replace(re,(m,w)=>m.includes('class="')?m:`<span class="kw">${w}</span>`);});
-  // Clases Qiskit
   if(isQk){QK_CLASSES.forEach(k=>{const re=new RegExp(`\\b(${k})\\b`,'g');h=h.replace(re,(m,w)=>m.includes('class="')?m:`<span class="qt">${w}</span>`);});}
-  // Builtins
   BUILTINS.forEach(k=>{const re=new RegExp(`\\b(${k})\\b(?=\\s*\\()`, 'g');h=h.replace(re,(m,w)=>m.includes('class="')?m:`<span class="blt">${w}</span>`);});
-  // Funciones
   h=h.replace(/\b([A-Za-z_][A-Za-z0-9_]*)\s*(?=\()/g,(m,fn)=>m.includes('class="')?m:`<span class="fn">${fn}</span>`);
-  // Decoradores
   h=h.replace(/(@[A-Za-z_][A-Za-z0-9_.]*)/g,(m)=>m.includes('class="')?m:`<span class="kw">${m}</span>`);
   return h;
 }
@@ -1212,7 +1208,6 @@ function showUI(user){
     if(pill)pill.textContent=(role==='founder'?'👑 ':'🔑 ')+(user.name||'—').split(' ')[0];
     const ap=document.getElementById('admin-pill');if(ap)ap.style.display='';
   }
-  // Ocultar campo de URL en modo normal? Lo dejamos visible pero se sincroniza con localStorage
   const stored=localStorage.getItem('qcol_colab_url')||'';
   if(stored){engineURL=stored;const inp=document.getElementById('engine-url-input');if(inp)inp.value=stored;checkEngine();}
   if(role==='admin'||role==='founder')refreshNbs();
