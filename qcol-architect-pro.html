@@ -157,7 +157,7 @@ body{display:flex;flex-direction:column;overflow:hidden;}
   padding:.55rem .7rem;font-family:var(--mono);font-size:.7rem;
   border:none;outline:none;resize:none;line-height:1.65;
   z-index:2;white-space:pre;overflow:auto;tab-size:4;min-height:42px;
-  letter-spacing:0;}
+  letter-spacing:0; pointer-events:auto;}
 .cell-textarea::-webkit-scrollbar{width:4px;height:4px;}
 .cell-textarea::-webkit-scrollbar-thumb{background:var(--bd2);border-radius:2px;}
 
@@ -270,10 +270,22 @@ body.expo-mode .nb-cell.qk-cell .cell-toolbar .ct-btn:not(.ct-run){display:none!
 .cell-restore-btn{display:none;position:absolute;bottom:.25rem;right:.4rem;
   padding:.1rem .3rem;background:rgba(255,215,0,.07);
   border:1px solid rgba(255,215,0,.22);border-radius:3px;
-  color:var(--yw);font-family:var(--orb);font-size:.4rem;cursor:pointer;z-index:5;}
+  color:var(--yw);font-family:var(--orb);font-size:.4rem;cursor:pointer;z-index:10;}
 body.expo-mode .nb-cell.qk-cell .cell-restore-btn,
 body.expo-mode .nb-cell[data-ctype="code"] .cell-restore-btn{display:block;}
 .cell-restore-btn:hover{background:rgba(255,215,0,.14);}
+
+/* Línea con error */
+.lineno.error-line {
+  background: rgba(255,68,102,0.2);
+  color: #ff4466;
+  border-right: 2px solid #ff4466;
+}
+.syntax-error-line {
+  background: rgba(255,68,102,0.15);
+  display: inline-block;
+  width: 100%;
+}
 
 /* ── ADD ROW ── */
 .add-cell-row{width:min(940px,97%);margin:.03rem auto;height:14px;
@@ -549,7 +561,7 @@ function restoreCell(id){
   if(!_originalCells)return;
   const idx=cells.findIndex(c=>c.id===id);if(idx<0)return;
   const orig=_originalCells[idx];if(!orig)return;
-  cells[idx]={...orig,id:cells[idx].id,output:'',exec_count:null,mdEdit:false};
+  cells[idx]={...orig,id:cells[idx].id,output:'',exec_count:null,mdEdit:false,errorLine:null};
   renderCells();notify('↺ Celda restaurada');
 }
 
@@ -598,7 +610,7 @@ function parseServerResponse(raw){
 }
 
 // ── RENDER DE OUTPUT COMPLETO ─────────────────────────────────
-function renderOutput(outArea, d, elapsed){
+function renderOutput(outArea, d, elapsed, cellId){
   if(!outArea)return;
   const t0=elapsed?`${elapsed}s`:null;
   let html='';
@@ -663,6 +675,13 @@ function renderOutput(outArea, d, elapsed){
 
   // ── ERROR detallado ──
   if(!isOk&&d.output){
+    // Extraer línea de error
+    const lineMatch = d.output.match(/[Ll]ine\s+(\d+)|línea\s+(\d+)/i);
+    const errLine = lineMatch ? parseInt(lineMatch[1] || lineMatch[2]) : null;
+    if (errLine && cellId) {
+      const cell = cells.find(c => c.id === cellId);
+      if (cell) cell.errorLine = errLine;
+    }
     html+=buildErrorOut(d.output);
   }
 
@@ -899,7 +918,7 @@ async function runCell(id){
       const d=parseServerResponse(raw);
       execCounter++;cell.exec_count=execCounter;
       const elapsed=((Date.now()-t0)/1000).toFixed(2);
-      renderOutput(outArea,d,elapsed);
+      renderOutput(outArea,d,elapsed,id);
       setSbRun(false,'✅ '+elapsed+'s');
     } else {
       execCounter++;cell.exec_count=execCounter;
@@ -914,6 +933,8 @@ async function runCell(id){
   running=false;
   if(rbtn)rbtn.classList.remove('spinning');
   renderCellNum(id);
+  // Forzar re-render para mostrar errorLine si existe
+  if(cell.errorLine) renderCells();
 }
 function renderCellNum(id){const cell=cells.find(c=>c.id===id);if(!cell)return;const el=document.querySelector(`[data-id="${id}"] .cell-num`);if(el)el.textContent=cell.exec_count!==null?`[${cell.exec_count}]`:'[ ]';}
 async function runCurCell(){if(curCellId)await runCell(curCellId);}
@@ -970,7 +991,7 @@ function handleImport(e){
         const src=Array.isArray(c.source)?c.source.join(''):c.source||'';
         const tags=c.metadata?.tags||[];
         const type=c.cell_type==='markdown'?'markdown':(tags.includes('qiskit-cell')?'qiskit':'code');
-        cells.push({id:genId(),type,code:src,output:'',exec_count:null,mdEdit:false});
+        cells.push({id:genId(),type,code:src,output:'',exec_count:null,mdEdit:false,errorLine:null});
       });
       if(cells.length===0)addCellAt(-1,'code');
       else{renderCells();focusCell(cells[0].id);}
@@ -1032,7 +1053,7 @@ result = sim.run(transpile(qc, sim), shots=1024).result()
 counts = result.get_counts()
 print("\\nResultados:", counts)
 `;
-  const cell={id:genId(),type,code:type==='qiskit'?defaultQk:'',output:'',exec_count:null,mdEdit:false};
+  const cell={id:genId(),type,code:type==='qiskit'?defaultQk:'',output:'',exec_count:null,mdEdit:false,errorLine:null};
   if(afterIdx===-1||afterIdx>=cells.length)cells.push(cell);
   else cells.splice(afterIdx+1,0,cell);
   renderCells();focusCell(cell.id);updateStatus();
@@ -1043,6 +1064,24 @@ function moveCellDown(id){const i=cells.findIndex(c=>c.id===id);if(i<0||i>=cells
 function syncCellCode(id){const cell=cells.find(c=>c.id===id);if(!cell)return;const ta=document.getElementById('ta-'+id);const mta=document.getElementById('mta-'+id);if(ta)cell.code=ta.value;if(mta)cell.code=mta.value;}
 function focusCell(id){curCellId=id;document.querySelectorAll('.nb-cell').forEach(el=>{el.classList.toggle('active',el.dataset.id===id);});const ta=document.getElementById('ta-'+id)||document.getElementById('mta-'+id);if(ta)ta.focus();}
 function changeCellType(id){if(_expositionMode)return;const cell=cells.find(c=>c.id===id);if(!cell)return;cell.type=cell.type==='code'||cell.type==='qiskit'?'markdown':'code';cell.mdEdit=true;renderCells();focusCell(id);}
+
+// ── BOTÓN LIMPIAR CELDA ───────────────────────────────────────
+function clearCellContent(id) {
+  const cell = cells.find(c => c.id === id);
+  if (!cell) return;
+  cell.code = '';
+  cell.errorLine = null;
+  const ta = document.getElementById('ta-'+id) || document.getElementById('mta-'+id);
+  if (ta) {
+    ta.value = '';
+    onCellInput(id);
+  }
+  if (cell.type === 'markdown') {
+    cell.mdEdit = true;
+    renderCells();
+  }
+  notify('🧹 Celda limpiada');
+}
 
 // ── MARKDOWN ──────────────────────────────────────────────────
 function initMarkdown(){
@@ -1125,9 +1164,13 @@ function highlight(code, isQk=false){
   return result;
 }
 
-function buildLinenos(code){
-  const n=code.split('\n').length;
-  return Array.from({length:n},(_,i)=>i+1).join('\n');
+function buildLinenos(code, errorLine){
+  const lines=code.split('\n');
+  return lines.map((_,i)=>{
+    const ln=i+1;
+    const isErr=(errorLine===ln);
+    return `<div class="lineno ${isErr?'error-line':''}">${ln}</div>`;
+  }).join('');
 }
 
 function buildCellEl(cell,i){
@@ -1155,6 +1198,7 @@ function buildCellEl(cell,i){
         <button class="ct-btn" onclick="event.stopPropagation();moveCellUp('${cell.id}')" title="Subir">↑</button>
         <button class="ct-btn" onclick="event.stopPropagation();moveCellDown('${cell.id}')" title="Bajar">↓</button>
         <button class="ct-btn" onclick="event.stopPropagation();changeCellType('${cell.id}')" title="Cambiar tipo">${isCode?'Md':'{ }'}</button>
+        <button class="ct-btn" onclick="event.stopPropagation();clearCellContent('${cell.id}')" title="Limpiar contenido">🗑</button>
         <button class="ct-btn danger" onclick="event.stopPropagation();deleteCell('${cell.id}')" title="Eliminar">✕</button>
       </div>`;
 
@@ -1163,8 +1207,15 @@ function buildCellEl(cell,i){
       ?`<span style="color:rgba(0,255,221,.8)">⚛</span> Qiskit · <span style="color:var(--mu)">QuantumCircuit · AerSimulator · NumPy · Matplotlib incluidos</span>`
       :`<span style="color:rgba(0,170,255,.7)">{}</span> Python`;
     const badgeCls=isQk?'ctb-qk':'ctb-code';
-    const hl=highlight(cell.code||'',isQk);
-    const lnos=buildLinenos(cell.code||'');
+    let hl=highlight(cell.code||'',isQk);
+    if(cell.errorLine){
+      let hlLines=hl.split('\n');
+      if(hlLines[cell.errorLine-1]){
+        hlLines[cell.errorLine-1]=`<span class="syntax-error-line">${hlLines[cell.errorLine-1]}</span>`;
+      }
+      hl=hlLines.join('\n');
+    }
+    const lnos=buildLinenos(cell.code||'', cell.errorLine);
     const restoreBtn=_expositionMode?`<button class="cell-restore-btn" onclick="event.stopPropagation();restoreCell('${cell.id}')">↺ Original</button>`:'';
     const outContent=cell.output?`<div class="out-stdout">${escH(cell.output)}</div>`:'';
     el.innerHTML=`${toolbar}
@@ -1243,10 +1294,13 @@ function onCellInput(id){
   const lnos=document.getElementById('lnos-'+id);
   if(ta&&syn){
     const cell=cells.find(c=>c.id===id);
-    if(cell)cell.code=ta.value;
+    if(cell){
+      cell.code=ta.value;
+      cell.errorLine=null; // limpiar error al editar
+    }
     const isQk=cell?.type==='qiskit';
     syn.innerHTML=highlight(ta.value,isQk)+'\n';
-    if(lnos)lnos.textContent=buildLinenos(ta.value);
+    if(lnos)lnos.innerHTML=buildLinenos(ta.value);
     autoResize(ta);
     syn.scrollTop=ta.scrollTop;syn.scrollLeft=ta.scrollLeft;
     if(lnos)lnos.scrollTop=ta.scrollTop;
@@ -1270,11 +1324,49 @@ function onCellKeydown(e,id){
   if(e.key==='Tab'){e.preventDefault();const s=ta.selectionStart,en=ta.selectionEnd;ta.value=ta.value.substring(0,s)+'    '+ta.value.substring(en);ta.selectionStart=ta.selectionEnd=s+4;onCellInput(id);return;}
   if(e.shiftKey&&e.key==='Enter'){e.preventDefault();runCell(id);const idx=cells.findIndex(c=>c.id===id);if(idx<cells.length-1)focusCell(cells[idx+1].id);else if(!_expositionMode)addCellAt(-1,'code');return;}
   if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();runCell(id);}
+  // Navegación entre celdas
+  if(e.ctrlKey&&e.key==='ArrowUp'){
+    e.preventDefault();
+    const idx=cells.findIndex(c=>c.id===id);
+    if(idx>0)focusCell(cells[idx-1].id);
+    return;
+  }
+  if(e.ctrlKey&&e.key==='ArrowDown'){
+    e.preventDefault();
+    const idx=cells.findIndex(c=>c.id===id);
+    if(idx<cells.length-1)focusCell(cells[idx+1].id);
+    return;
+  }
+  if(e.key==='Escape'){
+    e.preventDefault();
+    ta.blur();
+    document.querySelector(`.nb-cell[data-id="${id}"]`)?.focus();
+    return;
+  }
 }
 function onMdKeydown(e,id){
   if(e.key==='Escape'){syncCellCode(id);const cell=cells.find(c=>c.id===id);if(cell){cell.mdEdit=false;renderCells();}}
   if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();syncCellCode(id);const cell=cells.find(c=>c.id===id);if(cell){cell.mdEdit=false;renderCells();}const idx=cells.findIndex(c=>c.id===id);if(idx<cells.length-1)focusCell(cells[idx+1].id);}
 }
+
+// Navegación global con flechas cuando no se edita
+window.addEventListener('keydown', e => {
+  if (!curCellId) return;
+  if (document.activeElement.tagName === 'TEXTAREA') return;
+  if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    const idx = cells.findIndex(c => c.id === curCellId);
+    if (idx > 0) focusCell(cells[idx-1].id);
+  } else if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    const idx = cells.findIndex(c => c.id === curCellId);
+    if (idx < cells.length - 1) focusCell(cells[idx+1].id);
+  } else if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    const ta = document.getElementById('ta-'+curCellId) || document.getElementById('mta-'+curCellId);
+    if (ta) ta.focus();
+  }
+});
 
 // ── SHOW UI ────────────────────────────────────────────────────
 function showUI(user){
@@ -1316,7 +1408,7 @@ window.addEventListener('message',e=>{
     const nb=d.nb;
     document.getElementById('nb-name-inp').value=nb.title||nb.name||'Sin título';
     if(nb.cells&&nb.cells.length>0){
-      cells=nb.cells.map(c=>({...c,id:genId(),output:'',exec_count:null,mdEdit:false}));
+      cells=nb.cells.map(c=>({...c,id:genId(),output:'',exec_count:null,mdEdit:false,errorLine:null}));
     } else cells=[];
     if(isExpo){
       _initialized=true;
