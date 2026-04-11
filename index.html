@@ -131,10 +131,13 @@ body::before{content:'';position:fixed;inset:0;
 .ai-status-bar{padding:.32rem .82rem;background:rgba(0,0,0,.3);border-top:1px solid var(--b);font-family:var(--mono);font-size:.52rem;color:var(--mu);display:flex;align-items:center;gap:.5rem;}
 .ai-status-dot{width:5px;height:5px;border-radius:50%;background:var(--mu);}
 .ai-status-dot.ok{background:var(--gr);}
-/* Markdown render styles dentro de mensajes bot */
-.ai-msg.bot p{margin:.4rem 0;}
-.ai-msg.bot code{background:rgba(0,0,0,.3);padding:.1rem .3rem;border-radius:3px;font-family:var(--mono);}
-.ai-msg.bot pre{background:rgba(0,0,0,.4);padding:.5rem;border-radius:6px;overflow-x:auto;}
+/* Markdown render styles dentro de mensajes */
+.ai-msg .markdown-body p{margin:.4rem 0;}
+.ai-msg .markdown-body code{background:rgba(0,0,0,.3);padding:.1rem .3rem;border-radius:3px;font-family:var(--mono);}
+.ai-msg .markdown-body pre{background:rgba(0,0,0,.4);padding:.5rem;border-radius:6px;overflow-x:auto;}
+.ai-msg .markdown-body table{border-collapse:collapse;margin:.5rem 0;font-size:.65rem;}
+.ai-msg .markdown-body th,.ai-msg .markdown-body td{border:1px solid var(--b2);padding:.2rem .5rem;}
+.ai-msg .markdown-body blockquote{border-left:3px solid var(--bl);margin:.4rem 0;padding-left:.8rem;color:var(--mu);}
 
 /* MODULE CONTAINER */
 #module-container{padding-top:58px;min-height:100vh;position:relative;z-index:1;}
@@ -1247,17 +1250,20 @@ body::before{content:'';position:fixed;inset:0;
     const msgs = document.getElementById('ai-messages');
     const d = document.createElement('div');
     d.className = 'ai-msg ' + role;
-    const lbl = role==='bot' ? 'QUANTUMCHAT' : 'TÚ';
+    
+    const lbl = document.createElement('div');
+    lbl.className = 'ai-lbl';
+    lbl.textContent = role === 'bot' ? 'QUANTUMCHAT' : 'TÚ';
+    d.appendChild(lbl);
+    
     const contentDiv = document.createElement('div');
     contentDiv.className = 'markdown-body';
-    if (role === 'bot') {
-      contentDiv.innerHTML = marked.parse(text);
-    } else {
-      contentDiv.textContent = text;
-    }
-    d.innerHTML = `<div class="ai-lbl">${lbl}</div>`;
+    // Renderizar siempre el contenido como Markdown (tanto para usuario como para bot)
+    contentDiv.innerHTML = marked.parse(text);
     d.appendChild(contentDiv);
-    msgs.appendChild(d); msgs.scrollTop = msgs.scrollHeight;
+    
+    msgs.appendChild(d);
+    msgs.scrollTop = msgs.scrollHeight;
   }
 
   async function checkEngine() {
