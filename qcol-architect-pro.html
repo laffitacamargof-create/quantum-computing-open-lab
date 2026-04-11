@@ -177,7 +177,7 @@ body{display:flex;flex-direction:column;overflow:hidden;}
 .out-stderr{padding:.5rem .7rem;font-family:var(--mono);font-size:.67rem;line-height:1.62;
   white-space:pre-wrap;color:#ff9999;background:rgba(255,60,60,.04);
   border-top:1px solid rgba(255,68,102,.15);}
-/* Circuito texto — estilo visual mejorado */
+/* Circuito texto — estilo visual mejorado (copiado del Arquitecto) */
 .out-circuit-text{padding:.5rem .7rem;font-family:var(--mono);font-size:.65rem;line-height:1.7;
   white-space:pre;overflow-x:auto;color:var(--cl);background:#040d18;
   border-top:1px solid rgba(0,170,255,.1);}
@@ -599,7 +599,6 @@ import io, base64
 
 // ── PARSEAR RESPUESTA DEL SERVIDOR ────────────────────────────
 function parseServerResponse(raw){
-  // raw.data[0] puede ser string JSON o dict ya parseado
   let d=null;
   try{
     const item=raw?.data?.[0];
@@ -615,15 +614,12 @@ function renderOutput(outArea, d, elapsed, cellId){
   const t0=elapsed?`${elapsed}s`:null;
   let html='';
 
-  // Cabecera
   const isOk=d.success!==false;
   const hdrCls=isOk?'out-header-ok':'out-header-err';
   const hdrIcon=isOk?'✅':'❌';
   html+=`<div class="out-header ${hdrCls}">${hdrIcon} ${isOk?'Ejecutado':'Error'}${t0?' · '+t0:''}</div>`;
 
-  // ── STDOUT completo ──
   if(d.output&&d.output.trim()){
-    // Detectar si la salida contiene un diagrama de circuito (líneas con ─, │, ┤, ├, etc.)
     const lines=d.output.split('\n');
     let circuitBlock=[];
     let textBlock=[];
@@ -637,27 +633,22 @@ function renderOutput(outArea, d, elapsed, cellId){
     if(textBlock.length&&textBlock.join('').trim())html+=buildTextOut(textBlock.join('\n'));
   }
 
-  // ── STDERR ──
   if(d.stderr&&d.stderr.trim()){
     html+=`<div class="out-stderr">${escH(d.stderr)}</div>`;
   }
 
-  // ── PROBABILIDADES / COUNTS ──
   if(d.bloch&&d.bloch.probabilities){
     html+=buildProbsOut(d.bloch.probabilities,d.bloch.shots||1024,d.bloch.simulator||'AerSimulator');
-    // Añadir histograma canvas
     html+=buildHistogramOut(d.bloch.probabilities,d.bloch.shots||1024);
   }else if(d.counts){
     html+=buildProbsOut(d.counts,d.bloch?.shots||1024,'');
     html+=buildHistogramOut(d.counts,d.bloch?.shots||1024);
   }
 
-  // ── ESFERA DE BLOCH ──
   if(d.bloch&&d.bloch.probabilities){
     html+=buildBlochOut(d.bloch.probabilities);
   }
 
-  // ── IMAGEN matplotlib ──
   if(d.plot_png){
     html+=`<div style="padding:.3rem .5rem;background:#04080e;border-top:1px solid rgba(0,136,255,.08);">
       <div style="font-family:var(--orb);font-size:.4rem;color:var(--mu);padding:.2rem 0 .3rem;letter-spacing:.05em;">GRÁFICA MATPLOTLIB</div>
@@ -665,7 +656,6 @@ function renderOutput(outArea, d, elapsed, cellId){
     </div>`;
   }
 
-  // ── IMAGEN extra (plot_svg como fallback) ──
   if(d.plot_svg){
     html+=`<div style="padding:.3rem .5rem;background:#04080e;border-top:1px solid rgba(0,136,255,.08);">
       <div style="font-family:var(--orb);font-size:.4rem;color:var(--mu);padding:.2rem 0 .3rem;">DIAGRAMA SVG</div>
@@ -673,9 +663,7 @@ function renderOutput(outArea, d, elapsed, cellId){
     </div>`;
   }
 
-  // ── ERROR detallado ──
   if(!isOk&&d.output){
-    // Extraer línea de error
     const lineMatch = d.output.match(/[Ll]ine\s+(\d+)|línea\s+(\d+)/i);
     const errLine = lineMatch ? parseInt(lineMatch[1] || lineMatch[2]) : null;
     if (errLine && cellId) {
@@ -690,7 +678,6 @@ function renderOutput(outArea, d, elapsed, cellId){
 
 function buildTextOut(text){
   if(!text.trim())return'';
-  // Detectar si es dict de resultados como {'00': 512, '11': 512}
   if(/^\{['"0-9a-zA-Z_,:\s]+\}$/.test(text.trim())){
     return`<div class="out-dict">${escH(text)}</div>`;
   }
@@ -699,7 +686,6 @@ function buildTextOut(text){
 
 function buildCircuitOut(text){
   if(!text.trim())return'';
-  // Colorear el diagrama ASCII del circuito
   let colored=escH(text);
   colored=colored.replace(/([HXYZSTshxyzts])\s*(?=─|├|┤|\s)/g,'<span style="color:#00aaff;font-weight:700">$1</span>');
   colored=colored.replace(/(cx|cy|cz|ch|rx|ry|rz|ccx|mcx)\s*(?=[\s─])/gi,'<span style="color:#00ffdd;font-weight:700">$1</span>');
@@ -717,7 +703,6 @@ function buildProbsOut(probs,shots,sim){
   if(!entries.length)return'';
   const total=entries.reduce((s,[,v])=>s+v,0);
   const rows=entries.map(([st,v])=>{
-    // v puede ser count (int) o probability (float)
     const isCount=v>1;
     const prob=isCount?v/total:v;
     const count=isCount?v:Math.round(v*shots);
@@ -753,7 +738,6 @@ function buildHistogramOut(probs, shots){
     const barW=Math.min(40,chartW/entries.length-8);
     const maxVal=Math.max(...entries.map(([,v])=>v));
     ctx.clearRect(0,0,w,h);
-    // Grid
     ctx.strokeStyle='rgba(255,255,255,0.08)';
     ctx.lineWidth=0.5;
     for(let i=0;i<=4;i++){
@@ -763,7 +747,6 @@ function buildHistogramOut(probs, shots){
       ctx.lineTo(w-padRight,y);
       ctx.stroke();
     }
-    // Barras
     entries.forEach(([st,v],i)=>{
       const x=padLeft+i*(barW+8)+8;
       const barH=(v/maxVal)*chartH;
@@ -777,12 +760,10 @@ function buildHistogramOut(probs, shots){
       ctx.font='9px JetBrains Mono,monospace';
       ctx.textAlign='center';
       ctx.fillText(st,x+barW/2,padTop+chartH+15);
-      // Valor encima
       ctx.fillStyle='#e2ecff';
       ctx.font='bold 8px JetBrains Mono,monospace';
       ctx.fillText(v>1?v:v.toFixed(2),x+barW/2,y-3);
     });
-    // Ejes
     ctx.strokeStyle='rgba(255,255,255,0.3)';
     ctx.lineWidth=1;
     ctx.beginPath();
@@ -798,7 +779,6 @@ function buildHistogramOut(probs, shots){
 }
 
 function buildBlochOut(probs){
-  // Calcular estados de Bloch por qubit desde los counts/probs
   const qubits=Object.keys(probs)[0]?.length||0;
   if(qubits===0)return'';
   const total=Object.values(probs).reduce((s,v)=>s+v,0);
@@ -832,23 +812,18 @@ function drawBlochSphere(canvasId,theta,qi){
   const ctx=c.getContext('2d');
   const w=c.width,h=c.height,cx=w/2,cy=h/2,r=w*0.38;
   ctx.clearRect(0,0,w,h);
-  // Fondo
   const bg=ctx.createRadialGradient(cx,cy-r*.2,r*.1,cx,cy,r);
   bg.addColorStop(0,'#0d1a2e');bg.addColorStop(1,'#040810');
   ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.fillStyle=bg;ctx.fill();
-  // Esfera exterior
   ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);
   ctx.strokeStyle='rgba(0,136,255,.35)';ctx.lineWidth=1.2;ctx.stroke();
-  // Elipses de latitud
   [.3,.6,.9].forEach(f=>{
     ctx.beginPath();ctx.ellipse(cx,cy,r*f,r*f*.3,0,0,Math.PI*2);
     ctx.strokeStyle=`rgba(0,136,255,${.08+f*.04})`;ctx.lineWidth=.7;ctx.stroke();
   });
-  // Ejes
   ctx.strokeStyle='rgba(0,200,255,.18)';ctx.lineWidth=.8;
   ctx.beginPath();ctx.moveTo(cx-r*1.05,cy);ctx.lineTo(cx+r*1.05,cy);ctx.stroke();
   ctx.beginPath();ctx.moveTo(cx,cy-r*1.05);ctx.lineTo(cx,cy+r*1.05);ctx.stroke();
-  // Vector de estado
   const x=r*Math.sin(theta)*Math.cos(0);
   const y=-r*Math.cos(theta);
   const grad=ctx.createLinearGradient(cx,cy,cx+x,cy+y);
@@ -856,12 +831,10 @@ function drawBlochSphere(canvasId,theta,qi){
   grad.addColorStop(1,'rgba(0,255,221,1)');
   ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+x,cy+y);
   ctx.strokeStyle=grad;ctx.lineWidth=2.2;ctx.stroke();
-  // Punto del estado
   ctx.beginPath();ctx.arc(cx+x,cy+y,5,0,Math.PI*2);
   const dotGrad=ctx.createRadialGradient(cx+x,cy+y,0,cx+x,cy+y,5);
   dotGrad.addColorStop(0,'#ffffff');dotGrad.addColorStop(1,'#00ffdd');
   ctx.fillStyle=dotGrad;ctx.fill();
-  // Etiquetas
   ctx.font='bold 9px JetBrains Mono,monospace';ctx.fillStyle='rgba(138,160,196,.8)';
   ctx.fillText('|0⟩',cx+3,cy-r-3);ctx.fillText('|1⟩',cx+3,cy+r+11);
 }
@@ -933,7 +906,6 @@ async function runCell(id){
   running=false;
   if(rbtn)rbtn.classList.remove('spinning');
   renderCellNum(id);
-  // Forzar re-render para mostrar errorLine si existe
   if(cell.errorLine) renderCells();
 }
 function renderCellNum(id){const cell=cells.find(c=>c.id===id);if(!cell)return;const el=document.querySelector(`[data-id="${id}"] .cell-num`);if(el)el.textContent=cell.exec_count!==null?`[${cell.exec_count}]`:'[ ]';}
@@ -1125,11 +1097,9 @@ function buildAddRow(idx){
   return row;
 }
 
-// Clases Qiskit para coloreo especial
 const QK_CLASSES=new Set(['QuantumCircuit','QuantumRegister','ClassicalRegister','AerSimulator','Statevector','DensityMatrix','Operator','Sampler','Estimator','transpile','plot_histogram','plot_bloch_multivector','plot_state_city']);
 const BUILTINS=new Set(['print','len','range','int','float','str','list','dict','set','tuple','type','isinstance','enumerate','zip','map','filter','sum','max','min','abs','round','sorted','reversed','open','input','format','repr','hash','id','callable','hasattr','getattr','setattr','delattr','super','property','classmethod','staticmethod','object']);
 
-// ── HIGHLIGHT CORREGIDO (sin class= visible) ──────────────────
 function highlight(code, isQk=false){
   const KW=new Set(['import','from','as','def','class','return','if','else','elif',
     'for','while','in','not','and','or','True','False','None','with','try','except',
@@ -1190,7 +1160,6 @@ function buildCellEl(cell,i){
 
   const execLbl=cell.exec_count!==null?`[${cell.exec_count}]`:'[ ]';
 
-  // Toolbar
   const toolbar=_expositionMode
     ?`<div class="cell-toolbar">${isCode?`<button class="ct-btn ct-run" onclick="event.stopPropagation();runCell('${cell.id}')" title="Ejecutar">▶</button>`:''}
       </div>`
@@ -1229,8 +1198,7 @@ function buildCellEl(cell,i){
           <div class="cell-code-wrap">
             <div class="cell-linenos" id="lnos-${cell.id}">${lnos}</div>
             <div class="cell-code-inner">
-              <div class="cell-syn-layer" id="syn-${cell.id}">${hl}
-</div>
+              <div class="cell-syn-layer" id="syn-${cell.id}">${hl}</div>
               <textarea class="cell-textarea" id="ta-${cell.id}" spellcheck="false"
                 oninput="onCellInput('${cell.id}')"
                 onkeydown="onCellKeydown(event,'${cell.id}')"
@@ -1244,7 +1212,6 @@ function buildCellEl(cell,i){
         ${restoreBtn}
       </div>`;
   } else {
-    // Markdown
     if(cell.mdEdit&&!_expositionMode){
       el.innerHTML=`${toolbar}
         <div class="cell-gutter"><div class="cell-num" style="color:var(--gr)">Md</div></div>
@@ -1296,7 +1263,7 @@ function onCellInput(id){
     const cell=cells.find(c=>c.id===id);
     if(cell){
       cell.code=ta.value;
-      cell.errorLine=null; // limpiar error al editar
+      cell.errorLine=null;
     }
     const isQk=cell?.type==='qiskit';
     syn.innerHTML=highlight(ta.value,isQk)+'\n';
@@ -1324,7 +1291,6 @@ function onCellKeydown(e,id){
   if(e.key==='Tab'){e.preventDefault();const s=ta.selectionStart,en=ta.selectionEnd;ta.value=ta.value.substring(0,s)+'    '+ta.value.substring(en);ta.selectionStart=ta.selectionEnd=s+4;onCellInput(id);return;}
   if(e.shiftKey&&e.key==='Enter'){e.preventDefault();runCell(id);const idx=cells.findIndex(c=>c.id===id);if(idx<cells.length-1)focusCell(cells[idx+1].id);else if(!_expositionMode)addCellAt(-1,'code');return;}
   if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();runCell(id);}
-  // Navegación entre celdas
   if(e.ctrlKey&&e.key==='ArrowUp'){
     e.preventDefault();
     const idx=cells.findIndex(c=>c.id===id);
@@ -1349,7 +1315,6 @@ function onMdKeydown(e,id){
   if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();syncCellCode(id);const cell=cells.find(c=>c.id===id);if(cell){cell.mdEdit=false;renderCells();}const idx=cells.findIndex(c=>c.id===id);if(idx<cells.length-1)focusCell(cells[idx+1].id);}
 }
 
-// Navegación global con flechas cuando no se edita
 window.addEventListener('keydown', e => {
   if (!curCellId) return;
   if (document.activeElement.tagName === 'TEXTAREA') return;
@@ -1425,7 +1390,6 @@ window.addEventListener('message',e=>{
   }
 });
 
-// Escuchar cambios en localStorage (cuando Fundador cambia URL)
 window.addEventListener('storage',e=>{
   if(e.key==='qcol_colab_url'&&e.newValue){
     engineURL=e.newValue;
@@ -1433,7 +1397,6 @@ window.addEventListener('storage',e=>{
   }
 });
 
-// Pedir usuario
 postCore('QCOL_GET_USER');
 setTimeout(()=>{if(!_initialized){try{const s=localStorage.getItem('qcol_cur_user');if(s)showUI(JSON.parse(s));}catch(e){}}},700);
 setTimeout(()=>{if(!_initialized){document.getElementById('access-denied').classList.add('show');document.getElementById('topbar').style.display='flex';_initialized=true;}},3000);
@@ -1441,7 +1404,6 @@ window.addEventListener('message',e=>{const d=e.data||{};if(d.type==='QCOL_USER_
 
 function requireAuth(){const role=curUser?.role||'guest';if(role!=='admin'&&role!=='founder'&&!_expositionMode){notify('❌ Requiere cuenta Admin o Founder');postCore('QCOL_LOGIN');return false;}return true;}
 
-// Init
 function initEngine(){const s=localStorage.getItem('qcol_colab_url');if(s){engineURL=s;checkEngine();}}
 initEngine();
 setTimeout(()=>initMarkdown(),400);
