@@ -9,7 +9,6 @@
 <script src="https://cdn.jsdelivr.net/npm/markdown-it@14/dist/markdown-it.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/dist/highlight.min.js"></script>
 <style>
-/* (El CSS se mantiene idéntico al del archivo proporcionado) */
 :root{
   --bg:#0a0e1a;--bg2:#0d1117;--bg3:#0c1525;
   --p:#111827;--p2:#1a2540;
@@ -24,12 +23,14 @@
 html,body{height:100%;background:var(--bg);color:var(--tx);font-family:var(--ex);}
 body{display:flex;flex-direction:column;overflow:hidden;}
 
+/* ── NOTIF ── */
 .notif{position:fixed;top:.7rem;right:.7rem;z-index:9999;padding:.5rem .9rem;
   background:rgba(10,14,26,.97);border:1px solid var(--cy);border-radius:8px;
   font-family:var(--orb);font-size:.58rem;color:var(--cy);
   transform:translateX(130%);transition:transform .3s;pointer-events:none;}
 .notif.show{transform:translateX(0);}
 
+/* ── ACCESS DENIED ── */
 .access-denied{display:none;position:fixed;inset:0;background:var(--bg);
   flex-direction:column;align-items:center;justify-content:center;z-index:100;text-align:center;gap:1.2rem;}
 .access-denied.show{display:flex;}
@@ -37,6 +38,7 @@ body{display:flex;flex-direction:column;overflow:hidden;}
 .denied-title{font-family:var(--orb);font-size:1rem;color:var(--rd);}
 .denied-desc{font-size:.75rem;color:var(--mu);max-width:340px;line-height:1.7;}
 
+/* ── TOPBAR ── */
 .topbar{height:40px;display:flex;align-items:center;gap:.4rem;
   padding:0 .75rem;background:#07091200;background:linear-gradient(90deg,#07091299,#080d1899);
   backdrop-filter:blur(8px);border-bottom:1px solid rgba(0,255,221,.14);flex-shrink:0;z-index:10;}
@@ -68,6 +70,7 @@ body{display:flex;flex-direction:column;overflow:hidden;}
 .admin-pill{padding:.17rem .42rem;border-radius:10px;font-family:var(--orb);font-size:.42rem;
   background:rgba(255,215,0,.06);border:1px solid rgba(255,215,0,.18);color:var(--yw);}
 
+/* ── SECBAR ── */
 .secbar{height:30px;display:flex;align-items:stretch;
   background:#080b14;border-bottom:1px solid var(--bd3);flex-shrink:0;padding:0 .45rem;gap:.08rem;}
 .stab{display:flex;align-items:center;gap:.22rem;padding:0 .6rem;
@@ -88,22 +91,26 @@ body{display:flex;flex-direction:column;overflow:hidden;}
 .tbtn.rst{background:rgba(255,215,0,.07);border-color:rgba(255,215,0,.25);color:var(--yw);}
 .tbtn.rst:hover{background:rgba(255,215,0,.13);}
 
+/* ── MAIN ── */
 .main{flex:1;overflow:hidden;display:flex;min-height:0;}
 #view-notebook{flex:1;display:flex;flex-direction:column;overflow:hidden;background:var(--bg);}
 .nb-scroll{flex:1;overflow-y:auto;padding:.6rem 0 2rem;}
 .nb-scroll::-webkit-scrollbar{width:5px;}
 .nb-scroll::-webkit-scrollbar-thumb{background:var(--bd2);border-radius:3px;}
 
+/* ── CELDA BASE ── */
 .nb-cell{display:flex;margin:.22rem auto;
   width:min(940px,97%);position:relative;
   border-radius:8px;border:1px solid transparent;transition:border-color .15s,box-shadow .15s;}
 .nb-cell:hover{border-color:rgba(0,255,221,.18);box-shadow:0 2px 12px rgba(0,0,0,.3);}
 .nb-cell.active{border-color:rgba(0,255,221,.45);box-shadow:0 2px 20px rgba(0,255,221,.06);}
 .nb-cell.running{border-color:rgba(0,136,255,.5);box-shadow:0 0 18px rgba(0,136,255,.08);}
+/* Celda Qiskit — borde izquierdo cian */
 .nb-cell.qk-cell{border-left:3px solid rgba(0,255,221,.35);}
 .nb-cell.qk-cell:hover{border-color:rgba(0,255,221,.35);border-left-color:rgba(0,255,221,.6);}
 .nb-cell.qk-cell.active{border-color:rgba(0,255,221,.55);border-left-color:var(--cy);}
 
+/* ── GUTTER ── */
 .cell-gutter{width:48px;flex-shrink:0;display:flex;flex-direction:column;
   align-items:center;padding:.5rem .2rem 0;gap:.25rem;}
 .cell-num{font-family:var(--mono);font-size:.56rem;color:var(--mu2);min-width:20px;text-align:center;}
@@ -117,6 +124,7 @@ body{display:flex;flex-direction:column;overflow:hidden;}
 .cell-run-btn.spinning{animation:sp .7s linear infinite;border-color:var(--gr);color:var(--gr);}
 @keyframes sp{to{transform:rotate(360deg);}}
 
+/* ── BODY ── */
 .cell-body{flex:1;display:flex;flex-direction:column;min-width:0;padding:.32rem 0;}
 .cell-type-badge{display:inline-flex;align-items:center;gap:.22rem;
   font-family:var(--orb);font-size:.4rem;color:var(--mu);
@@ -125,12 +133,14 @@ body{display:flex;flex-direction:column;overflow:hidden;}
 .ctb-qk{color:var(--cy);}
 .ctb-md{color:rgba(0,255,136,.7);}
 
+/* ── EDITOR ── */
 .cell-code-area{position:relative;background:var(--bg2);
   border:1px solid var(--bd3);border-radius:6px;overflow:hidden;min-height:42px;
   transition:border-color .15s;}
 .nb-cell.active .cell-code-area{border-color:rgba(0,255,221,.3);}
 .qk-cell .cell-code-area{border-color:rgba(0,255,221,.15);background:#0a1018;}
 .qk-cell.active .cell-code-area{border-color:rgba(0,255,221,.35);}
+/* Línea con error */
 .cell-linenos{width:32px;flex-shrink:0;padding:.55rem 0;
   background:rgba(0,0,0,.25);border-right:1px solid var(--bd3);
   font-family:var(--mono);font-size:.62rem;line-height:1.65;
@@ -144,6 +154,7 @@ body{display:flex;flex-direction:column;overflow:hidden;}
   border-right:2px solid #ff4466;
   border-left:2px solid rgba(255,68,102,.5);
 }
+/* Número de línea integrado */
 .cell-code-wrap{display:flex;height:100%;}
 .cell-code-inner{flex:1;position:relative;overflow:hidden;min-height:42px;}
 .cell-syn-layer{position:absolute;inset:0;padding:.55rem .7rem;
@@ -159,12 +170,14 @@ body{display:flex;flex-direction:column;overflow:hidden;}
 .cell-textarea::-webkit-scrollbar{width:4px;height:4px;}
 .cell-textarea::-webkit-scrollbar-thumb{background:var(--bd2);border-radius:2px;}
 
+/* ── OUTPUT — terminal JupyterLab ── */
 .cell-output-area{margin-top:.28rem;border-radius:6px;overflow:hidden;
   border:1px solid var(--bd3);background:#050810;}
 .out-header{display:flex;align-items:center;gap:.4rem;padding:.25rem .65rem;
   background:rgba(0,0,0,.4);border-bottom:1px solid var(--bd3);font-family:var(--orb);font-size:.4rem;}
 .out-header-ok{color:var(--gr);}
 .out-header-err{color:var(--rd);}
+/* Texto terminal */
 .out-stdout{padding:.5rem .7rem;font-family:var(--mono);font-size:.67rem;line-height:1.62;
   white-space:pre-wrap;overflow-x:auto;color:#c8e0ff;background:#050810;
   max-height:400px;overflow-y:auto;}
@@ -173,16 +186,19 @@ body{display:flex;flex-direction:column;overflow:hidden;}
 .out-stderr{padding:.5rem .7rem;font-family:var(--mono);font-size:.67rem;line-height:1.62;
   white-space:pre-wrap;color:#ff9999;background:rgba(255,60,60,.04);
   border-top:1px solid rgba(255,68,102,.15);}
+/* Circuito texto — estilo visual mejorado */
 .out-circuit-text{padding:.5rem .7rem;font-family:var(--mono);font-size:.65rem;line-height:1.7;
   white-space:pre;overflow-x:auto;color:var(--cl);background:#040d18;
   border-top:1px solid rgba(0,170,255,.1);}
 .out-circuit-text::-webkit-scrollbar{height:4px;}
 .out-circuit-text::-webkit-scrollbar-thumb{background:var(--bd2);}
+/* Bloch sphere canvas por celda */
 .out-bloch-wrap{padding:.55rem .7rem;background:#04080f;
   border-top:1px solid rgba(0,255,221,.08);display:flex;flex-wrap:wrap;gap:.6rem;align-items:flex-start;}
 .bloch-item{display:flex;flex-direction:column;align-items:center;gap:.25rem;}
 .bloch-item canvas{border-radius:50%;box-shadow:0 0 20px rgba(0,136,255,.15);}
 .bloch-item-lbl{font-family:var(--mono);font-size:.52rem;color:var(--mu);}
+/* Probabilidades */
 .out-probs{padding:.55rem .7rem;background:#040c18;
   border-top:1px solid rgba(0,136,255,.1);}
 .out-probs-title{font-family:var(--orb);font-size:.42rem;color:var(--mu);
@@ -196,12 +212,15 @@ body{display:flex;flex-direction:column;overflow:hidden;}
   background:linear-gradient(90deg,rgba(0,136,255,.8),rgba(0,255,221,.8));}
 .prob-pct{color:var(--tx2);min-width:40px;text-align:right;font-size:.62rem;}
 .prob-count{color:var(--mu);min-width:45px;text-align:right;font-size:.58rem;}
+/* Imagen matplotlib / gráficas */
 .out-img{display:block;max-width:100%;border-radius:5px;
   margin:.4rem .6rem;box-shadow:0 4px 20px rgba(0,0,0,.5);}
+/* Resultados tipo dict */
 .out-dict{padding:.5rem .7rem;font-family:var(--mono);font-size:.66rem;line-height:1.6;
   color:var(--yw);background:#060c10;border-top:1px solid rgba(255,215,0,.08);
   white-space:pre-wrap;}
 
+/* ── MARKDOWN ── */
 .cell-md-rendered{padding:.55rem .7rem;font-size:.74rem;line-height:1.72;color:var(--tx);}
 .cell-md-rendered h1{font-family:var(--orb);font-size:1.05rem;color:var(--bl2);
   margin:.55rem 0 .3rem;padding-bottom:.25rem;border-bottom:1px solid rgba(0,136,255,.2);}
@@ -224,7 +243,9 @@ body{display:flex;flex-direction:column;overflow:hidden;}
 .cell-md-rendered th,.cell-md-rendered td{border:1px solid var(--bd2);padding:.28rem .5rem;}
 .cell-md-rendered th{background:rgba(0,136,255,.08);color:var(--bl2);}
 .cell-md-rendered img{max-width:100%;border-radius:5px;}
+/* Math display */
 .cell-md-rendered .MJX-TEX{color:var(--nm);}
+/* Markdown editor split */
 .md-split{display:flex;gap:.4rem;background:var(--bg2);
   border:1px solid var(--bd);border-radius:6px;min-height:130px;}
 .md-editor-pane{flex:1;border-right:1px solid var(--bd);}
@@ -240,6 +261,7 @@ body{display:flex;flex-direction:column;overflow:hidden;}
   padding:.52rem;font-family:var(--mono);font-size:.68rem;
   line-height:1.65;color:var(--tx2);resize:none;outline:none;}
 
+/* ── TOOLBAR ── */
 .cell-toolbar{display:none;position:absolute;top:.25rem;right:.4rem;
   gap:.15rem;align-items:center;z-index:5;}
 .nb-cell:hover .cell-toolbar,.nb-cell.active .cell-toolbar{display:flex;}
@@ -253,6 +275,7 @@ body.expo-mode .nb-cell.qk-cell .cell-toolbar .ct-btn:not(.ct-run){display:none!
   display:flex;align-items:center;justify-content:center;transition:all .14s;}
 .ct-btn:hover{border-color:var(--bl2);color:var(--bl2);}
 .ct-btn.danger:hover{border-color:var(--rd);color:var(--rd);}
+/* Botón restaurar celda */
 .cell-restore-btn{display:none;position:absolute;bottom:.25rem;right:.4rem;
   padding:.1rem .3rem;background:rgba(255,215,0,.07);
   border:1px solid rgba(255,215,0,.22);border-radius:3px;
@@ -261,6 +284,7 @@ body.expo-mode .nb-cell.qk-cell .cell-restore-btn,
 body.expo-mode .nb-cell[data-ctype="code"] .cell-restore-btn{display:block;}
 .cell-restore-btn:hover{background:rgba(255,215,0,.14);}
 
+/* ── ADD ROW ── */
 .add-cell-row{width:min(940px,97%);margin:.03rem auto;height:14px;
   display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .18s;}
 .add-cell-row:hover{opacity:1;}
@@ -278,6 +302,7 @@ body.expo-mode .nb-bottom{display:none;}
   transition:all .18s;text-align:center;}
 .nb-add-big:hover{background:rgba(0,255,221,.05);border-color:rgba(0,255,221,.45);color:var(--cy);}
 
+/* ── GESTIONAR ── */
 #view-manage{display:none;flex:1;flex-direction:column;overflow:hidden;}
 .manage-wrap{display:flex;flex-direction:column;height:100%;overflow:hidden;}
 .manage-bar{display:flex;align-items:center;gap:.4rem;padding:.5rem .8rem;
@@ -317,6 +342,7 @@ body.expo-mode .nb-bottom{display:none;}
 .nb-empty-ttl{font-family:var(--orb);font-size:.75rem;color:var(--mu);}
 .nb-empty-sub{font-size:.64rem;color:var(--mu);opacity:.65;max-width:270px;line-height:1.55;}
 
+/* ── STATUSBAR ── */
 .statusbar{height:20px;display:flex;align-items:center;gap:.55rem;
   padding:0 .75rem;background:#060a10;border-top:1px solid var(--bd3);
   font-family:var(--mono);font-size:.5rem;color:var(--mu);flex-shrink:0;}
@@ -327,6 +353,7 @@ body.expo-mode .nb-bottom{display:none;}
 .sb-right{margin-left:auto;display:flex;gap:.55rem;}
 #sb-save-status{color:var(--gr);}
 
+/* ── MODAL ── */
 .modal-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);
   z-index:800;align-items:center;justify-content:center;}
 .modal-ov.open{display:flex;}
@@ -348,6 +375,7 @@ textarea.fi{resize:vertical;min-height:58px;line-height:1.5;}
   border:1px solid var(--bd2);border-radius:6px;color:var(--mu);
   font-family:var(--orb);font-size:.5rem;cursor:pointer;}
 
+/* ── SYNTAX COLORS — usando <s> para evitar conflictos con escH ── */
 s{font-style:normal;text-decoration:none;}
 s.kw{color:var(--kw);font-weight:600;}
 s.fn{color:var(--fn);}
@@ -358,6 +386,7 @@ s.cl{color:var(--cl);}
 s.qt{color:var(--qt);}
 s.blt{color:#ffb86c;}
 
+/* ── DRAG ── */
 .nb-cell.drag-over{border-color:var(--cy)!important;box-shadow:0 0 0 1px rgba(0,255,221,.2)!important;}
 .nb-cell[draggable]{cursor:grab;}
 .nb-cell[draggable]:active{cursor:grabbing;}
@@ -508,6 +537,8 @@ function activateExpositionMode(){
   });
   const rst=document.getElementById('btn-restore-all');if(rst)rst.style.display='';
   const ni=document.getElementById('nb-name-inp');if(ni){ni.readOnly=true;ni.style.opacity='.6';}
+  // CRÍTICO: re-renderizar para que todas las celdas Markdown queden en modo lectura
+  // y las celdas de código pierdan doble-click y toolbar de edición
   renderCells();
   notify('👁 Modo exposición — lee el material y experimenta con el código');
 }
@@ -571,6 +602,7 @@ import io, base64
 
 // ── PARSEAR RESPUESTA DEL SERVIDOR ────────────────────────────
 function parseServerResponse(raw){
+  // raw.data[0] puede ser string JSON o dict ya parseado
   let d=null;
   try{
     const item=raw?.data?.[0];
@@ -586,12 +618,15 @@ function renderOutput(outArea, d, elapsed, cellId){
   const t0=elapsed?`${elapsed}s`:null;
   let html='';
 
+  // Cabecera
   const isOk=d.success!==false;
   const hdrCls=isOk?'out-header-ok':'out-header-err';
   const hdrIcon=isOk?'✅':'❌';
   html+=`<div class="out-header ${hdrCls}">${hdrIcon} ${isOk?'Ejecutado':'Error'}${t0?' · '+t0:''}</div>`;
 
+  // ── STDOUT completo ──
   if(d.output&&d.output.trim()){
+    // Detectar si la salida contiene un diagrama de circuito (líneas con ─, │, ┤, ├, etc.)
     const lines=d.output.split('\n');
     let circuitBlock=[];
     let textBlock=[];
@@ -605,22 +640,27 @@ function renderOutput(outArea, d, elapsed, cellId){
     if(textBlock.length&&textBlock.join('').trim())html+=buildTextOut(textBlock.join('\n'));
   }
 
+  // ── STDERR ──
   if(d.stderr&&d.stderr.trim()){
     html+=`<div class="out-stderr">${escH(d.stderr)}</div>`;
   }
 
+  // ── PROBABILIDADES / COUNTS ──
   if(d.bloch&&d.bloch.probabilities){
     html+=buildProbsOut(d.bloch.probabilities,d.bloch.shots||1024,d.bloch.simulator||'AerSimulator');
+    // Añadir histograma canvas
     html+=buildHistogramOut(d.bloch.probabilities,d.bloch.shots||1024);
   }else if(d.counts){
     html+=buildProbsOut(d.counts,d.bloch?.shots||1024,'');
     html+=buildHistogramOut(d.counts,d.bloch?.shots||1024);
   }
 
+  // ── ESFERA DE BLOCH ──
   if(d.bloch&&d.bloch.probabilities){
     html+=buildBlochOut(d.bloch.probabilities);
   }
 
+  // ── IMAGEN matplotlib ──
   if(d.plot_png){
     html+=`<div style="padding:.3rem .5rem;background:#04080e;border-top:1px solid rgba(0,136,255,.08);">
       <div style="font-family:var(--orb);font-size:.4rem;color:var(--mu);padding:.2rem 0 .3rem;letter-spacing:.05em;">GRÁFICA MATPLOTLIB</div>
@@ -628,6 +668,7 @@ function renderOutput(outArea, d, elapsed, cellId){
     </div>`;
   }
 
+  // ── IMAGEN extra (plot_svg como fallback) ──
   if(d.plot_svg){
     html+=`<div style="padding:.3rem .5rem;background:#04080e;border-top:1px solid rgba(0,136,255,.08);">
       <div style="font-family:var(--orb);font-size:.4rem;color:var(--mu);padding:.2rem 0 .3rem;">DIAGRAMA SVG</div>
@@ -635,7 +676,9 @@ function renderOutput(outArea, d, elapsed, cellId){
     </div>`;
   }
 
+  // ── ERROR detallado ──
   if(!isOk&&d.output){
+    // Extraer línea de error
     const lineMatch = d.output.match(/[Ll]ine\s+(\d+)|línea\s+(\d+)/i);
     const errLine = lineMatch ? parseInt(lineMatch[1] || lineMatch[2]) : null;
     if (errLine && cellId) {
@@ -650,21 +693,20 @@ function renderOutput(outArea, d, elapsed, cellId){
 
 function buildTextOut(text){
   if(!text.trim())return'';
+  // Detectar si es dict de resultados como {'00': 512, '11': 512}
   if(/^\{['"0-9a-zA-Z_,:\s]+\}$/.test(text.trim())){
     return`<div class="out-dict">${escH(text)}</div>`;
   }
   return`<div class="out-stdout">${escH(text)}</div>`;
 }
 
-// ═══════════════════════════════════════════════════════════════
-// CIRCUIT CANVAS RENDERER — from Arquitecto Cuántico
-// ═══════════════════════════════════════════════════════════════
 function buildCircuitOut(text){
   if(!text.trim()) return '';
 
   const lines = text.split('\n');
   const wireLines = lines.filter(l => /^\s*(q_?\d+|q\[\d+\]|qr\[\d+\])\s*:/.test(l));
 
+  // Sin wires → ASCII coloreado fallback
   if(wireLines.length === 0){
     let col = escH(text);
     col = col.replace(/(q_?\d+|q\[\d+\]|qr\[\d+\])\s*:/g,
@@ -678,15 +720,17 @@ function buildCircuitOut(text){
     </div>`;
   }
 
+  // ── CANVAS RENDERER — idéntico al Arquitecto Cuántico ─────────
   const nQ   = wireLines.length;
-  const ROW  = 56;
-  const STEP = 60;
-  const PAD_L= 60;
+  const ROW  = 56;   // altura por qubit (igual al arquitecto)
+  const STEP = 60;   // espacio horizontal entre columnas de puertas
+  const PAD_L= 60;   // ancho para etiquetas de qubit
   const PAD_T= 8;
   const PAD_B= 16;
   const GATE_W = 44;
   const GATE_H = 38;
 
+  // Extraer contenido de cada wire (parte después de "q_0: ")
   const contents = wireLines.map(l => {
     const m = l.match(/^\s*(?:q_?\d+|q\[\d+\]|qr\[\d+\])\s*:\s*(.*)/);
     return m ? m[1] : '';
@@ -694,12 +738,18 @@ function buildCircuitOut(text){
   const maxLen = Math.max(...contents.map(s=>s.length), 1);
   const padded = contents.map(s => s.padEnd(maxLen, '─'));
 
+  // ── TOKENIZAR cada wire ────────────────────────────────────────
+  // Devuelve array de {midChar, name} donde midChar es posición central en el string
   function tokenizeWire(wire){
     const toks = [];
-    const re2 = /(┤)([^├┤╪]*?)(├|┤)|(M(?=[─\s╫╨╩]|$))|(■)|(⊕)|(×)/g;
+    const re = /┤([^┤├╪]*)(?:├|┤)|(?<=[^A-Za-z])(M)(?=[─╫╨])|([■⊕×])/g;
     let m;
+    // Regex más robusta
+    const re2 = /(┤)([^├┤╪]*?)(├|┤)|(M(?=[─\s╫╨╩]|$))|(■)|(⊕)|(×)/g;
+    re2.lastIndex = 0;
     while((m = re2.exec(wire)) !== null){
       if(m[1] !== undefined){
+        // Caja: ┤ NAME ├
         const name = m[2].trim().replace(/\s+/g,' ') || '?';
         const mid  = m.index + Math.floor(m[0].length/2);
         toks.push({mid, name});
@@ -717,9 +767,13 @@ function buildCircuitOut(text){
   }
 
   const wireToks = padded.map(w => tokenizeWire(w));
-  const colMap = [];
+
+  // ── AGRUPAR EN COLUMNAS ───────────────────────────────────────
+  // Tokens dentro de ±3 chars de posición → misma columna
+  const colMap = []; // [{qi: tok, ...}]
   wireToks.forEach((toks, qi) => {
     toks.forEach(tok => {
+      // Buscar columna existente cercana
       let placed = false;
       for(const col of colMap){
         const mids = Object.values(col).map(t=>t.mid);
@@ -737,6 +791,7 @@ function buildCircuitOut(text){
       }
     });
   });
+  // Ordenar columnas por posición
   colMap.sort((a,b)=>{
     const mA = Object.values(a)[0].mid;
     const mB = Object.values(b)[0].mid;
@@ -747,6 +802,7 @@ function buildCircuitOut(text){
   const W = PAD_L + nCols * STEP + 40;
   const H = PAD_T + nQ * ROW + PAD_B;
 
+  // Colores de puertas (idénticos al arquitecto)
   const GCOL = {
     H:'#1a5fb4', X:'#c01c28', Y:'#7a3e99', Z:'#1c71d8',
     S:'#c64600', T:'#26a269', SX:'#c01c28', '√X':'#c01c28',
@@ -760,6 +816,7 @@ function buildCircuitOut(text){
     return GCOL[k] || GCOL[name] || '#1a4a8a';
   }
 
+  // ── DIBUJAR EN CANVAS ─────────────────────────────────────────
   const cid = 'circ-' + genId();
   setTimeout(() => {
     const canvas = document.getElementById(cid);
@@ -769,13 +826,16 @@ function buildCircuitOut(text){
     const ctx = canvas.getContext('2d');
     ctx.clearRect(0,0,W,H);
 
+    // Fondo
     ctx.fillStyle = '#020c18';
     ctx.fillRect(0,0,W,H);
 
+    // ── 1. CABLES HORIZONTALES ──────────────────────────────────
     for(let q=0; q<nQ; q++){
       const cy = PAD_T + q*ROW + ROW/2;
       const lbl = (wireLines[q].match(/^\s*(q_?\d+|q\[\d+\]|qr\[\d+\])/)||[])[1] || `q[${q}]`;
 
+      // Línea del cable
       ctx.beginPath();
       ctx.moveTo(PAD_L - 8, cy);
       ctx.lineTo(W - 20, cy);
@@ -783,25 +843,29 @@ function buildCircuitOut(text){
       ctx.lineWidth = 1.8;
       ctx.stroke();
 
+      // Etiqueta qubit (estilo arquitecto: púrpura, monoespacio)
       ctx.fillStyle = '#bd93f9';
       ctx.font = 'bold 11px JetBrains Mono,monospace';
       ctx.textAlign = 'right';
       ctx.fillText(lbl, PAD_L - 12, cy + 4);
     }
 
+    // ── 2. PUERTAS POR COLUMNA ──────────────────────────────────
     colMap.forEach((col, ci) => {
-      const xc = PAD_L + ci * STEP + STEP/2;
+      const xc = PAD_L + ci * STEP + STEP/2;  // centro X de la columna
       const qList = Object.keys(col).map(Number).sort((a,b)=>a-b);
       if(!qList.length) return;
 
       const minQ = qList[0];
       const maxQ = qList[qList.length-1];
 
+      // Detectar tipo compuesto
       const names   = qList.map(q=>col[q].name);
       const hasCtrl = names.includes('■');
       const hasTgt  = names.includes('⊕');
       const swapCnt = names.filter(n=>n==='×').length;
 
+      // ── Línea vertical conectora (igual al arquitecto) ──
       if(qList.length > 1){
         const y1 = PAD_T + minQ*ROW + ROW/2;
         const y2 = PAD_T + maxQ*ROW + ROW/2;
@@ -816,6 +880,7 @@ function buildCircuitOut(text){
         ctx.stroke();
       }
 
+      // ── Dibujar cada símbolo ────────────────────────────────
       qList.forEach(q => {
         const name = col[q].name;
         const cy   = PAD_T + q*ROW + ROW/2;
@@ -824,6 +889,7 @@ function buildCircuitOut(text){
         const gy   = cy - GATE_H/2;
 
         if(name === '■'){
+          // Punto de control — círculo sólido con borde blanco (idéntico al arquitecto)
           ctx.beginPath();
           ctx.arc(xc, cy, 8, 0, Math.PI*2);
           ctx.fillStyle = c;
@@ -831,7 +897,9 @@ function buildCircuitOut(text){
           ctx.strokeStyle = 'rgba(255,255,255,.9)';
           ctx.lineWidth = 1.5;
           ctx.stroke();
+
         } else if(name === '⊕'){
+          // Target CNOT — círculo vacío con cruz (idéntico al arquitecto)
           ctx.beginPath();
           ctx.arc(xc, cy, 14, 0, Math.PI*2);
           ctx.strokeStyle = c;
@@ -843,7 +911,9 @@ function buildCircuitOut(text){
           ctx.strokeStyle = c;
           ctx.lineWidth = 2;
           ctx.stroke();
+
         } else if(name === '×'){
+          // SWAP target — X cruzada (idéntico al arquitecto)
           ctx.beginPath();
           ctx.moveTo(xc-8, cy-8); ctx.lineTo(xc+8, cy+8);
           ctx.moveTo(xc+8, cy-8); ctx.lineTo(xc-8, cy+8);
@@ -852,20 +922,25 @@ function buildCircuitOut(text){
           ctx.lineCap = 'round';
           ctx.stroke();
           ctx.lineCap = 'butt';
+
         } else if(name === 'M'){
+          // Medidor — caja marrón con arco (estilo arquitecto)
+          // Caja
           ctx.beginPath();
-          if(ctx.roundRect) ctx.roundRect(gx, gy, GATE_W, GATE_H, 6);
-          else ctx.rect(gx, gy, GATE_W, GATE_H);
+          ctx.roundRect ? ctx.roundRect(gx, gy, GATE_W, GATE_H, 6)
+                        : (()=>{ ctx.rect(gx, gy, GATE_W, GATE_H); })();
           ctx.fillStyle = 'rgba(109,76,65,.3)';
           ctx.fill();
           ctx.strokeStyle = '#6d4c41';
           ctx.lineWidth = 1.8;
           ctx.stroke();
+          // Arco de medición
           ctx.beginPath();
           ctx.arc(xc, cy+4, 10, Math.PI, 0);
           ctx.strokeStyle = '#ff9580';
           ctx.lineWidth = 1.8;
           ctx.stroke();
+          // Aguja
           ctx.beginPath();
           ctx.moveTo(xc, cy+4);
           ctx.lineTo(xc+6, cy-5);
@@ -874,23 +949,28 @@ function buildCircuitOut(text){
           ctx.lineCap = 'round';
           ctx.stroke();
           ctx.lineCap = 'butt';
+
         } else {
+          // Caja estándar — gradiente + brillo (idéntico al arquitecto)
           const grad = ctx.createLinearGradient(gx, gy, gx, gy+GATE_H);
           grad.addColorStop(0, c + 'ee');
           grad.addColorStop(1, c + '88');
+          // Caja principal
           ctx.beginPath();
-          if(ctx.roundRect) ctx.roundRect(gx, gy, GATE_W, GATE_H, 6);
-          else ctx.rect(gx, gy, GATE_W, GATE_H);
+          ctx.roundRect ? ctx.roundRect(gx, gy, GATE_W, GATE_H, 6)
+                        : (()=>{ ctx.rect(gx, gy, GATE_W, GATE_H); })();
           ctx.fillStyle = grad;
           ctx.fill();
           ctx.strokeStyle = 'rgba(255,255,255,.28)';
           ctx.lineWidth = 1.4;
           ctx.stroke();
+          // Brillo superior
           ctx.beginPath();
-          if(ctx.roundRect) ctx.roundRect(gx+2, gy+2, GATE_W-4, 4, 4);
-          else ctx.rect(gx+2, gy+2, GATE_W-4, 4);
+          ctx.roundRect ? ctx.roundRect(gx+2, gy+2, GATE_W-4, 4, 4)
+                        : (()=>{ ctx.rect(gx+2, gy+2, GATE_W-4, 4); })();
           ctx.fillStyle = 'rgba(255,255,255,.18)';
           ctx.fill();
+          // Texto centrado
           const display = name.length > 4 ? name.slice(0,3) : name;
           const fs = display.length <= 2 ? 13 : display.length === 3 ? 11 : 9;
           ctx.fillStyle = '#ffffff';
@@ -916,6 +996,7 @@ function buildProbsOut(probs,shots,sim){
   if(!entries.length)return'';
   const total=entries.reduce((s,[,v])=>s+v,0);
   const rows=entries.map(([st,v])=>{
+    // v puede ser count (int) o probability (float)
     const isCount=v>1;
     const prob=isCount?v/total:v;
     const count=isCount?v:Math.round(v*shots);
@@ -951,6 +1032,7 @@ function buildHistogramOut(probs, shots){
     const barW=Math.min(40,chartW/entries.length-8);
     const maxVal=Math.max(...entries.map(([,v])=>v));
     ctx.clearRect(0,0,w,h);
+    // Grid
     ctx.strokeStyle='rgba(255,255,255,0.08)';
     ctx.lineWidth=0.5;
     for(let i=0;i<=4;i++){
@@ -960,6 +1042,7 @@ function buildHistogramOut(probs, shots){
       ctx.lineTo(w-padRight,y);
       ctx.stroke();
     }
+    // Barras
     entries.forEach(([st,v],i)=>{
       const x=padLeft+i*(barW+8)+8;
       const barH=(v/maxVal)*chartH;
@@ -973,10 +1056,12 @@ function buildHistogramOut(probs, shots){
       ctx.font='9px JetBrains Mono,monospace';
       ctx.textAlign='center';
       ctx.fillText(st,x+barW/2,padTop+chartH+15);
+      // Valor encima
       ctx.fillStyle='#e2ecff';
       ctx.font='bold 8px JetBrains Mono,monospace';
       ctx.fillText(v>1?v:v.toFixed(2),x+barW/2,y-3);
     });
+    // Ejes
     ctx.strokeStyle='rgba(255,255,255,0.3)';
     ctx.lineWidth=1;
     ctx.beginPath();
@@ -992,6 +1077,7 @@ function buildHistogramOut(probs, shots){
 }
 
 function buildBlochOut(probs){
+  // Calcular estados de Bloch por qubit desde los counts/probs
   const qubits=Object.keys(probs)[0]?.length||0;
   if(qubits===0)return'';
   const total=Object.values(probs).reduce((s,v)=>s+v,0);
@@ -1030,16 +1116,20 @@ function drawBlochSphere(canvasId,theta,qi){
   const r=Math.min(w,h)*0.40;
   ctx.clearRect(0,0,w,h);
 
+  // Fondo con gradiente radial
   const bg=ctx.createRadialGradient(cx-r*.15,cy-r*.15,r*.05,cx,cy,r*1.15);
   bg.addColorStop(0,'#0d1e36');bg.addColorStop(.7,'#061020');bg.addColorStop(1,'#030810');
   ctx.beginPath();ctx.arc(cx,cy,r*1.05,0,Math.PI*2);ctx.fillStyle=bg;ctx.fill();
 
+  // Círculo exterior (esfera)
   ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);
   ctx.strokeStyle='rgba(0,170,255,.5)';ctx.lineWidth=1.8;ctx.stroke();
 
+  // Meridiano ecuador (elipse horizontal)
   ctx.beginPath();ctx.ellipse(cx,cy,r,r*.3,0,0,Math.PI*2);
   ctx.strokeStyle='rgba(0,170,255,.3)';ctx.lineWidth=1.2;ctx.stroke();
 
+  // Paralelos (latitudes)
   [-0.7,-0.35,0.35,0.7].forEach(f=>{
     const ry=r*Math.sqrt(1-f*f);
     const py=cy+r*f*0.95;
@@ -1047,9 +1137,11 @@ function drawBlochSphere(canvasId,theta,qi){
     ctx.strokeStyle=`rgba(0,136,255,${f===0?0.25:0.1})`;ctx.lineWidth=.7;ctx.stroke();
   });
 
+  // Meridiano vertical (elipse vertical)
   ctx.beginPath();ctx.ellipse(cx,cy,r*.25,r,0,0,Math.PI*2);
   ctx.strokeStyle='rgba(0,170,255,.15)';ctx.lineWidth=.7;ctx.stroke();
 
+  // Ejes con flechas
   function drawAxis(x1,y1,x2,y2,col,dashed=false){
     ctx.beginPath();
     if(dashed)ctx.setLineDash([3,4]);
@@ -1062,20 +1154,24 @@ function drawBlochSphere(canvasId,theta,qi){
   drawAxis(cx,cy,cx+r*1.05,cy,'rgba(0,200,255,.2)');
   drawAxis(cx,cy,cx-r*0.9,cy,'rgba(0,200,255,.12)',true);
 
+  // Vector de estado
   const phi=0;
   const vx=r*Math.sin(theta)*Math.cos(phi);
   const vy=-r*Math.cos(theta);
 
+  // Proyección sombra (en el ecuador)
   ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+vx,cy);
   ctx.strokeStyle='rgba(0,255,221,.15)';ctx.lineWidth=1;ctx.setLineDash([2,3]);ctx.stroke();ctx.setLineDash([]);
   ctx.beginPath();ctx.moveTo(cx+vx,cy);ctx.lineTo(cx+vx,cy+vy);
   ctx.strokeStyle='rgba(0,255,221,.12)';ctx.lineWidth=1;ctx.setLineDash([2,4]);ctx.stroke();ctx.setLineDash([]);
 
+  // Vector principal con gradiente luminoso
   const vg=ctx.createLinearGradient(cx,cy,cx+vx,cy+vy);
   vg.addColorStop(0,'rgba(0,255,221,.4)');vg.addColorStop(.6,'rgba(0,255,221,.9)');vg.addColorStop(1,'#ffffff');
   ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+vx,cy+vy);
   ctx.strokeStyle=vg;ctx.lineWidth=2.8;ctx.stroke();
 
+  // Punta de flecha
   const ang=Math.atan2(vy,vx);const al=9;
   ctx.beginPath();
   ctx.moveTo(cx+vx,cy+vy);
@@ -1083,10 +1179,12 @@ function drawBlochSphere(canvasId,theta,qi){
   ctx.lineTo(cx+vx-al*Math.cos(ang+0.42),cy+vy-al*Math.sin(ang+0.42));
   ctx.closePath();ctx.fillStyle='#00ffdd';ctx.fill();
 
+  // Punto brillante en la punta
   const pdg=ctx.createRadialGradient(cx+vx,cy+vy,0,cx+vx,cy+vy,6);
   pdg.addColorStop(0,'#ffffff');pdg.addColorStop(.4,'#00ffdd');pdg.addColorStop(1,'rgba(0,255,221,0)');
   ctx.beginPath();ctx.arc(cx+vx,cy+vy,6,0,Math.PI*2);ctx.fillStyle=pdg;ctx.fill();
 
+  // Etiquetas
   const fs=w>130?12:10;
   ctx.font=`bold ${fs}px JetBrains Mono,monospace`;
   ctx.fillStyle='rgba(180,220,255,.95)';ctx.textAlign='center';
@@ -1164,6 +1262,7 @@ async function runCell(id){
   running=false;
   if(rbtn)rbtn.classList.remove('spinning');
   renderCellNum(id);
+  // Forzar re-render para mostrar errorLine si existe
   if(cell.errorLine) renderCells();
 }
 function renderCellNum(id){const cell=cells.find(c=>c.id===id);if(!cell)return;const el=document.querySelector(`[data-id="${id}"] .cell-num`);if(el)el.textContent=cell.exec_count!==null?`[${cell.exec_count}]`:'[ ]';}
@@ -1239,12 +1338,7 @@ function refreshNbs(){
   if(!nbs.length){grid.innerHTML=`<div class="nb-empty-state"><div class="nb-empty-icon">📓</div><div class="nb-empty-ttl">Sin notebooks guardados</div></div>`;return;}
   grid.innerHTML=nbs.map(nb=>`<div class="nb-card"><div class="nb-card-hdr"><div class="nb-card-title">${escH(nb.name)}</div><div class="nb-card-badge">${nb.cells?.length||0} celdas</div></div><div class="nb-card-body"><div class="nb-card-meta">${new Date(nb.saved).toLocaleDateString()}</div><div class="nb-card-actions"><button class="btn-edit-nb" onclick="loadNb('${escH(nb.name)}')">📝 Editar</button><button class="btn-pub-nb" onclick="loadNb('${escH(nb.name)}');showPublish()">📤</button><button class="btn-del-nb" onclick="deleteNb('${escH(nb.name)}')">🗑</button></div></div></div>`).join('');
 }
-function showPublish(){
-  if(!requireAuth())return;
-  const name=document.getElementById('nb-name-inp').value||'';
-  document.getElementById('pub-title').value=name;
-  document.getElementById('pub-modal').classList.add('open');
-}
+function showPublish(){const name=document.getElementById('nb-name-inp').value||'';document.getElementById('pub-title').value=name;document.getElementById('pub-modal').classList.add('open');}
 function closePublish(){document.getElementById('pub-modal').classList.remove('open');}
 function publishNb(){
   if(!requireAuth())return;
@@ -1302,7 +1396,6 @@ function changeCellType(id){if(_expositionMode)return;const cell=cells.find(c=>c
 
 // ── BOTÓN LIMPIAR CELDA ───────────────────────────────────────
 function clearCellContent(id) {
-  if(_expositionMode)return;
   const cell = cells.find(c => c.id === id);
   if (!cell) return;
   cell.code = '';
@@ -1361,7 +1454,12 @@ function buildAddRow(idx){
   return row;
 }
 
+// highlight y buildLinenos definidos abajo
+
+// ── HIGHLIGHT — tokenizador seguro, nunca inyecta class= en el textarea ──
 function highlight(code, isQk=false){
+  // Trabaja sobre el texto RAW, nunca sobre HTML ya procesado
+  // Cada token se procesa una sola vez, sin riesgo de doble-wrap
   const KW=new Set(['import','from','as','def','class','return','if','else','elif',
     'for','while','in','not','and','or','True','False','None','with','try','except',
     'finally','lambda','pass','break','continue','yield','raise','del','global',
@@ -1375,11 +1473,13 @@ function highlight(code, isQk=false){
     'transpile','plot_histogram','plot_bloch_multivector','plot_state_city',
     'UnitaryGate','SparsePauliOp','Parameter','ParameterVector']);
 
+  // Regex de tokenización — grupos mutuamente excluyentes
   const RE=/(#[^\n]*)|("""[\s\S]*?"""|'''[\s\S]*?''')|("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')|\b(\d+(?:\.\d+)?(?:[eEjJ][+-]?\d+)?)\b|(@[A-Za-z_][A-Za-z0-9_.]*)|([A-Za-z_]\w*)/g;
 
   let out='', last=0, m;
   RE.lastIndex=0;
   while((m=RE.exec(code))!==null){
+    // texto plano entre tokens → escapar y añadir
     if(m.index>last) out+=esc(code.slice(last,m.index));
     const [tok,cmt,strT,strS,num,dec,word]=m;
     if     (cmt !==undefined) out+=`<s class="cmt">${esc(cmt)}</s>`;
@@ -1399,6 +1499,7 @@ function highlight(code, isQk=false){
   }
   if(last<code.length) out+=esc(code.slice(last));
   return out;
+  // Helper inline — no usa escH para no añadir dependencia circular
   function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 }
 
@@ -1428,6 +1529,7 @@ function buildCellEl(cell,i){
 
   const execLbl=cell.exec_count!==null?`[${cell.exec_count}]`:'[ ]';
 
+  // Toolbar
   const toolbar=_expositionMode
     ?`<div class="cell-toolbar">${isCode?`<button class="ct-btn ct-run" onclick="event.stopPropagation();runCell('${cell.id}')" title="Ejecutar">▶</button>`:''}
       </div>`
@@ -1481,6 +1583,7 @@ function buildCellEl(cell,i){
         ${restoreBtn}
       </div>`;
   } else {
+    // Markdown
     if(cell.mdEdit&&!_expositionMode){
       el.innerHTML=`${toolbar}
         <div class="cell-gutter"><div class="cell-num" style="color:var(--gr)">Md</div></div>
@@ -1516,6 +1619,7 @@ function buildCellEl(cell,i){
   return el;
 }
 
+// ── EDITOR HANDLERS ────────────────────────────────────────────
 function syncScroll(id){
   const ta=document.getElementById('ta-'+id);
   const syn=document.getElementById('syn-'+id);
@@ -1531,7 +1635,7 @@ function onCellInput(id){
     const cell=cells.find(c=>c.id===id);
     if(cell){
       cell.code=ta.value;
-      cell.errorLine=null;
+      cell.errorLine=null; // limpiar error al editar
     }
     const isQk=cell?.type==='qiskit';
     syn.innerHTML=highlight(ta.value,isQk)+'\n';
@@ -1559,6 +1663,7 @@ function onCellKeydown(e,id){
   if(e.key==='Tab'){e.preventDefault();const s=ta.selectionStart,en=ta.selectionEnd;ta.value=ta.value.substring(0,s)+'    '+ta.value.substring(en);ta.selectionStart=ta.selectionEnd=s+4;onCellInput(id);return;}
   if(e.shiftKey&&e.key==='Enter'){e.preventDefault();runCell(id);const idx=cells.findIndex(c=>c.id===id);if(idx<cells.length-1)focusCell(cells[idx+1].id);else if(!_expositionMode)addCellAt(-1,'code');return;}
   if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();runCell(id);}
+  // Navegación entre celdas
   if(e.ctrlKey&&e.key==='ArrowUp'){
     e.preventDefault();
     const idx=cells.findIndex(c=>c.id===id);
@@ -1583,6 +1688,7 @@ function onMdKeydown(e,id){
   if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();syncCellCode(id);const cell=cells.find(c=>c.id===id);if(cell){cell.mdEdit=false;renderCells();}const idx=cells.findIndex(c=>c.id===id);if(idx<cells.length-1)focusCell(cells[idx+1].id);}
 }
 
+// Navegación global con flechas cuando no se edita
 window.addEventListener('keydown', e => {
   if (!curCellId) return;
   if (document.activeElement.tagName === 'TEXTAREA') return;
@@ -1604,33 +1710,46 @@ window.addEventListener('keydown', e => {
 // ── SHOW UI ────────────────────────────────────────────────────
 function showUI(user){
   const role=user?.role||'guest';
-  // Permitir a todos los usuarios acceder al notebook (eliminar restricción)
+  const alreadyOK=_initialized&&(curUser?.role==='admin'||curUser?.role==='founder');
+  const sameUser=alreadyOK&&curUser?.username===user?.username;
+  if(sameUser)return;
   _initialized=true;curUser=user;
+
+  // Permitir acceso a todos si es modo exposición; si no, solo Admin/Founder
+  if(!_expositionMode && role!=='admin' && role!=='founder'){
+    document.getElementById('access-denied').classList.add('show');
+    ['topbar','secbar','main-area','statusbar'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
+    return;
+  }
   document.getElementById('access-denied').classList.remove('show');
   ['topbar','secbar','main-area','statusbar'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='flex';});
-  if(user){
+  if(user&&(role==='admin'||role==='founder')){
     const pill=document.getElementById('user-pill');
-    if(pill)pill.textContent=(role==='founder'?'👑 ':(role==='admin'?'🔑 ':''))+(user.name||'—').split(' ')[0];
-    const ap=document.getElementById('admin-pill');
-    if(ap)ap.style.display=(role==='admin'||role==='founder')?'':'none';
+    if(pill)pill.textContent=(role==='founder'?'👑 ':'🔑 ')+(user.name||'—').split(' ')[0];
+    const ap=document.getElementById('admin-pill');if(ap)ap.style.display='';
   }
   const stored=localStorage.getItem('qcol_colab_url')||'';
   if(stored){engineURL=stored;checkEngine();}
-  if(role==='admin'||role==='founder')refreshNbs();
+  if(!_expositionMode && (role==='admin'||role==='founder'))refreshNbs();
   if(cells.length===0&&!_expositionMode)addCellAt(-1,'qiskit');
 }
 
 // ── MENSAJES DEL CORE ─────────────────────────────────────────
 window.addEventListener('message',e=>{
   const d=e.data||{};
+
+  // Usuario
   if(d.type==='QCOL_USER'||d.type==='QCOL_USER_UPDATE'){
-    showUI(d.user);
+    const role=d.user?.role||'guest';
+    if(role==='admin'||role==='founder') showUI(d.user);
+    else if(!d.user){ _initialized=false; showUI(null); }
   }
   if(d.type==='QCOL_CONFIG_UPDATED'){
     const url=localStorage.getItem('qcol_colab_url');
     if(url){ engineURL=url; checkEngine(); }
   }
 
+  // Notebook desde Proyectos — soporta ambos tipos de mensaje
   const isOpenExpo = d.type==='QCOL_OPEN_NB_EXPOSITION';
   const isLoadNb   = (d.type==='QCOL_LOAD_NB') && d.nb;
 
@@ -1640,11 +1759,37 @@ window.addEventListener('message',e=>{
 
     if(!nb){ notify('❌ Notebook sin datos'); return; }
 
+    // Forzar modo exposición
+    _expositionMode = isExpo;
+    if(isExpo){
+      document.body.classList.add('expo-mode');
+      document.getElementById('expo-badge').style.display='inline-flex';
+      ['btn-add-code','btn-add-qk','btn-add-md','btn-import',
+       'btn-download','btn-save','btn-publish','stab-2'].forEach(id=>{
+        const el=document.getElementById(id);if(el)el.style.display='none';
+      });
+      const rst=document.getElementById('btn-restore-all');if(rst)rst.style.display='';
+      const ni=document.getElementById('nb-name-inp');if(ni){ni.readOnly=true;ni.style.opacity='.6';}
+    } else {
+      document.body.classList.remove('expo-mode');
+      document.getElementById('expo-badge').style.display='none';
+      ['btn-add-code','btn-add-qk','btn-add-md','btn-import',
+       'btn-download','btn-save','btn-publish','stab-2'].forEach(id=>{
+        const el=document.getElementById(id);if(el)el.style.display='';
+      });
+      const rst=document.getElementById('btn-restore-all');if(rst)rst.style.display='none';
+      const ni=document.getElementById('nb-name-inp');if(ni){ni.readOnly=false;ni.style.opacity='';}
+    }
+
     document.getElementById('nb-name-inp').value = nb.title||nb.name||'Sin título';
     cells = (nb.cells && nb.cells.length > 0)
       ? nb.cells.map(c=>({...c, id:genId(), output:'', exec_count:null, mdEdit:false, errorLine:null}))
       : [];
 
+    // Guardar copia original para restaurar
+    if(isExpo) _originalCells = JSON.parse(JSON.stringify(cells));
+
+    // Mostrar UI incluso para Guest en modo exposición
     if(isExpo){
       _initialized = true;
       curUser = curUser || {name:'Invitado', role:'guest'};
@@ -1652,38 +1797,16 @@ window.addEventListener('message',e=>{
       ['topbar','secbar','main-area','statusbar'].forEach(id=>{
         const el=document.getElementById(id); if(el) el.style.display='flex';
       });
-      _expositionMode = true;
-      _originalCells  = JSON.parse(JSON.stringify(cells));
-      document.body.classList.add('expo-mode');
-      document.getElementById('expo-badge').style.display='inline-flex';
-      ['btn-add-code','btn-add-qk','btn-add-md','btn-import',
-       'btn-download','btn-save','btn-publish','stab-2'].forEach(id=>{
-        const el=document.getElementById(id); if(el) el.style.display='none';
-      });
-      const rst=document.getElementById('btn-restore-all'); if(rst) rst.style.display='';
-      const ni=document.getElementById('nb-name-inp');
-      if(ni){ ni.readOnly=true; ni.style.opacity='.6'; }
-      renderCells();
-      if(cells[0]) focusCell(cells[0].id);
-      notify('👁 Modo exposición — lee el material y experimenta con el código');
-    } else {
-      _expositionMode = false;
-      document.body.classList.remove('expo-mode');
-      document.getElementById('expo-badge').style.display='none';
-      ['btn-add-code','btn-add-qk','btn-add-md','btn-import',
-       'btn-download','btn-save','btn-publish','stab-2'].forEach(id=>{
-        const el=document.getElementById(id); if(el) el.style.display='';
-      });
-      const rst=document.getElementById('btn-restore-all'); if(rst) rst.style.display='none';
-      const ni=document.getElementById('nb-name-inp');
-      if(ni){ ni.readOnly=false; ni.style.opacity=''; }
-      renderCells();
-      if(cells[0]) focusCell(cells[0].id);
-      notify('📂 Cargado: '+(nb.title||nb.name||'Notebook'));
     }
+
+    setView('notebook');
+    renderCells();
+    if(cells[0]) focusCell(cells[0].id);
+    notify(isExpo ? '👁 Modo exposición — solo lectura' : '📂 Cargado: '+(nb.title||nb.name||'Notebook'));
   }
 });
 
+// Escuchar cambios en localStorage (cuando Fundador cambia URL)
 window.addEventListener('storage',e=>{
   if(e.key==='qcol_colab_url'&&e.newValue){
     engineURL=e.newValue;
@@ -1691,17 +1814,15 @@ window.addEventListener('storage',e=>{
   }
 });
 
+// Pedir usuario
 postCore('QCOL_GET_USER');
 setTimeout(()=>{if(!_initialized){try{const s=localStorage.getItem('qcol_cur_user');if(s)showUI(JSON.parse(s));}catch(e){}}},700);
 setTimeout(()=>{if(!_initialized){document.getElementById('access-denied').classList.add('show');document.getElementById('topbar').style.display='flex';_initialized=true;}},3000);
-window.addEventListener('message',e=>{const d=e.data||{};if(d.type==='QCOL_USER_UPDATE'){showUI(d.user);}});
+window.addEventListener('message',e=>{const d=e.data||{};if(d.type==='QCOL_USER_UPDATE'){const role=d.user?.role||'guest';if(role==='admin'||role==='founder'){_initialized=false;showUI(d.user);}}});
 
-function requireAuth(){
-  const role=curUser?.role||'guest';
-  // Solo publicar requiere admin/founder; otras acciones permitidas a todos
-  return (role==='admin'||role==='founder');
-}
+function requireAuth(){const role=curUser?.role||'guest';if(!_expositionMode&&role!=='admin'&&role!=='founder'){notify('❌ Requiere cuenta Admin o Founder');postCore('QCOL_LOGIN');return false;}return true;}
 
+// Init
 function initEngine(){const s=localStorage.getItem('qcol_colab_url');if(s){engineURL=s;checkEngine();}}
 initEngine();
 setTimeout(()=>initMarkdown(),400);
