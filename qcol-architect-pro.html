@@ -289,6 +289,10 @@ body.expo-mode .nb-cell[data-ctype="code"] .cell-restore-btn{display:block;}
   display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .18s;}
 .add-cell-row:hover{opacity:1;}
 body.expo-mode .add-cell-row{display:none;}
+/* ── EXPO MODE: secbar completamente oculta ── */
+body.expo-mode #secbar{display:none!important;}
+body.expo-mode #btn-import{display:none!important;}
+/* Solo queda btn-back en topbar, que va a proyectos */
 .add-cell-line{flex:1;height:1px;background:rgba(0,255,221,.15);}
 .add-cell-btns{display:flex;gap:.2rem;padding:0 .4rem;}
 .add-btn{padding:.09rem .36rem;background:var(--bg);border:1px solid rgba(0,255,221,.25);
@@ -375,6 +379,31 @@ textarea.fi{resize:vertical;min-height:58px;line-height:1.5;}
   border:1px solid var(--bd2);border-radius:6px;color:var(--mu);
   font-family:var(--orb);font-size:.5rem;cursor:pointer;}
 
+/* ── CELDA CIRCUITO VISUAL ── */
+.nb-cell.circ-cell{border-left:3px solid rgba(0,200,100,.35);}
+.nb-cell.circ-cell:hover{border-color:rgba(0,200,100,.35);border-left-color:rgba(0,200,100,.6);}
+.nb-cell.circ-cell.active{border-color:rgba(0,200,100,.55);border-left-color:#00ff88;}
+.ctb-circ{color:#00ff88;}
+.cell-circuit-preview{
+  background:#020c18;border:1px solid rgba(0,200,100,.2);border-radius:6px;
+  padding:.45rem .55rem;overflow-x:auto;cursor:pointer;
+  transition:border-color .15s;}
+.cell-circuit-preview:hover{border-color:rgba(0,200,100,.5);}
+.circ-preview-hint{
+  font-family:var(--orb);font-size:.38rem;color:rgba(0,200,100,.6);
+  padding:.2rem 0 .1rem;letter-spacing:.05em;}
+.circ-edit-btn{
+  padding:.22rem .6rem;background:rgba(0,200,100,.1);
+  border:1px solid rgba(0,200,100,.3);border-radius:5px;
+  color:#00ff88;font-family:var(--orb);font-size:.44rem;cursor:pointer;
+  transition:all .15s;white-space:nowrap;}
+.circ-edit-btn:hover{background:rgba(0,200,100,.22);border-color:#00ff88;}
+.circ-empty-hint{
+  padding:.7rem;text-align:center;
+  font-family:var(--orb);font-size:.46rem;color:rgba(0,200,100,.4);
+  cursor:pointer;}
+.circ-empty-hint:hover{color:#00ff88;}
+
 /* ── SYNTAX COLORS — usando <s> para evitar conflictos con escH ── */
 s{font-style:normal;text-decoration:none;}
 s.kw{color:var(--kw);font-weight:600;}
@@ -429,6 +458,7 @@ s.blt{color:#ffb86c;}
     <button class="tbtn" id="btn-add-code" onclick="addCellAt(-1,'code')">＋ Código</button>
     <button class="tbtn" id="btn-add-qk" onclick="addCellAt(-1,'qiskit')" style="color:var(--cy);border-color:rgba(0,255,221,.25);">⚛ Qiskit</button>
     <button class="tbtn" id="btn-add-md" onclick="addCellAt(-1,'markdown')">✦ Texto</button>
+    <button class="tbtn" id="btn-add-circ" onclick="addCellAt(-1,'circuit')" style="color:#00ff88;border-color:rgba(0,200,100,.25);">⚛ Circuito</button>
     <button class="tbtn" id="btn-import" onclick="importNb()">📂 Abrir</button>
     <input type="file" id="import-file" style="display:none;" accept=".ipynb" onchange="handleImport(event)">
     <button class="tbtn" id="btn-download" onclick="downloadNb()">📥 .ipynb</button>
@@ -448,6 +478,7 @@ s.blt{color:#ffb86c;}
         <button class="nb-add-big" onclick="addCellAt(-1,'code')">＋ Código Python</button>
         <button class="nb-add-big" onclick="addCellAt(-1,'qiskit')" style="border-color:rgba(0,255,221,.2);color:rgba(0,255,221,.5);">⚛ Celda Qiskit</button>
         <button class="nb-add-big" onclick="addCellAt(-1,'markdown')">✦ Texto / LaTeX</button>
+        <button class="nb-add-big" onclick="addCellAt(-1,'circuit')" style="border-color:rgba(0,200,100,.2);color:rgba(0,200,100,.5);">⚛ Circuito Visual</button>
       </div>
     </div>
   </div>
@@ -510,7 +541,7 @@ function genId(){return 'c'+Date.now()+Math.random().toString(36).slice(2,6);}
 // ── NAVEGACIÓN ────────────────────────────────────────────────
 function goBack(){
   if(_expositionMode){
-    deactivateExpositionMode();
+    // En modo exposición: volver a proyectos sin deactivar (el core maneja el nav)
     postCore('QCOL_NAV',{screen:'projects'});
   } else {
     postCore('QCOL_NAV',{screen:'home'});
@@ -522,15 +553,22 @@ function activateExpositionMode(){
   _expositionMode=true;
   _originalCells=JSON.parse(JSON.stringify(cells));
   document.body.classList.add('expo-mode');
+  // Ocultar expo-badge ya que la secbar entera se oculta
   document.getElementById('expo-badge').style.display='inline-flex';
+  // Ocultar secbar completa — en expo solo se usa el botón ← ATRÁS del topbar
+  const secbar=document.getElementById('secbar');
+  if(secbar)secbar.style.display='none';
+  // Ocultar botones individuales por si acaso
   ['btn-add-code','btn-add-qk','btn-add-md','btn-import',
    'btn-download','btn-save','btn-publish','stab-2'].forEach(id=>{
     const el=document.getElementById(id);if(el)el.style.display='none';
   });
   const rst=document.getElementById('btn-restore-all');if(rst)rst.style.display='';
   const ni=document.getElementById('nb-name-inp');if(ni){ni.readOnly=true;ni.style.opacity='.6';}
-  // CRÍTICO: re-renderizar para que todas las celdas Markdown queden en modo lectura
-  // y las celdas de código pierdan doble-click y toolbar de edición
+  // Cambiar texto del botón atrás para indicar que va a Proyectos
+  const btnBack=document.getElementById('btn-back');
+  if(btnBack){btnBack.textContent='← PROYECTOS';btnBack.title='Volver a Proyectos';}
+  // Renderizar con _expositionMode=true para que buildCellEl genere HTML correcto
   renderCells();
   notify('👁 Modo exposición — lee el material y experimenta con el código');
 }
@@ -538,12 +576,19 @@ function deactivateExpositionMode(){
   _expositionMode=false;_originalCells=null;
   document.body.classList.remove('expo-mode');
   document.getElementById('expo-badge').style.display='none';
+  // Restaurar secbar
+  const secbar=document.getElementById('secbar');
+  if(secbar)secbar.style.display='flex';
+  // Restaurar botones
   ['btn-add-code','btn-add-qk','btn-add-md','btn-import',
    'btn-download','btn-save','btn-publish','stab-2'].forEach(id=>{
     const el=document.getElementById(id);if(el)el.style.display='';
   });
   const rst=document.getElementById('btn-restore-all');if(rst)rst.style.display='none';
   const ni=document.getElementById('nb-name-inp');if(ni){ni.readOnly=false;ni.style.opacity='';}
+  // Restaurar texto del botón atrás
+  const btnBack=document.getElementById('btn-back');
+  if(btnBack){btnBack.textContent='← ATRÁS';btnBack.title='';}
   renderCells();
 }
 function restoreAllCells(){
@@ -690,6 +735,166 @@ function buildTextOut(text){
     return`<div class="out-dict">${escH(text)}</div>`;
   }
   return`<div class="out-stdout">${escH(text)}</div>`;
+}
+
+
+// ── RENDERIZAR CIRCUITO DESDE ESTRUCTURA INTERNA DEL ARQUITECTO ──────────
+// cell.circuitData = { qubits: N, gates: [{id, q, q2?, q3?, def:{bg,sym,code}}, ...] }
+// Replica EXACTAMENTE el sistema de renderizado del Arquitecto Cuántico
+function buildCircuitFromData(data){
+  if(!data || !data.gates) return '';
+  const {qubits: nQ, gates} = data;
+  const ROW_HEIGHT=56, step=52;
+
+  // Calcular profundidad (idéntico al arquitecto)
+  const depth = new Array(nQ).fill(0);
+  const placed = gates.map(g => {
+    let col;
+    if(g.q3!==undefined){ col=Math.max(depth[g.q]||0,depth[g.q2]||0,depth[g.q3]||0); depth[g.q]=col+1;depth[g.q2]=col+1;depth[g.q3]=col+1; }
+    else if(g.q2!==undefined){ col=Math.max(depth[g.q]||0,depth[g.q2]||0); depth[g.q]=col+1;depth[g.q2]=col+1; }
+    else { col=depth[g.q]||0; depth[g.q]=col+1; }
+    return {...g, col};
+  });
+
+  const totalCols = Math.max(...depth, 1);
+  const W = totalCols*step+90, H = nQ*ROW_HEIGHT;
+  const qY = (q,topQ) => (q-topQ)*ROW_HEIGHT+ROW_HEIGHT/2;
+
+  let html=`<div style="position:relative;min-width:${W}px;height:${H}px;">`;
+
+  // Cables + etiquetas
+  for(let q=0;q<nQ;q++){
+    html+=`<div style="position:absolute;top:${q*ROW_HEIGHT}px;left:0;right:0;height:${ROW_HEIGHT}px;">
+      <div style="position:absolute;left:0;top:50%;transform:translateY(-50%);
+        width:50px;text-align:right;padding-right:6px;
+        font-family:JetBrains Mono,monospace;font-size:11px;font-weight:600;color:#bd93f9;">q[${q}]</div>
+      <div style="position:absolute;left:52px;right:0;top:50%;
+        border-top:1.8px solid rgba(0,136,255,.22);"></div>
+    </div>`;
+  }
+
+  // Puertas — SVG idéntico al arquitecto
+  placed.forEach(g=>{
+    const left=g.col*step+56;
+    const clr=g.def?.bg||'#1a4a8a';
+    const sym=g.def?.sym||g.id||'?';
+
+    if(g.q3!==undefined){
+      const qs=[g.q,g.q2,g.q3].sort((a,b)=>a-b);
+      const topQ=qs[0], topY=topQ*ROW_HEIGHT;
+      const svgH=(qs[2]-qs[0])*ROW_HEIGHT+ROW_HEIGHT;
+      let svg='';
+      if(g.id==='CCX'){
+        svg=`<svg width="52" height="${svgH}" viewBox="0 0 52 ${svgH}">
+          <line x1="26" y1="${qY(qs[0],topQ)}" x2="26" y2="${qY(qs[2],topQ)}" stroke="${clr}" stroke-width="2.5"/>
+          <circle cx="26" cy="${qY(g.q,topQ)}" r="8" fill="${clr}" stroke="rgba(255,255,255,.9)" stroke-width="1.5"/>
+          <circle cx="26" cy="${qY(g.q2,topQ)}" r="8" fill="${clr}" stroke="rgba(255,255,255,.9)" stroke-width="1.5"/>
+          <circle cx="26" cy="${qY(g.q3,topQ)}" r="14" fill="none" stroke="${clr}" stroke-width="2.5"/>
+          <line x1="18" y1="${qY(g.q3,topQ)}" x2="34" y2="${qY(g.q3,topQ)}" stroke="${clr}" stroke-width="2"/>
+          <line x1="26" y1="${qY(g.q3,topQ)-10}" x2="26" y2="${qY(g.q3,topQ)+10}" stroke="${clr}" stroke-width="2"/>
+        </svg>`;
+      } else {
+        svg=`<svg width="52" height="${svgH}" viewBox="0 0 52 ${svgH}">
+          <line x1="26" y1="${qY(qs[0],topQ)}" x2="26" y2="${qY(qs[2],topQ)}" stroke="${clr}" stroke-width="2.5"/>
+          <circle cx="26" cy="${qY(g.q,topQ)}" r="8" fill="${clr}" stroke="rgba(255,255,255,.9)" stroke-width="1.5"/>
+          <line x1="16" y1="${qY(g.q2,topQ)-9}" x2="36" y2="${qY(g.q2,topQ)+9}" stroke="${clr}" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="36" y1="${qY(g.q2,topQ)-9}" x2="16" y2="${qY(g.q2,topQ)+9}" stroke="${clr}" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="16" y1="${qY(g.q3,topQ)-9}" x2="36" y2="${qY(g.q3,topQ)+9}" stroke="${clr}" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="36" y1="${qY(g.q3,topQ)-9}" x2="16" y2="${qY(g.q3,topQ)+9}" stroke="${clr}" stroke-width="2.5" stroke-linecap="round"/>
+        </svg>`;
+      }
+      html+=`<div style="position:absolute;left:${left}px;top:${topY}px;">${svg}</div>`;
+
+    } else if(g.q2!==undefined){
+      const topQ=Math.min(g.q,g.q2), botQ=Math.max(g.q,g.q2);
+      const topY=topQ*ROW_HEIGHT, svgH=(botQ-topQ)*ROW_HEIGHT+ROW_HEIGHT;
+      const cy1=qY(g.q,topQ), cy2=qY(g.q2,topQ);
+      const ly1=Math.min(cy1,cy2), ly2=Math.max(cy1,cy2);
+      let svg='';
+      if(g.id==='CX'){
+        svg=`<svg width="48" height="${svgH}" viewBox="0 0 48 ${svgH}">
+          <line x1="24" y1="${ly1}" x2="24" y2="${ly2}" stroke="${clr}" stroke-width="2.5"/>
+          <circle cx="24" cy="${cy1}" r="8" fill="${clr}" stroke="rgba(255,255,255,.9)" stroke-width="1.5"/>
+          <circle cx="24" cy="${cy2}" r="14" fill="none" stroke="${clr}" stroke-width="2.5"/>
+          <line x1="16" y1="${cy2}" x2="32" y2="${cy2}" stroke="${clr}" stroke-width="2"/>
+          <line x1="24" y1="${cy2-10}" x2="24" y2="${cy2+10}" stroke="${clr}" stroke-width="2"/>
+        </svg>`;
+      } else if(g.id==='CZ'){
+        svg=`<svg width="48" height="${svgH}" viewBox="0 0 48 ${svgH}">
+          <line x1="24" y1="${ly1}" x2="24" y2="${ly2}" stroke="${clr}" stroke-width="2.5"/>
+          <circle cx="24" cy="${cy1}" r="8" fill="${clr}" stroke="rgba(255,255,255,.9)" stroke-width="1.5"/>
+          <circle cx="24" cy="${cy2}" r="8" fill="${clr}" stroke="rgba(255,255,255,.9)" stroke-width="1.5"/>
+        </svg>`;
+      } else if(g.id==='SWAP'){
+        svg=`<svg width="48" height="${svgH}" viewBox="0 0 48 ${svgH}">
+          <line x1="24" y1="${ly1}" x2="24" y2="${ly2}" stroke="${clr}" stroke-width="2.5"/>
+          <line x1="14" y1="${cy1-9}" x2="34" y2="${cy1+9}" stroke="${clr}" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="34" y1="${cy1-9}" x2="14" y2="${cy1+9}" stroke="${clr}" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="14" y1="${cy2-9}" x2="34" y2="${cy2+9}" stroke="${clr}" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="34" y1="${cy2-9}" x2="14" y2="${cy2+9}" stroke="${clr}" stroke-width="2.5" stroke-linecap="round"/>
+        </svg>`;
+      } else {
+        svg=`<svg width="48" height="${svgH}" viewBox="0 0 48 ${svgH}">
+          <line x1="24" y1="${ly1}" x2="24" y2="${ly2}" stroke="${clr}" stroke-width="2.5"/>
+          <circle cx="24" cy="${cy1}" r="8" fill="${clr}" stroke="rgba(255,255,255,.9)" stroke-width="1.5"/>
+          <rect x="4" y="${cy2-19}" width="40" height="38" rx="6" fill="${clr}" stroke="rgba(255,255,255,.28)" stroke-width="1.4" fill-opacity=".85"/>
+          <rect x="6" y="${cy2-17}" width="36" height="4" rx="4" fill="rgba(255,255,255,.18)"/>
+          <text x="24" y="${cy2+4}" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="11" font-weight="bold" fill="white">${sym}</text>
+        </svg>`;
+      }
+      html+=`<div style="position:absolute;left:${left}px;top:${topY}px;">${svg}</div>`;
+
+    } else {
+      // 1 qubit
+      const yPos=g.q*ROW_HEIGHT;
+      const display=sym.length>4?sym.slice(0,3):sym;
+      const fs=display.length<=2?13:display.length===3?11:9;
+      if(g.id==='M'){
+        html+=`<div style="position:absolute;left:${left}px;top:${yPos+ROW_HEIGHT/2}px;transform:translateY(-50%);">
+          <svg width="44" height="38" viewBox="0 0 44 38">
+            <rect x="1" y="1" width="42" height="36" rx="6" fill="rgba(109,76,65,.3)" stroke="#6d4c41" stroke-width="1.8"/>
+            <rect x="3" y="3" width="38" height="4" rx="4" fill="rgba(255,255,255,.12)"/>
+            <path d="M 8 30 A 14 14 0 0 1 36 30" fill="none" stroke="#ff9580" stroke-width="1.8" stroke-linecap="round"/>
+            <line x1="22" y1="30" x2="32" y2="14" stroke="#ff9580" stroke-width="1.6" stroke-linecap="round"/>
+            <circle cx="22" cy="30" r="2.5" fill="#ff9580"/>
+          </svg>
+        </div>`;
+      } else {
+        const gid=`gq_d_${g.col||0}_${g.q}`;
+        html+=`<div style="position:absolute;left:${left}px;top:${yPos+ROW_HEIGHT/2}px;transform:translateY(-50%);">
+          <svg width="44" height="38" viewBox="0 0 44 38">
+            <defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="${clr}" stop-opacity=".95"/>
+              <stop offset="100%" stop-color="${clr}" stop-opacity=".6"/>
+            </linearGradient></defs>
+            <rect x="1" y="1" width="42" height="36" rx="6" fill="url(#${gid})" stroke="rgba(255,255,255,.3)" stroke-width="1.4"/>
+            <rect x="3" y="3" width="38" height="4" rx="4" fill="rgba(255,255,255,.2)"/>
+            <text x="22" y="${19+fs/3}" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="${fs}" font-weight="bold" fill="white">${escH(display)}</text>
+          </svg>
+        </div>`;
+      }
+    }
+  });
+
+  html+='</div>';
+  return html;
+}
+
+// ── ABRIR ARCHITECT PARA EDITAR CELDA CIRCUIT ─────────────────
+let _editingCellId = null; // ID de la celda que está siendo editada
+
+function openCircuitEditor(cellId){
+  const cell = cells.find(c => c.id === cellId);
+  if(!cell) return;
+  _editingCellId = cellId;
+  // Enviar al core para que navegue al Arquitecto Cuántico
+  // pasándole el código actual de la celda (si existe)
+  postCore('QCOL_OPEN_ARCHITECT_EDIT', {
+    cellId,
+    code:        cell.hiddenCode || '',
+    circuitData: cell.circuitData || null
+  });
+  notify('⚛ Abriendo Arquitecto Cuántico...');
 }
 
 function buildCircuitOut(text){
@@ -1394,8 +1599,12 @@ async function runCell(id){
   const cell=cells.find(c=>c.id===id);
   if(!cell||cell.type==='markdown')return;
   syncCellCode(id);
+  const isCircuit=cell.type==='circuit';
   const isQk=cell.type==='qiskit';
-  const code=isQk?(QISKIT_PREAMBLE+'\n'+cell.code.trim()):cell.code.trim();
+  // Para celdas circuit: ejecutar hiddenCode (el código generado por el arquitecto)
+  const rawCode = isCircuit ? (cell.hiddenCode||'') : (isQk?(QISKIT_PREAMBLE+'\n'+cell.code.trim()):cell.code.trim());
+  const code = isCircuit ? (QISKIT_PREAMBLE+'\n'+rawCode) : rawCode;
+  if(!rawCode.trim()){notify('⚛ Celda sin código — ábrela en el Arquitecto Cuántico');return;}
   if(!code.trim())return;
   running=true;setSbRun(true);
   const rbtn=document.getElementById('rbtn-'+id);
@@ -1434,7 +1643,7 @@ async function runCell(id){
 }
 function renderCellNum(id){const cell=cells.find(c=>c.id===id);if(!cell)return;const el=document.querySelector(`[data-id="${id}"] .cell-num`);if(el)el.textContent=cell.exec_count!==null?`[${cell.exec_count}]`:'[ ]';}
 async function runCurCell(){if(curCellId)await runCell(curCellId);}
-async function runAll(){for(const cell of cells){if(cell.type!=='markdown'&&cell.code.trim()){await runCell(cell.id);await new Promise(r=>setTimeout(r,200));}}}
+async function runAll(){for(const cell of cells){const hasCode=(cell.type==='circuit'?(cell.hiddenCode||'').trim():cell.code.trim());if(cell.type!=='markdown'&&hasCode){await runCell(cell.id);await new Promise(r=>setTimeout(r,200));}}}
 function setSbRun(r,msg='',st=''){const dot=document.getElementById('sb-dot');const txt=document.getElementById('sb-txt');if(dot)dot.className='sb-dot '+(r?'sb-run':st==='err'?'sb-err':'sb-idle');if(txt&&msg)txt.textContent=msg;}
 function updateStatus(){const el=document.getElementById('sb-cells-info');if(el)el.textContent=cells.length+' celdas';}
 
@@ -1442,7 +1651,13 @@ function updateStatus(){const el=document.getElementById('sb-cells-info');if(el)
 function saveCurrentNb(showNotify=true){
   if(_expositionMode)return;
   if(!curUser)return;
-  cells.forEach(c=>{const ta=document.getElementById('ta-'+c.id);const mta=document.getElementById('mta-'+c.id);if(ta)c.code=ta.value;if(mta)c.code=mta.value;});
+  cells.forEach(c=>{
+    const ta=document.getElementById('ta-'+c.id);
+    const mta=document.getElementById('mta-'+c.id);
+    if(ta)c.code=ta.value;
+    if(mta)c.code=mta.value;
+    // hiddenCode y circuitData ya están en el objeto cell — no necesitan sync del DOM
+  });
   const name=document.getElementById('nb-name-inp').value||'Sin título';
   const key='qcol_nbs_'+(curUser.username||'dev');
   const nbs=JSON.parse(localStorage.getItem(key)||'[]');
@@ -1459,8 +1674,23 @@ function saveCurrentNb(showNotify=true){
 function downloadNb(){
   if(_expositionMode){notify('👁 Modo exposición — descarga desactivada');return;}
   const name=document.getElementById('nb-name-inp').value||'qcol_notebook';
-  cells.forEach(c=>{const ta=document.getElementById('ta-'+c.id);const mta=document.getElementById('mta-'+c.id);if(ta)c.code=ta.value;if(mta)c.code=mta.value;});
-  const nb={nbformat:4,nbformat_minor:5,metadata:{name,kernelspec:{display_name:'Python 3',language:'python',name:'python3'}},cells:cells.map(c=>({cell_type:c.type==='markdown'?'markdown':'code',source:[c.code],metadata:{tags:c.type==='qiskit'?['qiskit-cell']:[]},outputs:[],execution_count:c.exec_count}))};
+  cells.forEach(c=>{
+    const ta=document.getElementById('ta-'+c.id);
+    const mta=document.getElementById('mta-'+c.id);
+    if(ta)c.code=ta.value;
+    if(mta)c.code=mta.value;
+    // hiddenCode y circuitData ya están en el objeto cell — no necesitan sync del DOM
+  });
+  const nb={nbformat:4,nbformat_minor:5,
+    metadata:{name,kernelspec:{display_name:'Python 3',language:'python',name:'python3'}},
+    cells:cells.map(c=>{
+      const isCircuit = c.type==='circuit';
+      const tags = c.type==='qiskit'?['qiskit-cell']:isCircuit?['circuit-cell']:[];
+      const source = isCircuit ? [c.hiddenCode||'# Celda de circuito visual (editar en el Arquitecto Cuántico)'] : [c.code];
+      const meta = {tags};
+      if(isCircuit){ meta.hidden_code=c.hiddenCode||''; meta.circuit_data=c.circuitData||null; }
+      return {cell_type:c.type==='markdown'?'markdown':'code', source, metadata:meta, outputs:[], execution_count:c.exec_count};
+    })};
   const blob=new Blob([JSON.stringify(nb,null,2)],{type:'application/json'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name.replace(/\.ipynb$/,'')+'.ipynb';a.click();
   notify('📥 '+a.download);
@@ -1486,8 +1716,13 @@ function handleImport(e){
       (nb.cells||[]).forEach(c=>{
         const src=Array.isArray(c.source)?c.source.join(''):c.source||'';
         const tags=c.metadata?.tags||[];
-        const type=c.cell_type==='markdown'?'markdown':(tags.includes('qiskit-cell')?'qiskit':'code');
-        cells.push({id:genId(),type,code:src,output:'',exec_count:null,mdEdit:false,errorLine:null});
+        const type=c.cell_type==='markdown'?'markdown':
+          (tags.includes('qiskit-cell')?'qiskit':
+          (tags.includes('circuit-cell')?'circuit':'code'));
+        const hiddenCode = c.metadata?.hidden_code || '';
+        const circuitData = c.metadata?.circuit_data || null;
+        cells.push({id:genId(),type,code:src,output:'',exec_count:null,
+          mdEdit:false,errorLine:null,hiddenCode,circuitData});
       });
       if(cells.length===0)addCellAt(-1,'code');
       else{renderCells();focusCell(cells[0].id);}
@@ -1549,7 +1784,7 @@ result = sim.run(transpile(qc, sim), shots=1024).result()
 counts = result.get_counts()
 print("\\nResultados:", counts)
 `;
-  const cell={id:genId(),type,code:type==='qiskit'?defaultQk:'',output:'',exec_count:null,mdEdit:false,errorLine:null};
+  const cell={id:genId(),type,code:type==='qiskit'?defaultQk:'',output:'',exec_count:null,mdEdit:false,errorLine:null,hiddenCode:'',circuitData:null};
   if(afterIdx===-1||afterIdx>=cells.length)cells.push(cell);
   else cells.splice(afterIdx+1,0,cell);
   renderCells();focusCell(cell.id);updateStatus();
@@ -1617,7 +1852,7 @@ function renderCells(){
 }
 function buildAddRow(idx){
   const row=document.createElement('div');row.className='add-cell-row';
-  row.innerHTML=`<div class="add-cell-line"></div><div class="add-cell-btns"><button class="add-btn" onclick="addCellAt(${idx},'code')">＋ Código</button><button class="add-btn" onclick="addCellAt(${idx},'qiskit')">⚛ Qiskit</button><button class="add-btn" onclick="addCellAt(${idx},'markdown')">✦ Texto</button></div><div class="add-cell-line"></div>`;
+  row.innerHTML=`<div class="add-cell-line"></div><div class="add-cell-btns"><button class="add-btn" onclick="addCellAt(${idx},'code')">＋ Código</button><button class="add-btn" onclick="addCellAt(${idx},'qiskit')">⚛ Qiskit</button><button class="add-btn" onclick="addCellAt(${idx},'markdown')">✦ Texto</button><button class="add-btn" style="color:#00ff88" onclick="addCellAt(${idx},'circuit')">⚛ Circuito</button></div><div class="add-cell-line"></div>`;
   return row;
 }
 
@@ -1749,6 +1984,67 @@ function buildCellEl(cell,i){
         <div class="cell-output-area" id="out-${cell.id}">${outContent}</div>
         ${restoreBtn}
       </div>`;
+  } else if(cell.type === 'circuit'){
+    // ── CELDA CIRCUITO VISUAL ────────────────────────────────
+    // Muestra el diagrama del circuito (generado por el Arquitecto Cuántico)
+    // El código Qiskit se guarda OCULTO en cell.hiddenCode
+    // cell.circuitData = {qubits, gates} — estructura interna del arquitecto
+    const hasCircuit = cell.circuitData && cell.circuitData.gates && cell.circuitData.gates.length > 0;
+    const hasCode    = (cell.hiddenCode || '').trim().length > 0;
+    const circuitToolbar = _expositionMode
+      ? `<div class="cell-toolbar">
+          <button class="ct-btn ct-run" onclick="event.stopPropagation();runCell('${cell.id}')" title="Ejecutar">▶</button>
+        </div>`
+      : `<div class="cell-toolbar">
+          <button class="ct-btn" onclick="event.stopPropagation();moveCellUp('${cell.id}')" title="Subir">↑</button>
+          <button class="ct-btn" onclick="event.stopPropagation();moveCellDown('${cell.id}')" title="Bajar">↓</button>
+          <button class="ct-btn danger" onclick="event.stopPropagation();deleteCell('${cell.id}')" title="Eliminar">✕</button>
+        </div>`;
+    const restoreBtn = _expositionMode
+      ? `<button class="cell-restore-btn" onclick="event.stopPropagation();restoreCell('${cell.id}')">↺ Original</button>`
+      : '';
+    // Renderizar el diagrama del circuito a partir de circuitData
+    const circuitSVG = hasCircuit ? buildCircuitFromData(cell.circuitData) : '';
+    const outContent = cell.output ? `<div class="cell-output-area" id="out-${cell.id}">${'<!-- output -->'}</div>` : '';
+    el.className='nb-cell circ-cell'+(curCellId===cell.id?' active':'');
+    el.innerHTML=`${circuitToolbar}
+      <div class="cell-gutter">
+        <div class="cell-num">${cell.exec_count!==null?`[${cell.exec_count}]`:'[ ]'}</div>
+        <button class="cell-run-btn" id="rbtn-${cell.id}"
+          onclick="event.stopPropagation();runCell('${cell.id}')" title="${hasCode?'Ejecutar circuito':'Editar primero en el Arquitecto'}">▶</button>
+      </div>
+      <div class="cell-body">
+        <div class="cell-type-badge ctb-circ">
+          ⚛ Circuito Visual${hasCode?' · <span style="color:rgba(0,200,100,.5);font-size:.38rem;">código listo</span>':' · <span style="color:rgba(255,180,0,.6);font-size:.38rem;">sin código</span>'}
+        </div>
+        <div class="cell-circuit-preview" id="cprev-${cell.id}"
+          onclick="${_expositionMode?'':'event.stopPropagation();openCircuitEditor(\''+cell.id+'\')'}"
+          title="${_expositionMode?'':'Haz clic para editar en el Arquitecto Cuántico'}">
+          ${hasCircuit
+            ? `<div class="circ-preview-hint">⚛ CIRCUITO CUÁNTICO${_expositionMode?'':' — clic para editar'}</div>${circuitSVG}`
+            : `<div class="circ-empty-hint" onclick="event.stopPropagation();${_expositionMode?'':('openCircuitEditor(\''+cell.id+'\')')}">
+                ⚛ Celda de Circuito Visual<br>
+                <span style="font-size:.4rem;color:rgba(0,200,100,.4);">${_expositionMode?'(sin circuito)':'Haz clic para abrir el Arquitecto Cuántico y diseñar el circuito'}</span>
+              </div>`
+          }
+        </div>
+        ${!_expositionMode ? `<div style="display:flex;gap:.4rem;margin-top:.3rem;align-items:center;">
+          <button class="circ-edit-btn" onclick="event.stopPropagation();openCircuitEditor('${cell.id}')">
+            ✏ Editar en Arquitecto
+          </button>
+          ${hasCode?`<button class="circ-edit-btn" style="background:rgba(0,136,255,.1);border-color:rgba(0,136,255,.3);color:var(--bl2);"
+            onclick="event.stopPropagation();runCell('${cell.id}')">▶ Ejecutar</button>`:''}
+        </div>` : ''}
+        <div class="cell-output-area" id="out-${cell.id}">${cell.output?`<div class="out-stdout">${escH(cell.output)}</div>`:''}</div>
+        ${restoreBtn}
+      </div>`;
+    // Renderizar output si existe
+    if(cell._outputData){
+      setTimeout(()=>{
+        const outArea=document.getElementById('out-'+cell.id);
+        if(outArea)renderOutput(outArea, cell._outputData, cell._elapsed||'', cell.id);
+      },50);
+    }
   } else {
     // Markdown
     if(cell.mdEdit&&!_expositionMode){
@@ -1911,6 +2207,29 @@ window.addEventListener('message',e=>{
     if(url){ engineURL=url; checkEngine(); }
   }
 
+  // ── RETORNO DEL ARQUITECTO CUÁNTICO ─────────────────────────
+  // El Arquitecto envía el código + estructura cuando el usuario presiona Atrás
+  if(d.type === 'QCOL_CIRCUIT_RETURN'){
+    const cellId = d.cellId || _editingCellId;
+    const cell   = cells.find(c => c.id === cellId);
+    if(cell && cell.type === 'circuit'){
+      cell.hiddenCode  = d.code        || '';   // código Qiskit — se ejecuta, no se muestra
+      cell.circuitData = d.circuitData || null; // {qubits,gates} — para dibujar el diagrama
+      cell.output      = '';
+      cell.exec_count  = null;
+      cell.errorLine   = null;
+      _editingCellId   = null;
+      renderCells();
+      if(cellId) focusCell(cellId);
+      notify('⚛ Circuito guardado en la celda');
+      saveCurrentNb(false);
+    } else if(d.code && !cellId){
+      // Fallback: si no hay celda circuit activa, ignorar silenciosamente
+      console.warn('QCOL_CIRCUIT_RETURN sin celda circuit destino');
+    }
+    return;
+  }
+
   // Notebook desde Proyectos — soporta ambos tipos de mensaje
   const isOpenExpo = d.type==='QCOL_OPEN_NB_EXPOSITION';
   const isLoadNb   = (d.type==='QCOL_LOAD_NB') && d.nb;
@@ -1957,6 +2276,11 @@ window.addEventListener('message',e=>{
       const rst=document.getElementById('btn-restore-all'); if(rst) rst.style.display='';
       const ni=document.getElementById('nb-name-inp');
       if(ni){ ni.readOnly=true; ni.style.opacity='.6'; }
+      // Ocultar secbar directamente con JS (doble seguridad además del CSS)
+      const sb=document.getElementById('secbar');if(sb)sb.style.display='none';
+      // Cambiar texto del botón atrás
+      const bb=document.getElementById('btn-back');
+      if(bb){bb.textContent='← PROYECTOS';bb.title='Volver a Proyectos';}
       // Ahora renderizamos — buildCellEl verá _expositionMode=true
       renderCells();
       if(cells[0]) focusCell(cells[0].id);
