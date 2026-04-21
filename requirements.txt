@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 flask==3.0.3
 flask-cors==4.0.1
 qiskit==1.2.4
@@ -6,7 +5,3 @@ qiskit-aer==0.15.0
 cirq==1.4.1
 numpy==1.26.4
 gunicorn==22.0.0
-=======
-flask
-gunicorn
->>>>>>> a11aa3259f893d614c34387b709217cef043df68
