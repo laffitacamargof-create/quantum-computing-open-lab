@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Quantum App Studio · Conectado al Founder</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg: #0a0e1a;
+            --bg2: #0d1220;
+            --bg3: #111827;
+            --bg4: #060912;
+            --bd: #1a2a48;
+            --bd2: #1e3058;
+            --bl: #0088ff;
+            --bl2: #00aaff;
+            --cy: #00ffdd;
+            --gr: #00ff88;
+            --yw: #ffd700;
+            --rd: #ff4466;
+            --pu: #bd93f9;
+            --tx: #dce8ff;
+            --tx2: #8aa0c4;
+            --mu: #3d5a8a;
+        }
+        body {
+            background: var(--bg);
+            color: var(--tx);
+            font-family: 'Inter', sans-serif;
+            height: 100vh;
+            overflow: hidden;
+        }
+        .notif {
+            position: fixed;
+            top: 0.6rem;
+            right: 0.6rem;
+            z-index: 9999;
+            padding: 0.45rem 0.85rem;
+            background: rgba(6,9,18,0.97);
+            border: 1px solid var(--cy);
+            border-radius: 7px;
+            font-family: monospace;
+            font-size: 0.55rem;
+            color: var(--cy);
+            transform: translateX(130%);
+            transition: transform 0.28s;
+            backdrop-filter: blur(20px);
+            pointer-events: none;
+        }
+        .notif.show { transform: translateX(0); }
+        .screen { width: 100%; height: 100%; display: flex; flex-direction: column; overflow: hidden; }
+        .hidden { display: none !important; }
+        .repo-header {
+            padding: 0.8rem 1rem;
+            background: var(--bg2);
+            border-bottom: 1px solid var(--bd);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .repo-title {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--bl2);
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #003a9e, var(--bl));
+            border: none;
+            border-radius: 6px;
+            padding: 0.3rem 0.7rem;
+            font-weight: bold;
+            font-size: 0.75rem;
+            color: white;
+            font-family: monospace;
+            cursor: pointer;
+            transition: 0.1s;
+        }
+        .btn-primary:hover {
+            transform: scale(0.98);
+        }
+        .projects-grid {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1rem;
+        }
+        .project-card {
+            background: var(--bg3);
+            border: 1px solid var(--bd);
+            border-radius: 16px;
+            padding: 1rem;
+            transition: 0.1s;
+        }
+        .project-card:hover { border-color: var(--bl); background: rgba(0,136,255,0.05); }
+        .project-name { font-size: 1rem; font-weight: 600; margin-bottom: 0.5rem; }
+        .card-actions { display: flex; gap: 0.5rem; margin-top: 0.8rem; flex-wrap: wrap; }
+        .btn-secondary {
+            background: rgba(30,48,88,0.7);
+            border: 1px solid var(--bd2);
+            border-radius: 6px;
+            padding: 0.3rem 0.7rem;
+            font-family: monospace;
+            font-size: 0.6rem;
+            color: var(--tx2);
+            cursor: pointer;
+        }
+        .btn-secondary:hover { background: var(--bl); color: white; border-color: var(--bl); }
+        .btn-pending {
+            background: rgba(255,215,0,0.15);
+            border: 1px solid var(--yw);
+            color: var(--yw);
+        }
+        .btn-pending:hover { background: var(--yw); color: #0a0e1a; border-color: var(--yw); }
+        .editor-container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+            gap: 0;
+        }
+        .editor-pane {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: var(--bg4);
+            border-right: 1px solid var(--bd);
+        }
+        .pane-header {
+            padding: 0.5rem;
+            background: #060912;
+            border-bottom: 1px solid var(--bd);
+            font-family: monospace;
+            font-size: 0.7rem;
+        }
+        .code-area {
+            flex: 1;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            background: var(--bg4);
+            color: var(--tx);
+            border: none;
+            padding: 0.8rem;
+            resize: none;
+            outline: none;
+            white-space: pre-wrap;
+        }
+        .top-editor-bar {
+            padding: 0.5rem;
+            display: flex;
+            gap: 0.8rem;
+            background: var(--bg2);
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .editor-config {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            margin-left: auto;
+        }
+        .server-input {
+            background: var(--bg3);
+            border: 1px solid var(--bd2);
+            border-radius: 6px;
+            padding: 0.3rem 0.6rem;
+            font-family: monospace;
+            font-size: 0.6rem;
+            color: var(--tx);
+            width: 220px;
+        }
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.85);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            visibility: hidden;
+            opacity: 0;
+            transition: 0.2s;
+        }
+        .modal.open { visibility: visible; opacity: 1; }
+        .modal-content {
+            width: 90%;
+            height: 85%;
+            background: white;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .modal-header {
+            padding: 0.5rem 1rem;
+            background: #1e1e2f;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-iframe { flex: 1; border: none; background: white; }
+        .runner-container {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+        .runner-header {
+            padding: 0.5rem 1rem;
+            background: var(--bg2);
+            border-bottom: 1px solid var(--bd);
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+        .app-iframe { flex: 1; width: 100%; border: none; background: white; }
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--mu);
+            display: inline-block;
+        }
+        .status-dot.active { background: var(--gr); box-shadow: 0 0 5px var(--gr); }
+        .auto-status {
+            font-size: 0.5rem;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            background: rgba(0,255,136,0.1);
+            color: var(--gr);
+            margin-left: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+<div class="notif" id="notif"></div>
+
+<!-- REPOSITORIO -->
+<div id="repo-screen" class="screen">
+    <div class="repo-header">
+        <div class="repo-title"></div>
+        <button class="btn-primary" id="new-project-btn">+ Nueva aplicación</button>
+    </div>
+    <div class="projects-grid" id="projects-grid"></div>
+</div>
+
+<!-- EDITOR -->
+<div id="editor-screen" class="screen hidden">
+    <div class="top-editor-bar">
+        <input type="text" id="project-name-input" placeholder="Nombre del proyecto" style="background:var(--bg3); border:1px solid var(--bd); border-radius:6px; padding:0.4rem; color:white; width:240px;">
+        <div class="editor-config">
+            <input type="text" id="server-url-input" class="server-input" placeholder="URL servidor cuántico" readonly style="background:#0a0e1a; color:var(--cy);">
+            <button class="btn-secondary" id="test-server-btn">🔌 Probar</button>
+            <span id="server-status" style="font-size:0.55rem;"></span>
+            <span id="auto-status" class="auto-status">🔄 auto-conectado</span>
+        </div>
+        <button class="btn-primary" id="save-project-editor">💾 Guardar proyecto</button>
+        <button class="btn-secondary" id="preview-run-btn">▶ Probar ejecución</button>
+        <button class="btn-secondary" id="back-to-repo-editor">← Volver</button>
+    </div>
+    <div class="editor-container">
+        <div class="editor-pane">
+            <div class="pane-header">🐍 LÓGICA PYTHON (backend remoto)</div>
+            <textarea id="python-editor" class="code-area" spellcheck="false"></textarea>
+        </div>
+        <div class="editor-pane">
+            <div class="pane-header">🌐 INTERFAZ HTML + JS (frontend)</div>
+            <textarea id="html-editor" class="code-area" spellcheck="false"></textarea>
+        </div>
+    </div>
+    <div style="padding:0.3rem 0.8rem; background:#060912; font-size:0.55rem; color:var(--mu);">
+        💡 Las funciones Python se llaman con <span style="color:var(--cy);">window.pyCall("funcion", args...)</span>. La URL del servidor se obtiene automáticamente del Panel Fundador.
+    </div>
+</div>
+
+<!-- RUNNER -->
+<div id="runner-screen" class="screen hidden">
+    <div class="runner-header">
+        <button class="btn-secondary" id="back-to-repo-runner">← Repositorio</button>
+        <span id="runner-app-name" style="font-weight:bold;"></span>
+        <span id="runner-mode" style="margin-left:auto; font-size:0.6rem;"><span class="status-dot" id="runner-dot"></span> Conectando...</span>
+    </div>
+    <iframe id="app-iframe" class="app-iframe" sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-modals"></iframe>
+</div>
+
+<!-- MODAL PREVIEW -->
+<div id="preview-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <strong>🔬 Prueba de aplicación (sin guardar)</strong>
+            <button class="btn-secondary" id="close-modal-btn">Cerrar</button>
+        </div>
+        <iframe id="preview-iframe" class="modal-iframe" sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-modals"></iframe>
+    </div>
+</div>
+
+<script>
+    // ---------- REPOSITORIO + EDITOR + BACKEND REMOTO ----------
+    let projects = [];
+    let currentEditId = null;
+    let remoteSessionStatus = false;
+    let isEmbedded = false;
+    let parentOrigin = null;          // origen confiable cuando estamos embebidos
+    let receivedUrl = false;
+
+    function notify(msg, dur=2000) {
+        const n = document.getElementById('notif');
+        n.textContent = msg;
+        n.classList.add('show');
+        clearTimeout(n._t);
+        n._t = setTimeout(() => n.classList.remove('show'), dur);
+        if (isEmbedded && parentOrigin) sendToParent({ type: 'QCOL_STUDIO_NOTIFICATION', message: msg });
+    }
+
+    function generateId() { return Date.now() + '-' + Math.random().toString(36).substring(2, 10); }
+    function escapeHtml(str) { return String(str).replace(/[&<>]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;'})[m]); }
+    function sendToParent(msg) { 
+        if (window.parent && window.parent !== window && parentOrigin) {
+            try { window.parent.postMessage(msg, parentOrigin); } catch(e) {}
+        }
+    }
+
+    function decodeUnicode(str) {
+        if (!str || typeof str !== 'string') return str;
+        return str.replace(/\\u([0-9a-fA-F]{4})/g, (match, hex) => String.fromCharCode(parseInt(hex, 16)));
+    }
+
+    function setServerUrl(url) {
+        if (!url) return;
+        const input = document.getElementById('server-url-input');
+        if (input && input.value !== url) {
+            input.value = url;
+            input.style.background = '#0a4a2a';
+            setTimeout(() => { if(input) input.style.background = '#0a0e1a'; }, 500);
+            updateServerStatusText(url);
+            notify('✅ URL del servidor configurada automáticamente', 1500);
+            receivedUrl = true;
+        }
+    }
+
+    // ================== PROTECCIÓN CONTRA SOBRE-LECTURA ==================
+    // Se valida el origen de cada mensaje antes de procesarlo
+    window.addEventListener('message', async (event) => {
+        const data = event.data;
+        if (!data || typeof data !== 'object') return;
+
+        // --- Validación de origen (protect against over-reading) ---
+        if (isEmbedded) {
+            // Si aún no tenemos un origen confiable, solo aceptamos el mensaje de conexión
+            if (!parentOrigin) {
+                if (data.type === 'QCOL_REQUEST_STUDIO_CONNECTION') {
+                    parentOrigin = event.origin;
+                    // Continuamos con el manejo normal del mensaje
+                } else {
+                    return; // cualquier otro mensaje antes de la conexión es ignorado
+                }
+            } else if (event.origin !== parentOrigin) {
+                // Origen no autorizado
+                return;
+            }
+        } else {
+            // Modo standalone: solo aceptamos mensajes del mismo origen (o null para file://)
+            const selfOrigin = window.location.origin;
+            if (selfOrigin !== 'null' && event.origin !== selfOrigin) return;
+            if (selfOrigin === 'null' && event.origin !== 'null') return;
+        }
+
+        // --- A partir de aquí el mensaje proviene de un origen confiable ---
+        
+        if (data.type === 'QCOL_COMPILER_URL' && data.url) {
+            setServerUrl(data.url);
+            return;
+        }
+        if (data.type === 'QCOL_CONFIG_UPDATE' && data.compilerUrl) {
+            setServerUrl(data.compilerUrl);
+            return;
+        }
+        
+        if (data.type === 'QCOL_REQUEST_STUDIO_CONNECTION') {
+            isEmbedded = true;
+            if (!parentOrigin) parentOrigin = event.origin;
+            sendToParent({ type: 'QCOL_STUDIO_OPENED', version: '2.0', status: 'ready' });
+            notify('Conectado con Panel Fundador (origen validado)', 1500);
+            sendToParent({ type: 'QCOL_REQUEST_COMPILER_URL' });
+            return;
+        }
+        
+        if (data.type === 'QCOL_OPEN_APP_FROM_PUZZLE') {
+            const { appId, appName, pythonCode, htmlCode, serverUrl } = data;
+            if (appId && appName) {
+                let existing = projects.find(p => p.id === appId);
+                if (existing) {
+                    currentEditId = appId;
+                    document.getElementById('project-name-input').value = existing.name;
+                    document.getElementById('python-editor').value = existing.pythonCode;
+                    document.getElementById('html-editor').value = existing.htmlCode;
+                    if (existing.serverUrl) setServerUrl(existing.serverUrl);
+                } else {
+                    const newProj = {
+                        id: appId,
+                        name: appName,
+                        pythonCode: pythonCode || '# Código Python\n',
+                        htmlCode: htmlCode || '<!DOCTYPE html>\n<html>\n<body>\n<h1>App desde Puzzle</h1>\n</body>\n</html>',
+                        serverUrl: serverUrl || '',
+                        createdAt: Date.now()
+                    };
+                    projects.push(newProj);
+                    currentEditId = appId;
+                    document.getElementById('project-name-input').value = newProj.name;
+                    document.getElementById('python-editor').value = newProj.pythonCode;
+                    document.getElementById('html-editor').value = newProj.htmlCode;
+                    if (newProj.serverUrl) setServerUrl(newProj.serverUrl);
+                    saveProjects();
+                }
+                showScreen('editor');
+                sendToParent({ type: 'QCOL_STUDIO_APP_LOADED', appId: currentEditId });
+            }
+            return;
+        }
+        
+        if (data.type === 'QCOL_GET_APPS') {
+            const apps = projects.map(p => ({ id: p.id, name: p.name, serverUrl: p.serverUrl, createdAt: p.createdAt }));
+            sendToParent({ type: 'QCOL_APPS_LIST', apps });
+            return;
+        }
+
+        if (data.type === 'QCOL_REQUEST_COMPILE') {
+            const { requestId, appId, appName, pythonCode, htmlCode, serverUrl } = data;
+            try {
+                const finalServerUrl = serverUrl || document.getElementById('server-url-input').value;
+                
+                const bridge = `
+                <script>
+                window.__serverUrl = ${JSON.stringify(finalServerUrl)};
+                window.__pyCode = ${JSON.stringify(pythonCode || '# Python vacío')};
+                window.pyCall = async (funcName, ...args) => {
+                    return new Promise((resolve, reject) => {
+                        const msgId = Date.now() + '-' + Math.random();
+                        const handler = (event) => {
+                            if (event.data.type === 'pyResult' && event.data.id === msgId) {
+                                window.removeEventListener('message', handler);
+                                if (event.data.error) reject(new Error(event.data.error));
+                                else resolve(event.data.result);
+                            }
+                        };
+                        window.addEventListener('message', handler);
+                        window.parent.postMessage({ type: 'pyCall', id: msgId, func: funcName, args: args, serverUrl: window.__serverUrl, pythonCode: window.__pyCode }, '*');
+                    });
+                };
+                console.log("Bridge listo, servidor:", window.__serverUrl);
+                <\/script>
+                `;
+                
+                let finalHtml = htmlCode || '<!DOCTYPE html><html><body><h1>App sin interfaz</h1></body></html>';
+                if (finalHtml.includes('<head>')) {
+                    finalHtml = finalHtml.replace('<head>', '<head>' + bridge);
+                } else if (finalHtml.includes('<html>')) {
+                    finalHtml = finalHtml.replace('<html>', '<html><head>' + bridge + '</head>');
+                } else {
+                    finalHtml = bridge + finalHtml;
+                }
+                
+                if (event.source) {
+                    event.source.postMessage({
+                        type: 'QCOL_COMPILE_RESPONSE',
+                        requestId: requestId,
+                        html: finalHtml,
+                        error: null
+                    }, parentOrigin || '*');
+                }
+            } catch (err) {
+                if (event.source) {
+                    event.source.postMessage({
+                        type: 'QCOL_COMPILE_RESPONSE',
+                        requestId: requestId,
+                        html: null,
+                        error: err.message
+                    }, parentOrigin || '*');
+                }
+            }
+            return;
+        }
+    });
+
+    function notifyParentAboutChange(action, appId, appData = null) {
+        if (!isEmbedded || !parentOrigin) return;
+        sendToParent({ type: action === 'save' ? 'QCOL_APP_SAVED' : 'QCOL_APP_DELETED', appId, appData });
+    }
+
+    function saveProjects() {
+        // 🛡️ Protección contra sobreescritura: guardamos un backup de la versión anterior
+        const previousBackup = localStorage.getItem('quantum_apps_repo_v2');
+        if (previousBackup) {
+            localStorage.setItem('quantum_apps_repo_v2_backup', previousBackup);
+        }
+
+        localStorage.setItem('quantum_apps_repo_v2', JSON.stringify(projects));
+        if (isEmbedded && currentEditId && parentOrigin) {
+            const proj = projects.find(p => p.id === currentEditId);
+            if (proj) notifyParentAboutChange('save', currentEditId, { name: proj.name, serverUrl: proj.serverUrl });
+        }
+    }
+
+    function loadProjects() {
+        const stored = localStorage.getItem('quantum_apps_repo_v2');
+        if (stored) try { projects = JSON.parse(stored); } catch(e) { projects = []; }
+        if (!projects.length) {
+            projects.push({
+                id: generateId(),
+                name: "Demo: Saludo cuántico",
+                pythonCode: `def saludar(nombre):\n    return f"¡Hola {nombre}! desde Python en servidor cuántico 🧪"\n\ndef suma(a,b):\n    return a+b`,
+                htmlCode: `<!DOCTYPE html>\n<html>\n<head><meta charset="UTF-8"></head>\n<body style="background:#0a0e1a; color:white; font-family:monospace; padding:1rem;">\n<h2>Demo Interactiva</h2>\n<input id="nameInput" placeholder="Tu nombre" style="padding:0.3rem;">\n<button onclick="callGreet()">Saludar</button>\n<p id="result"></p>\n<script>\nwindow.callGreet = async () => {\n    const name = document.getElementById('nameInput').value;\n    const res = await window.pyCall("saludar", name);\n    document.getElementById('result').innerText = res;\n};\n<\/script>\n</body>\n</html>`,
+                serverUrl: "",
+                createdAt: Date.now()
+            });
+            saveProjects();
+        }
+    }
+
+    function renderRepository() {
+        const grid = document.getElementById('projects-grid');
+        if (!grid) return;
+        grid.innerHTML = '';
+        projects.forEach(proj => {
+            const card = document.createElement('div');
+            card.className = 'project-card';
+            card.innerHTML = `
+                <div class="project-name">📦 ${escapeHtml(proj.name)}</div>
+                <div class="card-actions">
+                    <button class="btn-secondary edit-proj" data-id="${proj.id}">✏️ Editar</button>
+                    <button class="btn-secondary run-proj" data-id="${proj.id}">▶ Ejecutar</button>
+                    <button class="btn-secondary btn-pending launch-proj" data-id="${proj.id}">📤 Lanzar</button>
+                    <button class="btn-secondary delete-proj" data-id="${proj.id}">🗑 Eliminar</button>
+                </div>
+            `;
+            grid.appendChild(card);
+        });
+        document.querySelectorAll('.edit-proj').forEach(btn => btn.addEventListener('click', (e) => { e.stopPropagation(); editProject(btn.getAttribute('data-id')); }));
+        document.querySelectorAll('.run-proj').forEach(btn => btn.addEventListener('click', (e) => { e.stopPropagation(); launchProject(btn.getAttribute('data-id')); }));
+        document.querySelectorAll('.launch-proj').forEach(btn => btn.addEventListener('click', (e) => { e.stopPropagation(); sendToPending(btn.getAttribute('data-id')); }));
+        document.querySelectorAll('.delete-proj').forEach(btn => btn.addEventListener('click', (e) => { e.stopPropagation(); deleteProject(btn.getAttribute('data-id')); }));
+    }
+
+    function sendToPending(id) {
+        const proj = projects.find(p => p.id === id);
+        if (!proj) {
+            notify("❌ Proyecto no encontrado");
+            return;
+        }
+        
+        const message = {
+            type: 'QCOL_LAUNCH_QUANTUM_APP',
+            appId: proj.id,
+            appTitle: proj.name,
+            appMetadata: {
+                name: proj.name,
+                pythonCode: proj.pythonCode,
+                htmlCode: proj.htmlCode,
+                serverUrl: proj.serverUrl || document.getElementById('server-url-input').value,
+                createdAt: proj.createdAt
+            }
+        };
+        
+        if (window.parent !== window && parentOrigin) {
+            sendToParent(message);
+            notify(`🚀 App "${proj.name}" enviada a la lista de pendientes del Fundador`, 2500);
+        } else {
+            let pendingApps = JSON.parse(localStorage.getItem('qcol_pending_apps') || '[]');
+            // 🛡️ Protección contra duplicados: si ya existe una entrada con el mismo id, la actualizamos
+            const existingIndex = pendingApps.findIndex(entry => entry.id === proj.id);
+            const newEntry = {
+                id: proj.id,
+                name: proj.name,
+                pythonCode: proj.pythonCode,
+                htmlCode: proj.htmlCode,
+                serverUrl: proj.serverUrl,
+                timestamp: Date.now()
+            };
+            if (existingIndex !== -1) {
+                pendingApps[existingIndex] = newEntry;
+            } else {
+                pendingApps.push(newEntry);
+            }
+            localStorage.setItem('qcol_pending_apps', JSON.stringify(pendingApps));
+            notify(`📦 App "${proj.name}" guardada en pendientes local. Conecta con el Panel Fundador para sincronizar.`, 3000);
+        }
+    }
+
+    function editProject(id) {
+        const proj = projects.find(p => p.id === id);
+        if (!proj) return;
+        currentEditId = id;
+        document.getElementById('project-name-input').value = proj.name;
+        document.getElementById('python-editor').value = proj.pythonCode || '';
+        document.getElementById('html-editor').value = proj.htmlCode || '';
+        if (proj.serverUrl) setServerUrl(proj.serverUrl);
+        showScreen('editor');
+    }
+
+    async function updateServerStatusText(url) {
+        const statusSpan = document.getElementById('server-status');
+        if (!url) { statusSpan.innerHTML = '⚠️ Sin URL'; remoteSessionStatus = false; return; }
+        statusSpan.innerHTML = '⏳ probando...';
+        const ok = await testBackendConnection(url);
+        if (ok) { statusSpan.innerHTML = '✅ servidor activo'; remoteSessionStatus = true; }
+        else { statusSpan.innerHTML = '❌ no responde'; remoteSessionStatus = false; }
+    }
+
+    async function testBackendConnection(baseUrl) {
+        try {
+            const cleanUrl = baseUrl.replace(/\/+$/, '');
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 5000);
+            const res = await fetch(cleanUrl + '/health/predict', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ data: [''] }),
+                signal: controller.signal
+            });
+            clearTimeout(timeout);
+            return res.ok;
+        } catch(e) { return false; }
+    }
+
+    async function executePythonRemote(code, serverUrl) {
+        if (!serverUrl) throw new Error("No hay URL de servidor");
+        const base = serverUrl.replace(/\/+$/, '');
+        const isHF = base.includes('hf.space') || base.includes('huggingface');
+        let url, body;
+        if (isHF) {
+            url = base + '/run/predict';
+            body = JSON.stringify({ data: [code], fn_index: 0 });
+        } else {
+            url = base + '/run';
+            body = JSON.stringify({ code: code, lib: 'python' });
+        }
+        const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const raw = await res.json();
+        const data = isHF ? (raw.data?.[0] || raw) : raw;
+        if (data.success === false) throw new Error(data.output || data.error);
+        let output = data.output || data.result || "";
+        output = decodeUnicode(output);
+        return output;
+    }
+
+    // Handler para llamadas desde los iframes (pyCall) - mismo origen, no necesita token
+    window.addEventListener('message', async (event) => {
+        // Solo procesamos pyCall si el origen es el mismo (blob:iframe origen es el mismo)
+        if (event.data.type === 'pyCall') {
+            // Verificar origen para evitar abusos
+            if (isEmbedded && parentOrigin && event.origin !== parentOrigin) return;
+            if (!isEmbedded && event.origin !== window.location.origin && window.location.origin !== 'null') return;
+            
+            const { id, func, args, serverUrl, pythonCode } = event.data;
+            try {
+                if (!serverUrl) throw new Error("Falta URL del servidor");
+                const fullCode = `${pythonCode}\nimport json\n_result = ${func}(*${JSON.stringify(args)})\nprint(json.dumps(_result, ensure_ascii=False))`;
+                const output = await executePythonRemote(fullCode, serverUrl);
+                let result = output.trim();
+                if ((result.startsWith('"') && result.endsWith('"')) || 
+                    (result.startsWith('{') && result.endsWith('}')) ||
+                    (result.startsWith('[') && result.endsWith(']'))) {
+                    try { result = JSON.parse(result); } catch(e) {}
+                }
+                event.source.postMessage({ type: 'pyResult', id: id, result: result }, event.origin);
+            } catch(err) {
+                event.source.postMessage({ type: 'pyResult', id: id, error: err.message }, event.origin);
+            }
+        }
+    });
+
+    async function buildAppBlob(pythonCode, htmlCode, serverUrl) {
+        const bridge = `
+        <script>
+        window.__serverUrl = ${JSON.stringify(serverUrl)};
+        window.__pyCode = ${JSON.stringify(pythonCode)};
+        window.pyCall = async (funcName, ...args) => {
+            return new Promise((resolve, reject) => {
+                const msgId = Date.now() + '-' + Math.random();
+                const handler = (event) => {
+                    if (event.data.type === 'pyResult' && event.data.id === msgId) {
+                        window.removeEventListener('message', handler);
+                        if (event.data.error) reject(new Error(event.data.error));
+                        else resolve(event.data.result);
+                    }
+                };
+                window.addEventListener('message', handler);
+                window.parent.postMessage({ type: 'pyCall', id: msgId, func: funcName, args: args, serverUrl: window.__serverUrl, pythonCode: window.__pyCode }, '*');
+            });
+        };
+        console.log("Bridge listo, servidor:", window.__serverUrl);
+        <\/script>
+        `;
+        let finalHtml = htmlCode;
+        if (finalHtml.includes('<head>')) finalHtml = finalHtml.replace('<head>', '<head>' + bridge);
+        else if (finalHtml.includes('<html>')) finalHtml = finalHtml.replace('<html>', '<html><head>' + bridge + '</head>');
+        else finalHtml = bridge + finalHtml;
+        const blob = new Blob([finalHtml], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        return { blobUrl: url, revoke: () => URL.revokeObjectURL(url) };
+    }
+
+    async function launchProject(id) {
+        const proj = projects.find(p => p.id === id);
+        if (!proj) return;
+        showScreen('runner');
+        document.getElementById('runner-app-name').innerText = `⚛️ ${escapeHtml(proj.name)}`;
+        const modeSpan = document.getElementById('runner-mode');
+        const dot = document.getElementById('runner-dot');
+        
+        let serverToUse = proj.serverUrl || document.getElementById('server-url-input').value;
+        
+        const serverActive = serverToUse && await testBackendConnection(serverToUse);
+        if (serverActive) {
+            modeSpan.innerHTML = '<span class="status-dot active"></span> Remoto (servidor activo)';
+            dot.className = 'status-dot active';
+        } else {
+            modeSpan.innerHTML = '<span class="status-dot"></span> ⚠️ Sin servidor';
+            dot.className = 'status-dot';
+        }
+        const { blobUrl, revoke } = await buildAppBlob(proj.pythonCode, proj.htmlCode, serverToUse);
+        const iframe = document.getElementById('app-iframe');
+        iframe.src = blobUrl;
+        iframe.onload = () => revoke();
+    }
+
+    async function runPreview() {
+        const serverUrl = document.getElementById('server-url-input').value;
+        const { blobUrl, revoke } = await buildAppBlob(
+            document.getElementById('python-editor').value,
+            document.getElementById('html-editor').value,
+            serverUrl
+        );
+        const iframe = document.getElementById('preview-iframe');
+        iframe.src = blobUrl;
+        iframe.onload = () => revoke();
+        document.getElementById('preview-modal').classList.add('open');
+    }
+
+    function closeModal() {
+        document.getElementById('preview-modal').classList.remove('open');
+        document.getElementById('preview-iframe').src = 'about:blank';
+    }
+
+    function showScreen(screenId) {
+        document.getElementById('repo-screen').classList.add('hidden');
+        document.getElementById('editor-screen').classList.add('hidden');
+        document.getElementById('runner-screen').classList.add('hidden');
+        if (screenId === 'repo') document.getElementById('repo-screen').classList.remove('hidden');
+        else if (screenId === 'editor') document.getElementById('editor-screen').classList.remove('hidden');
+        else if (screenId === 'runner') document.getElementById('runner-screen').classList.remove('hidden');
+    }
+
+    function saveCurrentEdit() {
+        if (!currentEditId) {
+            const newName = document.getElementById('project-name-input').value.trim();
+            if (!newName) { notify("Ingresa un nombre"); return; }
+            const newId = generateId();
+            const newProj = {
+                id: newId,
+                name: newName,
+                pythonCode: document.getElementById('python-editor').value,
+                htmlCode: document.getElementById('html-editor').value,
+                serverUrl: document.getElementById('server-url-input').value,
+                createdAt: Date.now()
+            };
+            projects.push(newProj);
+            currentEditId = newId;
+            saveProjects();
+            notify(`Proyecto "${newName}" creado`);
+            showScreen('repo');
+            renderRepository();
+            return;
+        }
+        const idx = projects.findIndex(p => p.id === currentEditId);
+        if (idx !== -1) {
+            projects[idx].name = document.getElementById('project-name-input').value.trim() || "Sin nombre";
+            projects[idx].pythonCode = document.getElementById('python-editor').value;
+            projects[idx].htmlCode = document.getElementById('html-editor').value;
+            projects[idx].serverUrl = document.getElementById('server-url-input').value;
+            saveProjects();
+            notify("Proyecto guardado");
+            showScreen('repo');
+            renderRepository();
+        }
+    }
+
+    function deleteProject(id) {
+        if (projects.length === 1) { notify("Debe haber al menos un proyecto"); return; }
+        if (confirm("¿Eliminar aplicación?")) {
+            const deleted = projects.find(p => p.id === id);
+            projects = projects.filter(p => p.id !== id);
+            if (currentEditId === id) currentEditId = null;
+            saveProjects();
+            renderRepository();
+            notify("Proyecto eliminado");
+            if (isEmbedded && deleted && parentOrigin) sendToParent({ type: 'QCOL_APP_DELETED', appId: id });
+        }
+    }
+
+    function startNewProject() {
+        currentEditId = null;
+        document.getElementById('project-name-input').value = "Nuevo proyecto";
+        document.getElementById('python-editor').value = `def mi_funcion(param):\n    return f"Recibí: {param}"\n\nimport numpy as np\nprint("Python remoto listo")`;
+        document.getElementById('html-editor').value = `<!DOCTYPE html>\n<html>\n<head><meta charset="UTF-8"></head>\n<body style="background:#0f172a; color:white; font-family:sans-serif; padding:1rem;">\n<h2>Mi App Cuántica</h2>\n<button onclick="testCall()">Llamar función</button>\n<p id="output"></p>\n<script>\nasync function testCall() {\n    const res = await window.pyCall("mi_funcion", "Hola mundo");\n    document.getElementById('output').innerText = res;\n}\n<\/script>\n</body>\n</html>`;
+        showScreen('editor');
+    }
+
+    function bindEvents() {
+        document.getElementById('new-project-btn').onclick = startNewProject;
+        document.getElementById('save-project-editor').onclick = saveCurrentEdit;
+        document.getElementById('back-to-repo-editor').onclick = () => showScreen('repo');
+        document.getElementById('back-to-repo-runner').onclick = () => showScreen('repo');
+        document.getElementById('preview-run-btn').onclick = runPreview;
+        document.getElementById('close-modal-btn').onclick = closeModal;
+        document.getElementById('test-server-btn').onclick = async () => {
+            const url = document.getElementById('server-url-input').value;
+            if (!url) { notify("Esperando URL automática del Founder...", 2000); return; }
+            const ok = await testBackendConnection(url);
+            if (ok) notify("✅ Servidor remoto conectado", 2000);
+            else notify("❌ No se pudo conectar", 2000);
+            updateServerStatusText(url);
+        };
+    }
+
+    // Inicialización
+    loadProjects();
+    renderRepository();
+    bindEvents();
+    
+    if (window.parent !== window) {
+        setTimeout(() => {
+            sendToParent({ type: 'QCOL_STUDIO_OPENED', version: '2.0', status: 'ready' });
+            notify('Conectado con Panel Fundador (origen validado)', 1500);
+            sendToParent({ type: 'QCOL_REQUEST_COMPILER_URL' });
+            const savedUrl = localStorage.getItem('qcol_colab_url');
+            if (savedUrl && !receivedUrl) setServerUrl(savedUrl);
+        }, 500);
+    } else {
+        const savedUrl = localStorage.getItem('qcol_colab_url');
+        if (savedUrl) setServerUrl(savedUrl);
+    }
+    
+    setInterval(() => {
+        if (window.parent !== window && !receivedUrl && parentOrigin) sendToParent({ type: 'QCOL_REQUEST_COMPILER_URL' });
+    }, 3000);
+    
+    notify("Quantum App Studio · Protegido contra sobrelectura · Orígenes validados", 4000);
+</script>
+</body>
+</html>
