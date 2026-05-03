@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-<title>Quantum Puzzle · Laboratorio de Apps Cuánticas</title>
+<title>Quantum Puzzle · Quantum Apps Lab</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;800&family=JetBrains+Mono:wght@400;500&family=Exo+2:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
@@ -338,7 +338,7 @@ body::before{
     color: var(--gd);
     margin-bottom: 0.5rem;
 }
-/* Estilos para el modal del estudio (iframe) */
+/* Studio modal styles (iframe) */
 .studio-modal .modal {
     width: min(1200px, 95vw);
     height: 90vh;
@@ -359,7 +359,7 @@ body::before{
     border: none;
     background: #0a0e1a;
 }
-/* Modal de preview para apps pendientes */
+/* Preview modal for pending apps */
 .preview-modal .modal {
     width: min(1000px, 95vw);
     height: 80vh;
@@ -380,7 +380,7 @@ body::before{
     background: white;
 }
 
-/* Modal de ejecución */
+/* Execution modal */
 .exec-modal .modal {
     width: 100vw;
     height: 100vh;
@@ -538,15 +538,15 @@ body::before{
 
 <div class="notif" id="notifMsg"></div>
 <div class="admin-bar" id="adminBar">
-    ⚛️ MODO FUNDADOR/ADMIN · GESTIÓN DE APPS
-    <button class="btn btn-pri" style="margin-left:auto;" onclick="openPendingManager()">📋 PENDIENTES</button>
+    ⚛️ FOUNDER/ADMIN MODE · APP MANAGEMENT
+    <button class="btn btn-pri" style="margin-left:auto;" onclick="openPendingManager()">📋 PENDING</button>
     <button class="btn btn-pri" onclick="openQuantumAppStudio()">🎛️ QUANTUM APP STUDIO</button>
 </div>
 
 <div class="toolbar">
     <div class="search-box">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="8" stroke="#4a7a9b" stroke-width="2"/><path d="M21 21l-4.35-4.35" stroke="#4a7a9b" stroke-width="2"/></svg>
-        <input id="searchInput" placeholder="Buscar app cuántica..." oninput="renderPublishedApps()">
+        <input id="searchInput" placeholder="Search quantum app..." oninput="renderPublishedApps()">
     </div>
     <div class="filter-tag" id="filterTagsContainer"></div>
     <div>
@@ -556,43 +556,43 @@ body::before{
 
 <div id="puzzleGrid"></div>
 
-<!-- MODAL PARA EL STUDIO REAL (iframe) -->
+<!-- REAL STUDIO MODAL (iframe) -->
 <div class="modal-ov" id="studioModalReal">
     <div class="modal" style="width: min(1200px, 95vw); height: 90vh; padding: 0; display: flex; flex-direction: column;">
         <div class="modal-title" style="padding: 0.8rem 1rem; margin: 0; border-left: none; border-bottom: 1px solid var(--b); display: flex; justify-content: space-between; align-items: center;">
-            <span>🌀 QUANTUM APP STUDIO · Editor de aplicaciones cuánticas</span>
-            <button class="btn-cancel" onclick="closeStudioModal()" style="margin:0;">CERRAR</button>
+            <span>🌀 QUANTUM APP STUDIO · Quantum application editor</span>
+            <button class="btn-cancel" onclick="closeStudioModal()" style="margin:0;">CLOSE</button>
         </div>
         <iframe id="studioIframe" class="studio-iframe" src="qcol-quantum-app-studio.html" sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-modals allow-same-origin"></iframe>
     </div>
 </div>
 
-<!-- MODAL: PENDIENTES (solo admin/founder) -->
+<!-- PENDING MODAL (admin/founder only) -->
 <div class="modal-ov" id="pendingModal">
     <div class="modal" style="max-width:780px;">
-        <div class="modal-title">📋 APPS PENDIENTES DE APROBACIÓN</div>
+        <div class="modal-title">📋 APPS PENDING APPROVAL</div>
         <div id="pendingListContainer" style="max-height: 60vh; overflow-y: auto;"></div>
-        <div class="btn-row"><button class="btn-cancel" onclick="closePendingModal()">CERRAR</button></div>
+        <div class="btn-row"><button class="btn-cancel" onclick="closePendingModal()">CLOSE</button></div>
     </div>
 </div>
 
-<!-- MODAL: PREVIEW DE APP PENDIENTE -->
+<!-- PENDING APP PREVIEW MODAL -->
 <div class="modal-ov preview-modal" id="previewAppModal">
     <div class="modal" style="width: min(1000px, 95vw); height: 80vh; padding: 0; display: flex; flex-direction: column;">
         <div class="modal-title" style="padding: 0.8rem 1rem; margin: 0; border-left: none; border-bottom: 1px solid var(--b); display: flex; justify-content: space-between;">
-            <span>🔬 Vista previa de la app</span>
-            <button class="btn-cancel" onclick="closePreviewModal()">CERRAR</button>
+            <span>🔬 App preview</span>
+            <button class="btn-cancel" onclick="closePreviewModal()">CLOSE</button>
         </div>
         <iframe id="previewIframe" class="preview-iframe" sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-modals"></iframe>
     </div>
 </div>
 
-<!-- MODAL DE EJECUCIÓN DE APP -->
+<!-- APP EXECUTION MODAL -->
 <div class="modal-ov exec-modal" id="execAppModal">
     <div class="modal">
         <div class="modal-header">
-            <h3 id="execAppTitle">⚛️ Ejecutando app cuántica...</h3>
-            <button class="btn-close-x" onclick="closeExecModal()" title="Cerrar">✕</button>
+            <h3 id="execAppTitle">⚛️ Running quantum app...</h3>
+            <button class="btn-close-x" onclick="closeExecModal()" title="Close">✕</button>
         </div>
         <div class="exec-content">
             <div id="execRunPanel" style="width:100%;height:100%;">
@@ -602,7 +602,7 @@ body::before{
                 </div>
             </div>
             <div id="execCodePanel" class="exec-code-panel">
-                <!-- El panel de código queda oculto permanentemente al eliminar los tabs -->
+                <!-- Code panel permanently hidden by removing tabs -->
             </div>
         </div>
     </div>
@@ -621,7 +621,7 @@ let compilerUrl = '';
 let currentExecutingApp = null;
 let pendingCompileRequest = null;
 
-// Inicialización de stores
+// Store initialization
 function getPublishedApps() {
     const stored = localStorage.getItem('qcol_published_quantum_apps');
     if(stored) return JSON.parse(stored);
@@ -639,17 +639,17 @@ function savePendingApps(apps) {
     localStorage.setItem('qcol_pending_quantum_apps', JSON.stringify(apps));
 }
 
-// Inicializar con datos demo si está vacío
+// Initialize with demo data if empty
 if(!localStorage.getItem('qcol_published_quantum_apps')) {
     savePublishedApps([
         {
             id: 'demo_1',
-            title: 'Demo: Saludo Cuántico',
-            desc: 'Una app simple que saluda usando Python remoto',
-            tags: 'demo,ejemplo',
+            title: 'Demo: Quantum Greeting',
+            desc: 'A simple app that greets using remote Python',
+            tags: 'demo,example',
             duration: 5,
-            pythonCode: `def saludar(nombre):\n    return f"¡Hola {nombre}! desde el servidor cuántico 🧪"\n\ndef suma(a,b):\n    return a + b`,
-            htmlCode: `<!DOCTYPE html>\n<html>\n<head><meta charset="UTF-8"></head>\n<body style="background:#0a0e1a; color:white; font-family:monospace; padding:2rem;">\n<h2>Demo Cuántica</h2>\n<input id="nameInput" placeholder="Tu nombre" style="padding:0.5rem;">\n<button onclick="callGreet()">Saludar</button>\n<p id="result"></p>\n<script>\nwindow.callGreet = async () => {\n    const name = document.getElementById('nameInput').value;\n    const res = await window.pyCall("saludar", name);\n    document.getElementById('result').innerText = res;\n};\n<\/script>\n</body>\n</html>`,
+            pythonCode: `def greet(name):\n    return f"Hello {name}! from the quantum server 🧪"\n\ndef add(a,b):\n    return a + b`,
+            htmlCode: `<!DOCTYPE html>\n<html>\n<head><meta charset="UTF-8"></head>\n<body style="background:#0a0e1a; color:white; font-family:monospace; padding:2rem;">\n<h2>Quantum Demo</h2>\n<input id="nameInput" placeholder="Your name" style="padding:0.5rem;">\n<button onclick="callGreet()">Greet</button>\n<p id="result"></p>\n<script>\nwindow.callGreet = async () => {\n    const name = document.getElementById('nameInput').value;\n    const res = await window.pyCall("greet", name);\n    document.getElementById('result').innerText = res;\n};\n<\/script>\n</body>\n</html>`,
             serverUrl: '',
             createdAt: Date.now()
         }
@@ -675,7 +675,7 @@ function renderTagFilters() {
     const allTags = extractUniqueTags(apps);
     const container = document.getElementById('filterTagsContainer');
     if(!container) return;
-    let html = `<span class="tag-chip ${activeTagFilter === 'all' ? 'active' : ''}" data-tag="all" onclick="setTagFilter('all')">🎲 TODAS</span>`;
+    let html = `<span class="tag-chip ${activeTagFilter === 'all' ? 'active' : ''}" data-tag="all" onclick="setTagFilter('all')">🎲 ALL</span>`;
     allTags.forEach(tag => {
         html += `<span class="tag-chip ${activeTagFilter === tag ? 'active' : ''}" data-tag="${tag}" onclick="setTagFilter('${tag}')">#${tag}</span>`;
     });
@@ -704,8 +704,8 @@ function renderPublishedApps() {
     const container = document.getElementById('puzzleGrid');
     if(!filtered.length){
         container.innerHTML = `<div class="empty-state"><div class="empty-icon">⚛️📦</div>
-        <div class="empty-title">Repositorio cuántico vacío</div>
-        <p style="font-size:0.7rem;color:#4a7a9b;margin-top:0.5rem;">Usa "QUANTUM APP STUDIO" para crear nuevas aplicaciones.</p></div>`;
+        <div class="empty-title">Empty quantum repository</div>
+        <p style="font-size:0.7rem;color:#4a7a9b;margin-top:0.5rem;">Use "QUANTUM APP STUDIO" to create new applications.</p></div>`;
         return;
     }
     
@@ -717,14 +717,14 @@ function renderPublishedApps() {
         const delBtn = canDelete ? `<button class="btn-icon" onclick="deletePublishedApp('${app.id}')">🗑️</button>` : '';
         gridHtml += `
             <div class="card">
-                <div class="card-header"><span class="badge-app">⚛️ APP CUÁNTICA</span></div>
+                <div class="card-header"><span class="badge-app">⚛️ QUANTUM APP</span></div>
                 <div class="card-body">
                     <div class="card-title">${escapeHtml(app.title)}</div>
-                    <div class="card-desc">${escapeHtml(app.desc || 'Sin descripción')}</div>
+                    <div class="card-desc">${escapeHtml(app.desc || 'No description')}</div>
                     <div class="card-meta"><span>⏱️ ${app.duration || 8} min</span></div>
                     <div class="tags">${tagsHtml}</div>
                     <div class="card-actions">
-                        <button class="btn-execute" onclick="executeQuantumApp('${app.id}')">▶ EJECUTAR PROGRAMA</button>
+                        <button class="btn-execute" onclick="executeQuantumApp('${app.id}')">▶ RUN PROGRAM</button>
                         ${delBtn}
                     </div>
                 </div>
@@ -735,34 +735,34 @@ function renderPublishedApps() {
     container.innerHTML = gridHtml;
 }
 
-// ========== EJECUTAR APP USANDO QUANTUM APP STUDIO ==========
+// ========== EXECUTE APP USING QUANTUM APP STUDIO ==========
 function executeQuantumApp(appId) {
     const apps = getPublishedApps();
     const app = apps.find(a => a.id === appId);
-    if(!app) { showNotification('⚠️ App no encontrada'); return; }
+    if(!app) { showNotification('⚠️ App not found'); return; }
     
     currentExecutingApp = app;
     
-    // Mostrar modal de ejecución
+    // Show execution modal
     const modal = document.getElementById('execAppModal');
     const titleSpan = document.getElementById('execAppTitle');
     titleSpan.innerHTML = `⚛️ ${escapeHtml(app.title)}`;
     
-    // No mostramos código, ni pestañas, la interfaz queda totalmente dedicada a la app
+    // We don't show code or tabs, the interface is fully dedicated to the app
     modal.classList.add('open');
     
-    // Intentar ejecutar la app
+    // Try to run the app
     executeWithStudio(app);
 }
 
-// ── Ejecutar app cuántica DIRECTAMENTE — sin depender del Studio ──
-// El Puzzle construye el blob con el bridge pyCall inyectado y lo
-// carga en el execIframe. El Studio solo se usa para editar/crear.
+// ── Execute quantum app DIRECTLY — without depending on Studio ──
+// Puzzle builds the blob with injected pyCall bridge and
+// loads it in execIframe. Studio is only used for editing/creating.
 
-// Ejecutar Python en el servidor remoto
+// Execute Python on remote server
 async function _runPythonRemote(code, serverUrl) {
     const base = (serverUrl || '').replace(/\/+$/, '');
-    if (!base) throw new Error('No hay URL del servidor cuántico configurada');
+    if (!base) throw new Error('No quantum server URL configured');
     const isHF  = base.includes('hf.space') || base.includes('huggingface');
     const url   = base + (isHF ? '/run/predict' : '/run');
     const body  = isHF
@@ -776,14 +776,14 @@ async function _runPythonRemote(code, serverUrl) {
     if (!res.ok) throw new Error('HTTP ' + res.status + ' — ' + res.statusText);
     const raw = await res.json();
     const out = isHF ? (raw.data?.[0] ?? raw) : raw;
-    if (out?.success === false) throw new Error(out.output || out.error || 'Error en el servidor');
+    if (out?.success === false) throw new Error(out.output || out.error || 'Server error');
     return out?.output ?? out?.result ?? String(out ?? '');
 }
 
-// Map pyCall pendientes del execIframe
+// Map pending pyCalls from execIframe
 const _execPyCalls = new Map();
 
-// Escuchar pyCall del execIframe y ejecutarlos remotamente
+// Listen for pyCall from execIframe and execute them remotely
 window.addEventListener('message', async function _execPyCallHandler(ev) {
     const d = ev.data;
     if (!d || d.type !== 'pyCall') return;
@@ -798,8 +798,8 @@ window.addEventListener('message', async function _execPyCallHandler(ev) {
 
     const serverUrl = appUrl || compilerUrl || localStorage.getItem('qcol_colab_url') || '';
     try {
-        if (!serverUrl) throw new Error('Sin URL del servidor. Configúrala en el Panel Fundador.');
-        // Construir llamada Python: ejecutar la función pedida por la app
+        if (!serverUrl) throw new Error('No server URL. Configure it in the Founder Panel.');
+        // Build Python call: execute the function requested by the app
         const callCode = (pythonCode ? pythonCode + '\n\n' : '') +
             'import json as _json\n' +
             '_args = _json.loads(' + JSON.stringify(JSON.stringify(args)) + ')\n' +
@@ -816,7 +816,7 @@ window.addEventListener('message', async function _execPyCallHandler(ev) {
     }
 });
 
-// Construir blob HTML con bridge pyCall inyectado
+// Build HTML blob with injected pyCall bridge
 function _buildAppBlob(pythonCode, htmlCode, serverUrl) {
     const bridge = `<script>
 (function(){
@@ -850,12 +850,12 @@ function _buildAppBlob(pythonCode, htmlCode, serverUrl) {
         'padding:2rem;display:flex;flex-direction:column;align-items:center;gap:1rem;}',
         'h2{color:#00ccff;font-family:Orbitron,monospace;}',
         '.info{color:#4a7a9b;font-size:.85rem;}</style></head>',
-        '<body><h2>⚛️ App sin interfaz</h2>',
-        '<p class="info">Esta app no tiene código HTML.<br>',
-        'El código Python se ejecuta con <code>pyCall()</code>.</p></body></html>'
+        '<body><h2>⚛️ App without interface</h2>',
+        '<p class="info">This app has no HTML code.<br>',
+        'Python code is executed with <code>pyCall()</code>.</p></body></html>'
     ].join('');
 
-    // Inyectar el bridge
+    // Inject the bridge
     if (html.includes('</head>'))        html = html.replace('</head>', bridge + '</head>');
     else if (html.includes('<body'))      html = html.replace('<body', bridge + '<body');
     else if (html.includes('<html'))      html = html.replace('<html>', '<html>' + bridge);
@@ -866,12 +866,12 @@ function _buildAppBlob(pythonCode, htmlCode, serverUrl) {
 
 function executeWithStudio(app) {
     const loadingDiv = document.getElementById('execLoading');
-    const statusSpan = document.getElementById('execStatus'); // puede ser null tras eliminar el footer
+    const statusSpan = document.getElementById('execStatus'); // may be null after removing footer
     const iframe     = document.getElementById('execIframe');
 
     loadingDiv.style.display = 'flex';
     if (statusSpan) {
-        statusSpan.innerHTML = '⏳ Preparando aplicación cuántica...';
+        statusSpan.innerHTML = '⏳ Preparing quantum application...';
         statusSpan.className = 'exec-status';
     }
 
@@ -880,21 +880,21 @@ function executeWithStudio(app) {
     if (!app.htmlCode && !app.pythonCode) {
         loadingDiv.style.display = 'none';
         if (statusSpan) {
-            statusSpan.innerHTML = '❌ La app no tiene código HTML ni Python.';
+            statusSpan.innerHTML = '❌ The app has no HTML or Python code.';
             statusSpan.className = 'exec-status error';
         }
         return;
     }
 
     if (!serverUrl && app.pythonCode) {
-        // Avisar pero seguir — la app puede funcionar sin backend
+        // Warn but continue — the app may work without backend
         if (statusSpan) {
-            statusSpan.innerHTML = '⚠️ Sin servidor configurado — funciones pyCall no disponibles';
+            statusSpan.innerHTML = '⚠️ No server configured — pyCall functions not available';
             statusSpan.className = 'exec-status';
         }
     }
 
-    // Liberar blob anterior
+    // Release previous blob
     if (window._execBlobUrl) { URL.revokeObjectURL(window._execBlobUrl); }
 
     try {
@@ -905,8 +905,8 @@ function executeWithStudio(app) {
             loadingDiv.style.display = 'none';
             if (statusSpan) {
                 statusSpan.innerHTML = serverUrl
-                    ? '✅ App ejecutándose · servidor cuántico conectado'
-                    : '✅ App ejecutándose · modo sin servidor';
+                    ? '✅ App running · quantum server connected'
+                    : '✅ App running · serverless mode';
                 statusSpan.className = 'exec-status success';
             }
         };
@@ -915,7 +915,7 @@ function executeWithStudio(app) {
             if (loadingDiv.style.display !== 'none') {
                 loadingDiv.style.display = 'none';
                 if (statusSpan) {
-                    statusSpan.innerHTML = '✅ App cargada';
+                    statusSpan.innerHTML = '✅ App loaded';
                     statusSpan.className = 'exec-status success';
                 }
             }
@@ -927,11 +927,11 @@ function executeWithStudio(app) {
             statusSpan.innerHTML = '❌ Error: ' + escapeHtml(err.message);
             statusSpan.className = 'exec-status error';
         }
-        showNotification('Error al construir la app: ' + err.message);
+        showNotification('Error building app: ' + err.message);
     }
 }
 
-// sendCompileRequest ya no es necesaria pero la mantenemos por compatibilidad
+// sendCompileRequest is no longer needed but kept for compatibility
 function sendCompileRequest(app) { executeWithStudio(app); }
 
 function onCompileResponse(requestId, compiledHtml, error) {
@@ -949,19 +949,19 @@ function onCompileResponse(requestId, compiledHtml, error) {
             statusSpan.className = 'exec-status error';
         }
         iframe.src = 'about:blank';
-        showNotification(`Error de compilación: ${error}`);
+        showNotification(`Compilation error: ${error}`);
         return;
     }
     
     if (!compiledHtml) {
         if (statusSpan) {
-            statusSpan.innerHTML = '❌ No se recibió respuesta del Studio';
+            statusSpan.innerHTML = '❌ No response received from Studio';
             statusSpan.className = 'exec-status error';
         }
         return;
     }
     
-    // Liberar URL anterior si existe
+    // Release previous URL if it exists
     if (window._currentExecBlobUrl) {
         URL.revokeObjectURL(window._currentExecBlobUrl);
     }
@@ -972,10 +972,10 @@ function onCompileResponse(requestId, compiledHtml, error) {
     
     iframe.src = blobUrl;
     if (statusSpan) {
-        statusSpan.innerHTML = '✅ App ejecutándose correctamente';
+        statusSpan.innerHTML = '✅ App running correctly';
         statusSpan.className = 'exec-status success';
     }
-    showNotification('App cargada correctamente', 1500);
+    showNotification('App loaded successfully', 1500);
 }
 
 function reloadExecApp() {
@@ -999,18 +999,18 @@ function closeExecModal() {
     currentExecutingApp = null;
 }
 
-// ========== COMUNICACIÓN CON QUANTUM APP STUDIO ==========
+// ========== COMMUNICATION WITH QUANTUM APP STUDIO ==========
 const studioModal = document.getElementById('studioModalReal');
 const studioIframe = document.getElementById('studioIframe');
 
 function openQuantumAppStudio() {
     studioModal.classList.add('open');
-    // Enviar handshake al Studio para que responda QCOL_STUDIO_OPENED
+    // Send handshake to Studio so it responds with QCOL_STUDIO_OPENED
     setTimeout(function() {
         var sf = document.getElementById('studioIframe');
         if (sf && sf.contentWindow) {
             sf.contentWindow.postMessage({ type: 'QCOL_REQUEST_STUDIO_CONNECTION' }, '*');
-            // Si tenemos la URL, enviarla también
+            // If we have the URL, send it too
             var url = compilerUrl || localStorage.getItem('qcol_colab_url') || '';
             if (url) {
                 sf.contentWindow.postMessage({ type: 'QCOL_SET_COMPILER_URL', url: url }, '*');
@@ -1024,26 +1024,26 @@ function closeStudioModal() {
     studioModal.classList.remove('open');
 }
 
-// Escuchar mensajes del Studio
+// Listen for Studio messages
 window.addEventListener('message', (e) => {
     const data = e.data;
     if (!data || typeof data !== 'object') return;
     
-    // Recibir URL del compilador
+    // Receive compiler URL
     if (data.type === 'QCOL_COMPILER_URL' && data.url) {
         compilerUrl = data.url;
-        console.log('URL del compilador:', compilerUrl);
-        showNotification('Servidor cuántico configurado', 1500);
+        console.log('Compiler URL:', compilerUrl);
+        showNotification('Quantum server configured', 1500);
         return;
     }
     
-    // Studio listo
+    // Studio ready
     if (data.type === 'QCOL_STUDIO_OPENED') {
         studioIframeReady = true;
         studioIframeLoaded = true;
-        console.log('[Puzzle] Studio conectado y listo');
-        showNotification('⚡ Quantum App Studio listo', 1500);
-        // Enviar URL del compilador si la tenemos
+        console.log('[Puzzle] Studio connected and ready');
+        showNotification('⚡ Quantum App Studio ready', 1500);
+        // Send compiler URL if we have it
         var urlNow = compilerUrl || localStorage.getItem('qcol_colab_url') || '';
         if (urlNow && e.source) {
             e.source.postMessage({ type: 'QCOL_SET_COMPILER_URL', url: urlNow }, '*');
@@ -1052,7 +1052,7 @@ window.addEventListener('message', (e) => {
         return;
     }
     
-    // Respuesta de compilación
+    // Compilation response
     if (data.type === 'QCOL_COMPILE_RESPONSE') {
         const { requestId, html, error } = data;
         onCompileResponse(requestId, html, error);
@@ -1076,13 +1076,13 @@ window.addEventListener('message', (e) => {
         if (!launchId || !launchTitle) return;
         var pendingApps  = getPendingApps();
         var publishedApps = getPublishedApps();
-        // ── Protección: no sobreescribir si ya existe
+        // ── Protection: don't overwrite if it already exists
         if (publishedApps.find(function(p){ return p.id === launchId; })) {
-            showNotification('ℹ️ "' + launchTitle + '" ya está publicada. No se sobreescribió.');
+            showNotification('ℹ️ "' + launchTitle + '" is already published. Not overwritten.');
             return;
         }
         if (pendingApps.find(function(p){ return p.id === launchId; })) {
-            showNotification('ℹ️ "' + launchTitle + '" ya está en pendientes.');
+            showNotification('ℹ️ "' + launchTitle + '" is already pending.');
             return;
         }
         pendingApps.push({
@@ -1098,7 +1098,7 @@ window.addEventListener('message', (e) => {
             createdAt:  Date.now()
         });
         savePendingApps(pendingApps);
-        showNotification('📥 App "' + launchTitle + '" recibida. Revisa pendientes.');
+        showNotification('📥 App "' + launchTitle + '" received. Check pending.');
         if (document.getElementById('pendingModal').classList.contains('open')) {
             renderPendingList();
         }
@@ -1116,7 +1116,7 @@ window.addEventListener('message', (e) => {
     }
 });
 
-// Inicializar comunicación con el padre (Panel Fundador)
+// Initialize communication with parent (Founder Panel)
 function postCore(type, data={}) {
     if(window.parent !== window) window.parent.postMessage({type, ...data}, '*');
 }
@@ -1125,9 +1125,9 @@ if (window.parent !== window) {
     window.parent.postMessage({ type: 'QCOL_GET_COMPILER_URL' }, '*');
 }
 
-// ========== FUNCIONES DE ADMINISTRACIÓN ==========
+// ========== ADMINISTRATION FUNCTIONS ==========
 function openPendingManager() {
-    if(!isFounder && !isAdmin) { showNotification("Acceso solo para fundadores/admins"); return; }
+    if(!isFounder && !isAdmin) { showNotification("Access for founders/admins only"); return; }
     renderPendingList();
     document.getElementById('pendingModal').classList.add('open');
 }
@@ -1139,7 +1139,7 @@ function renderPendingList() {
     const container = document.getElementById('pendingListContainer');
     if(!container) return;
     if(pending.length === 0) {
-        container.innerHTML = `<div style="padding:2rem; text-align:center; color:var(--mu);">📭 No hay apps pendientes de aprobación.</div>`;
+        container.innerHTML = `<div style="padding:2rem; text-align:center; color:var(--mu);">📭 No apps pending approval.</div>`;
         return;
     }
     let html = `<div class="pending-grid">`;
@@ -1151,12 +1151,12 @@ function renderPendingList() {
                     <span style="font-size:0.55rem; background:#1f2a44; padding:2px 8px; border-radius:20px;">${escapeHtml(app.id)}</span>
                 </div>
                 <div style="font-size:0.6rem; margin:6px 0;">📝 ${escapeHtml(app.desc || '')}</div>
-                <div style="font-size:0.55rem; color:#aaa; display:flex; gap:12px; flex-wrap:wrap;">🏷️ ${escapeHtml(app.tags)} | ⏱️ ${app.duration} min | 👤 creado por ${escapeHtml(app.createdBy || 'anon')}</div>
+                <div style="font-size:0.55rem; color:#aaa; display:flex; gap:12px; flex-wrap:wrap;">🏷️ ${escapeHtml(app.tags)} | ⏱️ ${app.duration} min | 👤 created by ${escapeHtml(app.createdBy || 'anon')}</div>
                 <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">
-                    <button class="btn" style="background: #2a5f8a;" onclick="previewPendingApp('${app.id}')">🔍 EJECUTAR</button>
-                    <!-- Botón EDITAR eliminado -->
-                    <button class="btn" style="background: #00aa66;" onclick="publishPendingApp('${app.id}')">✅ PUBLICAR</button>
-                    <button class="btn" style="background: #aa3355;" onclick="rejectPendingApp('${app.id}')">🗑️ RECHAZAR</button>
+                    <button class="btn" style="background: #2a5f8a;" onclick="previewPendingApp('${app.id}')">🔍 RUN</button>
+                    <!-- EDIT button removed -->
+                    <button class="btn" style="background: #00aa66;" onclick="publishPendingApp('${app.id}')">✅ PUBLISH</button>
+                    <button class="btn" style="background: #aa3355;" onclick="rejectPendingApp('${app.id}')">🗑️ REJECT</button>
                 </div>
             </div>
         `;
@@ -1168,7 +1168,7 @@ function renderPendingList() {
 function previewPendingApp(appId) {
     const pending = getPendingApps();
     const app = pending.find(p => p.id === appId);
-    if(!app) { showNotification("App no encontrada"); return; }
+    if(!app) { showNotification("App not found"); return; }
     pendingPreviewApp = app;
     buildAppBlobAndPreview(app);
 }
@@ -1178,7 +1178,7 @@ async function buildAppBlobAndPreview(app) {
     const bridge = `
     <script>
     window.__serverUrl = ${JSON.stringify(server)};
-    window.__pyCode = ${JSON.stringify(app.pythonCode || '# Python vacío')};
+    window.__pyCode = ${JSON.stringify(app.pythonCode || '# Empty Python')};
     window.pyCall = async (funcName, ...args) => {
         return new Promise((resolve, reject) => {
             const msgId = Date.now() + '-' + Math.random();
@@ -1193,10 +1193,10 @@ async function buildAppBlobAndPreview(app) {
             window.parent.postMessage({ type: 'pyCall', id: msgId, func: funcName, args: args, serverUrl: window.__serverUrl, pythonCode: window.__pyCode }, '*');
         });
     };
-    console.log("Bridge preview listo");
+    console.log("Bridge preview ready");
     <\/script>
     `;
-    let finalHtml = app.htmlCode || '<!DOCTYPE html><html><body><h1>App sin interfaz</h1></body></html>';
+    let finalHtml = app.htmlCode || '<!DOCTYPE html><html><body><h1>App without interface</h1></body></html>';
     if (finalHtml.includes('<head>')) {
         finalHtml = finalHtml.replace('<head>', '<head>' + bridge);
     } else if (finalHtml.includes('<html>')) {
@@ -1229,7 +1229,7 @@ function closePreviewModal() {
 function editPendingApp(appId) {
     const pending = getPendingApps();
     const app = pending.find(p => p.id === appId);
-    if(!app) { showNotification("App no encontrada"); return; }
+    if(!app) { showNotification("App not found"); return; }
     openQuantumAppStudio();
     const waitForStudio = setInterval(() => {
         if (studioIframeReady && studioIframe && studioIframe.contentWindow) {
@@ -1242,7 +1242,7 @@ function editPendingApp(appId) {
                 htmlCode: app.htmlCode || '',
                 serverUrl: app.serverUrl || ''
             }, '*');
-            showNotification(`Editando "${app.title}" en el Studio.`);
+            showNotification(`Editing "${app.title}" in Studio.`);
         }
     }, 500);
     setTimeout(() => clearInterval(waitForStudio), 10000);
@@ -1257,33 +1257,33 @@ function publishPendingApp(appId) {
     delete appToPublish.createdBy;
     const published = getPublishedApps();
     if(published.find(p => p.id === appToPublish.id)) {
-        showNotification("⚠️ Ya existe una app con este ID publicada");
+        showNotification("⚠️ An app with this ID already exists published");
         return;
     }
     published.push(appToPublish);
     savePublishedApps(published);
     pending.splice(index,1);
     savePendingApps(pending);
-    showNotification(`✅ App "${appToPublish.title}" publicada`);
+    showNotification(`✅ App "${appToPublish.title}" published`);
     renderPendingList();
     renderTagFilters();
     renderPublishedApps();
 }
 function rejectPendingApp(appId) {
-    if(!confirm("Eliminar esta app pendiente?")) return;
+    if(!confirm("Delete this pending app?")) return;
     let pending = getPendingApps();
     pending = pending.filter(p => p.id !== appId);
     savePendingApps(pending);
-    showNotification("App rechazada");
+    showNotification("App rejected");
     renderPendingList();
 }
 function deletePublishedApp(appId) {
-    if(!isFounder) { showNotification("Solo fundador puede eliminar apps publicadas"); return; }
-    if(!confirm(`Eliminar app del repositorio?`)) return;
+    if(!isFounder) { showNotification("Only founder can delete published apps"); return; }
+    if(!confirm(`Delete app from repository?`)) return;
     let published = getPublishedApps();
     published = published.filter(p => p.id !== appId);
     savePublishedApps(published);
-    showNotification("App eliminada");
+    showNotification("App deleted");
     renderTagFilters();
     renderPublishedApps();
 }
@@ -1295,11 +1295,11 @@ function showNotification(msg, dur=2800) {
     n._timeout = setTimeout(() => n.classList.remove('show'), dur);
 }
 
-// Inicialización
+// Initialization
 renderTagFilters();
 renderPublishedApps();
 
-// Cerrar modales al hacer clic fuera
+// Close modals on outside click
 document.getElementById('studioModalReal')?.addEventListener('click', (e) => { if(e.target === document.getElementById('studioModalReal')) closeStudioModal(); });
 document.getElementById('pendingModal')?.addEventListener('click', (e) => { if(e.target === document.getElementById('pendingModal')) closePendingModal(); });
 document.getElementById('previewAppModal')?.addEventListener('click', (e) => { if(e.target === document.getElementById('previewAppModal')) closePreviewModal(); });

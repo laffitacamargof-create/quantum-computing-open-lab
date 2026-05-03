@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>QCOL Proyectos · Laboratorio Cuántico</title>
+<title>QCOL Projects · Quantum Lab</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=JetBrains+Mono:wght@400;500&family=Exo+2:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#010608;--s:#071220;--s2:#0c1c30;--b:#0d2a4a;--b2:#1a3a5c;--bl:#0088ff;--bl2:#00ccff;--gr:#00ff88;--gd:#ffd700;--rd:#ff4466;--tx:#ddeeff;--mu:#4a7a9b;--orb:'Orbitron',monospace;--mono:'JetBrains Mono',monospace;--exo:'Exo 2',sans-serif;}
@@ -67,16 +67,16 @@ textarea.fi{resize:vertical;min-height:70px;line-height:1.6;}
 <body>
 <div class="notif" id="notif"></div>
 <div class="admin-bar" id="admin-bar">
-  👑 Modo administrador — Gestiona proyectos del laboratorio
-  <button class="btn btn-pri" style="margin-left:auto;" onclick="openAdd()">+ AGREGAR</button>
+  👑 Admin mode — Manage lab projects
+  <button class="btn btn-pri" style="margin-left:auto;" onclick="openAdd()">+ ADD</button>
 </div>
 <div class="toolbar">
   <div class="search-box">
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="8" stroke="#4a7a9b" stroke-width="2"/><path d="M21 21l-4.35-4.35" stroke="#4a7a9b" stroke-width="2" stroke-linecap="round"/></svg>
-    <input id="search" placeholder="Buscar..." oninput="render()">
+    <input id="search" placeholder="Search..." oninput="render()">
   </div>
   <div class="filter-btns">
-    <button class="fbtn on" onclick="setF('all',this)">Todo</button>
+    <button class="fbtn on" onclick="setF('all',this)">All</button>
     <button class="fbtn" onclick="setF('nb',this)">Notebooks</button>
     <button class="fbtn" onclick="setF('pdf',this)">PDFs</button>
     <button class="fbtn" onclick="setF('video',this)">Videos</button>
@@ -84,54 +84,54 @@ textarea.fi{resize:vertical;min-height:70px;line-height:1.6;}
 </div>
 <div id="content"></div>
 
-<!-- MODAL AGREGAR (solo admins) -->
+<!-- ADD MODAL (admins only) -->
 <div class="modal-ov" id="add-modal">
   <div class="modal">
-    <div class="modal-title">➕ Agregar Proyecto</div>
-    <div class="fg"><label class="fl">TÍTULO</label><input class="fi" id="a-t" placeholder="Nombre del proyecto"></div>
-    <div class="fg"><label class="fl">TIPO</label>
+    <div class="modal-title">➕ Add Project</div>
+    <div class="fg"><label class="fl">TITLE</label><input class="fi" id="a-t" placeholder="Project name"></div>
+    <div class="fg"><label class="fl">TYPE</label>
       <select class="fi" id="a-type">
         <option value="pdf">PDF / LaTeX</option>
         <option value="video">Video</option>
         <option value="nb" class="opt-nb" style="display:none;">Notebook .ipynb</option>
       </select>
     </div>
-    <div class="fg"><label class="fl">ID DEL ARCHIVO (sin extensión, único)</label><input class="fi" id="a-id" placeholder="ej: algoritmo_shor"></div>
-    <div class="fg"><label class="fl">DESCRIPCIÓN</label><textarea class="fi" id="a-desc" placeholder="Breve descripción"></textarea></div>
-    <div class="fg"><label class="fl">TAGS</label><input class="fi" id="a-tags" placeholder="Qiskit · Algoritmos"></div>
+    <div class="fg"><label class="fl">FILE ID (no extension, unique)</label><input class="fi" id="a-id" placeholder="e.g.: shor_algorithm"></div>
+    <div class="fg"><label class="fl">DESCRIPTION</label><textarea class="fi" id="a-desc" placeholder="Brief description"></textarea></div>
+    <div class="fg"><label class="fl">TAGS</label><input class="fi" id="a-tags" placeholder="Qiskit · Algorithms"></div>
     <div class="g2">
-      <div class="fg"><label class="fl">CELDAS / PÁGINAS</label><input class="fi" id="a-size" type="number" value="10"></div>
-      <div class="fg"><label class="fl">TIEMPO (min)</label><input class="fi" id="a-time" type="number" value="15"></div>
+      <div class="fg"><label class="fl">CELLS / PAGES</label><input class="fi" id="a-size" type="number" value="10"></div>
+      <div class="fg"><label class="fl">TIME (min)</label><input class="fi" id="a-time" type="number" value="15"></div>
     </div>
     <div class="btn-row">
-      <button class="btn btn-pri" onclick="addProj()">✅ Guardar</button>
-      <button class="btn-cancel" onclick="closeAdd()">Cancelar</button>
+      <button class="btn btn-pri" onclick="addProj()">✅ Save</button>
+      <button class="btn-cancel" onclick="closeAdd()">Cancel</button>
     </div>
   </div>
 </div>
 
-<!-- MODAL EDITAR (solo founder) -->
+<!-- EDIT MODAL (founders only) -->
 <div class="modal-ov" id="edit-modal">
   <div class="modal">
-    <div class="modal-title">✏️ Editar Proyecto</div>
-    <div class="fg"><label class="fl">TÍTULO</label><input class="fi" id="e-t" placeholder="Título del proyecto"></div>
-    <div class="fg"><label class="fl">TIPO</label>
+    <div class="modal-title">✏️ Edit Project</div>
+    <div class="fg"><label class="fl">TITLE</label><input class="fi" id="e-t" placeholder="Project title"></div>
+    <div class="fg"><label class="fl">TYPE</label>
       <select class="fi" id="e-type">
         <option value="pdf">PDF / LaTeX</option>
         <option value="video">Video</option>
         <option value="nb" class="opt-nb-edit" style="display:none;">Notebook .ipynb</option>
       </select>
     </div>
-    <div class="fg"><label class="fl">ID DEL ARCHIVO (único, no editable)</label><input class="fi" id="e-id" readonly disabled style="opacity:0.7;background:#0a1428;"></div>
-    <div class="fg"><label class="fl">DESCRIPCIÓN</label><textarea class="fi" id="e-desc" placeholder="Descripción"></textarea></div>
+    <div class="fg"><label class="fl">FILE ID (unique, not editable)</label><input class="fi" id="e-id" readonly disabled style="opacity:0.7;background:#0a1428;"></div>
+    <div class="fg"><label class="fl">DESCRIPTION</label><textarea class="fi" id="e-desc" placeholder="Description"></textarea></div>
     <div class="fg"><label class="fl">TAGS</label><input class="fi" id="e-tags" placeholder="tags"></div>
     <div class="g2">
-      <div class="fg"><label class="fl">CELDAS / PÁGINAS</label><input class="fi" id="e-size" type="number"></div>
-      <div class="fg"><label class="fl">TIEMPO (min)</label><input class="fi" id="e-time" type="number"></div>
+      <div class="fg"><label class="fl">CELLS / PAGES</label><input class="fi" id="e-size" type="number"></div>
+      <div class="fg"><label class="fl">TIME (min)</label><input class="fi" id="e-time" type="number"></div>
     </div>
     <div class="btn-row">
-      <button class="btn btn-pri" onclick="updateProj()">💾 Guardar cambios</button>
-      <button class="btn-cancel" onclick="closeEdit()">Cancelar</button>
+      <button class="btn btn-pri" onclick="updateProj()">💾 Save changes</button>
+      <button class="btn-cancel" onclick="closeEdit()">Cancel</button>
     </div>
   </div>
 </div>
@@ -150,7 +150,7 @@ window.addEventListener('message',e=>{
     curUser=d.user;
     isAdmin = (curUser?.role==='admin' || curUser?.role==='founder');
     isFounder = (curUser?.role==='founder');
-    // Mostrar/ocultar opción Notebook en ambos modales según rol
+    // Show/hide Notebook option in both modals based on role
     document.querySelectorAll('.opt-nb').forEach(o => o.style.display = isAdmin ? '' : 'none');
     document.querySelectorAll('.opt-nb-edit').forEach(o => o.style.display = isAdmin ? '' : 'none');
     document.getElementById('admin-bar').classList.toggle('show', isAdmin);
@@ -163,10 +163,10 @@ postCore('QCOL_GET_CONFIG');
 function getP(){return JSON.parse(localStorage.getItem('qcol_projs')||'[]');}
 function saveP(p){localStorage.setItem('qcol_projs',JSON.stringify(p));}
 
-// ==================== FILTROS ====================
+// ==================== FILTERS ====================
 function setF(f,el){filt=f;document.querySelectorAll('.fbtn').forEach(b=>b.classList.remove('on'));el.classList.add('on');render();}
 
-// ==================== RENDER + PERMISOS ====================
+// ==================== RENDER + PERMISSIONS ====================
 function render(){
   const q=document.getElementById('search').value.toLowerCase();
   const all=getP().filter(p=>{
@@ -177,20 +177,20 @@ function render(){
   const c=document.getElementById('content');
   if(all.length===0){
     c.innerHTML=`<div class="empty"><div class="empty-icon">📂</div>
-      <div class="empty-title">${q?'Sin resultados':'Sin proyectos aún'}</div>
-      <div class="empty-desc">${q?'No se encontraron proyectos con "'+q+'"':isAdmin?'Usa el botón + AGREGAR para publicar el primer proyecto.':'El administrador aún no ha publicado proyectos.'}</div>
+      <div class="empty-title">${q?'No results':'No projects yet'}</div>
+      <div class="empty-desc">${q?'No projects found for "'+q+'"':isAdmin?'Use the + ADD button to publish the first project.':'The administrator has not published any projects yet.'}</div>
     </div>`;return;
   }
   c.innerHTML='<div class="grid">'+all.map(p=>{
     const tl=p.type==='nb'?'NOTEBOOK':p.type==='pdf'?'PDF LaTeX':'VIDEO';
     const tc=p.type==='nb'?'tnb':p.type==='pdf'?'tpdf':'tvid';
-    const meta=p.type==='nb'?`<span>⚛ ${p.size||10} celdas</span><span>⏱ ${p.time||10} min</span>`:p.type==='pdf'?`<span>📄 ${p.size||10} pág</span><span>⏱ ${p.time||10} min</span>`:`<span>▶ Video</span><span>⏱ ${p.time||10} min</span>`;
+    const meta=p.type==='nb'?`<span>⚛ ${p.size||10} cells</span><span>⏱ ${p.time||10} min</span>`:p.type==='pdf'?`<span>📄 ${p.size||10} pages</span><span>⏱ ${p.time||10} min</span>`:`<span>▶ Video</span><span>⏱ ${p.time||10} min</span>`;
     
     const canDelete = isFounder;
     const canModify = isFounder;
-    const delBtn = canDelete ? `<button class="btn-del" onclick="delProj('${p.id}')" title="Eliminar permanentemente">🗑</button>` : '';
-    const editBtn = canModify ? `<button class="btn-edit" onclick="editProj('${p.id}')" title="Editar proyecto">✏️</button>` : '';
-    const execText = p.type==='nb'?'▶ EJECUTAR':p.type==='pdf'?'📖 VER':'▶ VER';
+    const delBtn = canDelete ? `<button class="btn-del" onclick="delProj('${p.id}')" title="Delete permanently">🗑</button>` : '';
+    const editBtn = canModify ? `<button class="btn-edit" onclick="editProj('${p.id}')" title="Edit project">✏️</button>` : '';
+    const execText = p.type==='nb'?'▶ RUN':p.type==='pdf'?'📖 VIEW':'▶ VIEW';
     return`<div class="card"><div class="card-hdr"><span class="tbadge ${tc}">${tl}</span><span class="card-tags">${escapeHtml(p.tags||'')}</span></div>
       <div class="card-body"><div class="card-title">${escapeHtml(p.title)}</div><p class="card-desc">${escapeHtml(p.desc||'')}</p>
       <div class="card-meta">${meta}</div>
@@ -200,20 +200,20 @@ function render(){
 
 function escapeHtml(str){if(!str)return '';return str.replace(/[&<>]/g,function(m){if(m==='&')return '&amp;';if(m==='<')return '&lt;';if(m==='>')return '&gt;';return m;});}
 
-// ==================== NUEVA FUNCIÓN execProj (PASO 1) ====================
+// ==================== NEW execProj FUNCTION (STEP 1) ====================
 function execProj(id) {
     const projs = JSON.parse(localStorage.getItem('qcol_projs') || '[]');
     const p = projs.find(x => x.id === id);
-    if (!p) { notify('Proyecto no encontrado'); return; }
+    if (!p) { notify('Project not found'); return; }
     
     if (p.type === 'nb') {
-        // Preparar el notebook — asegurar que tenga estructura válida
+        // Prepare the notebook — ensure it has a valid structure
         const nb = {
-            title:  p.title  || p.name || 'Sin título',
-            name:   p.name   || p.title || 'Sin título',
+            title:  p.title  || p.name || 'Untitled',
+            name:   p.name   || p.title || 'Untitled',
             desc:   p.desc   || '',
             cells:  (p.cells && p.cells.length > 0) ? p.cells : [
-                // Si no tiene celdas, crear una de bienvenida
+                // If no cells, create a welcome cell
                 {
                     id: 'c'+Date.now(),
                     type: 'markdown',
@@ -224,14 +224,14 @@ ${p.desc||''}`,
                 }
             ]
         };
-        // Navegar al Quantum Notebook primero, luego enviar el mensaje
-        // El core debe enrutar este mensaje al iframe del Quantum Notebook
+        // Navigate to Quantum Notebook first, then send the message
+        // The core must route this message to the Quantum Notebook iframe
         window.parent.postMessage({
             type: 'QCOL_OPEN_NB_EXPOSITION',
             nb: nb,
             expositionMode: true
         }, '*');
-        notify('👁 Abriendo en modo exposición...');
+        notify('👁 Opening in exposition mode...');
     } else if (p.type === 'pdf') {
         const gh = cfg && cfg.ghUser ? cfg.ghUser : 'laffitacamargof-create';
         const repo = cfg && cfg.ghRepo ? cfg.ghRepo : 'quantum-computing-open-lab';
@@ -239,25 +239,25 @@ ${p.desc||''}`,
     } else if (p.type === 'video') {
         window.open(p.url || '#', '_blank');
     } else {
-        notify('Tipo de proyecto no reconocido: ' + p.type);
+        notify('Unrecognized project type: ' + p.type);
     }
 }
 
-// ==================== DELETE (solo founder) ====================
+// ==================== DELETE (founder only) ====================
 function delProj(id){
-  if(!isFounder){ notify('❌ Solo el founder puede eliminar proyectos'); return; }
-  if(!confirm('⚠️ Eliminar proyecto permanentemente?'))return;
+  if(!isFounder){ notify('❌ Only the founder can delete projects'); return; }
+  if(!confirm('⚠️ Permanently delete project?'))return;
   const newProjs=getP().filter(x=>x.id!==id);
   saveP(newProjs);
-  notify('🗑 Proyecto eliminado');
+  notify('🗑 Project deleted');
   render();
 }
 
-// ==================== AGREGAR (solo admins) ====================
-function openAdd(){ if(!isAdmin){ notify('❌ Solo administradores pueden agregar proyectos'); return; } document.getElementById('add-modal').classList.add('open'); }
+// ==================== ADD (admins only) ====================
+function openAdd(){ if(!isAdmin){ notify('❌ Only administrators can add projects'); return; } document.getElementById('add-modal').classList.add('open'); }
 function closeAdd(){ document.getElementById('add-modal').classList.remove('open'); }
 function addProj(){
-  if(!isAdmin){ notify('❌ Solo administradores pueden agregar proyectos'); return; }
+  if(!isAdmin){ notify('❌ Only administrators can add projects'); return; }
   const t=document.getElementById('a-t').value.trim();
   let id=document.getElementById('a-id').value.trim().replace(/\s/g,'_').toLowerCase();
   const type=document.getElementById('a-type').value;
@@ -265,15 +265,15 @@ function addProj(){
   const tags=document.getElementById('a-tags').value.trim();
   const size=parseInt(document.getElementById('a-size').value)||10;
   const time=parseInt(document.getElementById('a-time').value)||15;
-  if(!t||!id){notify('Título e ID son obligatorios');return;}
-  const all=getP(); if(all.find(p=>p.id===id)){notify('⚠️ ID ya existe, elige otro');return;}
-  // para videos, si no se proporciona url, se asigna un placeholder
+  if(!t||!id){notify('Title and ID are required');return;}
+  const all=getP(); if(all.find(p=>p.id===id)){notify('⚠️ ID already exists, choose another');return;}
+  // for videos, if no url is provided, assign a placeholder
   let url = '';
   if(type==='video') url = `#video-${id}`;
   all.push({id,title:t,type,desc,tags,size,time,url, added:new Date().toLocaleDateString()});
   saveP(all);
   closeAdd();
-  notify(`✅ Proyecto "${t}" agregado`);
+  notify(`✅ Project "${t}" added`);
   render();
   document.getElementById('a-t').value='';
   document.getElementById('a-id').value='';
@@ -284,11 +284,11 @@ function addProj(){
   document.getElementById('a-type').value='pdf';
 }
 
-// ==================== EDITAR (solo founder) ====================
+// ==================== EDIT (founder only) ====================
 function editProj(id){
-  if(!isFounder){ notify('❌ Solo el founder puede editar proyectos'); return; }
+  if(!isFounder){ notify('❌ Only the founder can edit projects'); return; }
   const proj=getP().find(p=>p.id===id);
-  if(!proj){ notify('Proyecto no encontrado'); return; }
+  if(!proj){ notify('Project not found'); return; }
   editingProjId=id;
   document.getElementById('e-t').value=proj.title;
   document.getElementById('e-type').value=proj.type;
@@ -301,30 +301,30 @@ function editProj(id){
 }
 function closeEdit(){ document.getElementById('edit-modal').classList.remove('open'); editingProjId=null; }
 function updateProj(){
-  if(!isFounder){ notify('Acción denegada: solo founder'); closeEdit(); return; }
-  if(!editingProjId){ notify('Error interno'); closeEdit(); return; }
+  if(!isFounder){ notify('Action denied: founder only'); closeEdit(); return; }
+  if(!editingProjId){ notify('Internal error'); closeEdit(); return; }
   const newTitle=document.getElementById('e-t').value.trim();
   const newType=document.getElementById('e-type').value;
   const newDesc=document.getElementById('e-desc').value.trim();
   const newTags=document.getElementById('e-tags').value.trim();
   const newSize=parseInt(document.getElementById('e-size').value)||10;
   const newTime=parseInt(document.getElementById('e-time').value)||15;
-  if(!newTitle){ notify('El título no puede estar vacío'); return; }
+  if(!newTitle){ notify('Title cannot be empty'); return; }
   let projects=getP();
   const index=projects.findIndex(p=>p.id===editingProjId);
-  if(index===-1){ notify('Proyecto no existe'); closeEdit(); return; }
+  if(index===-1){ notify('Project does not exist'); closeEdit(); return; }
   projects[index]={...projects[index], title:newTitle, type:newType, desc:newDesc, tags:newTags, size:newSize, time:newTime};
   saveP(projects);
-  notify('✏️ Proyecto actualizado');
+  notify('✏️ Project updated');
   closeEdit();
   render();
 }
 
-// ==================== EVENTOS CIERRE MODALES ====================
+// ==================== MODAL CLOSE EVENTS ====================
 document.getElementById('add-modal').addEventListener('click',e=>{if(e.target===document.getElementById('add-modal'))closeAdd();});
 document.getElementById('edit-modal').addEventListener('click',e=>{if(e.target===document.getElementById('edit-modal'))closeEdit();});
 
-// ==================== Sincronización inicial ====================
+// ==================== Initial sync ====================
 function syncNotebookOptionDelayed(){
   const adminState=isAdmin;
   document.querySelectorAll('.opt-nb').forEach(o => o.style.display = adminState ? '' : 'none');

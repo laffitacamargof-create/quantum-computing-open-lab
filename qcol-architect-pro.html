@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -98,14 +98,14 @@ body{display:flex;flex-direction:column;overflow:hidden;}
 .nb-scroll::-webkit-scrollbar{width:5px;}
 .nb-scroll::-webkit-scrollbar-thumb{background:var(--bd2);border-radius:3px;}
 
-/* ── CELDA BASE ── */
+/* ── CELL BASE ── */
 .nb-cell{display:flex;margin:.22rem auto;
   width:min(940px,97%);position:relative;
   border-radius:8px;border:1px solid transparent;transition:border-color .15s,box-shadow .15s;}
 .nb-cell:hover{border-color:rgba(0,255,221,.18);box-shadow:0 2px 12px rgba(0,0,0,.3);}
 .nb-cell.active{border-color:rgba(0,255,221,.45);box-shadow:0 2px 20px rgba(0,255,221,.06);}
 .nb-cell.running{border-color:rgba(0,136,255,.5);box-shadow:0 0 18px rgba(0,136,255,.08);}
-/* Celda Qiskit — borde izquierdo cian */
+/* Qiskit cell — cyan left border */
 .nb-cell.qk-cell{border-left:3px solid rgba(0,255,221,.35);}
 .nb-cell.qk-cell:hover{border-color:rgba(0,255,221,.35);border-left-color:rgba(0,255,221,.6);}
 .nb-cell.qk-cell.active{border-color:rgba(0,255,221,.55);border-left-color:var(--cy);}
@@ -140,7 +140,7 @@ body{display:flex;flex-direction:column;overflow:hidden;}
 .nb-cell.active .cell-code-area{border-color:rgba(0,255,221,.3);}
 .qk-cell .cell-code-area{border-color:rgba(0,255,221,.15);background:#0a1018;}
 .qk-cell.active .cell-code-area{border-color:rgba(0,255,221,.35);}
-/* Línea con error */
+/* Line with error */
 .cell-linenos{width:32px;flex-shrink:0;padding:.55rem 0;
   background:rgba(0,0,0,.25);border-right:1px solid var(--bd3);
   font-family:var(--mono);font-size:.62rem;line-height:1.65;
@@ -154,7 +154,7 @@ body{display:flex;flex-direction:column;overflow:hidden;}
   border-right:2px solid #ff4466;
   border-left:2px solid rgba(255,68,102,.5);
 }
-/* Número de línea integrado */
+/* Integrated line number */
 .cell-code-wrap{display:flex;height:100%;}
 .cell-code-inner{flex:1;position:relative;overflow:hidden;min-height:42px;}
 .cell-syn-layer{position:absolute;inset:0;padding:.55rem .7rem;
@@ -170,14 +170,14 @@ body{display:flex;flex-direction:column;overflow:hidden;}
 .cell-textarea::-webkit-scrollbar{width:4px;height:4px;}
 .cell-textarea::-webkit-scrollbar-thumb{background:var(--bd2);border-radius:2px;}
 
-/* ── OUTPUT — terminal JupyterLab ── */
+/* ── OUTPUT — JupyterLab terminal ── */
 .cell-output-area{margin-top:.28rem;border-radius:6px;overflow:hidden;
   border:1px solid var(--bd3);background:#050810;}
 .out-header{display:flex;align-items:center;gap:.4rem;padding:.25rem .65rem;
   background:rgba(0,0,0,.4);border-bottom:1px solid var(--bd3);font-family:var(--orb);font-size:.4rem;}
 .out-header-ok{color:var(--gr);}
 .out-header-err{color:var(--rd);}
-/* Texto terminal */
+/* Terminal text */
 .out-stdout{padding:.5rem .7rem;font-family:var(--mono);font-size:.67rem;line-height:1.62;
   white-space:pre-wrap;overflow-x:auto;color:#c8e0ff;background:#050810;
   max-height:400px;overflow-y:auto;}
@@ -186,19 +186,19 @@ body{display:flex;flex-direction:column;overflow:hidden;}
 .out-stderr{padding:.5rem .7rem;font-family:var(--mono);font-size:.67rem;line-height:1.62;
   white-space:pre-wrap;color:#ff9999;background:rgba(255,60,60,.04);
   border-top:1px solid rgba(255,68,102,.15);}
-/* Circuito texto — estilo visual mejorado */
+/* Circuit text — enhanced visual style */
 .out-circuit-text{padding:.5rem .7rem;font-family:var(--mono);font-size:.65rem;line-height:1.7;
   white-space:pre;overflow-x:auto;color:var(--cl);background:#040d18;
   border-top:1px solid rgba(0,170,255,.1);}
 .out-circuit-text::-webkit-scrollbar{height:4px;}
 .out-circuit-text::-webkit-scrollbar-thumb{background:var(--bd2);}
-/* Bloch sphere canvas por celda */
+/* Bloch sphere canvas per cell */
 .out-bloch-wrap{padding:.55rem .7rem;background:#04080f;
   border-top:1px solid rgba(0,255,221,.08);display:flex;flex-wrap:wrap;gap:.6rem;align-items:flex-start;}
 .bloch-item{display:flex;flex-direction:column;align-items:center;gap:.25rem;}
 .bloch-item canvas{border-radius:50%;box-shadow:0 0 20px rgba(0,136,255,.15);}
 .bloch-item-lbl{font-family:var(--mono);font-size:.52rem;color:var(--mu);}
-/* Probabilidades */
+/* Probabilities */
 .out-probs{padding:.55rem .7rem;background:#040c18;
   border-top:1px solid rgba(0,136,255,.1);}
 .out-probs-title{font-family:var(--orb);font-size:.42rem;color:var(--mu);
@@ -212,10 +212,10 @@ body{display:flex;flex-direction:column;overflow:hidden;}
   background:linear-gradient(90deg,rgba(0,136,255,.8),rgba(0,255,221,.8));}
 .prob-pct{color:var(--tx2);min-width:40px;text-align:right;font-size:.62rem;}
 .prob-count{color:var(--mu);min-width:45px;text-align:right;font-size:.58rem;}
-/* Imagen matplotlib / gráficas */
+/* Matplotlib image / plots */
 .out-img{display:block;max-width:100%;border-radius:5px;
   margin:.4rem .6rem;box-shadow:0 4px 20px rgba(0,0,0,.5);}
-/* Resultados tipo dict */
+/* Dict-type results */
 .out-dict{padding:.5rem .7rem;font-family:var(--mono);font-size:.66rem;line-height:1.6;
   color:var(--yw);background:#060c10;border-top:1px solid rgba(255,215,0,.08);
   white-space:pre-wrap;}
@@ -275,7 +275,7 @@ body.expo-mode .nb-cell.qk-cell .cell-toolbar .ct-btn:not(.ct-run){display:none!
   display:flex;align-items:center;justify-content:center;transition:all .14s;}
 .ct-btn:hover{border-color:var(--bl2);color:var(--bl2);}
 .ct-btn.danger:hover{border-color:var(--rd);color:var(--rd);}
-/* Botón restaurar celda */
+/* Restore cell button */
 .cell-restore-btn{display:none;position:absolute;bottom:.25rem;right:.4rem;
   padding:.1rem .3rem;background:rgba(255,215,0,.07);
   border:1px solid rgba(255,215,0,.22);border-radius:3px;
@@ -289,10 +289,10 @@ body.expo-mode .nb-cell[data-ctype="code"] .cell-restore-btn{display:block;}
   display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .18s;}
 .add-cell-row:hover{opacity:1;}
 body.expo-mode .add-cell-row{display:none;}
-/* ── EXPO MODE: secbar completamente oculta ── */
+/* ── EXPO MODE: secbar completely hidden ── */
 body.expo-mode #secbar{display:none!important;}
 body.expo-mode #btn-import{display:none!important;}
-/* Solo queda btn-back en topbar, que va a proyectos */
+/* Only btn-back stays in topbar, which goes to projects */
 .add-cell-line{flex:1;height:1px;background:rgba(0,255,221,.15);}
 .add-cell-btns{display:flex;gap:.2rem;padding:0 .4rem;}
 .add-btn{padding:.09rem .36rem;background:var(--bg);border:1px solid rgba(0,255,221,.25);
@@ -306,7 +306,7 @@ body.expo-mode .nb-bottom{display:none;}
   transition:all .18s;text-align:center;}
 .nb-add-big:hover{background:rgba(0,255,221,.05);border-color:rgba(0,255,221,.45);color:var(--cy);}
 
-/* ── GESTIONAR ── */
+/* ── MANAGE ── */
 #view-manage{display:none;flex:1;flex-direction:column;overflow:hidden;}
 .manage-wrap{display:flex;flex-direction:column;height:100%;overflow:hidden;}
 .manage-bar{display:flex;align-items:center;gap:.4rem;padding:.5rem .8rem;
@@ -379,7 +379,7 @@ textarea.fi{resize:vertical;min-height:58px;line-height:1.5;}
   border:1px solid var(--bd2);border-radius:6px;color:var(--mu);
   font-family:var(--orb);font-size:.5rem;cursor:pointer;}
 
-/* ── CELDA CIRCUITO VISUAL ── */
+/* ── VISUAL CIRCUIT CELL ── */
 .nb-cell.circ-cell{border-left:3px solid rgba(0,200,100,.35);}
 .nb-cell.circ-cell:hover{border-color:rgba(0,200,100,.35);border-left-color:rgba(0,200,100,.6);}
 .nb-cell.circ-cell.active{border-color:rgba(0,200,100,.55);border-left-color:#00ff88;}
@@ -404,7 +404,7 @@ textarea.fi{resize:vertical;min-height:58px;line-height:1.5;}
   cursor:pointer;}
 .circ-empty-hint:hover{color:#00ff88;}
 
-/* ── SYNTAX COLORS — usando <s> para evitar conflictos con escH ── */
+/* ── SYNTAX COLORS — using <s> to avoid conflicts with escH ── */
 s{font-style:normal;text-decoration:none;}
 s.kw{color:var(--kw);font-weight:600;}
 s.fn{color:var(--fn);}
@@ -435,17 +435,17 @@ s.blt{color:#ffb86c;}
 <div class="access-denied" id="access-denied" style="display:none!important;"></div>
 
 <div class="topbar" id="topbar" style="display:none;">
-  <button class="btn-nav-back" id="btn-back" onclick="goBack()">← ATRÁS</button>
+  <button class="btn-nav-back" id="btn-back" onclick="goBack()">← BACK</button>
   <div class="tb-sep"></div>
   <div class="tb-logo">
     <span class="tb-q">Q</span><span style="font-family:var(--orb);font-size:.68rem;font-weight:900;color:var(--bl2);">COL</span>
     <span class="tb-pro">NOTEBOOK</span>
   </div>
   <div class="tb-sep"></div>
-  <input class="nb-name-inp" id="nb-name-inp" placeholder="Sin título" value="Nuevo Notebook">
-  <span id="expo-badge">👁 EXPOSICIÓN</span>
+  <input class="nb-name-inp" id="nb-name-inp" placeholder="Untitled" value="New Notebook">
+  <span id="expo-badge">👁 EXPOSITION</span>
   <div class="tb-right">
-    <div class="eng-pill" id="eng-badge">● SIN COMPILADOR</div>
+    <div class="eng-pill" id="eng-badge">● NO COMPILER</div>
     <div class="admin-pill" id="admin-pill" style="display:none;">ADMIN+</div>
     <div class="user-pill" id="user-pill">—</div>
   </div>
@@ -453,19 +453,19 @@ s.blt{color:#ffb86c;}
 
 <div class="secbar" id="secbar" style="display:none;">
   <button class="stab on" id="stab-1" onclick="setView('notebook')">📝 NOTEBOOK</button>
-  <button class="stab" id="stab-2" onclick="setView('manage')">📂 MIS NOTEBOOKS</button>
+  <button class="stab" id="stab-2" onclick="setView('manage')">📂 MY NOTEBOOKS</button>
   <div class="secbar-right">
-    <button class="tbtn" id="btn-add-md" onclick="addCellAt(-1,'markdown')">✦ Texto</button>
-    <button class="tbtn" id="btn-add-circ" onclick="addCellAt(-1,'circuit')" style="color:#00ff88;border-color:rgba(0,200,100,.25);">⚛ Circuito</button>
-    <button class="tbtn" id="btn-import" onclick="importNb()">📂 Abrir</button>
+    <button class="tbtn" id="btn-add-md" onclick="addCellAt(-1,'markdown')">✦ Text</button>
+    <button class="tbtn" id="btn-add-circ" onclick="addCellAt(-1,'circuit')" style="color:#00ff88;border-color:rgba(0,200,100,.25);">⚛ Circuit</button>
+    <button class="tbtn" id="btn-import" onclick="importNb()">📂 Open</button>
     <input type="file" id="import-file" style="display:none;" accept=".ipynb" onchange="handleImport(event)">
     <button class="tbtn" id="btn-download" onclick="downloadNb()">📥 .ipynb</button>
-    <button class="tbtn" id="btn-save" onclick="saveCurrentNb(true)">💾 GUARDAR</button>
-    <button class="tbtn pub" id="btn-publish" onclick="showPublish()">📤 PUBLICAR</button>
-    <button class="tbtn rst" id="btn-restore-all" style="display:none;" onclick="restoreAllCells()">↺ RESTAURAR TODO</button>
+    <button class="tbtn" id="btn-save" onclick="saveCurrentNb(true)">💾 SAVE</button>
+    <button class="tbtn pub" id="btn-publish" onclick="showPublish()">📤 PUBLISH</button>
+    <button class="tbtn rst" id="btn-restore-all" style="display:none;" onclick="restoreAllCells()">↺ RESTORE ALL</button>
     <div style="width:1px;height:14px;background:rgba(255,255,255,.07);margin:0 .05rem;"></div>
-    <button class="tbtn run" onclick="runCurCell()" id="btn-run-cur">▶ EJECUTAR</button>
-    <button class="tbtn run-all" onclick="runAll()" id="btn-run-all">▶▶ TODO</button>
+    <button class="tbtn run" onclick="runCurCell()" id="btn-run-cur">▶ RUN</button>
+    <button class="tbtn run-all" onclick="runAll()" id="btn-run-all">▶▶ ALL</button>
   </div>
 </div>
 
@@ -473,17 +473,17 @@ s.blt{color:#ffb86c;}
   <div id="view-notebook" style="display:flex;">
     <div class="nb-scroll" id="nb-scroll">
       <div class="nb-bottom" id="nb-bottom-btns">
-        <button class="nb-add-big" onclick="addCellAt(-1,'markdown')">✦ Texto / LaTeX</button>
-        <button class="nb-add-big" onclick="addCellAt(-1,'circuit')" style="border-color:rgba(0,200,100,.2);color:rgba(0,200,100,.5);">⚛ Circuito Visual</button>
+        <button class="nb-add-big" onclick="addCellAt(-1,'markdown')">✦ Text / LaTeX</button>
+        <button class="nb-add-big" onclick="addCellAt(-1,'circuit')" style="border-color:rgba(0,200,100,.2);color:rgba(0,200,100,.5);">⚛ Visual Circuit</button>
       </div>
     </div>
   </div>
   <div id="view-manage">
     <div class="manage-wrap">
       <div class="manage-bar">
-        <div class="manage-title-lbl">📂 MIS NOTEBOOKS</div>
+        <div class="manage-title-lbl">📂 MY NOTEBOOKS</div>
         <button class="tbtn" style="margin-left:auto;" onclick="refreshNbs()">🔄</button>
-        <button class="tbtn pub" onclick="newNotebook();setView('notebook')">＋ NUEVO</button>
+        <button class="tbtn pub" onclick="newNotebook();setView('notebook')">＋ NEW</button>
       </div>
       <div class="nb-grid" id="nb-grid"></div>
     </div>
@@ -492,10 +492,10 @@ s.blt{color:#ffb86c;}
 
 <div class="statusbar" id="statusbar" style="display:none;">
   <div class="sb-dot sb-idle" id="sb-dot"></div>
-  <span id="sb-txt">Listo</span>
+  <span id="sb-txt">Ready</span>
   <span>Qiskit · Python</span>
   <div class="sb-right">
-    <span id="sb-cells-info">0 celdas</span>
+    <span id="sb-cells-info">0 cells</span>
     <span id="sb-save-status">─</span>
     <span id="sb-cur">Ln 1, Col 1</span>
   </div>
@@ -503,16 +503,16 @@ s.blt{color:#ffb86c;}
 
 <div class="modal-ov" id="pub-modal">
   <div class="modal">
-    <div class="modal-title">📤 Publicar Notebook</div>
-    <div class="fg"><label class="fl">TÍTULO</label>
-      <input class="fi" id="pub-title" placeholder="Nombre"></div>
-    <div class="fg"><label class="fl">DESCRIPCIÓN</label>
-      <textarea class="fi" id="pub-desc" placeholder="Descripción..."></textarea></div>
+    <div class="modal-title">📤 Publish Notebook</div>
+    <div class="fg"><label class="fl">TITLE</label>
+      <input class="fi" id="pub-title" placeholder="Name"></div>
+    <div class="fg"><label class="fl">DESCRIPTION</label>
+      <textarea class="fi" id="pub-desc" placeholder="Description..."></textarea></div>
     <div class="fg"><label class="fl">TAGS</label>
       <input class="fi" id="pub-tags" placeholder="Qiskit · LaTeX"></div>
     <div class="btn-row">
-      <button class="btn-pri" onclick="publishNb()">📤 Publicar</button>
-      <button class="btn-cancel" onclick="closePublish()">Cancelar</button>
+      <button class="btn-pri" onclick="publishNb()">📤 Publish</button>
+      <button class="btn-cancel" onclick="closePublish()">Cancel</button>
     </div>
   </div>
 </div>
@@ -521,7 +521,7 @@ s.blt{color:#ffb86c;}
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" async></script>
 <script>
 // ═══════════════════════════════════════════════════════════════
-// QCOL QUANTUM NOTEBOOK v5.0 — Output completo + Expo mode
+// QCOL QUANTUM NOTEBOOK v5.0 — Full Output + Expo mode
 // ═══════════════════════════════════════════════════════════════
 let curUser=null,engineURL='',engineOK=false,running=false;
 let curView='notebook',cells=[],curCellId=null,execCounter=0;
@@ -534,10 +534,10 @@ function notify(msg,ms=2800){const el=document.getElementById('notif');el.textCo
 function escH(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function genId(){return 'c'+Date.now()+Math.random().toString(36).slice(2,6);}
 
-// ── NAVEGACIÓN ────────────────────────────────────────────────
+// ── NAVIGATION ────────────────────────────────────────────────
 function goBack(){
   if(_expositionMode){
-    // Quitar modo exposición → volver al repositorio de proyectos
+    // Exit exposition mode → return to projects repository
     deactivateExpositionMode();
     postCore('QCOL_NAV',{screen:'projects'});
   } else {
@@ -545,64 +545,64 @@ function goBack(){
   }
 }
 
-// ── MODO EXPOSICIÓN ───────────────────────────────────────────
+// ── EXPOSITION MODE ───────────────────────────────────────────
 function activateExpositionMode(){
   _expositionMode=true;
   _originalCells=JSON.parse(JSON.stringify(cells));
   document.body.classList.add('expo-mode');
-  // Ocultar expo-badge ya que la secbar entera se oculta
+  // Hide expo-badge since the entire secbar is hidden
   document.getElementById('expo-badge').style.display='inline-flex';
-  // Ocultar secbar completa — en expo solo se usa el botón ← ATRÁS del topbar
+  // Hide complete secbar — in expo only the ← BACK button in topbar is used
   const secbar=document.getElementById('secbar');
   if(secbar)secbar.style.display='none';
-  // Ocultar botones de edición en expo — dejar solo los de circuito
+  // Hide editing buttons in expo — keep only circuit ones
   ['btn-add-md','btn-import','btn-download','btn-save','btn-publish','stab-2'].forEach(id=>{
     const el=document.getElementById(id);if(el)el.style.display='none';
   });
-  // btn-add-circ se mantiene visible: las celdas circuit son editables en expo
+  // btn-add-circ stays visible: circuit cells are editable in expo
   const rst=document.getElementById('btn-restore-all');if(rst)rst.style.display='';
   const ni=document.getElementById('nb-name-inp');if(ni){ni.readOnly=true;ni.style.opacity='.6';}
-  // Cambiar texto del botón atrás para indicar que va a Proyectos
+  // Change back button text to indicate it goes to Projects
   const btnBack=document.getElementById('btn-back');
-  if(btnBack){btnBack.textContent='← PROYECTOS';btnBack.title='Volver a Proyectos';}
-  // Renderizar con _expositionMode=true para que buildCellEl genere HTML correcto
+  if(btnBack){btnBack.textContent='← PROJECTS';btnBack.title='Back to Projects';}
+  // Render with _expositionMode=true so buildCellEl generates correct HTML
   renderCells();
-  notify('👁 Modo exposición — lee el material y experimenta con el código');
+  notify('👁 Exposition mode — read the material and experiment with the code');
 }
 function deactivateExpositionMode(){
   _expositionMode=false;_originalCells=null;
   document.body.classList.remove('expo-mode');
   document.getElementById('expo-badge').style.display='none';
-  // Restaurar secbar
+  // Restore secbar
   const secbar=document.getElementById('secbar');
   if(secbar)secbar.style.display='flex';
-  // Restaurar botones
+  // Restore buttons
   ['btn-add-md','btn-add-circ','btn-import',
    'btn-download','btn-save','btn-publish','stab-2'].forEach(id=>{
     const el=document.getElementById(id);if(el)el.style.display='';
   });
   const rst=document.getElementById('btn-restore-all');if(rst)rst.style.display='none';
   const ni=document.getElementById('nb-name-inp');if(ni){ni.readOnly=false;ni.style.opacity='';}
-  // Restaurar texto del botón atrás
+  // Restore back button text
   const btnBack=document.getElementById('btn-back');
-  if(btnBack){btnBack.textContent='← ATRÁS';btnBack.title='';}
+  if(btnBack){btnBack.textContent='← BACK';btnBack.title='';}
   renderCells();
 }
 function restoreAllCells(){
-  if(!_originalCells){notify('Sin datos originales');return;}
-  if(!confirm('¿Restaurar todo el código a los valores originales?'))return;
+  if(!_originalCells){notify('No original data');return;}
+  if(!confirm('Restore all code to original values?'))return;
   cells=JSON.parse(JSON.stringify(_originalCells)).map(c=>({...c,output:'',exec_count:null,mdEdit:false}));
-  execCounter=0;renderCells();notify('↺ Código restaurado');
+  execCounter=0;renderCells();notify('↺ Code restored');
 }
 function restoreCell(id){
   if(!_originalCells)return;
   const idx=cells.findIndex(c=>c.id===id);if(idx<0)return;
   const orig=_originalCells[idx];if(!orig)return;
   cells[idx]={...orig,id:cells[idx].id,output:'',exec_count:null,mdEdit:false,errorLine:null};
-  renderCells();notify('↺ Celda restaurada');
+  renderCells();notify('↺ Cell restored');
 }
 
-// ── MOTOR ─────────────────────────────────────────────────────
+// ── ENGINE ─────────────────────────────────────────────────────
 async function checkEngine(){
   if(!engineURL)return;
   const badge=document.getElementById('eng-badge');
@@ -612,13 +612,13 @@ async function checkEngine(){
       body:JSON.stringify({data:[''],fn_index:1}),
       signal:AbortSignal.timeout(12000)
     });
-    if(r.ok){const j=await r.json();if(j&&j.data){engineOK=true;badge.textContent='● MOTOR ACTIVO';badge.className='eng-pill on';}else throw new Error();}
+    if(r.ok){const j=await r.json();if(j&&j.data){engineOK=true;badge.textContent='● ENGINE ACTIVE';badge.className='eng-pill on';}else throw new Error();}
     else throw new Error('HTTP '+r.status);
-  }catch(e){engineOK=false;badge.textContent='● SIN COMPILADOR';badge.className='eng-pill';}
+  }catch(e){engineOK=false;badge.textContent='● NO COMPILER';badge.className='eng-pill';}
 }
-function setEngineURL(url){engineURL=url;localStorage.setItem('qcol_colab_url',url);checkEngine();notify('🌐 Motor actualizado');}
+function setEngineURL(url){engineURL=url;localStorage.setItem('qcol_colab_url',url);checkEngine();notify('🌐 Engine updated');}
 
-// ── PREAMBLE QISKIT ───────────────────────────────────────────
+// ── QISKIT PREAMBLE ───────────────────────────────────────────
 const QISKIT_PREAMBLE=`from qiskit import QuantumCircuit, QuantumRegister, ClassicalRegister, transpile
 from qiskit.quantum_info import Statevector, DensityMatrix, Operator
 from qiskit.visualization import plot_histogram, plot_bloch_multivector, plot_state_city
@@ -634,52 +634,52 @@ import matplotlib.pyplot as plt
 import io, base64
 `;
 
-// ── PARSEAR RESPUESTA DEL SERVIDOR ────────────────────────────
+// ── PARSE SERVER RESPONSE ────────────────────────────────────
 function parseServerResponse(raw){
-  // raw.data[0] puede ser string JSON o dict ya parseado
+  // raw.data[0] can be a JSON string or already parsed dict
   let d=null;
   try{
     const item=raw?.data?.[0];
     d=(typeof item==='string')?JSON.parse(item):item;
-  }catch(e){d={success:false,output:'Error al parsear respuesta del servidor'};}
-  if(!d)d={success:false,output:'Respuesta vacía del servidor'};
+  }catch(e){d={success:false,output:'Error parsing server response'};}
+  if(!d)d={success:false,output:'Empty server response'};
   return d;
 }
 
-// ── RENDER DE OUTPUT COMPLETO ─────────────────────────────────
+// ── FULL OUTPUT RENDER ─────────────────────────────────────
 function renderOutput(outArea, d, elapsed, cellId){
   if(!outArea)return;
   const t0=elapsed?`${elapsed}s`:null;
   let html='';
 
-  // Determinar si la celda es de tipo 'circuit' (ya tiene diagrama visual — no repetir)
+  // Determine if the cell is of type 'circuit' (already has visual diagram — don't repeat)
   const cell = cellId ? cells.find(c=>c.id===cellId) : null;
   const isCellCircuit = cell && cell.type === 'circuit';
 
-  // Extraer shots REALES del código de la celda (no asumir 1024)
-  // Busca: shots=N en el código fuente (funciona para circuit, qiskit y code)
+  // Extract REAL shots from cell code (not assuming 1024)
+  // Looks for: shots=N in the source code (works for circuit, qiskit and code)
   function extractShots(sourceCode){
     if(!sourceCode) return null;
-    // Patrones: shots=512, shots = 512, shots=1_024, shots=2048
+    // Patterns: shots=512, shots = 512, shots=1_024, shots=2048
     const m = sourceCode.match(/shots\s*=\s*([\d_]+)/);
     if(m) return parseInt(m[1].replace(/_/g,''));
     return null;
   }
-  // Código fuente relevante (hiddenCode para circuit, code para las demás)
+  // Relevant source code (hiddenCode for circuit, code for others)
   const srcCode = cell ? (cell.hiddenCode || cell.code || '') : '';
-  // También buscar en el output text por si el servidor reporta shots
+  // Also search in output text in case server reports shots
   const shotsFromServer = d.bloch?.shots || d.shots || null;
   const shotsFromCode   = extractShots(srcCode);
-  // Prioridad: servidor > código > 1024
+  // Priority: server > code > 1024
   const realShots = shotsFromServer || shotsFromCode || 1024;
 
-  // Cabecera
+  // Header
   const isOk=d.success!==false;
   const hdrCls=isOk?'out-header-ok':'out-header-err';
   const hdrIcon=isOk?'✅':'❌';
-  html+=`<div class="out-header ${hdrCls}">${hdrIcon} ${isOk?'Ejecutado':'Error'}${t0?' · '+t0:''}</div>`;
+  html+=`<div class="out-header ${hdrCls}">${hdrIcon} ${isOk?'Executed':'Error'}${t0?' · '+t0:''}</div>`;
 
-  // ── STDOUT completo ──
+  // ── Full STDOUT ──
   if(d.output&&d.output.trim()){
     const lines=d.output.split('\n');
     let circuitBlock=[];
@@ -693,8 +693,8 @@ function renderOutput(outArea, d, elapsed, cellId){
         circuitBlock.push(line);
       } else {
         if(inCircuit){
-          // Para celdas circuit: NO mostrar el ASCII del circuito en output
-          // (ya hay un diagrama visual en la celda)
+          // For circuit cells: do NOT show the ASCII circuit in output
+          // (there's already a visual diagram in the cell)
           if(!isCellCircuit) html+=buildCircuitOut(circuitBlock.join('\n'));
           circuitBlock=[];inCircuit=false;
         }
@@ -710,7 +710,7 @@ function renderOutput(outArea, d, elapsed, cellId){
     html+=`<div class="out-stderr">${escH(d.stderr)}</div>`;
   }
 
-  // ── PROBABILIDADES / COUNTS — con shots reales ──
+  // ── PROBABILITIES / COUNTS — with real shots ──
   if(d.bloch&&d.bloch.probabilities){
     html+=buildProbsOut(d.bloch.probabilities, realShots, d.bloch.simulator||'AerSimulator');
     html+=buildHistogramOut(d.bloch.probabilities, realShots);
@@ -719,30 +719,30 @@ function renderOutput(outArea, d, elapsed, cellId){
     html+=buildHistogramOut(d.counts, realShots);
   }
 
-  // ── ESFERA DE BLOCH ──
+  // ── BLOCH SPHERE ──
   if(d.bloch&&d.bloch.probabilities){
     html+=buildBlochOut(d.bloch.probabilities);
   }
 
-  // ── IMAGEN matplotlib ──
+  // ── Matplotlib image ──
   if(d.plot_png){
     html+=`<div style="padding:.3rem .5rem;background:#04080e;border-top:1px solid rgba(0,136,255,.08);">
-      <div style="font-family:var(--orb);font-size:.4rem;color:var(--mu);padding:.2rem 0 .3rem;letter-spacing:.05em;">GRÁFICA MATPLOTLIB</div>
-      <img class="out-img" src="data:image/png;base64,${d.plot_png}" alt="Gráfica">
+      <div style="font-family:var(--orb);font-size:.4rem;color:var(--mu);padding:.2rem 0 .3rem;letter-spacing:.05em;">MATPLOTLIB PLOT</div>
+      <img class="out-img" src="data:image/png;base64,${d.plot_png}" alt="Plot">
     </div>`;
   }
 
-  // ── IMAGEN extra (plot_svg como fallback) ──
+  // ── Extra image (plot_svg as fallback) ──
   if(d.plot_svg){
     html+=`<div style="padding:.3rem .5rem;background:#04080e;border-top:1px solid rgba(0,136,255,.08);">
-      <div style="font-family:var(--orb);font-size:.4rem;color:var(--mu);padding:.2rem 0 .3rem;">DIAGRAMA SVG</div>
+      <div style="font-family:var(--orb);font-size:.4rem;color:var(--mu);padding:.2rem 0 .3rem;">SVG DIAGRAM</div>
       <div style="overflow-x:auto;">${d.plot_svg}</div>
     </div>`;
   }
 
-  // ── ERROR detallado ──
+  // ── Detailed ERROR ──
   if(!isOk&&d.output){
-    // Extraer línea de error
+    // Extract error line
     const lineMatch = d.output.match(/[Ll]ine\s+(\d+)|línea\s+(\d+)/i);
     const errLine = lineMatch ? parseInt(lineMatch[1] || lineMatch[2]) : null;
     if (errLine && cellId) {
@@ -752,12 +752,12 @@ function renderOutput(outArea, d, elapsed, cellId){
     html+=buildErrorOut(d.output);
   }
 
-  outArea.innerHTML=html||'<div class="out-stdout" style="color:var(--mu);">Sin salida</div>';
+  outArea.innerHTML=html||'<div class="out-stdout" style="color:var(--mu);">No output</div>';
 }
 
 function buildTextOut(text){
   if(!text.trim())return'';
-  // Detectar si es dict de resultados como {'00': 512, '11': 512}
+  // Detect if dict of results like {'00': 512, '11': 512}
   if(/^\{['"0-9a-zA-Z_,:\s]+\}$/.test(text.trim())){
     return`<div class="out-dict">${escH(text)}</div>`;
   }
@@ -765,15 +765,15 @@ function buildTextOut(text){
 }
 
 
-// ── RENDERIZAR CIRCUITO DESDE ESTRUCTURA INTERNA DEL ARQUITECTO ──────────
+// ── RENDER CIRCUIT FROM ARCHITECT INTERNAL STRUCTURE ──────────
 // cell.circuitData = { qubits: N, gates: [{id, q, q2?, q3?, def:{bg,sym,code}}, ...] }
-// Replica EXACTAMENTE el sistema de renderizado del Arquitecto Cuántico
+// Replicates EXACTLY the Quantum Architect render system
 function buildCircuitFromData(data){
   if(!data || !data.gates) return '';
   const {qubits: nQ, gates} = data;
   const ROW_HEIGHT=56, step=52;
 
-  // Calcular profundidad (idéntico al arquitecto)
+  // Calculate depth (identical to architect)
   const depth = new Array(nQ).fill(0);
   const placed = gates.map(g => {
     let col;
@@ -789,7 +789,7 @@ function buildCircuitFromData(data){
 
   let html=`<div style="position:relative;min-width:${W}px;height:${H}px;">`;
 
-  // Cables + etiquetas
+  // Wires + labels
   for(let q=0;q<nQ;q++){
     html+=`<div style="position:absolute;top:${q*ROW_HEIGHT}px;left:0;right:0;height:${ROW_HEIGHT}px;">
       <div style="position:absolute;left:0;top:50%;transform:translateY(-50%);
@@ -800,7 +800,7 @@ function buildCircuitFromData(data){
     </div>`;
   }
 
-  // Puertas — SVG idéntico al arquitecto
+  // Gates — SVG identical to architect
   placed.forEach(g=>{
     const left=g.col*step+56;
     const clr=g.def?.bg||'#1a4a8a';
@@ -907,21 +907,21 @@ function buildCircuitFromData(data){
   return html;
 }
 
-// ── ABRIR ARCHITECT PARA EDITAR CELDA CIRCUIT ─────────────────
-let _editingCellId = null; // ID de la celda que está siendo editada
+// ── OPEN ARCHITECT TO EDIT CIRCUIT CELL ─────────────────
+let _editingCellId = null; // ID of the cell being edited
 
 function openCircuitEditor(cellId){
   const cell = cells.find(c => c.id === cellId);
   if(!cell) return;
   _editingCellId = cellId;
-  // Enviar al core para que navegue al Arquitecto Cuántico
-  // pasándole el código actual de la celda (si existe)
+  // Send to core to navigate to Quantum Architect
+  // passing the current cell code (if any)
   postCore('QCOL_OPEN_ARCHITECT_EDIT', {
     cellId,
     code:        cell.hiddenCode || '',
     circuitData: cell.circuitData || null
   });
-  notify('⚛ Abriendo editor de circuito...');
+  notify('⚛ Opening circuit editor...');
 }
 
 function buildCircuitOut(text){
@@ -930,7 +930,7 @@ function buildCircuitOut(text){
   const allLines = text.split('\n');
   const wirePat = /^\s*(q_?\d+|q\[\d+\]|qr\[\d+\])\s*:/;
 
-  // ── PASO 1: Separar wire-lines e inter-wire lines ─────────────
+  // ── STEP 1: Separate wire-lines and inter-wire lines ─────────────
   const wireInfo  = [];   // [{qi,idx,label,offset,line}]
   const interInfo = [];   // [{afterQi,idx,line}]
   let curQi = -1;
@@ -946,7 +946,7 @@ function buildCircuitOut(text){
   const nQ = curQi + 1;
 
   if(nQ === 0){
-    // Fallback ASCII coloreado
+    // Fallback colored ASCII
     let col = escH(text);
     col = col.replace(/(q_?\d+|q\[\d+\]|qr\[\d+\])\s*:/g,
       '<s style="color:#bd93f9;font-weight:700;font-style:normal">$1</s>:');
@@ -955,15 +955,15 @@ function buildCircuitOut(text){
     col = col.replace(/─(M)─/g,
       '─<s style="color:#ff9580;font-weight:700;font-style:normal">M</s>─');
     return `<div style="padding:.4rem .55rem;background:#020c18;border-top:1px solid rgba(0,136,255,.1);">
-      <div style="font-family:var(--orb);font-size:.4rem;color:var(--mu);padding:.1rem 0 .3rem;">⚛ DIAGRAMA DEL CIRCUITO</div>
+      <div style="font-family:var(--orb);font-size:.4rem;color:var(--mu);padding:.1rem 0 .3rem;">⚛ CIRCUIT DIAGRAM</div>
       <div class="out-circuit-text">${col}</div>
     </div>`;
   }
 
   const wireLabels = wireInfo.map(wi => wi.label);
 
-  // ── PASO 2: Columnas con │ (conexión vertical confirmada) ─────
-  // Qiskit dibuja │ entre qubits conectados, en la misma columna absoluta
+  // ── STEP 2: Columns with │ (confirmed vertical connection) ─────
+  // Qiskit draws │ between connected qubits, in the same absolute column
   const vertCols = new Set();
   interInfo.forEach(il => {
     [...il.line].forEach((c, col) => {
@@ -971,14 +971,14 @@ function buildCircuitOut(text){
     });
   });
 
-  // ── PASO 3: Tokenizar con posición ABSOLUTA ───────────────────
-  // (columna en la línea completa, incluyendo el label "q_0: ")
+  // ── STEP 3: Tokenize with ABSOLUTE position ───────────────────
+  // (column in the complete line, including the "q_0: " label)
   function tokenizeWire(wi){
     const {line, offset} = wi;
     const content = line.slice(offset);
     const toks = [];
 
-    // Cajas ┤NAME├ — posición absoluta del centro
+    // Boxes ┤NAME├ — absolute center position
     const BOX = /┤\s*((?:[^┤├\n])*?)\s*(?:├|┤)/g;
     let m;
     while((m = BOX.exec(content)) !== null){
@@ -988,19 +988,19 @@ function buildCircuitOut(text){
         absStart:offset+m.index, absEnd:offset+m.index+m[0].length});
     }
 
-    // Símbolos de 1 carácter
+    // 1-character symbols
     const SYM = /(■|█|●)|(⊕)|(╳|×)/g;
     while((m = SYM.exec(content)) !== null){
       const absCol = offset + m.index;
-      // No añadir si está dentro de una caja
+      // Don't add if inside a box
       if(toks.some(t => t.type==='box' && absCol>=t.absStart && absCol<t.absEnd)) continue;
       if(m[1])      toks.push({type:'ctrl', name:'■', col:absCol});
       else if(m[2]) toks.push({type:'tgt',  name:'⊕', col:absCol});
       else if(m[3]) toks.push({type:'swap', name:'╳', col:absCol});
     }
 
-    // X SUELTO (bare X) — target de CX en Qiskit moderno
-    // SOLO si esa columna tiene │ en alguna línea inter-wire (= está conectado)
+    // BAREX (bare X) — CX target in modern Qiskit
+    // ONLY if that column has │ in any inter-wire line (= is connected)
     const BAREX = /(?:─)(X)(?:─)/g;
     while((m = BAREX.exec(content)) !== null){
       const absCol = offset + m.index + 1;
@@ -1009,7 +1009,7 @@ function buildCircuitOut(text){
       }
     }
 
-    // M medidor aislado (─M─)
+    // M isolated measurer (─M─)
     const MEAS = /(?:─)(M)(?:─)/g;
     while((m = MEAS.exec(content)) !== null){
       const absCol = offset + m.index + 1;
@@ -1021,21 +1021,21 @@ function buildCircuitOut(text){
     return toks.sort((a,b) => a.col - b.col);
   }
 
-  // Recopilar todos los tokens
+  // Collect all tokens
   const allToks = [];
   wireInfo.forEach(wi => {
     tokenizeWire(wi).forEach(tok => allToks.push({qi:wi.qi, ...tok}));
   });
   allToks.sort((a,b) => a.col - b.col || a.qi - b.qi);
 
-  // ── PASO 4: AGRUPAR por columna absoluta exacta ───────────────
-  // Tokens de 1 char (■⊕╳X): agrupan por posición EXACTA
-  // Cajas ┤NAME├: agrupan con tolerancia ±3 (ancho variable del nombre)
+  // ── STEP 4: GROUP by exact absolute column ───────────────
+  // 1-char tokens (■⊕╳X): group by EXACT position
+  // Boxes ┤NAME├: group with ±3 tolerance (variable name width)
   const colMap = new Map();
   allToks.forEach(tok => {
     let key = tok.col;
     if(tok.type === 'box'){
-      // Buscar clave existente dentro de ±3
+      // Find existing key within ±3
       let best = null, bestDist = 4;
       for(const k of colMap.keys()){
         const d = Math.abs(k - key);
@@ -1051,7 +1051,7 @@ function buildCircuitOut(text){
   const columns = [...colMap.keys()].sort((a,b)=>a-b)
     .map(k => colMap.get(k).slice().sort((a,b)=>a.qi-b.qi));
 
-  // ── PASO 5: IDENTIFICAR GATES ─────────────────────────────────
+  // ── STEP 5: IDENTIFY GATES ─────────────────────────────────
   const COLORS = {
     H:'#1a5fb4', X:'#c01c28', Y:'#7a3e99', Z:'#1c71d8',
     S:'#c64600', T:'#26a269', SX:'#c01c28', '√X':'#c01c28',
@@ -1089,10 +1089,10 @@ function buildCircuitOut(text){
     const zbqs= box.filter(s=>s.name.toUpperCase()==='Z').map(s=>s.qi);
     const mbqs= box.filter(s=>['M','MEAS'].includes(s.name.toUpperCase())).map(s=>s.qi);
 
-    // ── 1 token → puerta de 1 qubit ──────────────────────────
+    // ── 1 token → 1-qubit gate ──────────────────────────
     if(col.length === 1){ push1q(col[0], ci); return; }
 
-    // ── Múltiples medidores → individuales ───────────────────
+    // ── Multiple measurers → individual ───────────────────
     if((meas.length > 0 || mbqs.length > 0) && cqs.length === 0){
       [...meas, ...box.filter(s=>['M','MEAS'].includes(s.name.toUpperCase()))]
         .forEach(s => gates.push({id:'M',sym:'M',bg:'#6d4c41',glow:'#6d4c41',
@@ -1102,26 +1102,26 @@ function buildCircuitOut(text){
       return;
     }
 
-    // ══ TABLA COMPLETA DE REGLAS (todas las variantes de Qiskit) ═
-    // CX: ■+⊕  (clásico)
+    // ══ COMPLETE RULES TABLE (all Qiskit variants) ═
+    // CX: ■+⊕  (classic)
     if(cqs.length===1 && tqs.length===1 && !sqs.length){
       const [cq,tq]=[cqs[0],tqs[0]];
       gates.push({id:'CX',sym:'CX',bg:'#007070',glow:'#007070',
         q:Math.min(cq,tq),q2:Math.max(cq,tq),ctrlQ:cq,tgtQ:tq,col:ci,type:'2q'}); return;
     }
-    // CX: ■+X suelto  (Qiskit moderno con │)
+    // CX: ■+bare X  (modern Qiskit with │)
     if(cqs.length===1 && xqs.length===1 && !sqs.length && !xbqs.length){
       const [cq,tq]=[cqs[0],xqs[0]];
       gates.push({id:'CX',sym:'CX',bg:'#007070',glow:'#007070',
         q:Math.min(cq,tq),q2:Math.max(cq,tq),ctrlQ:cq,tgtQ:tq,col:ci,type:'2q'}); return;
     }
-    // CX: ■+┤X├  (Qiskit con caja)
+    // CX: ■+┤X├  (Qiskit with box)
     if(cqs.length===1 && xbqs.length===1 && !sqs.length){
       const [cq,tq]=[cqs[0],xbqs[0]];
       gates.push({id:'CX',sym:'CX',bg:'#007070',glow:'#007070',
         q:Math.min(cq,tq),q2:Math.max(cq,tq),ctrlQ:cq,tgtQ:tq,col:ci,type:'2q'}); return;
     }
-    // CCX: ■+■+⊕  o  ■+■+X  o  ■+■+┤X├
+    // CCX: ■+■+⊕  or  ■+■+X  or  ■+■+┤X├
     const allTgtQs = [...new Set([...tqs,...xqs,...xbqs])];
     if(cqs.length===2 && allTgtQs.length>=1){
       const qs=[...cqs,...allTgtQs].sort((a,b)=>a-b);
@@ -1130,7 +1130,7 @@ function buildCircuitOut(text){
         q:qs[0],q2:qs[1],q3:qs[2],
         ctrlQ1:cqs[0],ctrlQ2:cqs[1],tgtQ:tq,col:ci,type:'3q'}); return;
     }
-    // CZ: ■+■  (dos controles exactos)
+    // CZ: ■+■  (two exact controls)
     if(cqs.length===2 && !tqs.length && !sqs.length && !bqs.length && !xqs.length){
       const [cq,tq]=cqs.slice().sort((a,b)=>a-b);
       gates.push({id:'CZ',sym:'CZ',bg:'#00695c',glow:'#00695c',
@@ -1156,13 +1156,13 @@ function buildCircuitOut(text){
         q:qs[0],q2:qs[1],q3:qs[2],
         ctrlQ1:cqs[0],swapQ1:sw1,swapQ2:sw2,col:ci,type:'3q'}); return;
     }
-    // SWAP moderno: ┤X├+┤X├ sin control
+    // Modern SWAP: ┤X├+┤X├ without control
     if(xbqs.length>=2 && !cqs.length){
       const [q1,q2]=xbqs.slice().sort((a,b)=>a-b);
       gates.push({id:'SWAP',sym:'SW',bg:'#1565c0',glow:'#1565c0',
         q:q1,q2,ctrlQ:q1,tgtQ:q2,col:ci,type:'2q'}); return;
     }
-    // CSW moderno: ■+┤X├+┤X├
+    // Modern CSW: ■+┤X├+┤X├
     if(cqs.length===1 && xbqs.length>=2){
       const qs=[...cqs,...xbqs].sort((a,b)=>a-b);
       const [sw1,sw2]=xbqs.slice().sort((a,b)=>a-b);
@@ -1170,7 +1170,7 @@ function buildCircuitOut(text){
         q:qs[0],q2:qs[1],q3:qs[2],
         ctrlQ1:cqs[0],swapQ1:sw1,swapQ2:sw2,col:ci,type:'3q'}); return;
     }
-    // Controlada genérica: ■ + caja con nombre
+    // Generic controlled: ■ + box with name
     if(cqs.length===1 && bqs.length>=1){
       const nonX=box.filter(s=>s.name.toUpperCase()!=='X');
       if(nonX.length>=1){
@@ -1183,11 +1183,11 @@ function buildCircuitOut(text){
           col:ci,type:'2q',isCZ:isZ}); return;
       }
     }
-    // Resto → puertas individuales
+    // Rest → individual gates
     col.forEach(s => push1q(s, ci));
   });
 
-  // ── PASO 6: DEPTH — idéntico al arquitecto cuántico ──────────
+  // ── STEP 6: DEPTH — identical to quantum architect ──────────
   const depth = new Array(nQ).fill(0);
   const placed = gates.map(g => {
     let col;
@@ -1203,7 +1203,7 @@ function buildCircuitOut(text){
     return {...g, col};
   });
 
-  // ── PASO 7: RENDER — HTML+SVG idéntico al arquitecto ─────────
+  // ── STEP 7: RENDER — HTML+SVG identical to architect ─────────
   const ROW_HEIGHT=56, step=52;
   const totalCols=Math.max(...depth, 1);
   const wireWidth=totalCols*step+90;
@@ -1212,7 +1212,7 @@ function buildCircuitOut(text){
 
   let html=`<div style="position:relative;min-width:${wireWidth}px;height:${totalH}px;">`;
 
-  // Cables + etiquetas
+  // Wires + labels
   for(let q=0; q<nQ; q++){
     html+=`<div style="position:absolute;top:${q*ROW_HEIGHT}px;left:0;right:0;height:${ROW_HEIGHT}px;">
       <div style="position:absolute;left:0;top:50%;transform:translateY(-50%);
@@ -1384,7 +1384,7 @@ function buildCircuitOut(text){
 
   html+='</div>';
   return `<div style="padding:.45rem .55rem .7rem;background:#020c18;border-top:1px solid rgba(0,136,255,.1);overflow-x:auto;">
-    <div style="font-family:var(--orb);font-size:.4rem;color:var(--mu);padding:.1rem 0 .42rem;letter-spacing:.06em;">⚛ CIRCUITO CUÁNTICO</div>
+    <div style="font-family:var(--orb);font-size:.4rem;color:var(--mu);padding:.1rem 0 .42rem;letter-spacing:.06em;">⚛ QUANTUM CIRCUIT</div>
     ${html}
   </div>`;
 }
@@ -1395,13 +1395,13 @@ function buildProbsOut(probs,shots,sim){
   if(!entries.length)return'';
   const total=entries.reduce((s,[,v])=>s+v,0);
 
-  // Detectar si los valores son counts directos o probabilidades
-  // Si la suma total ≈ shots → son counts directos
-  // Si la suma total ≈ 1.0  → son probabilidades
+  // Detect if values are direct counts or probabilities
+  // If total sum ≈ shots → direct counts
+  // If total sum ≈ 1.0  → probabilities
   const sumV = entries.reduce((s,[,v])=>s+v,0);
-  const areCounts = sumV > 1.5; // counts directos si suma > 1.5
+  const areCounts = sumV > 1.5; // direct counts if sum > 1.5
 
-  // Calcular el total real de shots desde los datos (más preciso que el parámetro)
+  // Calculate real shot total from data (more accurate than parameter)
   const totalCounts = areCounts ? sumV : shots;
   const displayShots = areCounts ? Math.round(sumV) : shots;
 
@@ -1418,21 +1418,21 @@ function buildProbsOut(probs,shots,sim){
     </div>`;
   }).join('');
   return`<div class="out-probs">
-    <div class="out-probs-title">RESULTADOS${sim?' · '+sim:''} · ${displayShots} shots</div>
+    <div class="out-probs-title">RESULTS${sim?' · '+sim:''} · ${displayShots} shots</div>
     ${rows}
   </div>`;
 }
 
 function buildHistogramOut(probs, shots){
-  // Ordenar estados de menor a mayor (orden binario natural)
+  // Sort states from lowest to highest (natural binary order)
   const entries=Object.entries(probs).sort((a,b)=>a[0].localeCompare(b[0]));
   if(!entries.length) return '';
 
-  // Detectar si son counts directos o probabilidades
+  // Detect if they are direct counts or probabilities
   const sumV = entries.reduce((s,[,v])=>s+v,0);
   const areCounts = sumV > 1.5;
 
-  // Calcular counts reales y total real de shots
+  // Calculate real counts and real shot total
   const totalReal  = areCounts ? Math.round(sumV) : shots;
   const countsData = entries.map(([st,v])=>({
     state: st,
@@ -1446,7 +1446,7 @@ function buildHistogramOut(probs, shots){
     const canvas=document.getElementById(canvasId);
     if(!canvas)return;
     const ctx=canvas.getContext('2d');
-    // Ancho adaptativo: más barras → canvas más ancho
+    // Adaptive width: more bars → wider canvas
     const nBars = countsData.length;
     const barW  = Math.max(18, Math.min(44, Math.floor(520/nBars)-10));
     const barGap = Math.max(4, Math.min(10, Math.floor(80/nBars)));
@@ -1458,16 +1458,16 @@ function buildHistogramOut(probs, shots){
     canvas.width=W; canvas.height=H;
 
     ctx.clearRect(0,0,W,H);
-    // Fondo
+    // Background
     ctx.fillStyle='#050810'; ctx.fillRect(0,0,W,H);
 
-    // Calcular ticks del eje Y en counts reales (no probabilidades)
-    // Elegir un número "bonito" de ticks
+    // Calculate Y-axis ticks in real counts (not probabilities)
+    // Choose a "nice" number of ticks
     const nTicks=5;
     const tickStep = Math.ceil(maxCount/nTicks/10)*10 || 1;
     const yMax = tickStep*nTicks;
 
-    // Grid horizontal + etiquetas eje Y (counts)
+    // Horizontal grid + Y-axis labels (counts)
     ctx.font='9px JetBrains Mono,monospace';
     ctx.textAlign='right';
     for(let i=0;i<=nTicks;i++){
@@ -1480,12 +1480,12 @@ function buildHistogramOut(probs, shots){
       ctx.fillText(val>999?(val/1000).toFixed(1)+'k':val, padL-4, y+3);
     }
 
-    // Barras con gradiente azul-cian (misma estética que el ecosistema)
+    // Bars with blue-cyan gradient (same aesthetic as the ecosystem)
     countsData.forEach((d,i)=>{
       const x    = padL+barGap+i*(barW+barGap);
       const bH   = Math.max(2,(d.count/yMax)*chartH);
       const y    = padT+chartH-bH;
-      // Gradiente
+      // Gradient
       const grad = ctx.createLinearGradient(x,y+bH,x,y);
       grad.addColorStop(0,'rgba(0,100,220,.85)');
       grad.addColorStop(0.5,'rgba(0,160,255,.92)');
@@ -1493,19 +1493,19 @@ function buildHistogramOut(probs, shots){
       ctx.fillStyle=grad;
       if(ctx.roundRect) ctx.roundRect(x,y,barW,bH,3); else ctx.rect(x,y,barW,bH);
       ctx.fill();
-      // Brillo superior
+      // Top shine
       ctx.fillStyle='rgba(0,255,255,0.45)';
       ctx.fillRect(x,y,barW,2);
-      // Count encima de la barra
+      // Count above bar
       ctx.fillStyle='#e2ecff';
       ctx.font='bold 8px JetBrains Mono,monospace';
       ctx.textAlign='center';
       const label = d.count>0?String(d.count):'0';
       ctx.fillText(label, x+barW/2, y-4);
-      // Estado debajo
+      // State below
       ctx.fillStyle='rgba(140,190,255,0.8)';
       ctx.font='9px JetBrains Mono,monospace';
-      // Rotar etiqueta si hay muchas barras
+      // Rotate label if there are many bars
       if(nBars>8){
         ctx.save();
         ctx.translate(x+barW/2, padT+chartH+8);
@@ -1516,42 +1516,42 @@ function buildHistogramOut(probs, shots){
       } else {
         ctx.textAlign='center';
         ctx.fillText('|'+d.state+'⟩', x+barW/2, padT+chartH+14);
-        // Porcentaje
+        // Percentage
         ctx.fillStyle='rgba(100,150,200,0.6)';
         ctx.font='8px JetBrains Mono,monospace';
         ctx.fillText((d.prob*100).toFixed(1)+'%', x+barW/2, padT+chartH+25);
       }
     });
 
-    // Ejes
+    // Axes
     ctx.strokeStyle='rgba(0,136,255,0.35)';
     ctx.lineWidth=1.2;
     ctx.beginPath();
     ctx.moveTo(padL,padT); ctx.lineTo(padL,padT+chartH); ctx.lineTo(W-padR,padT+chartH);
     ctx.stroke();
 
-    // Etiqueta eje Y
+    // Y-axis label
     ctx.save();
     ctx.translate(12, padT+chartH/2);
     ctx.rotate(-Math.PI/2);
     ctx.fillStyle='rgba(0,136,255,0.5)';
     ctx.font='9px Orbitron,monospace';
     ctx.textAlign='center';
-    ctx.fillText('CONTEOS', 0, 0);
+    ctx.fillText('COUNTS', 0, 0);
     ctx.restore();
 
   }, 20);
 
   return `<div style="padding:.5rem .55rem .6rem;background:#040c18;border-top:1px solid rgba(0,136,255,.1);">
     <div style="font-family:var(--orb);font-size:.42rem;color:var(--mu);margin-bottom:.35rem;letter-spacing:.05em;">
-      📊 HISTOGRAMA · ${totalReal} shots
+      📊 HISTOGRAM · ${totalReal} shots
     </div>
     <canvas id="${canvasId}" style="max-width:100%;height:auto;display:block;border-radius:6px;"></canvas>
   </div>`;
 }
 
 function buildBlochOut(probs){
-  // Calcular estados de Bloch por qubit desde los counts/probs
+  // Calculate Bloch states per qubit from counts/probs
   const qubits=Object.keys(probs)[0]?.length||0;
   if(qubits===0)return'';
   const total=Object.values(probs).reduce((s,v)=>s+v,0);
@@ -1577,7 +1577,7 @@ function buildBlochOut(probs){
     </div>`;
   }).join('');
   return`<div class="out-bloch-wrap">
-    <div style="width:100%;font-family:var(--orb);font-size:.4rem;color:var(--mu);margin-bottom:.3rem;letter-spacing:.05em;">🌐 ESFERAS DE BLOCH</div>
+    <div style="width:100%;font-family:var(--orb);font-size:.4rem;color:var(--mu);margin-bottom:.3rem;letter-spacing:.05em;">🌐 BLOCH SPHERES</div>
     ${spheres}
   </div>`;
 }
@@ -1590,20 +1590,20 @@ function drawBlochSphere(canvasId,theta,qi){
   const r=Math.min(w,h)*0.40;
   ctx.clearRect(0,0,w,h);
 
-  // Fondo con gradiente radial
+  // Background with radial gradient
   const bg=ctx.createRadialGradient(cx-r*.15,cy-r*.15,r*.05,cx,cy,r*1.15);
   bg.addColorStop(0,'#0d1e36');bg.addColorStop(.7,'#061020');bg.addColorStop(1,'#030810');
   ctx.beginPath();ctx.arc(cx,cy,r*1.05,0,Math.PI*2);ctx.fillStyle=bg;ctx.fill();
 
-  // Círculo exterior (esfera)
+  // Outer circle (sphere)
   ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);
   ctx.strokeStyle='rgba(0,170,255,.5)';ctx.lineWidth=1.8;ctx.stroke();
 
-  // Meridiano ecuador (elipse horizontal)
+  // Equator meridian (horizontal ellipse)
   ctx.beginPath();ctx.ellipse(cx,cy,r,r*.3,0,0,Math.PI*2);
   ctx.strokeStyle='rgba(0,170,255,.3)';ctx.lineWidth=1.2;ctx.stroke();
 
-  // Paralelos (latitudes)
+  // Parallels (latitudes)
   [-0.7,-0.35,0.35,0.7].forEach(f=>{
     const ry=r*Math.sqrt(1-f*f);
     const py=cy+r*f*0.95;
@@ -1611,11 +1611,11 @@ function drawBlochSphere(canvasId,theta,qi){
     ctx.strokeStyle=`rgba(0,136,255,${f===0?0.25:0.1})`;ctx.lineWidth=.7;ctx.stroke();
   });
 
-  // Meridiano vertical (elipse vertical)
+  // Vertical meridian (vertical ellipse)
   ctx.beginPath();ctx.ellipse(cx,cy,r*.25,r,0,0,Math.PI*2);
   ctx.strokeStyle='rgba(0,170,255,.15)';ctx.lineWidth=.7;ctx.stroke();
 
-  // Ejes con flechas
+  // Axes with arrows
   function drawAxis(x1,y1,x2,y2,col,dashed=false){
     ctx.beginPath();
     if(dashed)ctx.setLineDash([3,4]);
@@ -1628,24 +1628,24 @@ function drawBlochSphere(canvasId,theta,qi){
   drawAxis(cx,cy,cx+r*1.05,cy,'rgba(0,200,255,.2)');
   drawAxis(cx,cy,cx-r*0.9,cy,'rgba(0,200,255,.12)',true);
 
-  // Vector de estado
+  // State vector
   const phi=0;
   const vx=r*Math.sin(theta)*Math.cos(phi);
   const vy=-r*Math.cos(theta);
 
-  // Proyección sombra (en el ecuador)
+  // Shadow projection (on equator)
   ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+vx,cy);
   ctx.strokeStyle='rgba(0,255,221,.15)';ctx.lineWidth=1;ctx.setLineDash([2,3]);ctx.stroke();ctx.setLineDash([]);
   ctx.beginPath();ctx.moveTo(cx+vx,cy);ctx.lineTo(cx+vx,cy+vy);
   ctx.strokeStyle='rgba(0,255,221,.12)';ctx.lineWidth=1;ctx.setLineDash([2,4]);ctx.stroke();ctx.setLineDash([]);
 
-  // Vector principal con gradiente luminoso
+  // Main vector with luminous gradient
   const vg=ctx.createLinearGradient(cx,cy,cx+vx,cy+vy);
   vg.addColorStop(0,'rgba(0,255,221,.4)');vg.addColorStop(.6,'rgba(0,255,221,.9)');vg.addColorStop(1,'#ffffff');
   ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+vx,cy+vy);
   ctx.strokeStyle=vg;ctx.lineWidth=2.8;ctx.stroke();
 
-  // Punta de flecha
+  // Arrow tip
   const ang=Math.atan2(vy,vx);const al=9;
   ctx.beginPath();
   ctx.moveTo(cx+vx,cy+vy);
@@ -1653,12 +1653,12 @@ function drawBlochSphere(canvasId,theta,qi){
   ctx.lineTo(cx+vx-al*Math.cos(ang+0.42),cy+vy-al*Math.sin(ang+0.42));
   ctx.closePath();ctx.fillStyle='#00ffdd';ctx.fill();
 
-  // Punto brillante en la punta
+  // Bright point at tip
   const pdg=ctx.createRadialGradient(cx+vx,cy+vy,0,cx+vx,cy+vy,6);
   pdg.addColorStop(0,'#ffffff');pdg.addColorStop(.4,'#00ffdd');pdg.addColorStop(1,'rgba(0,255,221,0)');
   ctx.beginPath();ctx.arc(cx+vx,cy+vy,6,0,Math.PI*2);ctx.fillStyle=pdg;ctx.fill();
 
-  // Etiquetas
+  // Labels
   const fs=w>130?12:10;
   ctx.font=`bold ${fs}px JetBrains Mono,monospace`;
   ctx.fillStyle='rgba(180,220,255,.95)';ctx.textAlign='center';
@@ -1676,43 +1676,43 @@ function buildErrorOut(errText){
   const typeMatch=errText.match(/(SyntaxError|NameError|TypeError|ValueError|ImportError|AttributeError|IndentationError|KeyError|IndexError|ZeroDivisionError|ModuleNotFoundError)[:\s]/);
   const errType=typeMatch?typeMatch[1]:'Error';
   const tips={
-    SyntaxError:'Revisa paréntesis, dos puntos o indentación.',
-    NameError:'Variable o función no definida. ¿Hay un typo?',
-    TypeError:'Tipo de dato incorrecto para la operación.',
-    ImportError:'Librería no disponible en el servidor.',
-    ModuleNotFoundError:'Módulo no instalado. Verifica el nombre.',
-    IndentationError:'Error de indentación. Revisa los espacios.',
-    AttributeError:'El objeto no tiene ese atributo/método.',
+    SyntaxError:'Check parentheses, colons or indentation.',
+    NameError:'Undefined variable or function. Is there a typo?',
+    TypeError:'Incorrect data type for the operation.',
+    ImportError:'Library not available on the server.',
+    ModuleNotFoundError:'Module not installed. Verify the name.',
+    IndentationError:'Indentation error. Check spaces.',
+    AttributeError:'The object does not have that attribute/method.',
   };
-  const tip=tips[errType]||'Revisa el código en la línea indicada.';
+  const tip=tips[errType]||'Review the code on the indicated line.';
   return`<div class="out-stderr" style="padding:.5rem .7rem;">
     <div style="color:#ff9999;font-family:var(--orb);font-size:.46rem;margin-bottom:.3rem;">
-      ${errType}${lineNum?' · Línea '+lineNum:''}
+      ${errType}${lineNum?' · Line '+lineNum:''}
     </div>
     <div style="color:#ff7070;white-space:pre-wrap;">${escH(errText.split('\n').slice(-3).join('\n'))}</div>
     <div style="color:#ffb86c;font-family:var(--orb);font-size:.42rem;margin-top:.3rem;">💡 ${tip}</div>
   </div>`;
 }
 
-// ── EJECUCIÓN ─────────────────────────────────────────────────
+// ── EXECUTION ─────────────────────────────────────────────────
 async function runCell(id){
   if(!_expositionMode&&!requireAuth())return;
-  if(running){notify('Ya hay una ejecución en curso');return;}
+  if(running){notify('An execution is already in progress');return;}
   const cell=cells.find(c=>c.id===id);
   if(!cell||cell.type==='markdown')return;
   syncCellCode(id);
   const isCircuit=cell.type==='circuit';
   const isQk=cell.type==='qiskit';
-  // Para celdas circuit: ejecutar hiddenCode (el código generado por el arquitecto)
+  // For circuit cells: execute hiddenCode (code generated by architect)
   const rawCode = isCircuit ? (cell.hiddenCode||'') : (isQk?(QISKIT_PREAMBLE+'\n'+cell.code.trim()):cell.code.trim());
   const code = isCircuit ? (QISKIT_PREAMBLE+'\n'+rawCode) : rawCode;
-  if(!rawCode.trim()){notify('⚛ Celda sin código — edita el circuito primero');return;}
+  if(!rawCode.trim()){notify('⚛ Cell without code — edit the circuit first');return;}
   if(!code.trim())return;
   running=true;setSbRun(true);
   const rbtn=document.getElementById('rbtn-'+id);
   if(rbtn)rbtn.classList.add('spinning');
   const outArea=document.getElementById('out-'+id);
-  if(outArea)outArea.innerHTML='<div class="out-stdout" style="color:var(--mu);">⚙️ Ejecutando…</div>';
+  if(outArea)outArea.innerHTML='<div class="out-stdout" style="color:var(--mu);">⚙️ Running…</div>';
   const t0=Date.now();
   try{
     if(engineOK&&engineURL){
@@ -1729,27 +1729,27 @@ async function runCell(id){
       setSbRun(false,'✅ '+elapsed+'s');
     } else {
       execCounter++;cell.exec_count=execCounter;
-      if(outArea)outArea.innerHTML='<div class="out-stdout" style="color:var(--mu);">⚡ Sin motor — configura la URL del compilador en el panel Fundador</div>';
-      setSbRun(false,'Sin motor');
+      if(outArea)outArea.innerHTML='<div class="out-stdout" style="color:var(--mu);">⚡ No engine — configure the compiler URL in the Founder panel</div>';
+      setSbRun(false,'No engine');
     }
   }catch(e){
     const isTO=e.name==='AbortError'||e.name==='TimeoutError';
-    if(outArea)outArea.innerHTML=`<div class="out-stderr">❌ ${escH(isTO?'Tiempo agotado (90s) — circuito muy complejo':e.message)}</div>`;
+    if(outArea)outArea.innerHTML=`<div class="out-stderr">❌ ${escH(isTO?'Timed out (90s) — circuit too complex':e.message)}</div>`;
     setSbRun(false,'❌ Error','err');
   }
   running=false;
   if(rbtn)rbtn.classList.remove('spinning');
   renderCellNum(id);
-  // Forzar re-render para mostrar errorLine si existe
+  // Force re-render to show errorLine if it exists
   if(cell.errorLine) renderCells();
 }
 function renderCellNum(id){const cell=cells.find(c=>c.id===id);if(!cell)return;const el=document.querySelector(`[data-id="${id}"] .cell-num`);if(el)el.textContent=cell.exec_count!==null?`[${cell.exec_count}]`:'[ ]';}
 async function runCurCell(){if(curCellId)await runCell(curCellId);}
 async function runAll(){for(const cell of cells){const hasCode=(cell.type==='circuit'?(cell.hiddenCode||'').trim():cell.code.trim());if(cell.type!=='markdown'&&hasCode){await runCell(cell.id);await new Promise(r=>setTimeout(r,200));}}}
 function setSbRun(r,msg='',st=''){const dot=document.getElementById('sb-dot');const txt=document.getElementById('sb-txt');if(dot)dot.className='sb-dot '+(r?'sb-run':st==='err'?'sb-err':'sb-idle');if(txt&&msg)txt.textContent=msg;}
-function updateStatus(){const el=document.getElementById('sb-cells-info');if(el)el.textContent=cells.length+' celdas';}
+function updateStatus(){const el=document.getElementById('sb-cells-info');if(el)el.textContent=cells.length+' cells';}
 
-// ── GUARDADO ──────────────────────────────────────────────────
+// ── SAVE ──────────────────────────────────────────────────
 function saveCurrentNb(showNotify=true){
   if(_expositionMode)return;
   if(!curUser)return;
@@ -1758,9 +1758,9 @@ function saveCurrentNb(showNotify=true){
     const mta=document.getElementById('mta-'+c.id);
     if(ta)c.code=ta.value;
     if(mta)c.code=mta.value;
-    // hiddenCode y circuitData ya están en el objeto cell — no necesitan sync del DOM
+    // hiddenCode and circuitData are already in cell object — no DOM sync needed
   });
-  const name=document.getElementById('nb-name-inp').value||'Sin título';
+  const name=document.getElementById('nb-name-inp').value||'Untitled';
   const key='qcol_nbs_'+(curUser.username||'dev');
   const nbs=JSON.parse(localStorage.getItem(key)||'[]');
   const existing=nbs.findIndex(n=>n.name===name);
@@ -1769,26 +1769,26 @@ function saveCurrentNb(showNotify=true){
   localStorage.setItem(key,JSON.stringify(nbs.slice(0,50)));
   lastSaveTime=Date.now();
   const ss=document.getElementById('sb-save-status');
-  if(ss)ss.textContent='💾 Guardado';
+  if(ss)ss.textContent='💾 Saved';
   setTimeout(()=>{const s=document.getElementById('sb-save-status');if(s)s.textContent='✓';},2500);
-  if(showNotify)notify('💾 Guardado: '+name);
+  if(showNotify)notify('💾 Saved: '+name);
 }
 function downloadNb(){
-  if(_expositionMode){notify('👁 Modo exposición — descarga desactivada');return;}
+  if(_expositionMode){notify('👁 Exposition mode — download disabled');return;}
   const name=document.getElementById('nb-name-inp').value||'qcol_notebook';
   cells.forEach(c=>{
     const ta=document.getElementById('ta-'+c.id);
     const mta=document.getElementById('mta-'+c.id);
     if(ta)c.code=ta.value;
     if(mta)c.code=mta.value;
-    // hiddenCode y circuitData ya están en el objeto cell — no necesitan sync del DOM
+    // hiddenCode and circuitData are already in cell object — no DOM sync needed
   });
   const nb={nbformat:4,nbformat_minor:5,
     metadata:{name,kernelspec:{display_name:'Python 3',language:'python',name:'python3'}},
     cells:cells.map(c=>{
       const isCircuit = c.type==='circuit';
       const tags = c.type==='qiskit'?['qiskit-cell']:isCircuit?['circuit-cell']:[];
-      const source = isCircuit ? [c.hiddenCode||'# Celda de circuito visual'] : [c.code];
+      const source = isCircuit ? [c.hiddenCode||'# Visual circuit cell'] : [c.code];
       const meta = {tags};
       if(isCircuit){ meta.hidden_code=c.hiddenCode||''; meta.circuit_data=c.circuitData||null; }
       return {cell_type:c.type==='markdown'?'markdown':'code', source, metadata:meta, outputs:[], execution_count:c.exec_count};
@@ -1797,14 +1797,14 @@ function downloadNb(){
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name.replace(/\.ipynb$/,'')+'.ipynb';a.click();
   notify('📥 '+a.download);
 }
-setInterval(()=>{if(!_expositionMode&&curUser&&cells.length>0){const mins=Math.floor((Date.now()-lastSaveTime)/60000);const ss=document.getElementById('sb-save-status');if(ss)ss.textContent=mins>0?`⏱️ hace ${mins}min`:'✓';}},60000);
+setInterval(()=>{if(!_expositionMode&&curUser&&cells.length>0){const mins=Math.floor((Date.now()-lastSaveTime)/60000);const ss=document.getElementById('sb-save-status');if(ss)ss.textContent=mins>0?`⏱️ ${mins}min ago`:'✓';}},60000);
 document.addEventListener('keydown',e=>{
   if((e.ctrlKey||e.metaKey)&&e.key==='s'){e.preventDefault();saveCurrentNb(true);}
   if((e.ctrlKey||e.metaKey)&&e.shiftKey&&e.key==='Enter'){e.preventDefault();runAll();}
 });
 
-// ── GESTIÓN NOTEBOOKS ─────────────────────────────────────────
-function newNotebook(){if(!confirm('¿Crear nuevo notebook?'))return;cells=[];execCounter=0;curCellId=null;document.getElementById('nb-name-inp').value='Nuevo Notebook';addCellAt(-1,'markdown');notify('✅ Nuevo notebook');}
+// ── NOTEBOOK MANAGEMENT ─────────────────────────────────────────
+function newNotebook(){if(!confirm('Create new notebook?'))return;cells=[];execCounter=0;curCellId=null;document.getElementById('nb-name-inp').value='New Notebook';addCellAt(-1,'markdown');notify('✅ New notebook');}
 function importNb(){document.getElementById('import-file').click();}
 function handleImport(e){
   const file=e.target.files[0];if(!file)return;
@@ -1819,7 +1819,7 @@ function handleImport(e){
         const src=Array.isArray(c.source)?c.source.join(''):c.source||'';
         const tags=c.metadata?.tags||[];
         const type=c.cell_type==='markdown'?'markdown':
-          (tags.includes('circuit-cell')?'circuit':'markdown');  // solo markdown y circuit
+          (tags.includes('circuit-cell')?'circuit':'markdown');  // only markdown and circuit
         const hiddenCode = c.metadata?.hidden_code || '';
         const circuitData = c.metadata?.circuit_data || null;
         cells.push({id:genId(),type,code:src,output:'',exec_count:null,
@@ -1827,26 +1827,26 @@ function handleImport(e){
       });
       if(cells.length===0)addCellAt(-1,'code');
       else{renderCells();focusCell(cells[0].id);}
-      setView('notebook');notify(`✅ Importado: ${name}`);
+      setView('notebook');notify(`✅ Imported: ${name}`);
     }catch(err){notify('❌ Error: '+err.message);}
   };
   reader.readAsText(file);e.target.value='';
 }
 function getSavedNbs(){if(!curUser)return[];const key='qcol_nbs_'+(curUser.username||'dev');return JSON.parse(localStorage.getItem(key)||'[]');}
 function loadNb(name){const nbs=getSavedNbs();const nb=nbs.find(n=>n.name===name);if(!nb)return;cells=nb.cells.map(c=>({...c,mdEdit:false}));document.getElementById('nb-name-inp').value=nb.name;renderCells();if(cells[0])focusCell(cells[0].id);setView('notebook');notify('📂 '+nb.name);}
-function deleteNb(name){if(!confirm('¿Eliminar "'+name+'"?'))return;const key='qcol_nbs_'+(curUser?.username||'dev');localStorage.setItem(key,JSON.stringify(getSavedNbs().filter(n=>n.name!==name)));refreshNbs();notify('🗑 Eliminado');}
+function deleteNb(name){if(!confirm('Delete "'+name+'"?'))return;const key='qcol_nbs_'+(curUser?.username||'dev');localStorage.setItem(key,JSON.stringify(getSavedNbs().filter(n=>n.name!==name)));refreshNbs();notify('🗑 Deleted');}
 function refreshNbs(){
   const grid=document.getElementById('nb-grid');if(!grid)return;
   const nbs=getSavedNbs();
-  if(!nbs.length){grid.innerHTML=`<div class="nb-empty-state"><div class="nb-empty-icon">📓</div><div class="nb-empty-ttl">Sin notebooks guardados</div></div>`;return;}
-  grid.innerHTML=nbs.map(nb=>`<div class="nb-card"><div class="nb-card-hdr"><div class="nb-card-title">${escH(nb.name)}</div><div class="nb-card-badge">${nb.cells?.length||0} celdas</div></div><div class="nb-card-body"><div class="nb-card-meta">${new Date(nb.saved).toLocaleDateString()}</div><div class="nb-card-actions"><button class="btn-edit-nb" onclick="loadNb('${escH(nb.name)}')">📝 Editar</button><button class="btn-pub-nb" onclick="loadNb('${escH(nb.name)}');showPublish()">📤</button><button class="btn-del-nb" onclick="deleteNb('${escH(nb.name)}')">🗑</button></div></div></div>`).join('');
+  if(!nbs.length){grid.innerHTML=`<div class="nb-empty-state"><div class="nb-empty-icon">📓</div><div class="nb-empty-ttl">No saved notebooks</div></div>`;return;}
+  grid.innerHTML=nbs.map(nb=>`<div class="nb-card"><div class="nb-card-hdr"><div class="nb-card-title">${escH(nb.name)}</div><div class="nb-card-badge">${nb.cells?.length||0} cells</div></div><div class="nb-card-body"><div class="nb-card-meta">${new Date(nb.saved).toLocaleDateString()}</div><div class="nb-card-actions"><button class="btn-edit-nb" onclick="loadNb('${escH(nb.name)}')">📝 Edit</button><button class="btn-pub-nb" onclick="loadNb('${escH(nb.name)}');showPublish()">📤</button><button class="btn-del-nb" onclick="deleteNb('${escH(nb.name)}')">🗑</button></div></div></div>`).join('');
 }
 function showPublish(){const name=document.getElementById('nb-name-inp').value||'';document.getElementById('pub-title').value=name;document.getElementById('pub-modal').classList.add('open');}
 function closePublish(){document.getElementById('pub-modal').classList.remove('open');}
 function publishNb(){
   if(!requireAuth())return;
   saveCurrentNb(false);
-  const name=document.getElementById('nb-name-inp').value||'Sin título';
+  const name=document.getElementById('nb-name-inp').value||'Untitled';
   const desc=document.getElementById('pub-desc').value.trim();
   const tags=document.getElementById('pub-tags').value.trim();
   const id=name.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'');
@@ -1856,7 +1856,7 @@ function publishNb(){
   if(existing>=0)projs[existing]=entry;else projs.unshift(entry);
   localStorage.setItem('qcol_projs',JSON.stringify(projs));
   postCore('QCOL_SAVE',{key:'qcol_projs',val:projs});
-  downloadNb();closePublish();notify('✅ Publicado: '+name);
+  downloadNb();closePublish();notify('✅ Published: '+name);
 }
 function setView(v){
   curView=v;
@@ -1867,39 +1867,39 @@ function setView(v){
   if(v==='manage')refreshNbs();
 }
 
-// ── CELDAS ────────────────────────────────────────────────────
+// ── CELLS ────────────────────────────────────────────────────
 function addCellAt(afterIdx,type='markdown'){
-  // Solo se permiten celdas markdown y circuit
+  // Only markdown and circuit cells are allowed
   if(type==='code'||type==='qiskit') type='markdown';
   if(_expositionMode)return;
-  const defaultQk=`# Celda Qiskit — imports automáticos: qc, AerSimulator, np, pi, plt
+  const defaultQk=`# Qiskit Cell — automatic imports: qc, AerSimulator, np, pi, plt
 qc = QuantumCircuit(2, 2)
 qc.h(0)
 qc.cx(0, 1)
 qc.measure([0,1],[0,1])
 
-# Dibujar circuito
+# Draw circuit
 print(qc.draw(output='text'))
 
-# Ejecutar
+# Execute
 sim = AerSimulator()
 result = sim.run(transpile(qc, sim), shots=1024).result()
 counts = result.get_counts()
-print("\\nResultados:", counts)
+print("\\nResults:", counts)
 `;
   const cell={id:genId(),type,code:type==='qiskit'?defaultQk:'',output:'',exec_count:null,mdEdit:false,errorLine:null,hiddenCode:'',circuitData:null};
   if(afterIdx===-1||afterIdx>=cells.length)cells.push(cell);
   else cells.splice(afterIdx+1,0,cell);
   renderCells();focusCell(cell.id);updateStatus();
 }
-function deleteCell(id){if(_expositionMode)return;if(cells.length<=1){notify('Debes tener al menos 1 celda');return;}cells=cells.filter(c=>c.id!==id);if(curCellId===id)curCellId=cells[0]?.id||null;renderCells();updateStatus();}
+function deleteCell(id){if(_expositionMode)return;if(cells.length<=1){notify('You must have at least 1 cell');return;}cells=cells.filter(c=>c.id!==id);if(curCellId===id)curCellId=cells[0]?.id||null;renderCells();updateStatus();}
 function moveCellUp(id){const i=cells.findIndex(c=>c.id===id);if(i<=0)return;[cells[i-1],cells[i]]=[cells[i],cells[i-1]];renderCells();focusCell(id);}
 function moveCellDown(id){const i=cells.findIndex(c=>c.id===id);if(i<0||i>=cells.length-1)return;[cells[i],cells[i+1]]=[cells[i+1],cells[i]];renderCells();focusCell(id);}
 function syncCellCode(id){const cell=cells.find(c=>c.id===id);if(!cell)return;const ta=document.getElementById('ta-'+id);const mta=document.getElementById('mta-'+id);if(ta)cell.code=ta.value;if(mta)cell.code=mta.value;}
 function focusCell(id){curCellId=id;document.querySelectorAll('.nb-cell').forEach(el=>{el.classList.toggle('active',el.dataset.id===id);});const ta=document.getElementById('ta-'+id)||document.getElementById('mta-'+id);if(ta)ta.focus();}
 function changeCellType(id){if(_expositionMode)return;const cell=cells.find(c=>c.id===id);if(!cell)return;cell.type=cell.type==='code'||cell.type==='qiskit'?'markdown':'code';cell.mdEdit=true;renderCells();focusCell(id);}
 
-// ── BOTÓN LIMPIAR CELDA ───────────────────────────────────────
+// ── CLEAR CELL BUTTON ───────────────────────────────────────
 function clearCellContent(id) {
   const cell = cells.find(c => c.id === id);
   if (!cell) return;
@@ -1914,7 +1914,7 @@ function clearCellContent(id) {
     cell.mdEdit = true;
     renderCells();
   }
-  notify('🧹 Celda limpiada');
+  notify('🧹 Cell cleared');
 }
 
 // ── MARKDOWN ──────────────────────────────────────────────────
@@ -1940,7 +1940,7 @@ function renderMdFull(text){
 }
 function editMd(id){if(_expositionMode)return;const cell=cells.find(c=>c.id===id);if(cell){cell.mdEdit=true;renderCells();focusCell(id);}}
 
-// ── RENDER CELDAS ─────────────────────────────────────────────
+// ── RENDER CELLS ─────────────────────────────────────────────
 function renderCells(){
   const scroll=document.getElementById('nb-scroll');
   const bottom=scroll.querySelector('.nb-bottom');
@@ -1955,16 +1955,16 @@ function renderCells(){
 }
 function buildAddRow(idx){
   const row=document.createElement('div');row.className='add-cell-row';
-  row.innerHTML=`<div class="add-cell-line"></div><div class="add-cell-btns"><button class="add-btn" onclick="addCellAt(${idx},'markdown')">✦ Texto</button><button class="add-btn" style="color:#00ff88" onclick="addCellAt(${idx},'circuit')">⚛ Circuito</button></div><div class="add-cell-line"></div>`;
+  row.innerHTML=`<div class="add-cell-line"></div><div class="add-cell-btns"><button class="add-btn" onclick="addCellAt(${idx},'markdown')">✦ Text</button><button class="add-btn" style="color:#00ff88" onclick="addCellAt(${idx},'circuit')">⚛ Circuit</button></div><div class="add-cell-line"></div>`;
   return row;
 }
 
-// highlight y buildLinenos definidos abajo
+// highlight and buildLinenos defined below
 
-// ── HIGHLIGHT — tokenizador seguro, nunca inyecta class= en el textarea ──
+// ── HIGHLIGHT — safe tokenizer, never injects class= into textarea ──
 function highlight(code, isQk=false){
-  // Trabaja sobre el texto RAW, nunca sobre HTML ya procesado
-  // Cada token se procesa una sola vez, sin riesgo de doble-wrap
+  // Works on RAW text, never on already processed HTML
+  // Each token is processed only once, with no risk of double-wrapping
   const KW=new Set(['import','from','as','def','class','return','if','else','elif',
     'for','while','in','not','and','or','True','False','None','with','try','except',
     'finally','lambda','pass','break','continue','yield','raise','del','global',
@@ -1978,13 +1978,13 @@ function highlight(code, isQk=false){
     'transpile','plot_histogram','plot_bloch_multivector','plot_state_city',
     'UnitaryGate','SparsePauliOp','Parameter','ParameterVector']);
 
-  // Regex de tokenización — grupos mutuamente excluyentes
+  // Tokenization regex — mutually exclusive groups
   const RE=/(#[^\n]*)|("""[\s\S]*?"""|'''[\s\S]*?''')|("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')|\b(\d+(?:\.\d+)?(?:[eEjJ][+-]?\d+)?)\b|(@[A-Za-z_][A-Za-z0-9_.]*)|([A-Za-z_]\w*)/g;
 
   let out='', last=0, m;
   RE.lastIndex=0;
   while((m=RE.exec(code))!==null){
-    // texto plano entre tokens → escapar y añadir
+    // plain text between tokens → escape and add
     if(m.index>last) out+=esc(code.slice(last,m.index));
     const [tok,cmt,strT,strS,num,dec,word]=m;
     if     (cmt !==undefined) out+=`<s class="cmt">${esc(cmt)}</s>`;
@@ -2004,7 +2004,7 @@ function highlight(code, isQk=false){
   }
   if(last<code.length) out+=esc(code.slice(last));
   return out;
-  // Helper inline — no usa escH para no añadir dependencia circular
+  // Inline helper — doesn't use escH to avoid circular dependency
   function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 }
 
@@ -2030,25 +2030,25 @@ function buildCellEl(cell,i){
   el.ondragend=()=>{dragSrcId=null;document.querySelectorAll('.nb-cell').forEach(c=>c.classList.remove('drag-over'));};
   el.ondragover=e=>{e.preventDefault();if(dragSrcId&&dragSrcId!==cell.id){el.classList.add('drag-over');}};
   el.ondragleave=()=>el.classList.remove('drag-over');
-  el.ondrop=e=>{e.preventDefault();el.classList.remove('drag-over');if(!dragSrcId||dragSrcId===cell.id)return;const si=cells.findIndex(c=>c.id===dragSrcId);const di=cells.findIndex(c=>c.id===cell.id);if(si<0||di<0)return;const[m]=cells.splice(si,1);cells.splice(di,0,m);renderCells();focusCell(dragSrcId);notify('↕ Celda movida');};
+  el.ondrop=e=>{e.preventDefault();el.classList.remove('drag-over');if(!dragSrcId||dragSrcId===cell.id)return;const si=cells.findIndex(c=>c.id===dragSrcId);const di=cells.findIndex(c=>c.id===cell.id);if(si<0||di<0)return;const[m]=cells.splice(si,1);cells.splice(di,0,m);renderCells();focusCell(dragSrcId);notify('↕ Cell moved');};
 
   const execLbl=cell.exec_count!==null?`[${cell.exec_count}]`:'[ ]';
 
   // Toolbar
   const toolbar=_expositionMode
-    ?`<div class="cell-toolbar">${isCode?`<button class="ct-btn ct-run" onclick="event.stopPropagation();runCell('${cell.id}')" title="Ejecutar">▶</button>`:''}
+    ?`<div class="cell-toolbar">${isCode?`<button class="ct-btn ct-run" onclick="event.stopPropagation();runCell('${cell.id}')" title="Run">▶</button>`:''}
       </div>`
     :`<div class="cell-toolbar">
-        <button class="ct-btn" onclick="event.stopPropagation();moveCellUp('${cell.id}')" title="Subir">↑</button>
-        <button class="ct-btn" onclick="event.stopPropagation();moveCellDown('${cell.id}')" title="Bajar">↓</button>
-        <button class="ct-btn" onclick="event.stopPropagation();changeCellType('${cell.id}')" title="Cambiar tipo">${isCode?'Md':'{ }'}</button>
-        <button class="ct-btn" onclick="event.stopPropagation();clearCellContent('${cell.id}')" title="Limpiar contenido">🗑</button>
-        <button class="ct-btn danger" onclick="event.stopPropagation();deleteCell('${cell.id}')" title="Eliminar">✕</button>
+        <button class="ct-btn" onclick="event.stopPropagation();moveCellUp('${cell.id}')" title="Move up">↑</button>
+        <button class="ct-btn" onclick="event.stopPropagation();moveCellDown('${cell.id}')" title="Move down">↓</button>
+        <button class="ct-btn" onclick="event.stopPropagation();changeCellType('${cell.id}')" title="Change type">${isCode?'Md':'{ }'}</button>
+        <button class="ct-btn" onclick="event.stopPropagation();clearCellContent('${cell.id}')" title="Clear content">🗑</button>
+        <button class="ct-btn danger" onclick="event.stopPropagation();deleteCell('${cell.id}')" title="Delete">✕</button>
       </div>`;
 
   if(isCode){
     const badge=isQk
-      ?`<span style="color:rgba(0,255,221,.8)">⚛</span> Qiskit · <span style="color:var(--mu)">QuantumCircuit · AerSimulator · NumPy · Matplotlib incluidos</span>`
+      ?`<span style="color:rgba(0,255,221,.8)">⚛</span> Qiskit · <span style="color:var(--mu)">QuantumCircuit · AerSimulator · NumPy · Matplotlib included</span>`
       :`<span style="color:rgba(0,170,255,.7)">{}</span> Python`;
     const badgeCls=isQk?'ctb-qk':'ctb-code';
     let hl=highlight(cell.code||'',isQk);
@@ -2088,21 +2088,21 @@ function buildCellEl(cell,i){
         ${restoreBtn}
       </div>`;
   } else if(cell.type === 'circuit'){
-    // ── CELDA CIRCUITO VISUAL ────────────────────────────────
-    // Muestra el diagrama del circuito (generado por el Arquitecto Cuántico)
-    // El código Qiskit se guarda OCULTO en cell.hiddenCode
-    // cell.circuitData = {qubits, gates} — estructura interna del arquitecto
+    // ── VISUAL CIRCUIT CELL ────────────────────────────────
+    // Shows the circuit diagram (generated by Quantum Architect)
+    // Qiskit code is stored HIDDEN in cell.hiddenCode
+    // cell.circuitData = {qubits, gates} — internal architect structure
     const hasCircuit = cell.circuitData && cell.circuitData.gates && cell.circuitData.gates.length > 0;
     const hasCode    = (cell.hiddenCode || '').trim().length > 0;
-    // En modo EXPO: circuit es EDITABLE (mismo toolbar que normal)
-    // Solo Markdown se bloquea en expo
+    // In EXPO mode: circuit is EDITABLE (same toolbar as normal)
+    // Only Markdown is locked in expo
     const circuitToolbar = `<div class="cell-toolbar">
-        <button class="ct-btn" onclick="event.stopPropagation();moveCellUp('${cell.id}')" title="Subir">↑</button>
-        <button class="ct-btn" onclick="event.stopPropagation();moveCellDown('${cell.id}')" title="Bajar">↓</button>
-        ${_expositionMode ? '' : `<button class="ct-btn danger" onclick="event.stopPropagation();deleteCell('${cell.id}')" title="Eliminar">✕</button>`}
+        <button class="ct-btn" onclick="event.stopPropagation();moveCellUp('${cell.id}')" title="Move up">↑</button>
+        <button class="ct-btn" onclick="event.stopPropagation();moveCellDown('${cell.id}')" title="Move down">↓</button>
+        ${_expositionMode ? '' : `<button class="ct-btn danger" onclick="event.stopPropagation();deleteCell('${cell.id}')" title="Delete">✕</button>`}
       </div>`;
-    const restoreBtn = '';  // Sin restore en circuit (siempre editable)
-    // Renderizar el diagrama del circuito a partir de circuitData
+    const restoreBtn = '';  // No restore in circuit (always editable)
+    // Render circuit diagram from circuitData
     const circuitSVG = hasCircuit ? buildCircuitFromData(cell.circuitData) : '';
     const outContent = cell.output ? `<div class="cell-output-area" id="out-${cell.id}">${'<!-- output -->'}</div>` : '';
     el.className='nb-cell circ-cell'+(curCellId===cell.id?' active':'');
@@ -2110,34 +2110,34 @@ function buildCellEl(cell,i){
       <div class="cell-gutter">
         <div class="cell-num">${cell.exec_count!==null?`[${cell.exec_count}]`:'[ ]'}</div>
         <button class="cell-run-btn" id="rbtn-${cell.id}"
-          onclick="event.stopPropagation();runCell('${cell.id}')" title="${hasCode?'Ejecutar circuito':'Editar el circuito primero'}">>▶</button>
+          onclick="event.stopPropagation();runCell('${cell.id}')" title="${hasCode?'Run circuit':'Edit the circuit first'}">>▶</button>
       </div>
       <div class="cell-body">
         <div class="cell-type-badge ctb-circ">
-          ⚛ Circuito Visual${hasCode?' · <span style="color:rgba(0,200,100,.5);font-size:.38rem;">código listo</span>':' · <span style="color:rgba(255,180,0,.6);font-size:.38rem;">sin código</span>'}
+          ⚛ Visual Circuit${hasCode?' · <span style="color:rgba(0,200,100,.5);font-size:.38rem;">code ready</span>':' · <span style="color:rgba(255,180,0,.6);font-size:.38rem;">no code</span>'}
         </div>
         <div class="cell-circuit-preview" id="cprev-${cell.id}"
           onclick="event.stopPropagation();openCircuitEditor('${cell.id}')"
-          title="Haz clic para editar el circuito">
+          title="Click to edit the circuit">
           ${hasCircuit
-            ? `<div class="circ-preview-hint">⚛ CIRCUITO CUÁNTICO — clic para editar</div>${circuitSVG}`
+            ? `<div class="circ-preview-hint">⚛ QUANTUM CIRCUIT — click to edit</div>${circuitSVG}`
             : `<div class="circ-empty-hint" onclick="event.stopPropagation();openCircuitEditor('${cell.id}')">
-                ⚛ Celda de Circuito Visual<br>
-                <span style="font-size:.4rem;color:rgba(0,200,100,.4);">Haz clic para editar el circuito visual</span>
+                ⚛ Visual Circuit Cell<br>
+                <span style="font-size:.4rem;color:rgba(0,200,100,.4);">Click to edit the visual circuit</span>
               </div>`
           }
         </div>
         <div style="display:flex;gap:.4rem;margin-top:.3rem;align-items:center;">
           <button class="circ-edit-btn" onclick="event.stopPropagation();openCircuitEditor('${cell.id}')">
-            ✏ Editar Circuito
+            ✏ Edit Circuit
           </button>
           ${hasCode?`<button class="circ-edit-btn" style="background:rgba(0,136,255,.1);border-color:rgba(0,136,255,.3);color:var(--bl2);"
-            onclick="event.stopPropagation();runCell('${cell.id}')">▶ Ejecutar</button>`:''}
+            onclick="event.stopPropagation();runCell('${cell.id}')">▶ Run</button>`:''}
         </div>
         <div class="cell-output-area" id="out-${cell.id}">${cell.output?`<div class="out-stdout">${escH(cell.output)}</div>`:''}</div>
         ${restoreBtn}
       </div>`;
-    // Renderizar output si existe
+    // Render output if it exists
     if(cell._outputData){
       setTimeout(()=>{
         const outArea=document.getElementById('out-'+cell.id);
@@ -2154,7 +2154,7 @@ function buildCellEl(cell,i){
           <div class="md-split">
             <div class="md-editor-pane">
               <textarea class="cell-md-split-area" id="mta-${cell.id}"
-                placeholder="# Título&#10;LaTeX inline: $E=mc^2$&#10;LaTeX bloque: $$\\hat{H}\\psi=E\\psi$$"
+                placeholder="# Title&#10;Inline LaTeX: $E=mc^2$&#10;Block LaTeX: $$\\hat{H}\\psi=E\\psi$$"
                 oninput="syncCellCode('${cell.id}');renderMdPreview('${cell.id}')"
                 onkeydown="onMdKeydown(event,'${cell.id}')"
                 rows="7">${escH(cell.code||'')}</textarea>
@@ -2164,11 +2164,11 @@ function buildCellEl(cell,i){
         </div>`;
       setTimeout(()=>renderMdPreview(cell.id),10);
     } else {
-      const dbl=_expositionMode?'':` ondblclick="editMd('${cell.id}')" title="Doble clic para editar"`;
+      const dbl=_expositionMode?'':` ondblclick="editMd('${cell.id}')" title="Double-click to edit"`;
       el.innerHTML=`${toolbar}
         <div class="cell-gutter"><div class="cell-num" style="color:var(--gr)">Md</div></div>
         <div class="cell-body">
-          <div class="cell-type-badge ctb-md">✦ Markdown${_expositionMode?'':' — doble clic para editar'}</div>
+          <div class="cell-type-badge ctb-md">✦ Markdown${_expositionMode?'':' — double-click to edit'}</div>
           <div class="cell-md-rendered" id="mren-${cell.id}" ${dbl}>${renderMdFull(cell.code||'')}</div>
         </div>`;
       setTimeout(()=>{
@@ -2197,7 +2197,7 @@ function onCellInput(id){
     const cell=cells.find(c=>c.id===id);
     if(cell){
       cell.code=ta.value;
-      cell.errorLine=null; // limpiar error al editar
+      cell.errorLine=null; // clear error on edit
     }
     const isQk=cell?.type==='qiskit';
     syn.innerHTML=highlight(ta.value,isQk)+'\n';
@@ -2225,7 +2225,7 @@ function onCellKeydown(e,id){
   if(e.key==='Tab'){e.preventDefault();const s=ta.selectionStart,en=ta.selectionEnd;ta.value=ta.value.substring(0,s)+'    '+ta.value.substring(en);ta.selectionStart=ta.selectionEnd=s+4;onCellInput(id);return;}
   if(e.shiftKey&&e.key==='Enter'){e.preventDefault();runCell(id);const idx=cells.findIndex(c=>c.id===id);if(idx<cells.length-1)focusCell(cells[idx+1].id);else if(!_expositionMode)addCellAt(-1,'code');return;}
   if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();runCell(id);}
-  // Navegación entre celdas
+  // Navigate between cells
   if(e.ctrlKey&&e.key==='ArrowUp'){
     e.preventDefault();
     const idx=cells.findIndex(c=>c.id===id);
@@ -2250,7 +2250,7 @@ function onMdKeydown(e,id){
   if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();syncCellCode(id);const cell=cells.find(c=>c.id===id);if(cell){cell.mdEdit=false;renderCells();}const idx=cells.findIndex(c=>c.id===id);if(idx<cells.length-1)focusCell(cells[idx+1].id);}
 }
 
-// Navegación global con flechas cuando no se edita
+// Global navigation with arrows when not editing
 window.addEventListener('keydown', e => {
   if (!curCellId) return;
   if (document.activeElement.tagName === 'TEXTAREA') return;
@@ -2275,7 +2275,7 @@ function showUI(user){
   const sameUser=_initialized&&curUser?.username===user?.username;
   if(sameUser)return;
   _initialized=true;curUser=user;
-  // Quantum Notebook abierto a todos los roles
+  // Quantum Notebook open to all roles
   document.getElementById('access-denied').classList.remove('show');
   ['topbar','secbar','main-area','statusbar'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='flex';});
   if(user){
@@ -2291,45 +2291,45 @@ function showUI(user){
   if(cells.length===0&&!_expositionMode)addCellAt(-1,'qiskit');
 }
 
-// ── MENSAJES DEL CORE ─────────────────────────────────────────
+// ── CORE MESSAGES ─────────────────────────────────────────
 window.addEventListener('message',e=>{
   const d=e.data||{};
 
-  // Usuario
+  // User
   if(d.type==='QCOL_USER'||d.type==='QCOL_USER_UPDATE'){
-    // Aceptar cualquier rol
+    // Accept any role
     if(d.user) showUI(d.user);
-    else { _initialized=false; showUI({name:'Invitado',role:'guest'}); }
+    else { _initialized=false; showUI({name:'Guest',role:'guest'}); }
   }
   if(d.type==='QCOL_CONFIG_UPDATED'){
     const url=localStorage.getItem('qcol_colab_url');
     if(url){ engineURL=url; checkEngine(); }
   }
 
-  // ── RETORNO DEL ARQUITECTO CUÁNTICO ─────────────────────────
-  // El Arquitecto envía el código + estructura cuando el usuario presiona Atrás
+  // ── RETURN FROM QUANTUM ARCHITECT ─────────────────────────
+  // Architect sends code + structure when user presses Back
   if(d.type === 'QCOL_CIRCUIT_RETURN'){
     const cellId = d.cellId || _editingCellId;
     const cell   = cells.find(c => c.id === cellId);
     if(cell && cell.type === 'circuit'){
-      cell.hiddenCode  = d.code        || '';   // código Qiskit — se ejecuta, no se muestra
-      cell.circuitData = d.circuitData || null; // {qubits,gates} — para dibujar el diagrama
+      cell.hiddenCode  = d.code        || '';   // Qiskit code — executed, not displayed
+      cell.circuitData = d.circuitData || null; // {qubits,gates} — for drawing the diagram
       cell.output      = '';
       cell.exec_count  = null;
       cell.errorLine   = null;
       _editingCellId   = null;
       renderCells();
       if(cellId) focusCell(cellId);
-      notify('⚛ Circuito guardado en la celda');
+      notify('⚛ Circuit saved to cell');
       saveCurrentNb(false);
     } else if(d.code && !cellId){
-      // Fallback: si no hay celda circuit activa, ignorar silenciosamente
-      console.warn('QCOL_CIRCUIT_RETURN sin celda circuit destino');
+      // Fallback: if no active circuit cell, silently ignore
+      console.warn('QCOL_CIRCUIT_RETURN without destination circuit cell');
     }
     return;
   }
 
-  // Notebook desde Proyectos — soporta ambos tipos de mensaje
+  // Notebook from Projects — supports both message types
   const isOpenExpo = d.type==='QCOL_OPEN_NB_EXPOSITION';
   const isLoadNb   = (d.type==='QCOL_LOAD_NB') && d.nb;
 
@@ -2337,20 +2337,20 @@ window.addEventListener('message',e=>{
     const nb     = d.nb;
     const isExpo = isOpenExpo || !!d.expositionMode;
 
-    if(!nb){ notify('❌ Notebook sin datos'); return; }
-    // En modo exposición cualquier usuario puede ver
+    if(!nb){ notify('❌ Notebook without data'); return; }
+    // In exposition mode any user can view
     if(!isExpo && !requireAuth()) return;
 
-    // Cargar celdas
-    document.getElementById('nb-name-inp').value = nb.title||nb.name||'Sin título';
+    // Load cells
+    document.getElementById('nb-name-inp').value = nb.title||nb.name||'Untitled';
     cells = (nb.cells && nb.cells.length > 0)
       ? nb.cells.map(c=>({...c, id:genId(), output:'', exec_count:null, mdEdit:false, errorLine:null}))
       : [];
 
-    // Mostrar UI para invitados en modo expo
+    // Show UI for guests in expo mode
     if(isExpo){
       _initialized = true;
-      curUser = curUser || {name:'Invitado', role:'guest'};
+      curUser = curUser || {name:'Guest', role:'guest'};
       document.getElementById('access-denied').classList.remove('show');
       ['topbar','secbar','main-area','statusbar'].forEach(id=>{
         const el=document.getElementById(id); if(el) el.style.display='flex';
@@ -2359,33 +2359,33 @@ window.addEventListener('message',e=>{
 
     setView('notebook');
 
-    // Orden importante: primero establecer _expositionMode, luego renderCells
-    // para que buildCellEl genere el HTML correcto desde el primer render
+    // Important order: first set _expositionMode, then renderCells
+    // so buildCellEl generates the correct HTML from the first render
     if(isExpo){
-      // Seteamos el flag ANTES de renderizar
+      // Set flag BEFORE rendering
       _expositionMode = true;
       _originalCells  = JSON.parse(JSON.stringify(cells));
       document.body.classList.add('expo-mode');
-      // Botones
+      // Buttons
       document.getElementById('expo-badge').style.display='inline-flex';
       ['btn-add-md','btn-import','btn-download','btn-save','btn-publish','stab-2'].forEach(id=>{
         const el=document.getElementById(id); if(el) el.style.display='none';
       });
-      // circuit sigue visible en expo
+      // circuit stays visible in expo
       const rst=document.getElementById('btn-restore-all'); if(rst) rst.style.display='';
       const ni=document.getElementById('nb-name-inp');
       if(ni){ ni.readOnly=true; ni.style.opacity='.6'; }
-      // Ocultar secbar directamente con JS (doble seguridad además del CSS)
+      // Hide secbar directly with JS (double security in addition to CSS)
       const sb=document.getElementById('secbar');if(sb)sb.style.display='none';
-      // Cambiar texto del botón atrás
+      // Change back button text
       const bb=document.getElementById('btn-back');
-      if(bb){bb.textContent='← PROYECTOS';bb.title='Volver a Proyectos';}
-      // Ahora renderizamos — buildCellEl verá _expositionMode=true
+      if(bb){bb.textContent='← PROJECTS';bb.title='Back to Projects';}
+      // Now we render — buildCellEl will see _expositionMode=true
       renderCells();
       if(cells[0]) focusCell(cells[0].id);
-      notify('👁 Modo exposición — lee el material y experimenta con el código');
+      notify('👁 Exposition mode — read the material and experiment with the code');
     } else {
-      // Modo normal — restaurar sin btn-add-code/btn-add-qk (ya no existen)
+      // Normal mode — restore without btn-add-code/btn-add-qk (they no longer exist)
       _expositionMode = false;
       document.body.classList.remove('expo-mode');
       document.getElementById('expo-badge').style.display='none';
@@ -2398,12 +2398,12 @@ window.addEventListener('message',e=>{
       if(ni){ ni.readOnly=false; ni.style.opacity=''; }
       renderCells();
       if(cells[0]) focusCell(cells[0].id);
-      notify('📂 Cargado: '+(nb.title||nb.name||'Notebook'));
+      notify('📂 Loaded: '+(nb.title||nb.name||'Notebook'));
     }
   }
 });
 
-// Escuchar cambios en localStorage (cuando Fundador cambia URL)
+// Listen for localStorage changes (when Founder changes URL)
 window.addEventListener('storage',e=>{
   if(e.key==='qcol_colab_url'&&e.newValue){
     engineURL=e.newValue;
@@ -2411,13 +2411,13 @@ window.addEventListener('storage',e=>{
   }
 });
 
-// Pedir usuario
+// Request user
 postCore('QCOL_GET_USER');
 setTimeout(()=>{if(!_initialized){try{const s=localStorage.getItem('qcol_cur_user');if(s)showUI(JSON.parse(s));}catch(e){}}},700);
-setTimeout(()=>{if(!_initialized){showUI({name:'Invitado',role:'guest'});}},1500);
+setTimeout(()=>{if(!_initialized){showUI({name:'Guest',role:'guest'});}},1500);
 window.addEventListener('message',e=>{const d=e.data||{};if(d.type==='QCOL_USER_UPDATE'&&d.user){_initialized=false;showUI(d.user);}});
 
-function requireAuth(){return true;} // Quantum Notebook abierto a todos
+function requireAuth(){return true;} // Quantum Notebook open to all
 
 // Init
 function initEngine(){const s=localStorage.getItem('qcol_colab_url');if(s){engineURL=s;checkEngine();}}

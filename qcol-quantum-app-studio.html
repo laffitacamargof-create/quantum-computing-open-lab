@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>Quantum App Studio · Conectado al Founder</title>
+    <title>Quantum App Studio · Connected to Founder</title>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -240,11 +240,11 @@
 <body>
 <div class="notif" id="notif"></div>
 
-<!-- REPOSITORIO -->
+<!-- REPOSITORY -->
 <div id="repo-screen" class="screen">
     <div class="repo-header">
         <div class="repo-title"></div>
-        <button class="btn-primary" id="new-project-btn">+ Nueva aplicación</button>
+        <button class="btn-primary" id="new-project-btn">+ New application</button>
     </div>
     <div class="projects-grid" id="projects-grid"></div>
 </div>
@@ -252,61 +252,61 @@
 <!-- EDITOR -->
 <div id="editor-screen" class="screen hidden">
     <div class="top-editor-bar">
-        <input type="text" id="project-name-input" placeholder="Nombre del proyecto" style="background:var(--bg3); border:1px solid var(--bd); border-radius:6px; padding:0.4rem; color:white; width:240px;">
+        <input type="text" id="project-name-input" placeholder="Project name" style="background:var(--bg3); border:1px solid var(--bd); border-radius:6px; padding:0.4rem; color:white; width:240px;">
         <div class="editor-config">
-            <!-- server-url-input oculto: la URL llega automáticamente del Panel Fundador -->
+            <!-- server-url-input hidden: URL arrives automatically from Founder Panel -->
             <input type="text" id="server-url-input" style="display:none;" readonly>
             <span id="server-status" style="display:none;"></span>
             <span id="test-server-btn" style="display:none;"></span>
             <span id="auto-status" class="auto-status" style="display:none;"></span>
         </div>
-        <button class="btn-primary" id="save-project-editor">💾 Guardar proyecto</button>
-        <button class="btn-secondary" id="preview-run-btn">▶ Probar ejecución</button>
-        <button class="btn-secondary" id="back-to-repo-editor">← Volver</button>
+        <button class="btn-primary" id="save-project-editor">💾 Save project</button>
+        <button class="btn-secondary" id="preview-run-btn">▶ Test run</button>
+        <button class="btn-secondary" id="back-to-repo-editor">← Back</button>
     </div>
     <div class="editor-container">
         <div class="editor-pane">
-            <div class="pane-header">🐍 LÓGICA PYTHON (backend remoto)</div>
+            <div class="pane-header">🐍 PYTHON LOGIC (remote backend)</div>
             <textarea id="python-editor" class="code-area" spellcheck="false"></textarea>
         </div>
         <div class="editor-pane">
-            <div class="pane-header">🌐 INTERFAZ HTML + JS (frontend)</div>
+            <div class="pane-header">🌐 HTML + JS INTERFACE (frontend)</div>
             <textarea id="html-editor" class="code-area" spellcheck="false"></textarea>
         </div>
     </div>
     <div style="padding:0.3rem 0.8rem; background:#060912; font-size:0.55rem; color:var(--mu);">
-        💡 Las funciones Python se llaman con <span style="color:var(--cy);">window.pyCall("funcion", args...)</span>. La URL del servidor se obtiene automáticamente del Panel Fundador.
+        💡 Python functions are called with <span style="color:var(--cy);">window.pyCall("function", args...)</span>. The server URL is obtained automatically from the Founder Panel.
     </div>
 </div>
 
 <!-- RUNNER -->
 <div id="runner-screen" class="screen hidden">
     <div class="runner-header">
-        <button class="btn-secondary" id="back-to-repo-runner">← Repositorio</button>
+        <button class="btn-secondary" id="back-to-repo-runner">← Repository</button>
         <span id="runner-app-name" style="font-weight:bold;"></span>
-        <span id="runner-mode" style="margin-left:auto; font-size:0.6rem;"><span class="status-dot" id="runner-dot"></span> Conectando...</span>
+        <span id="runner-mode" style="margin-left:auto; font-size:0.6rem;"><span class="status-dot" id="runner-dot"></span> Connecting...</span>
     </div>
     <iframe id="app-iframe" class="app-iframe" sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-modals"></iframe>
 </div>
 
-<!-- MODAL PREVIEW -->
+<!-- PREVIEW MODAL -->
 <div id="preview-modal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
-            <strong>🔬 Prueba de aplicación (sin guardar)</strong>
-            <button class="btn-secondary" id="close-modal-btn">Cerrar</button>
+            <strong>🔬 Application test (unsaved)</strong>
+            <button class="btn-secondary" id="close-modal-btn">Close</button>
         </div>
         <iframe id="preview-iframe" class="modal-iframe" sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-modals"></iframe>
     </div>
 </div>
 
 <script>
-    // ---------- REPOSITORIO + EDITOR + BACKEND REMOTO ----------
+    // ---------- REPOSITORY + EDITOR + REMOTE BACKEND ----------
     let projects = [];
     let currentEditId = null;
     let remoteSessionStatus = false;
     let isEmbedded = false;
-    let parentOrigin = null;          // origen confiable cuando estamos embebidos
+    let parentOrigin = null;          // trusted origin when embedded
     let receivedUrl = false;
 
     function notify(msg, dur=2000) {
@@ -339,39 +339,39 @@
             input.style.background = '#0a4a2a';
             setTimeout(() => { if(input) input.style.background = '#0a0e1a'; }, 500);
             updateServerStatusText(url);
-            notify('✅ URL del servidor configurada automáticamente', 1500);
+            notify('✅ Server URL automatically configured', 1500);
             receivedUrl = true;
         }
     }
 
-    // ================== PROTECCIÓN CONTRA SOBRE-LECTURA ==================
-    // Se valida el origen de cada mensaje antes de procesarlo
+    // ================== OVER-READING PROTECTION ==================
+    // Validate the origin of each message before processing it
     window.addEventListener('message', async (event) => {
         const data = event.data;
         if (!data || typeof data !== 'object') return;
 
-        // --- Validación de origen (protect against over-reading) ---
+        // --- Origin validation (protect against over-reading) ---
         if (isEmbedded) {
-            // Si aún no tenemos un origen confiable, solo aceptamos el mensaje de conexión
+            // If we don't have a trusted origin yet, only accept the connection message
             if (!parentOrigin) {
                 if (data.type === 'QCOL_REQUEST_STUDIO_CONNECTION') {
                     parentOrigin = event.origin;
-                    // Continuamos con el manejo normal del mensaje
+                    // Continue with normal message handling
                 } else {
-                    return; // cualquier otro mensaje antes de la conexión es ignorado
+                    return; // any other message before connection is ignored
                 }
             } else if (event.origin !== parentOrigin) {
-                // Origen no autorizado
+                // Unauthorized origin
                 return;
             }
         } else {
-            // Modo standalone: solo aceptamos mensajes del mismo origen (o null para file://)
+            // Standalone mode: only accept messages from the same origin (or null for file://)
             const selfOrigin = window.location.origin;
             if (selfOrigin !== 'null' && event.origin !== selfOrigin) return;
             if (selfOrigin === 'null' && event.origin !== 'null') return;
         }
 
-        // --- A partir de aquí el mensaje proviene de un origen confiable ---
+        // --- From here the message comes from a trusted origin ---
         
         if (data.type === 'QCOL_COMPILER_URL' && data.url) {
             setServerUrl(data.url);
@@ -386,7 +386,7 @@
             isEmbedded = true;
             if (!parentOrigin) parentOrigin = event.origin;
             sendToParent({ type: 'QCOL_STUDIO_OPENED', version: '2.0', status: 'ready' });
-            notify('Conectado con Panel Fundador (origen validado)', 1500);
+            notify('Connected to Founder Panel (origin validated)', 1500);
             sendToParent({ type: 'QCOL_REQUEST_COMPILER_URL' });
             return;
         }
@@ -394,7 +394,7 @@
         if (data.type === 'QCOL_OPEN_APP_FROM_PUZZLE') {
             const { appId, appName, pythonCode, htmlCode, serverUrl } = data;
             if (appId && appName) {
-                // ── PROTECCIÓN: guardar estado actual antes de cargar el app del puzzle
+                // ── PROTECTION: save current state before loading the puzzle app
                 if (currentEditId && currentEditId !== appId) {
                     const prevIdx = projects.findIndex(p => p.id === currentEditId);
                     if (prevIdx !== -1) {
@@ -417,8 +417,8 @@
                     const newProj = {
                         id: appId,
                         name: appName,
-                        pythonCode: pythonCode || '# Código Python\n',
-                        htmlCode: htmlCode || '<!DOCTYPE html>\n<html>\n<body>\n<h1>App desde Puzzle</h1>\n</body>\n</html>',
+                        pythonCode: pythonCode || '# Python Code\n',
+                        htmlCode: htmlCode || '<!DOCTYPE html>\n<html>\n<body>\n<h1>App from Puzzle</h1>\n</body>\n</html>',
                         serverUrl: serverUrl || '',
                         createdAt: Date.now()
                     };
@@ -452,7 +452,7 @@
                 const bridge = `
                 <script>
                 window.__serverUrl = ${JSON.stringify(finalServerUrl)};
-                window.__pyCode = ${JSON.stringify(pythonCode || '# Python vacío')};
+                window.__pyCode = ${JSON.stringify(pythonCode || '# Empty Python')};
                 window.pyCall = async (funcName, ...args) => {
                     return new Promise((resolve, reject) => {
                         const msgId = Date.now() + '-' + Math.random();
@@ -467,11 +467,11 @@
                         window.parent.postMessage({ type: 'pyCall', id: msgId, func: funcName, args: args, serverUrl: window.__serverUrl, pythonCode: window.__pyCode }, '*');
                     });
                 };
-                console.log("Bridge listo, servidor:", window.__serverUrl);
+                console.log("Bridge ready, server:", window.__serverUrl);
                 <\/script>
                 `;
                 
-                let finalHtml = htmlCode || '<!DOCTYPE html><html><body><h1>App sin interfaz</h1></body></html>';
+                let finalHtml = htmlCode || '<!DOCTYPE html><html><body><h1>App without interface</h1></body></html>';
                 if (finalHtml.includes('<head>')) {
                     finalHtml = finalHtml.replace('<head>', '<head>' + bridge);
                 } else if (finalHtml.includes('<html>')) {
@@ -508,7 +508,7 @@
     }
 
     function saveProjects() {
-        // 🛡️ Protección contra sobreescritura: guardamos un backup de la versión anterior
+        // 🛡️ Overwrite protection: save a backup of the previous version
         const previousBackup = localStorage.getItem('quantum_apps_repo_v2');
         if (previousBackup) {
             localStorage.setItem('quantum_apps_repo_v2_backup', previousBackup);
@@ -527,9 +527,9 @@
         if (!projects.length) {
             projects.push({
                 id: generateId(),
-                name: "Demo: Saludo cuántico",
-                pythonCode: `def saludar(nombre):\n    return f"¡Hola {nombre}! desde Python en servidor cuántico 🧪"\n\ndef suma(a,b):\n    return a+b`,
-                htmlCode: `<!DOCTYPE html>\n<html>\n<head><meta charset="UTF-8"></head>\n<body style="background:#0a0e1a; color:white; font-family:monospace; padding:1rem;">\n<h2>Demo Interactiva</h2>\n<input id="nameInput" placeholder="Tu nombre" style="padding:0.3rem;">\n<button onclick="callGreet()">Saludar</button>\n<p id="result"></p>\n<script>\nwindow.callGreet = async () => {\n    const name = document.getElementById('nameInput').value;\n    const res = await window.pyCall("saludar", name);\n    document.getElementById('result').innerText = res;\n};\n<\/script>\n</body>\n</html>`,
+                name: "Demo: Quantum greeting",
+                pythonCode: `def greet(name):\n    return f"Hello {name}! from Python on quantum server 🧪"\n\ndef add(a,b):\n    return a+b`,
+                htmlCode: `<!DOCTYPE html>\n<html>\n<head><meta charset="UTF-8"></head>\n<body style="background:#0a0e1a; color:white; font-family:monospace; padding:1rem;">\n<h2>Interactive Demo</h2>\n<input id="nameInput" placeholder="Your name" style="padding:0.3rem;">\n<button onclick="callGreet()">Greet</button>\n<p id="result"></p>\n<script>\nwindow.callGreet = async () => {\n    const name = document.getElementById('nameInput').value;\n    const res = await window.pyCall("greet", name);\n    document.getElementById('result').innerText = res;\n};\n<\/script>\n</body>\n</html>`,
                 serverUrl: "",
                 createdAt: Date.now()
             });
@@ -547,10 +547,10 @@
             card.innerHTML = `
                 <div class="project-name">📦 ${escapeHtml(proj.name)}</div>
                 <div class="card-actions">
-                    <button class="btn-secondary edit-proj" data-id="${proj.id}">✏️ Editar</button>
-                    <button class="btn-secondary run-proj" data-id="${proj.id}">▶ Ejecutar</button>
-                    <button class="btn-secondary btn-pending launch-proj" data-id="${proj.id}">📤 Lanzar</button>
-                    <button class="btn-secondary delete-proj" data-id="${proj.id}">🗑 Eliminar</button>
+                    <button class="btn-secondary edit-proj" data-id="${proj.id}">✏️ Edit</button>
+                    <button class="btn-secondary run-proj" data-id="${proj.id}">▶ Run</button>
+                    <button class="btn-secondary btn-pending launch-proj" data-id="${proj.id}">📤 Launch</button>
+                    <button class="btn-secondary delete-proj" data-id="${proj.id}">🗑 Delete</button>
                 </div>
             `;
             grid.appendChild(card);
@@ -564,7 +564,7 @@
     function sendToPending(id) {
         const proj = projects.find(p => p.id === id);
         if (!proj) {
-            notify("❌ Proyecto no encontrado");
+            notify("❌ Project not found");
             return;
         }
         
@@ -583,10 +583,10 @@
         
         if (window.parent !== window && parentOrigin) {
             sendToParent(message);
-            notify(`🚀 App "${proj.name}" enviada a la lista de pendientes del Fundador`, 2500);
+            notify(`🚀 App "${proj.name}" sent to Founder's pending list`, 2500);
         } else {
             let pendingApps = JSON.parse(localStorage.getItem('qcol_pending_apps') || '[]');
-            // 🛡️ Protección contra duplicados: si ya existe una entrada con el mismo id, la actualizamos
+            // 🛡️ Duplicate protection: if an entry with the same id already exists, update it
             const existingIndex = pendingApps.findIndex(entry => entry.id === proj.id);
             const newEntry = {
                 id: proj.id,
@@ -602,7 +602,7 @@
                 pendingApps.push(newEntry);
             }
             localStorage.setItem('qcol_pending_apps', JSON.stringify(pendingApps));
-            notify(`📦 App "${proj.name}" guardada en pendientes local. Conecta con el Panel Fundador para sincronizar.`, 3000);
+            notify(`📦 App "${proj.name}" saved in local pending. Connect to Founder Panel to sync.`, 3000);
         }
     }
 
@@ -610,8 +610,8 @@
         const proj = projects.find(p => p.id === id);
         if (!proj) return;
 
-        // ── Anti-contaminación: auto-guardar anterior SOLO si existe en el array
-        // y su contenido en el editor no coincide con otro proyecto (evita propagación)
+        // ── Anti-contamination: auto-save previous ONLY if it exists in the array
+        // and its editor content does not match another project (prevents propagation)
         if (currentEditId && currentEditId !== id) {
             const prevIdx = projects.findIndex(p => p.id === currentEditId);
             if (prevIdx !== -1) {
@@ -629,7 +629,7 @@
             }
         }
 
-        // ── Cargar snapshot del array (fuente de verdad), nunca del DOM
+        // ── Load snapshot from array (source of truth), never from DOM
         currentEditId = id;
         document.getElementById('project-name-input').value = '';
         document.getElementById('python-editor').value      = '';
@@ -642,11 +642,11 @@
 
     async function updateServerStatusText(url) {
         const statusSpan = document.getElementById('server-status');
-        if (!url) { statusSpan.innerHTML = '⚠️ Sin URL'; remoteSessionStatus = false; return; }
-        statusSpan.innerHTML = '⏳ probando...';
+        if (!url) { statusSpan.innerHTML = '⚠️ No URL'; remoteSessionStatus = false; return; }
+        statusSpan.innerHTML = '⏳ testing...';
         const ok = await testBackendConnection(url);
-        if (ok) { statusSpan.innerHTML = '✅ servidor activo'; remoteSessionStatus = true; }
-        else { statusSpan.innerHTML = '❌ no responde'; remoteSessionStatus = false; }
+        if (ok) { statusSpan.innerHTML = '✅ server active'; remoteSessionStatus = true; }
+        else { statusSpan.innerHTML = '❌ no response'; remoteSessionStatus = false; }
     }
 
     async function testBackendConnection(baseUrl) {
@@ -666,7 +666,7 @@
     }
 
     async function executePythonRemote(code, serverUrl) {
-        if (!serverUrl) throw new Error("No hay URL de servidor");
+        if (!serverUrl) throw new Error("No server URL");
         const base = serverUrl.replace(/\/+$/, '');
         const isHF = base.includes('hf.space') || base.includes('huggingface');
         let url, body;
@@ -687,17 +687,17 @@
         return output;
     }
 
-    // Handler para llamadas desde los iframes (pyCall) - mismo origen, no necesita token
+    // Handler for calls from iframes (pyCall) - same origin, no token needed
     window.addEventListener('message', async (event) => {
-        // Solo procesamos pyCall si el origen es el mismo (blob:iframe origen es el mismo)
+        // Only process pyCall if the origin is the same (blob:iframe origin is the same)
         if (event.data.type === 'pyCall') {
-            // Verificar origen para evitar abusos
+            // Verify origin to prevent abuse
             if (isEmbedded && parentOrigin && event.origin !== parentOrigin) return;
             if (!isEmbedded && event.origin !== window.location.origin && window.location.origin !== 'null') return;
             
             const { id, func, args, serverUrl, pythonCode } = event.data;
             try {
-                if (!serverUrl) throw new Error("Falta URL del servidor");
+                if (!serverUrl) throw new Error("Missing server URL");
                 const fullCode = `${pythonCode}\nimport json\n_result = ${func}(*${JSON.stringify(args)})\nprint(json.dumps(_result, ensure_ascii=False))`;
                 const output = await executePythonRemote(fullCode, serverUrl);
                 let result = output.trim();
@@ -732,7 +732,7 @@
                 window.parent.postMessage({ type: 'pyCall', id: msgId, func: funcName, args: args, serverUrl: window.__serverUrl, pythonCode: window.__pyCode }, '*');
             });
         };
-        console.log("Bridge listo, servidor:", window.__serverUrl);
+        console.log("Bridge ready, server:", window.__serverUrl);
         <\/script>
         `;
         let finalHtml = htmlCode;
@@ -745,8 +745,8 @@
     }
 
     async function launchProject(id) {
-        // ── PROTECCIÓN: cargar SIEMPRE desde el array projects, nunca del editor
-        // El editor puede tener contenido de otro proyecto si no se guardó
+        // ── PROTECTION: ALWAYS load from projects array, never from editor
+        // The editor may contain content from another project if not saved
         const proj = projects.find(p => p.id === id);
         if (!proj) return;
         showScreen('runner');
@@ -758,10 +758,10 @@
         
         const serverActive = serverToUse && await testBackendConnection(serverToUse);
         if (serverActive) {
-            modeSpan.innerHTML = '<span class="status-dot active"></span> Remoto (servidor activo)';
+            modeSpan.innerHTML = '<span class="status-dot active"></span> Remote (server active)';
             dot.className = 'status-dot active';
         } else {
-            modeSpan.innerHTML = '<span class="status-dot"></span> ⚠️ Sin servidor';
+            modeSpan.innerHTML = '<span class="status-dot"></span> ⚠️ No server';
             dot.className = 'status-dot';
         }
         const { blobUrl, revoke } = await buildAppBlob(proj.pythonCode, proj.htmlCode, serverToUse);
@@ -794,8 +794,8 @@
         document.getElementById('runner-screen').classList.add('hidden');
         if (screenId === 'repo') {
             document.getElementById('repo-screen').classList.remove('hidden');
-            // ── Al volver al repositorio, limpiar el editor
-            // Evita que al abrir otro proyecto vea residuos del anterior
+            // ── When returning to repository, clear the editor
+            // Prevents seeing residues from the previous project when opening another
             currentEditId = null;
             document.getElementById('project-name-input').value = '';
             document.getElementById('python-editor').value      = '';
@@ -811,12 +811,12 @@
         const nameVal  = document.getElementById('project-name-input').value.trim();
         const pyVal    = document.getElementById('python-editor').value;
         const htmlVal  = document.getElementById('html-editor').value;
-        // serverUrl viene del Founder automáticamente, no del input (oculto)
+        // serverUrl comes from Founder automatically, not from input (hidden)
         const urlVal   = localStorage.getItem('qcol_colab_url') || '';
 
         if (!currentEditId) {
-            // Crear nuevo proyecto
-            if (!nameVal) { notify("Ingresa un nombre"); return; }
+            // Create new project
+            if (!nameVal) { notify("Enter a name"); return; }
             const newId  = generateId();
             const newProj = {
                 id:         newId,
@@ -829,46 +829,46 @@
             projects.push(newProj);
             currentEditId = newId;
             saveProjects();
-            notify(`Proyecto "${nameVal}" creado`);
+            notify(`Project "${nameVal}" created`);
             showScreen('repo');
             renderRepository();
             return;
         }
 
-        // Actualizar proyecto existente — verificar que el id aún existe
+        // Update existing project — verify that the id still exists
         const idx = projects.findIndex(p => p.id === currentEditId);
         if (idx === -1) {
-            notify("❌ Error: proyecto no encontrado. Crea uno nuevo.");
+            notify("❌ Error: project not found. Create a new one.");
             currentEditId = null;
             return;
         }
-        // ── PROTECCIÓN: solo actualizar el proyecto cuyo id coincide exactamente
-        // Nunca tocar otros proyectos
+        // ── PROTECTION: only update the project whose id matches exactly
+        // Never touch other projects
         projects[idx].name       = nameVal || projects[idx].name;
         projects[idx].pythonCode = pyVal;
         projects[idx].htmlCode   = htmlVal;
         projects[idx].serverUrl  = urlVal;
         saveProjects();
-        notify("Proyecto guardado");
+        notify("Project saved");
         showScreen('repo');
         renderRepository();
     }
 
     function deleteProject(id) {
-        if (projects.length === 1) { notify("Debe haber al menos un proyecto"); return; }
-        if (confirm("¿Eliminar aplicación?")) {
+        if (projects.length === 1) { notify("There must be at least one project"); return; }
+        if (confirm("Delete application?")) {
             const deleted = projects.find(p => p.id === id);
             projects = projects.filter(p => p.id !== id);
             if (currentEditId === id) currentEditId = null;
             saveProjects();
             renderRepository();
-            notify("Proyecto eliminado");
+            notify("Project deleted");
             if (isEmbedded && deleted && parentOrigin) sendToParent({ type: 'QCOL_APP_DELETED', appId: id });
         }
     }
 
     function startNewProject() {
-        // ── Solo auto-guardar si el proyecto existe y el editor no tiene contenido contaminado
+        // ── Only auto-save if the project exists and the editor has no contaminated content
         if (currentEditId) {
             const prevIdx = projects.findIndex(p => p.id === currentEditId);
             if (prevIdx !== -1) {
@@ -886,9 +886,9 @@
             }
         }
         currentEditId = null;
-        document.getElementById('project-name-input').value = 'Nueva app cuántica';
-        document.getElementById('python-editor').value = '# Código Python remoto\ndef mi_funcion(param):\n    return f"Resultado: {param}"';
-        document.getElementById('html-editor').value = '<!DOCTYPE html>\n<html>\n<head><meta charset="UTF-8"></head>\n<body style="background:#0a0e1a;color:white;font-family:sans-serif;padding:1.5rem;">\n<h2>⚛️ Mi App Cuántica</h2>\n<button onclick="llamar()">Ejecutar</button>\n<p id="out"></p>\n<script>\nasync function llamar(){\n  const r = await window.pyCall("mi_funcion","hola");\n  document.getElementById("out").innerText = r;\n}\n<\/script>\n</body>\n</html>';
+        document.getElementById('project-name-input').value = 'New quantum app';
+        document.getElementById('python-editor').value = '# Remote Python code\ndef my_function(param):\n    return f"Result: {param}"';
+        document.getElementById('html-editor').value = '<!DOCTYPE html>\n<html>\n<head><meta charset="UTF-8"></head>\n<body style="background:#0a0e1a;color:white;font-family:sans-serif;padding:1.5rem;">\n<h2>⚛️ My Quantum App</h2>\n<button onclick="call()">Execute</button>\n<p id="out"></p>\n<script>\nasync function call(){\n  const r = await window.pyCall("my_function","hello");\n  document.getElementById("out").innerText = r;\n}\n<\/script>\n</body>\n</html>';
         showScreen('editor');
     }
 
@@ -899,10 +899,10 @@
         document.getElementById('back-to-repo-runner').onclick = () => showScreen('repo');
         document.getElementById('preview-run-btn').onclick = runPreview;
         document.getElementById('close-modal-btn').onclick = closeModal;
-        // test-server-btn oculto — URL llega automáticamente del Panel Fundador
+        // test-server-btn hidden — URL arrives automatically from Founder Panel
     }
 
-    // Inicialización
+    // Initialization
     loadProjects();
     renderRepository();
     bindEvents();
@@ -910,7 +910,7 @@
     if (window.parent !== window) {
         setTimeout(() => {
             sendToParent({ type: 'QCOL_STUDIO_OPENED', version: '2.0', status: 'ready' });
-            notify('Conectado con Panel Fundador (origen validado)', 1500);
+            notify('Connected to Founder Panel (origin validated)', 1500);
             sendToParent({ type: 'QCOL_REQUEST_COMPILER_URL' });
             const savedUrl = localStorage.getItem('qcol_colab_url');
             if (savedUrl && !receivedUrl) setServerUrl(savedUrl);
@@ -924,7 +924,7 @@
         if (window.parent !== window && !receivedUrl && parentOrigin) sendToParent({ type: 'QCOL_REQUEST_COMPILER_URL' });
     }, 3000);
     
-    notify("Quantum App Studio · Protegido contra sobrelectura · Orígenes validados", 4000);
+    notify("Quantum App Studio · Protected against over-reading · Origins validated", 4000);
 </script>
 </body>
 </html>

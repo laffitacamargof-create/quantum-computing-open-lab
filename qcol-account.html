@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>QCOL Mi Cuenta</title>
+<title>QCOL My Account</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=JetBrains+Mono:wght@400;500&family=Exo+2:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#010608;--s:#071220;--s2:#0c1c30;--b:#0d2a4a;--b2:#1a3a5c;--bl:#0088ff;--bl2:#00ccff;--gr:#00ff88;--gd:#ffd700;--rd:#ff4466;--tx:#ddeeff;--mu:#4a7a9b;--orb:'Orbitron',monospace;--mono:'JetBrains Mono',monospace;--exo:'Exo 2',sans-serif;}
@@ -51,10 +51,10 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 <div class="notif" id="notif"></div>
 <div class="wrap">
   <div class="tabs">
-    <button class="tab on" onclick="showTab('profile',this)">👤 Perfil</button>
-    <button class="tab" onclick="showTab('circuits',this)">⚛ Mis Circuitos</button>
-    <button class="tab" onclick="showTab('history',this)">📋 Historial IA</button>
-    <button class="tab" onclick="showTab('settings',this)">⚙️ Configuración</button>
+    <button class="tab on" onclick="showTab('profile',this)">👤 Profile</button>
+    <button class="tab" onclick="showTab('circuits',this)">⚛ My Circuits</button>
+    <button class="tab" onclick="showTab('history',this)">📋 AI History</button>
+    <button class="tab" onclick="showTab('settings',this)">⚙️ Settings</button>
   </div>
 
   <div class="panel on" id="tab-profile">
@@ -62,28 +62,28 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
   </div>
   <div class="panel" id="tab-circuits">
     <div class="sec">
-      <div class="sec-title">⚛ Mis circuitos guardados</div>
+      <div class="sec-title">⚛ My saved circuits</div>
       <div id="circuits-list"></div>
     </div>
   </div>
   <div class="panel" id="tab-history">
     <div class="sec">
-      <div class="sec-title">📋 Historial de conversaciones con IA</div>
-      <div id="history-content" style="font-size:.7rem;color:var(--mu);line-height:1.7;">El historial de IA se guarda localmente. Inicia sesión para ver conversaciones anteriores.</div>
+      <div class="sec-title">📋 AI conversation history</div>
+      <div id="history-content" style="font-size:.7rem;color:var(--mu);line-height:1.7;">AI history is saved locally. Log in to see previous conversations.</div>
     </div>
   </div>
   <div class="panel" id="tab-settings">
     <div class="sec">
-      <div class="sec-title">⚙️ Cambiar contraseña</div>
-      <div class="fg"><label class="fl">CONTRASEÑA ACTUAL</label><input class="fi" id="cp-cur" type="password"></div>
-      <div class="fg"><label class="fl">NUEVA CONTRASEÑA</label><input class="fi" id="cp-new" type="password"></div>
-      <div class="fg"><label class="fl">CONFIRMAR</label><input class="fi" id="cp-conf" type="password"></div>
-      <button class="btn btn-pri" onclick="changePass()">💾 Cambiar contraseña</button>
+      <div class="sec-title">⚙️ Change password</div>
+      <div class="fg"><label class="fl">CURRENT PASSWORD</label><input class="fi" id="cp-cur" type="password"></div>
+      <div class="fg"><label class="fl">NEW PASSWORD</label><input class="fi" id="cp-new" type="password"></div>
+      <div class="fg"><label class="fl">CONFIRM</label><input class="fi" id="cp-conf" type="password"></div>
+      <button class="btn btn-pri" onclick="changePass()">💾 Change password</button>
     </div>
     <div class="sec">
-      <div class="sec-title">🗑 Datos de cuenta</div>
-      <div style="font-size:.7rem;color:var(--mu);margin-bottom:.8rem;">Eliminar todos tus circuitos guardados e historial de IA.</div>
-      <button class="btn" style="background:rgba(255,68,102,.1);border:1px solid rgba(255,68,102,.3);color:#ff8899;" onclick="clearMyData()">🗑 Borrar mis datos</button>
+      <div class="sec-title">🗑 Account data</div>
+      <div style="font-size:.7rem;color:var(--mu);margin-bottom:.8rem;">Delete all your saved circuits and AI history.</div>
+      <button class="btn" style="background:rgba(255,68,102,.1);border:1px solid rgba(255,68,102,.3);color:#ff8899;" onclick="clearMyData()">🗑 Delete my data</button>
     </div>
   </div>
 </div>
@@ -109,17 +109,17 @@ function renderProfile(){
   if(!curUser){
     c.innerHTML=`<div class="no-login">
       <span class="no-login-icon">👤</span>
-      <div class="no-login-title">Sin sesión activa</div>
-      <div style="font-size:.72rem;max-width:300px;margin:0 auto;line-height:1.7;">Inicia sesión para acceder a tu perfil, circuitos guardados e historial.</div>
-      <button class="btn btn-pri" onclick="postCore('QCOL_LOGIN')">INICIAR SESIÓN</button>
+      <div class="no-login-title">No active session</div>
+      <div style="font-size:.72rem;max-width:300px;margin:0 auto;line-height:1.7;">Log in to access your profile, saved circuits and history.</div>
+      <button class="btn btn-pri" onclick="postCore('QCOL_LOGIN')">LOGIN</button>
     </div>`;return;
   }
   const ini=curUser.name.split(' ').map(n=>n[0]).join('').substring(0,2).toUpperCase();
   const roleCls=curUser.role==='founder'?'role-f':curUser.role==='admin'?'role-a':'role-u';
-  const roleLabel=curUser.role==='founder'?'👑 FUNDADOR':curUser.role==='admin'?'🔑 ADMIN':'👤 USUARIO';
+  const roleLabel=curUser.role==='founder'?'👑 FOUNDER':curUser.role==='admin'?'🔑 ADMIN':'👤 USER';
   const circuits=JSON.parse(localStorage.getItem('qcol_circuits_'+curUser.username)||'[]');
   c.innerHTML=`<div class="sec">
-    <div class="sec-title">👤 Mi perfil</div>
+    <div class="sec-title">👤 My profile</div>
     <div class="profile-row">
       <div class="avatar">${ini}</div>
       <div>
@@ -129,21 +129,21 @@ function renderProfile(){
       </div>
     </div>
     <div class="stat-grid">
-      <div class="stat"><span class="stat-num">${circuits.length}</span><div class="stat-label">Circuitos guardados</div></div>
-      <div class="stat"><span class="stat-num">${curUser.canUpload?'✅':'❌'}</span><div class="stat-label">Permiso subida</div></div>
-      <div class="stat"><span class="stat-num">${curUser.joined||'—'}</span><div class="stat-label">Registro</div></div>
+      <div class="stat"><span class="stat-num">${circuits.length}</span><div class="stat-label">Saved circuits</div></div>
+      <div class="stat"><span class="stat-num">${curUser.canUpload?'✅':'❌'}</span><div class="stat-label">Upload permission</div></div>
+      <div class="stat"><span class="stat-num">${curUser.joined||'—'}</span><div class="stat-label">Registered</div></div>
     </div>
-    <button class="btn btn-pri" onclick="postCore('QCOL_LOGOUT')">Cerrar sesión</button>
+    <button class="btn btn-pri" onclick="postCore('QCOL_LOGOUT')">Log out</button>
   </div>`;
 }
 function renderCircuits(){
   if(!curUser){
-    document.getElementById('circuits-list').innerHTML='<div style="text-align:center;color:var(--mu);font-size:.7rem;padding:1rem;">Inicia sesión para ver tus circuitos</div>';return;
+    document.getElementById('circuits-list').innerHTML='<div style="text-align:center;color:var(--mu);font-size:.7rem;padding:1rem;">Log in to see your circuits</div>';return;
   }
   const key='qcol_circuits_'+curUser.username;
   const circuits=JSON.parse(localStorage.getItem(key)||'[]');
   if(circuits.length===0){
-    document.getElementById('circuits-list').innerHTML='<div style="text-align:center;color:var(--mu);font-size:.7rem;padding:1rem;opacity:.7;">Sin circuitos guardados. Crea uno en el Arquitecto.</div>';return;
+    document.getElementById('circuits-list').innerHTML='<div style="text-align:center;color:var(--mu);font-size:.7rem;padding:1rem;opacity:.7;">No saved circuits. Create one in the Architect.</div>';return;
   }
   document.getElementById('circuits-list').innerHTML='<div class="circuit-list">'+
     circuits.map((c,i)=>`<div class="ci-item">
@@ -157,23 +157,23 @@ function renderCircuits(){
 function delCircuit(i){
   if(!curUser)return;const key='qcol_circuits_'+curUser.username;
   const c=JSON.parse(localStorage.getItem(key)||'[]');c.splice(i,1);
-  localStorage.setItem(key,JSON.stringify(c));renderCircuits();renderProfile();notify('Circuito eliminado');
+  localStorage.setItem(key,JSON.stringify(c));renderCircuits();renderProfile();notify('Circuit deleted');
 }
 function changePass(){
-  if(!curUser){notify('Sin sesión');return;}
+  if(!curUser){notify('No session');return;}
   const cur=document.getElementById('cp-cur').value,nw=document.getElementById('cp-new').value,conf=document.getElementById('cp-conf').value;
-  if(!cur||!nw){notify('Completa los campos');return;}
-  if(nw!==conf){notify('Las contraseñas no coinciden');return;}
+  if(!cur||!nw){notify('Complete the fields');return;}
+  if(nw!==conf){notify('Passwords do not match');return;}
   const users=JSON.parse(localStorage.getItem('qcol_users')||'[]');
   const u=users.find(x=>x.username===curUser.username);
-  if(!u||u.password!==cur){notify('Contraseña actual incorrecta');return;}
+  if(!u||u.password!==cur){notify('Incorrect current password');return;}
   u.password=nw;localStorage.setItem('qcol_users',JSON.stringify(users));
-  notify('✅ Contraseña actualizada');['cp-cur','cp-new','cp-conf'].forEach(k=>document.getElementById(k).value='');
+  notify('✅ Password updated');['cp-cur','cp-new','cp-conf'].forEach(k=>document.getElementById(k).value='');
 }
 function clearMyData(){
-  if(!curUser||!confirm('¿Borrar todos tus datos guardados?'))return;
+  if(!curUser||!confirm('Delete all your saved data?'))return;
   localStorage.removeItem('qcol_circuits_'+curUser.username);
-  renderProfile();renderCircuits();notify('Datos eliminados');
+  renderProfile();renderCircuits();notify('Data deleted');
 }
 renderProfile();
 </script>

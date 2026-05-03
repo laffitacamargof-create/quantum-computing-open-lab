@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es" id="root">
+<html lang="en" id="root">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -269,7 +269,7 @@ body::before{content:'';position:fixed;inset:0;
     </div>
     <div class="splash-loading">
       <div class="splash-dot"></div>
-      <span id="splash-msg">INICIANDO...</span>
+      <span id="splash-msg">STARTING...</span>
     </div>
   </div>
 </div>
@@ -302,7 +302,7 @@ body::before{content:'';position:fixed;inset:0;
     </div>
   </div>
   <div class="hdr-right">
-    <div id="hdr-engine-badge" style="display:none;padding:.22rem .55rem;background:rgba(0,255,136,.08);border:1px solid rgba(0,255,136,.3);border-radius:4px;font-family:var(--orb);font-size:.46rem;color:var(--gr);">● COMPILADOR</div>
+    <div id="hdr-engine-badge" style="display:none;padding:.22rem .55rem;background:rgba(0,255,136,.08);border:1px solid rgba(0,255,136,.3);border-radius:4px;font-family:var(--orb);font-size:.46rem;color:var(--gr);">● COMPILER</div>
     <button class="hbtn ai-btn" onclick="QCOL.toggleAI()">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" style="vertical-align:middle;">
         <circle cx="12" cy="12" r="10" stroke="#00ffdd" stroke-width="1.4"/>
@@ -312,7 +312,7 @@ body::before{content:'';position:fixed;inset:0;
       QuantumChat
     </button>
     <div id="hdr-user-area">
-      <button class="hbtn" onclick="QCOL.openAuth('login')">ENTRAR</button>
+      <button class="hbtn" onclick="QCOL.openAuth('login')">LOGIN</button>
     </div>
   </div>
 </div>
@@ -335,7 +335,7 @@ body::before{content:'';position:fixed;inset:0;
     <div class="ai-msgs" id="ai-messages">
       <div class="ai-msg bot">
         <div class="ai-lbl">QUANTUMCHAT</div>
-        <div class="markdown-body">¡Hola! Soy QuantumChat, tu asistente de computación cuántica. Puedo ayudarte con Qiskit, Cirq, PennyLane, notación de Dirac |ψ⟩, circuitos cuánticos, algoritmos y física cuántica. ⚛</div>
+        <div class="markdown-body">Hello! I'm QuantumChat, your quantum computing assistant. I can help you with Qiskit, Cirq, PennyLane, Dirac notation |ψ⟩, quantum circuits, algorithms and quantum physics. ⚛</div>
       </div>
     </div>
     <div class="ai-loading" id="ai-loading">
@@ -347,7 +347,7 @@ body::before{content:'';position:fixed;inset:0;
     </div>
     <div class="ai-status-bar">
       <div class="ai-status-dot" id="ai-sdot"></div>
-      <span id="ai-stxt">Sin conectar — modo demo</span>
+      <span id="ai-stxt">Not connected — demo mode</span>
     </div>
   </div>
 </div>
@@ -355,41 +355,41 @@ body::before{content:'';position:fixed;inset:0;
 <div class="modal-ov" id="auth-modal">
   <div class="modal">
     <div id="auth-login">
-      <div class="modal-title">⚛ INICIAR SESIÓN</div>
-      <div class="modal-sub">Accede a tu cuenta</div>
-      <div class="form-g"><label class="form-l">USUARIO</label>
-        <input class="form-i" id="l-user" type="text" placeholder="tu_usuario"></div>
-      <div class="form-g"><label class="form-l">CONTRASEÑA</label>
+      <div class="modal-title">⚛ LOGIN</div>
+      <div class="modal-sub">Access your account</div>
+      <div class="form-g"><label class="form-l">USERNAME</label>
+        <input class="form-i" id="l-user" type="text" placeholder="your_username"></div>
+      <div class="form-g"><label class="form-l">PASSWORD</label>
         <input class="form-i" id="l-pass" type="password" placeholder="••••••••"
           onkeydown="if(event.key==='Enter')QCOL.doLogin()"></div>
-      <button class="btn-submit" onclick="QCOL.doLogin()">ENTRAR AL LABORATORIO</button>
-      <div class="modal-sw">¿Sin cuenta? <a onclick="QCOL.openAuth('register')">Crear cuenta</a></div>
-      <div class="modal-sw" style="margin-top:.3rem;"><a onclick="QCOL.openAuth('founder')">👑 Acceso fundador</a></div>
-      <button class="btn-cancel" onclick="QCOL.closeAuth()">CANCELAR</button>
+      <button class="btn-submit" onclick="QCOL.doLogin()">ENTER THE LAB</button>
+      <div class="modal-sw">No account? <a onclick="QCOL.openAuth('register')">Create account</a></div>
+      <div class="modal-sw" style="margin-top:.3rem;"><a onclick="QCOL.openAuth('founder')">👑 Founder access</a></div>
+      <button class="btn-cancel" onclick="QCOL.closeAuth()">CANCEL</button>
     </div>
     <div id="auth-register" style="display:none;">
-      <div class="modal-title">⚛ CREAR CUENTA</div>
-      <div class="modal-sub">Únete al ecosistema</div>
-      <div class="form-g"><label class="form-l">NOMBRE COMPLETO</label>
-        <input class="form-i" id="r-name" type="text" placeholder="Tu nombre completo"></div>
-      <div class="form-g"><label class="form-l">USUARIO</label>
-        <input class="form-i" id="r-user" type="text" placeholder="usuario_unico"></div>
-      <div class="form-g"><label class="form-l">CONTRASEÑA</label>
+      <div class="modal-title">⚛ CREATE ACCOUNT</div>
+      <div class="modal-sub">Join the ecosystem</div>
+      <div class="form-g"><label class="form-l">FULL NAME</label>
+        <input class="form-i" id="r-name" type="text" placeholder="Your full name"></div>
+      <div class="form-g"><label class="form-l">USERNAME</label>
+        <input class="form-i" id="r-user" type="text" placeholder="unique_username"></div>
+      <div class="form-g"><label class="form-l">PASSWORD</label>
         <input class="form-i" id="r-pass" type="password" placeholder="••••••••"></div>
-      <button class="btn-submit" onclick="QCOL.doRegister()">CREAR MI CUENTA</button>
-      <div class="modal-sw">¿Ya tienes? <a onclick="QCOL.openAuth('login')">Iniciar sesión</a></div>
-      <div class="modal-sw" style="margin-top:.3rem;"><a onclick="QCOL.openAuth('founder')">👑 Acceso fundador</a></div>
-      <button class="btn-cancel" onclick="QCOL.closeAuth()">CANCELAR</button>
+      <button class="btn-submit" onclick="QCOL.doRegister()">CREATE MY ACCOUNT</button>
+      <div class="modal-sw">Already have one? <a onclick="QCOL.openAuth('login')">Login</a></div>
+      <div class="modal-sw" style="margin-top:.3rem;"><a onclick="QCOL.openAuth('founder')">👑 Founder access</a></div>
+      <button class="btn-cancel" onclick="QCOL.closeAuth()">CANCEL</button>
     </div>
     <div id="auth-founder" style="display:none;">
-      <div class="modal-title">👑 ACCESO FUNDADOR</div>
-      <div class="modal-sub">Área exclusiva del ecosistema</div>
-      <div class="form-g"><label class="form-l">CONTRASEÑA</label>
+      <div class="modal-title">👑 FOUNDER ACCESS</div>
+      <div class="modal-sub">Exclusive ecosystem area</div>
+      <div class="form-g"><label class="form-l">PASSWORD</label>
         <input class="form-i" id="f-pass" type="password" placeholder="••••••••"
           onkeydown="if(event.key==='Enter')QCOL.doFounder()"></div>
-      <button class="btn-submit" onclick="QCOL.doFounder()">ACCEDER</button>
-      <div class="modal-sw"><a onclick="QCOL.openAuth('login')">← Volver al inicio de sesión</a></div>
-      <button class="btn-cancel" onclick="QCOL.closeAuth()">CANCELAR</button>
+      <button class="btn-submit" onclick="QCOL.doFounder()">ACCESS</button>
+      <div class="modal-sw"><a onclick="QCOL.openAuth('login')">← Back to login</a></div>
+      <button class="btn-cancel" onclick="QCOL.closeAuth()">CANCEL</button>
     </div>
   </div>
 </div>
@@ -399,7 +399,7 @@ body::before{content:'';position:fixed;inset:0;
   <div class="screen active" id="screen-home">
     <div class="menu-hero">
       <h1>⚛ QUANTUM COMPUTING OPEN LAB</h1>
-      <p>No es solo un ecosistema: es un tablero donde cada pieza 🧩 encaja aportando una función y propuesta diferente, permitiendo que estudiantes e investigadores estudien, compartan y simulen sus circuitos cuánticos.</p>
+      <p>It's not just an ecosystem: it's a board where each piece 🧩 fits together providing a different function and proposal, allowing students and researchers to study, share and simulate their quantum circuits.</p>
     </div>
     <div id="logout-bar" style="display:none;position:absolute;top:.6rem;right:.7rem;z-index:20;">
       <button onclick="QCOL.doLogout()" style="
@@ -415,23 +415,23 @@ body::before{content:'';position:fixed;inset:0;
         transition:all .2s;
       " onmouseover="this.style.background='rgba(255,68,102,.18)'"
          onmouseout="this.style.background='rgba(255,68,102,.08)'">
-        ✕ SALIR
+        ✕ LOGOUT
       </button>
     </div>
     <div class="menu-grid" id="menu-grid"></div>
     <div class="qcol-footer">
-      Creado por <span>Franci Laffita Camargo</span> · como un proyecto open course para que cualquiera pueda contribuir al desarrollo del ecosistema y la <span>computación cuántica</span>.
+      Created by <span>Franci Laffita Camargo</span> · as an open course project so that anyone can contribute to the development of the ecosystem and <span>quantum computing</span>.
     </div>
   </div>
 
   <div class="screen" id="screen-projects">
     <div class="screen-hdr">
-      <button class="btn-back" onclick="QCOL.nav('home')">← MENÚ</button>
+      <button class="btn-back" onclick="QCOL.nav('home')">← MENU</button>
       <div class="screen-title">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
           <rect x="3" y="3" width="18" height="18" rx="3" stroke="#00ccff" stroke-width="1.5"/>
           <path d="M3 9h18M9 21V9" stroke="#00ccff" stroke-width="1.5"/>
-        </svg>PROYECTOS
+        </svg>PROJECTS
       </div>
       <button class="hbtn ai-btn" onclick="QCOL.toggleAI()">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" style="vertical-align:middle;margin-right:3px;">
@@ -449,7 +449,7 @@ body::before{content:'';position:fixed;inset:0;
 
   <div class="screen" id="screen-architect">
     <div class="screen-hdr">
-      <button class="btn-back" onclick="QCOL.nav('home')">← MENÚ</button>
+      <button class="btn-back" onclick="QCOL.nav('home')">← MENU</button>
       <div class="screen-title">
         <svg width="18" height="18" viewBox="0 0 40 40" fill="none">
           <line x1="2" y1="14" x2="38" y2="14" stroke="#004488" stroke-width="1.5" stroke-dasharray="3 2"/>
@@ -466,7 +466,7 @@ body::before{content:'';position:fixed;inset:0;
         </svg>
         ⚙️ QUANTUM OPEN LAB
       </div>
-      <div id="arch-badge" style="display:none;padding:.22rem .5rem;background:rgba(0,255,136,.08);border:1px solid rgba(0,255,136,.3);border-radius:4px;font-family:var(--orb);font-size:.46rem;color:var(--gr);">● COMPILADOR</div>
+      <div id="arch-badge" style="display:none;padding:.22rem .5rem;background:rgba(0,255,136,.08);border:1px solid rgba(0,255,136,.3);border-radius:4px;font-family:var(--orb);font-size:.46rem;color:var(--gr);">● COMPILER</div>
       <button class="hbtn ai-btn" onclick="QCOL.toggleAI()">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" style="vertical-align:middle;margin-right:3px;">
           <circle cx="12" cy="12" r="10" stroke="#00ffdd" stroke-width="1.4"/>
@@ -483,7 +483,7 @@ body::before{content:'';position:fixed;inset:0;
 
   <div class="screen" id="screen-architect-pro">
     <div class="screen-hdr">
-      <button class="btn-back" onclick="QCOL.nav('home')">← MENÚ</button>
+      <button class="btn-back" onclick="QCOL.nav('home')">← MENU</button>
       <div class="screen-title">
         <svg width="18" height="18" viewBox="0 0 40 40" fill="none">
           <line x1="2" y1="14" x2="38" y2="14" stroke="#4a2a7a" stroke-width="1.5" stroke-dasharray="3 2"/>
@@ -514,14 +514,14 @@ body::before{content:'';position:fixed;inset:0;
 
   <div class="screen" id="screen-library">
     <div class="screen-hdr">
-      <button class="btn-back" onclick="QCOL.nav('home')">← MENÚ</button>
+      <button class="btn-back" onclick="QCOL.nav('home')">← MENU</button>
       <div class="screen-title">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
           <path d="M4 19.5A2.5 2.5 0 016.5 17H20" stroke="#00ccff" stroke-width="1.5"/>
           <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" stroke="#00ccff" stroke-width="1.5"/>
           <path d="M8 7h8M8 11h8M8 15h5" stroke="#00ccff" stroke-width="1"/>
         </svg>
-        LIBRERÍA Y TUTORIALES
+        LIBRARY AND TUTORIALS
       </div>
       <button class="hbtn ai-btn" onclick="QCOL.toggleAI()">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" style="vertical-align:middle;margin-right:3px;">
@@ -539,13 +539,13 @@ body::before{content:'';position:fixed;inset:0;
 
   <div class="screen" id="screen-account">
     <div class="screen-hdr">
-      <button class="btn-back" onclick="QCOL.nav('home')">← MENÚ</button>
+      <button class="btn-back" onclick="QCOL.nav('home')">← MENU</button>
       <div class="screen-title">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
           <circle cx="12" cy="8" r="4" stroke="#00ccff" stroke-width="1.5"/>
           <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke="#00ccff" stroke-width="1.5" stroke-linecap="round"/>
         </svg>
-        MI CUENTA
+        MY ACCOUNT
       </div>
       <button class="hbtn ai-btn" onclick="QCOL.toggleAI()">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" style="vertical-align:middle;margin-right:3px;">
@@ -563,8 +563,8 @@ body::before{content:'';position:fixed;inset:0;
 
   <div class="screen" id="screen-founder">
     <div class="screen-hdr">
-      <button class="btn-back" onclick="QCOL.nav('home')">← MENÚ</button>
-      <div class="screen-title">👑 PANEL FUNDADOR</div>
+      <button class="btn-back" onclick="QCOL.nav('home')">← MENU</button>
+      <div class="screen-title">👑 FOUNDER PANEL</div>
       <button class="hbtn ai-btn" onclick="QCOL.toggleAI()">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" style="vertical-align:middle;margin-right:3px;">
           <circle cx="12" cy="12" r="10" stroke="#00ffdd" stroke-width="1.4"/>
@@ -581,13 +581,13 @@ body::before{content:'';position:fixed;inset:0;
 
   <div class="screen" id="screen-help">
     <div class="screen-hdr">
-      <button class="btn-back" onclick="QCOL.nav('home')">← MENÚ</button>
+      <button class="btn-back" onclick="QCOL.nav('home')">← MENU</button>
       <div class="screen-title">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
           <circle cx="12" cy="12" r="10" stroke="#00ccff" stroke-width="1.5"/>
           <path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3M12 17h.01" stroke="#00ccff" stroke-width="1.5" stroke-linecap="round"/>
         </svg>
-        AYUDA
+        HELP
       </div>
       <button class="hbtn ai-btn" onclick="QCOL.toggleAI()">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" style="vertical-align:middle;margin-right:3px;">
@@ -603,10 +603,10 @@ body::before{content:'';position:fixed;inset:0;
     </div>
   </div>
 
-  <!-- NUEVO MÓDULO: QUANTUM PUZZLE (antes MODULE LAB) -->
+  <!-- NEW MODULE: QUANTUM PUZZLE (formerly MODULE LAB) -->
   <div class="screen" id="screen-quantum-puzzle">
     <div class="screen-hdr">
-      <button class="btn-back" onclick="QCOL.nav('home')">← MENÚ</button>
+      <button class="btn-back" onclick="QCOL.nav('home')">← MENU</button>
       <div class="screen-title">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
           <path d="M14.5 5.5L18.5 9.5M6.5 18.5L5.5 17.5M16.5 8.5L15.5 7.5" stroke="#ffd700" stroke-width="1.8" stroke-linecap="round"/>
@@ -731,10 +731,10 @@ body::before{content:'';position:fixed;inset:0;
     const d = e.data; if (!d?.type) return;
 
     if (d.type === 'QCOL_OPEN_NB_EXPOSITION') {
-      // 1. Navegar a la pantalla del Quantum Notebook PRIMERO
+      // 1. Navigate to Quantum Notebook screen FIRST
       nav('architect-pro');
 
-      // 2. Enviar el mensaje al iframe — con retry robusto igual que QCOL_OPEN_ARCHITECT_EDIT
+      // 2. Send message to iframe — with robust retry same as QCOL_OPEN_ARCHITECT_EDIT
       const sendExpo = () => {
         const nbFrame = iframes['architect-pro'];
         if (nbFrame && nbFrame.contentWindow) {
@@ -745,7 +745,7 @@ body::before{content:'';position:fixed;inset:0;
       };
 
       if (!sendExpo()) {
-        // Iframe aún cargando — reintentar cada 200ms hasta 5s
+        // Iframe still loading — retry every 200ms up to 5s
         let attempts = 0;
         const retry = setInterval(() => {
           attempts++;
@@ -841,7 +841,7 @@ body::before{content:'';position:fixed;inset:0;
       }
       if (d.key === 'qcol_colab_url') checkEngine();
       if (d.key === 'qcol_ai') { aiCfg = d.val; setupAI(); }
-      if (d.key === 'qcol_fp') notify('✅ Contraseña fundador actualizada');
+      if (d.key === 'qcol_fp') notify('✅ Founder password updated');
       broadcast({ type:'QCOL_CONFIG_UPDATED', key: d.key });
     }
     if (d.type === 'QCOL_MONITOR_RUN') {
@@ -911,7 +911,7 @@ body::before{content:'';position:fixed;inset:0;
     } catch(e) {}
   }
 
-  // --- Helper para limpiar un iframe completamente ---
+  // --- Helper to completely clean an iframe ---
   function clearModuleIframe(screen) {
       const iframe = iframes[screen];
       if (iframe) {
@@ -927,8 +927,8 @@ body::before{content:'';position:fixed;inset:0;
     const currentActive = document.querySelector('.screen.active');
     const currentId = currentActive ? currentActive.id : null;
 
-    // Si se sale desde Quantum Open Lab o Quantum Notebook hacia el menú principal,
-    // se reinician ambos módulos para desactivar cualquier modo de exposición.
+    // When exiting from Quantum Open Lab or Quantum Notebook to the main menu,
+    // both modules are reset to deactivate any exposition mode.
     if (currentId && (currentId === 'screen-architect' || currentId === 'screen-architect-pro') && s === 'home') {
         clearModuleIframe('architect');
         clearModuleIframe('architect-pro');
@@ -963,7 +963,7 @@ body::before{content:'';position:fixed;inset:0;
     iframe.onerror = () => { wrap.innerHTML = renderPH(screen); };
     wrap.innerHTML = `<div class="module-placeholder">
       <div style="width:36px;height:36px;border:3px solid rgba(0,136,255,.2);border-top-color:var(--bl);border-radius:50%;animation:sp .8s linear infinite;margin-bottom:.8rem;"></div>
-      <div style="font-family:var(--orb);font-size:.65rem;color:var(--mu);letter-spacing:.1em;">CARGANDO...</div>
+      <div style="font-family:var(--orb);font-size:.65rem;color:var(--mu);letter-spacing:.1em;">LOADING...</div>
     </div>
     <style>@keyframes sp{to{transform:rotate(360deg);}}</style>`;
     setTimeout(() => { wrap.innerHTML = ''; wrap.appendChild(iframe); }, 100);
@@ -971,26 +971,26 @@ body::before{content:'';position:fixed;inset:0;
 
   function renderPH(screen) {
     const info = {
-      projects:       { icon:'📂', title:'PROYECTOS',              desc:'Explora y ejecuta los notebooks del laboratorio.' },
-      architect:      { icon:'⚙️', title:'QUANTUM OPEN LAB',    desc:'Editor visual de circuitos cuánticos con ejecución real en Python (Qiskit).' },
-      'architect-pro':{ icon:'📓', title:'QUANTUM NOTEBOOK',       desc:'Crea y edita Notebooks cuánticos completos. Exporta a .ipynb. Solo fundadores y administradores pueden publicar en Proyectos.' },
-      library:        { icon:'📚', title:'LIBRERÍA Y TUTORIALES',  desc:'Videos, PDFs y notebooks educativos.' },
-      account:        { icon:'👤', title:'MI CUENTA',              desc:'Tu perfil y circuitos guardados.' },
-      founder:        { icon:'👑', title:'PANEL FUNDADOR',         desc:'Configuración y gestión del ecosistema.' },
-      help:           { icon:'❓', title:'AYUDA',                  desc:'Guía de uso del ecosistema.' },
-      'quantum-puzzle':{ icon:'🧩', title:'QUANTUM PUZZLE',        desc:'Tienda de apps cuánticas: ejecuta programas reales en el compilador sin instalación.' },
+      projects:       { icon:'📂', title:'PROJECTS',              desc:'Explore and run lab notebooks.' },
+      architect:      { icon:'⚙️', title:'QUANTUM OPEN LAB',    desc:'Visual quantum circuit editor with real Python execution (Qiskit).' },
+      'architect-pro':{ icon:'📓', title:'QUANTUM NOTEBOOK',       desc:'Create and edit complete quantum notebooks. Export to .ipynb. Only founders and administrators can publish to Projects.' },
+      library:        { icon:'📚', title:'LIBRARY AND TUTORIALS',  desc:'Videos, PDFs and educational notebooks.' },
+      account:        { icon:'👤', title:'MY ACCOUNT',              desc:'Your profile and saved circuits.' },
+      founder:        { icon:'👑', title:'FOUNDER PANEL',         desc:'Ecosystem configuration and management.' },
+      help:           { icon:'❓', title:'HELP',                  desc:'Ecosystem usage guide.' },
+      'quantum-puzzle':{ icon:'🧩', title:'QUANTUM PUZZLE',        desc:'Quantum app store: run real programs on the compiler without installation.' },
     };
-    const i = info[screen] || { icon:'📦', title:'MÓDULO', desc:'' };
+    const i = info[screen] || { icon:'📦', title:'MODULE', desc:'' };
     return `<div class="module-placeholder">
       <div class="ph-icon">${i.icon}</div>
       <div class="ph-title">${i.title}</div>
       <p class="ph-desc">${i.desc}<br><br>
-        Este módulo se activará cuando el administrador lo configure.</p>
-      <button class="btn-ph" onclick="QCOL.nav('founder')">⚙️ Configurar</button>
+        This module will be activated when the administrator configures it.</p>
+      <button class="btn-ph" onclick="QCOL.nav('founder')">⚙️ Configure</button>
     </div>`;
   }
 
-  // ── MENÚ SEGÚN ROL (sin cambios) ──
+  // ── MENU ACCORDING TO ROLE (unchanged) ──
   function renderMenu() {
     const role  = curUser?.role || 'guest';
     const isAdm = role === 'admin' || role === 'founder';
@@ -1002,8 +1002,8 @@ body::before{content:'';position:fixed;inset:0;
         icon:`<svg width="22" height="22" viewBox="0 0 24 24" fill="none">
           <rect x="3" y="3" width="18" height="18" rx="3" stroke="#00ccff" stroke-width="1.5"/>
           <path d="M3 9h18M9 21V9" stroke="#00ccff" stroke-width="1.5"/></svg>`,
-        title:'PROYECTOS', badge:'', badgeTxt:'',
-        desc:'Explora y publica proyectos de computación cuántica. Comparte algoritmos, circuitos y notebooks con la comunidad QCOL.',
+        title:'PROJECTS', badge:'', badgeTxt:'',
+        desc:'Explore and publish quantum computing projects. Share algorithms, circuits and notebooks with the QCOL community.',
         delay:.05, show:true,
       },
       {
@@ -1022,8 +1022,8 @@ body::before{content:'';position:fixed;inset:0;
             <path d="M6 0v2M6 10v2M0 6h2M10 6h2M1.8 1.8l1.4 1.4M8.8 8.8l1.4 1.4M1.8 10.2l1.4-1.4M8.8 3.2l1.4-1.4"
               stroke="#00ccff" stroke-width="1.3" stroke-linecap="round"/>
           </g></svg>`,
-        title:'⚙️ QUANTUM OPEN LAB', badge:'badge-new', badgeTxt:'CUÁNTICO',
-        desc:'Editor visual de circuitos cuánticos con ejecución real en Python (Qiskit). Diseña y simula circuitos cuánticos, guárdalos en tu cuenta.',
+        title:'⚙️ QUANTUM OPEN LAB', badge:'badge-new', badgeTxt:'QUANTUM',
+        desc:'Visual quantum circuit editor with real Python execution (Qiskit). Design and simulate quantum circuits, save them to your account.',
         delay:.1, show:true,
       },
       {
@@ -1038,7 +1038,7 @@ body::before{content:'';position:fixed;inset:0;
             <path d="M6 0v2M6 10v2M0 6h2M10 6h2M1.8 1.8l1.4 1.4M8.8 8.8l1.4 1.4M1.8 10.2l1.4-1.4M8.8 3.2l1.4-1.4" stroke="#bd93f9" stroke-width="1.3" stroke-linecap="round"/>
           </g></svg>`,
         title:'📓 QUANTUM NOTEBOOK', badge:'badge-pro', badgeTxt:'ADMIN+',
-        desc:'Crea y edita Notebooks cuánticos completos. Exporta a .ipynb. Solo fundadores y administradores pueden publicar en Proyectos.',
+        desc:'Create and edit complete quantum notebooks. Export to .ipynb. Only founders and administrators can publish to Projects.',
         delay:.15, show:true, locked: false,
       },
       {
@@ -1048,8 +1048,8 @@ body::before{content:'';position:fixed;inset:0;
           <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" stroke="#00ccff" stroke-width="1.5"/>
           <path d="M8 7h8M8 11h8M8 15h5" stroke="#00ccff" stroke-width="1"/>
         </svg>`,
-        title:'LIBRERÍA Y TUTORIALES', badge:'', badgeTxt:'',
-        desc:'Recursos educativos: tutoriales interactivos, PDFs y videos sobre computación cuántica desde fundamentos hasta algoritmos avanzados.',
+        title:'LIBRARY AND TUTORIALS', badge:'', badgeTxt:'',
+        desc:'Educational resources: interactive tutorials, PDFs and videos on quantum computing from fundamentals to advanced algorithms.',
         delay:.2, show:true,
       },
       {
@@ -1059,8 +1059,8 @@ body::before{content:'';position:fixed;inset:0;
           <circle cx="12" cy="8" r="4" stroke="#00ccff" stroke-width="1.5"/>
           <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke="#00ccff" stroke-width="1.5" stroke-linecap="round"/>
         </svg>`,
-        title:'MI CUENTA', badge:'', badgeTxt:'',
-        desc: curUser ? `Bienvenido, ${curUser.name}. Circuitos guardados y configuración.` : 'Inicia sesión para guardar tus circuitos e historial.',
+        title:'MY ACCOUNT', badge:'', badgeTxt:'',
+        desc: curUser ? `Welcome, ${curUser.name}. Saved circuits and settings.` : 'Login to save your circuits and history.',
         delay:.25, show:true,
       },
       {
@@ -1080,8 +1080,8 @@ body::before{content:'';position:fixed;inset:0;
                    M28.6 35.4l1.4-1.4M38 26.6l1.4-1.4"
             stroke="#bd93f9" stroke-width="1.3" stroke-linecap="round"/>
         </svg>`,
-        title:'CONFIGURACIÓN', badge:'badge-admin', badgeTxt:'SISTEMA',
-        desc:'Panel de control del ecosistema QCOL. Usuarios, compilador, IA y GitHub.',
+        title:'CONFIGURATION', badge:'badge-admin', badgeTxt:'SYSTEM',
+        desc:'QCOL ecosystem control panel. Users, compiler, AI and GitHub.',
         delay:.3, show: isF,
       },
       {
@@ -1090,8 +1090,8 @@ body::before{content:'';position:fixed;inset:0;
           <circle cx="12" cy="12" r="10" stroke="#00ccff" stroke-width="1.5"/>
           <path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3M12 17h.01" stroke="#00ccff" stroke-width="1.5" stroke-linecap="round"/>
         </svg>`,
-        title:'AYUDA', badge:'', badgeTxt:'',
-        desc:'Documentación completa, guías de inicio rápido y preguntas frecuentes sobre el ecosistema QCOL.',
+        title:'HELP', badge:'', badgeTxt:'',
+        desc:'Complete documentation, quick start guides and frequently asked questions about the QCOL ecosystem.',
         delay:.35, show:true,
       },
       {
@@ -1103,7 +1103,7 @@ body::before{content:'';position:fixed;inset:0;
           <path d="M4 20L12 15L20 20" stroke="#ffd700" stroke-width="1.5"/>
         </svg>`,
         title:'🧩 QUANTUM PUZZLE', badge:'badge-new', badgeTxt:'APPS',
-        desc:'Tienda de apps cuánticas: ejecuta programas reales en el compilador sin instalación. Crea, comparte y ejecuta tus propios experimentos.',
+        desc:'Quantum app store: run real programs on the compiler without installation. Create, share and run your own experiments.',
         delay:.4, show:true,
       },
     ];
@@ -1114,7 +1114,7 @@ body::before{content:'';position:fixed;inset:0;
         : c.screen ? `onclick="QCOL.nav('${c.screen}')"` : '';
       const cls = (c.locked && !isAdm) ? 'menu-card locked' : 'menu-card';
       const lock = (c.locked && !isAdm)
-        ? `<div style="font-size:.6rem;color:var(--rd);margin-top:.4rem;">🔒 Requiere cuenta administrador</div>` : '';
+        ? `<div style="font-size:.6rem;color:var(--rd);margin-top:.4rem;">🔒 Requires admin account</div>` : '';
       return `<div class="${cls}" ${click} style="animation-delay:${c.delay}s">
         ${c.badge ? `<div class="card-badge ${c.badge}">${c.badgeTxt}</div>` : ''}
         <div class="card-icon-box">${c.icon}</div>
@@ -1136,14 +1136,14 @@ body::before{content:'';position:fixed;inset:0;
   async function doLogin() {
     const u = document.getElementById('l-user').value.trim();
     const p = document.getElementById('l-pass').value;
-    if (!u || !p) return notify('Completa todos los campos');
+    if (!u || !p) return notify('Complete all fields');
     const users = await dbGet('users') || [];
     const f = users.find(x => x.username === u && x.password === p);
-    if (!f) return notify('Usuario o contraseña incorrectos');
+    if (!f) return notify('Incorrect username or password');
     curUser = f;
     localStorage.setItem('qcol_cur_user', JSON.stringify(curUser));
     closeAuth(); updateUI(); renderMenu();
-    notify(`¡Bienvenido, ${f.name}!`);
+    notify(`Welcome, ${f.name}!`);
     broadcast({ type:'QCOL_USER_UPDATE', user:curUser });
   }
 
@@ -1151,16 +1151,16 @@ body::before{content:'';position:fixed;inset:0;
     const name = document.getElementById('r-name').value.trim();
     const u    = document.getElementById('r-user').value.trim();
     const p    = document.getElementById('r-pass').value;
-    if (!name||!u||!p) return notify('Completa todos los campos');
+    if (!name||!u||!p) return notify('Complete all fields');
     const users = await dbGet('users') || [];
-    if (users.find(x => x.username === u)) return notify('Ese usuario ya existe');
+    if (users.find(x => x.username === u)) return notify('That username already exists');
     const nu = { name, username:u, password:p, role:'user', canUpload:false, joined:new Date().toLocaleDateString() };
     users.push(nu);
     await dbSet('users', users);
     curUser = nu;
     localStorage.setItem('qcol_cur_user', JSON.stringify(curUser));
     closeAuth(); updateUI(); renderMenu();
-    notify(`¡Bienvenido, ${name}!`);
+    notify(`Welcome, ${name}!`);
     broadcast({ type:'QCOL_USER_UPDATE', user:curUser });
   }
 
@@ -1171,10 +1171,10 @@ body::before{content:'';position:fixed;inset:0;
       curUser = { name:'Franci Laffita Camargo', username:'franci_laffita', role:'founder', canUpload:true };
       localStorage.setItem('qcol_cur_user', JSON.stringify(curUser));
       closeAuth(); updateUI(); renderMenu();
-      notify('👑 Acceso fundador concedido');
+      notify('👑 Founder access granted');
       broadcast({ type:'QCOL_USER_UPDATE', user:curUser });
     } else {
-      notify('Contraseña incorrecta');
+      notify('Incorrect password');
     }
   }
 
@@ -1182,7 +1182,7 @@ body::before{content:'';position:fixed;inset:0;
     curUser = null;
     localStorage.removeItem('qcol_cur_user');
     updateUI(); renderMenu(); nav('home');
-    notify('Sesión cerrada');
+    notify('Logged out');
     broadcast({ type:'QCOL_USER_UPDATE', user:null });
   }
 
@@ -1198,7 +1198,7 @@ body::before{content:'';position:fixed;inset:0;
       </div>`;
       if (logoutBar) logoutBar.style.display = 'block';
     } else {
-      area.innerHTML = `<button class="hbtn" onclick="QCOL.openAuth('login')">ENTRAR</button>`;
+      area.innerHTML = `<button class="hbtn" onclick="QCOL.openAuth('login')">LOGIN</button>`;
       if (logoutBar) logoutBar.style.display = 'none';
     }
   }
@@ -1211,11 +1211,11 @@ body::before{content:'';position:fixed;inset:0;
     const lbl = document.getElementById('ai-prov-lbl');
     if (aiCfg.key && aiCfg.provider !== 'none') {
       if (dot) dot.className = 'ai-status-dot ok';
-      if (txt) txt.textContent = 'Asistente cuántico activo';
+      if (txt) txt.textContent = 'Quantum assistant active';
       if (lbl) lbl.textContent = '';
     } else {
       if (dot) dot.className = 'ai-status-dot';
-      if (txt) txt.textContent = 'Modo demostración';
+      if (txt) txt.textContent = 'Demo mode';
       if (lbl) lbl.textContent = '';
     }
   }
@@ -1226,14 +1226,14 @@ body::before{content:'';position:fixed;inset:0;
 
   const DEMO = {
     qiskit:'from qiskit import QuantumCircuit\nqc = QuantumCircuit(2)\nqc.h(0)\nqc.cx(0,1)\nprint(qc.draw())',
-    qubit:'Un qubit: α|0⟩+β|1⟩ donde |α|²+|β|²=1\nBloch: Norte=|0⟩, Sur=|1⟩, Ecuador=superposición',
-    grover:'Grover O(√N): H en todos → Oráculo → Amplificación → Medir',
+    qubit:'A qubit: α|0⟩+β|1⟩ where |α|²+|β|²=1\nBloch: North=|0⟩, South=|1⟩, Equator=superposition',
+    grover:'Grover O(√N): H on all → Oracle → Amplification → Measure',
     bell:'|Φ⁺⟩=(|00⟩+|11⟩)/√2\nqc.h(0)\nqc.cx(0,1)',
     latex:'$$\\hat{H}|\\psi\\rangle=E|\\psi\\rangle$$\n$$|\\Phi^+\\rangle=\\frac{1}{\\sqrt{2}}(|00\\rangle+|11\\rangle)$$',
     cirq:'import cirq\nq=cirq.LineQubit.range(2)\nc=cirq.Circuit(cirq.H(q[0]),cirq.CNOT(q[0],q[1]))',
     pennylane:'import pennylane as qml\ndev=qml.device("default.qubit",wires=2)\n@qml.qnode(dev)\ndef circ():\n    qml.Hadamard(wires=0)\n    qml.CNOT(wires=[0,1])\n    return qml.probs()',
-    entrelazamiento:'El entrelazamiento cuántico:\nqc.h(0); qc.cx(0,1)\n→ Estado Bell: medir uno determina el otro',
-    bloch:'Esfera de Bloch:\nH: |0⟩→ecuador\nX: voltea norte↔sur\nZ: rota fase φ',
+    entanglement:'Quantum entanglement:\nqc.h(0); qc.cx(0,1)\n→ Bell state: measuring one determines the other',
+    bloch:'Bloch sphere:\nH: |0⟩→equator\nX: flips north↔south\nZ: rotates phase φ',
   };
 
   async function sendAI() {
@@ -1256,7 +1256,7 @@ body::before{content:'';position:fixed;inset:0;
         if (aiHistory.length > 12) aiHistory = aiHistory.slice(-12);
       } catch(e) {
         document.getElementById('ai-loading').classList.remove('show');
-        const errMsg = 'Error de conexión con el asistente. Inténtalo de nuevo.';
+        const errMsg = 'Connection error with the assistant. Please try again.';
         addAIMsg(errMsg, 'bot');
         reply = errMsg;
       }
@@ -1264,7 +1264,7 @@ body::before{content:'';position:fixed;inset:0;
       await new Promise(resolve => setTimeout(resolve, 900));
       document.getElementById('ai-loading').classList.remove('show');
       const ml = msg.toLowerCase();
-      let r = 'Puedo ayudarte con Qiskit, Cirq, PennyLane, QuTiP, circuitos cuánticos y física cuántica. ⚛';
+      let r = 'I can help you with Qiskit, Cirq, PennyLane, QuTiP, quantum circuits and quantum physics. ⚛';
       for (const [k,v] of Object.entries(DEMO)) { if (ml.includes(k)) { r = v; break; } }
       addAIMsg(r, 'bot');
       reply = r;
@@ -1285,11 +1285,11 @@ body::before{content:'';position:fixed;inset:0;
   async function callAI(msg) {
     const temp   = aiCfg.temp   || 0.7;
     const tokens = aiCfg.tokens || 600;
-    const lang   = aiCfg.lang   || 'es';
-    const langNote = lang==='es' ? ' Responde siempre en español.'
+    const lang   = aiCfg.lang   || 'en';
+    const langNote = lang==='es' ? ' Always respond in Spanish.'
                    : lang==='en' ? ' Always respond in English.'
                    : ' Respond in both Spanish and English.';
-    const sys = (aiCfg.prompt || 'Eres el asistente de QCOL, ecosistema de computación cuántica. Responde de forma concisa y técnica.') + langNote;
+    const sys = (aiCfg.prompt || 'You are the QCOL assistant, a quantum computing ecosystem. Respond concisely and technically.') + langNote;
     const msgs = [
       { role:'system', content:sys },
       ...aiHistory.slice(-6),
@@ -1311,11 +1311,11 @@ body::before{content:'';position:fixed;inset:0;
         signal: AbortSignal.timeout(20000),
       });
       const d = await res.json();
-      if (!res.ok) throw new Error(d.error || 'Error HuggingFace');
+      if (!res.ok) throw new Error(d.error || 'HuggingFace Error');
       return Array.isArray(d) ? d[0].generated_text.split('assistant:').pop().trim() : d.generated_text;
     }
     const url = endpoints[aiCfg.provider];
-    if (!url) throw new Error('Proveedor no soportado');
+    if (!url) throw new Error('Unsupported provider');
     const defaultModel = aiCfg.provider==='mistral' ? 'mistral-large-latest'
                        : aiCfg.provider==='groq'    ? 'llama3-70b-8192'
                        : 'gpt-4o-mini';
@@ -1331,7 +1331,7 @@ body::before{content:'';position:fixed;inset:0;
       signal: AbortSignal.timeout(20000),
     });
     const d = await res.json();
-    if (!res.ok) throw new Error(d.error?.message || 'Error API');
+    if (!res.ok) throw new Error(d.error?.message || 'API Error');
     return d.choices[0].message.content;
   }
 
@@ -1342,7 +1342,7 @@ body::before{content:'';position:fixed;inset:0;
     
     const lbl = document.createElement('div');
     lbl.className = 'ai-lbl';
-    lbl.textContent = role === 'bot' ? 'QUANTUMCHAT' : 'TÚ';
+    lbl.textContent = role === 'bot' ? 'QUANTUMCHAT' : 'YOU';
     d.appendChild(lbl);
     
     const contentDiv = document.createElement('div');
@@ -1380,7 +1380,7 @@ body::before{content:'';position:fixed;inset:0;
       parent: editorContainer
     });
 
-    const msgs = ['INICIANDO...', 'CARGANDO MÓDULOS...', 'LISTO'];
+    const msgs = ['STARTING...', 'LOADING MODULES...', 'READY'];
     let i = 0;
     const sp = document.getElementById('splash-msg');
     const t = setInterval(() => {
