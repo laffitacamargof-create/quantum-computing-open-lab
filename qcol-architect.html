@@ -435,7 +435,9 @@ let curMode = 'circ';
 let curUser = null;
 let engineURL = '', engineOK = false;
 let running = false;
-let dragGate = null;
+let dragPaletteGate = null;      // puerta arrastrada desde la paleta
+let dragExistingUid = null;      // uid de puerta ya colocada que se está arrastrando
+let gateDragActive = false;      // indica que se ha iniciado un arrastre de puerta existente (para evitar click de borrado)
 let nextId = 1;
 let isUpdatingFromCode = false;
 let isUpdatingFromCircuit = false;
@@ -686,22 +688,62 @@ function buildPalette() {
   if (!container) return;
   let html = '';
   html += '<div class="pal-sec"><div class="pal-sec-lbl">1 QUBIT</div><div class="pal-grid">';
-  GATES['1q'].forEach(g => { html += `<div class="pal-gate" draggable="true" data-gate="${g.id}" style="background:${g.bg};box-shadow:0 0 6px ${g.glow}" ondragstart="onDragStart(event)" ondragend="onDragEnd()"><span class="pal-gate-sym">${g.sym}</span><span class="pal-gate-lbl">${g.id}</span></div>`; });
+  GATES['1q'].forEach(g => { html += `<div class="pal-gate" draggable="true" data-gate="${g.id}" style="background:${g.bg};box-shadow:0 0 6px ${g.glow}" ondragstart="onDragStartPalette(event)" ondragend="onDragEndPalette()"><span class="pal-gate-sym">${g.sym}</span><span class="pal-gate-lbl">${g.id}</span></div>`; });
   html += '</div></div><div class="pal-sec"><div class="pal-sec-lbl">2 QUBITS</div><div class="pal-grid">';
-  GATES['2q'].forEach(g => { html += `<div class="pal-gate" draggable="true" data-gate="${g.id}" style="background:${g.bg};box-shadow:0 0 6px ${g.glow}" ondragstart="onDragStart(event)" ondragend="onDragEnd()"><span class="pal-gate-sym">${g.sym}</span><span class="pal-gate-lbl">${g.id}</span></div>`; });
+  GATES['2q'].forEach(g => { html += `<div class="pal-gate" draggable="true" data-gate="${g.id}" style="background:${g.bg};box-shadow:0 0 6px ${g.glow}" ondragstart="onDragStartPalette(event)" ondragend="onDragEndPalette()"><span class="pal-gate-sym">${g.sym}</span><span class="pal-gate-lbl">${g.id}</span></div>`; });
   html += '</div></div><div class="pal-sec"><div class="pal-sec-lbl">3 QUBITS</div><div class="pal-grid">';
-  GATES['3q'].forEach(g => { html += `<div class="pal-gate" draggable="true" data-gate="${g.id}" style="background:${g.bg};box-shadow:0 0 6px ${g.glow}" ondragstart="onDragStart(event)" ondragend="onDragEnd()"><span class="pal-gate-sym">${g.sym}</span><span class="pal-gate-lbl">${g.id}</span></div>`; });
+  GATES['3q'].forEach(g => { html += `<div class="pal-gate" draggable="true" data-gate="${g.id}" style="background:${g.bg};box-shadow:0 0 6px ${g.glow}" ondragstart="onDragStartPalette(event)" ondragend="onDragEndPalette()"><span class="pal-gate-sym">${g.sym}</span><span class="pal-gate-lbl">${g.id}</span></div>`; });
   html += '</div></div><div class="pal-sec"><div class="pal-sec-lbl">MEDICIÓN</div><div class="pal-grid">';
-  GATES['meas'].forEach(g => { html += `<div class="pal-gate" draggable="true" data-gate="${g.id}" style="background:${g.bg};box-shadow:0 0 6px ${g.glow}" ondragstart="onDragStart(event)" ondragend="onDragEnd()"><span class="pal-gate-sym">${g.sym}</span><span class="pal-gate-lbl">${g.id}</span></div>`; });
+  GATES['meas'].forEach(g => { html += `<div class="pal-gate" draggable="true" data-gate="${g.id}" style="background:${g.bg};box-shadow:0 0 6px ${g.glow}" ondragstart="onDragStartPalette(event)" ondragend="onDragEndPalette()"><span class="pal-gate-sym">${g.sym}</span><span class="pal-gate-lbl">${g.id}</span></div>`; });
   html += '</div></div>';
   container.innerHTML = html;
 }
 
-function onDragStart(e) { dragGate = e.target.closest('.pal-gate')?.dataset.gate; if (dragGate) e.dataTransfer.setData('text/plain', dragGate); }
-function onDragEnd() { dragGate = null; }
+function onDragStartPalette(e) { dragPaletteGate = e.target.closest('.pal-gate')?.dataset.gate; if (dragPaletteGate) e.dataTransfer.setData('text/plain', dragPaletteGate); }
+function onDragEndPalette() { dragPaletteGate = null; }
+
+function onDragStartExisting(e, uid) {
+  e.stopPropagation();
+  dragExistingUid = uid;
+  gateDragActive = true;
+  e.dataTransfer.setData('text/plain', uid.toString());
+}
+function onDragEndExisting() {
+  dragExistingUid = null;
+  gateDragActive = false;
+}
+
+function onGateClick(event, uid) {
+  // Si se está arrastrando esta misma puerta, ignoramos el click
+  if (gateDragActive && dragExistingUid === uid) {
+    event.preventDefault();
+    return;
+  }
+  removeGate(uid);
+}
+
 function onWireDragOver(e) { e.preventDefault(); e.currentTarget.classList.add('dh'); }
 function onWireDragLeave(e) { e.currentTarget.classList.remove('dh'); }
-function onWireDrop(e, qubit) { e.preventDefault(); e.currentTarget.classList.remove('dh'); const gateId = dragGate || e.dataTransfer.getData('text/plain'); if (gateId) placeGate(gateId, qubit); dragGate = null; }
+
+function onWireDrop(e, qubit) {
+  e.preventDefault();
+  e.currentTarget.classList.remove('dh');
+  
+  // 1) ¿Viene de una puerta ya colocada?
+  if (dragExistingUid !== null) {
+    moveExistingGate(dragExistingUid, qubit);
+    dragExistingUid = null;
+    gateDragActive = false;
+    return;
+  }
+  
+  // 2) ¿Viene de la paleta?
+  const gateId = dragPaletteGate || e.dataTransfer.getData('text/plain');
+  if (gateId) {
+    placeGate(gateId, qubit);
+    dragPaletteGate = null;
+  }
+}
 
 function findGateDef(id) { for (const cat of Object.values(GATES)) { const g = cat.find(g => g.id === id); if (g) return g; } return null; }
 
@@ -748,6 +790,8 @@ function placeGate(gateId, qubit) {
       }
     }
   }
+  // Normalizar mediciones por si algo quedó desordenado
+  circuit.gates = normalizeMeasurements(circuit.gates);
   renderCircuit();
   updateCircuitInfo();
   updateCodeFromCircuit();
@@ -759,10 +803,70 @@ function removeGate(uid) {
   if (isUpdatingFromCode) return;
   isUpdatingFromCircuit = true;
   circuit.gates = circuit.gates.filter(g => g.uid !== uid);
+  circuit.gates = normalizeMeasurements(circuit.gates);
   renderCircuit();
   updateCircuitInfo();
   updateCodeFromCircuit();
   isUpdatingFromCircuit = false;
+}
+
+function moveExistingGate(uid, newQubit) {
+  if (isUpdatingFromCode) return;
+  isUpdatingFromCircuit = true;
+  const idx = circuit.gates.findIndex(g => g.uid === uid);
+  if (idx === -1) { isUpdatingFromCircuit = false; return; }
+  const gate = circuit.gates[idx];
+  
+  // No permitimos arrastrar puertas multi-qubit (se quedan fijas)
+  if (gate.q2 !== undefined || gate.q3 !== undefined) {
+    notify('Las puertas de 2 y 3 qubits no se pueden arrastrar');
+    isUpdatingFromCircuit = false;
+    return;
+  }
+  
+  // Eliminamos la puerta de su posición actual
+  circuit.gates.splice(idx, 1);
+  
+  if (gate.id === 'M') {
+    // Si es medición: eliminamos cualquier otra medición en el qubit destino
+    circuit.gates = circuit.gates.filter(g => !(g.id === 'M' && g.q === newQubit));
+    gate.q = newQubit;
+    // La añadimos (se normalizará después)
+    circuit.gates.push(gate);
+  } else {
+    // Puerta de 1 qubit: cambiamos su cable y la insertamos antes de la primera medición de ese cable
+    gate.q = newQubit;
+    const firstM = circuit.gates.findIndex(g => g.id === 'M' && g.q === newQubit);
+    if (firstM >= 0) {
+      circuit.gates.splice(firstM, 0, gate);
+    } else {
+      circuit.gates.push(gate);
+    }
+  }
+  
+  // Normalizar para dejar una sola medición por cable al final
+  circuit.gates = normalizeMeasurements(circuit.gates);
+  renderCircuit();
+  updateCircuitInfo();
+  updateCodeFromCircuit();
+  isUpdatingFromCircuit = false;
+  notify(`${gate.id} → q[${newQubit}]`);
+}
+
+// ═══════════════════════════════════════════════════════════
+// NORMALIZACIÓN: asegura una sola medición por qubit (la última)
+// ═══════════════════════════════════════════════════════════
+function normalizeMeasurements(gates) {
+  const measMap = new Map();
+  const nonMeas = [];
+  for (const g of gates) {
+    if (g.id === 'M') {
+      measMap.set(g.q, g);  // la última medición por qubit
+    } else {
+      nonMeas.push(g);
+    }
+  }
+  return [...nonMeas, ...measMap.values()];
 }
 
 function renderCircuit() {
@@ -841,8 +945,17 @@ function renderCircuit() {
       }
       html += `<div style="position:absolute; left:${left}px; top:${topY}px;">${svg}</div>`;
     } else {
+      // Puertas de 1 qubit y medición: se pueden arrastrar
       const yPos = g.q * ROW_HEIGHT;
-      html += `<div class="placed-gate" style="left:${left}px; top:${yPos + ROW_HEIGHT / 2}px; transform:translateY(-50%);" onclick="removeGate(${g.uid})"><div class="pg-box" style="background:${g.def.bg};box-shadow:0 0 6px ${g.def.glow}"><span class="pg-sym">${g.def.sym}</span></div></div>`;
+      html += `<div class="placed-gate" draggable="true" 
+                style="left:${left}px; top:${yPos + ROW_HEIGHT / 2}px; transform:translateY(-50%);" 
+                ondragstart="onDragStartExisting(event, ${g.uid})" 
+                ondragend="onDragEndExisting()" 
+                onclick="onGateClick(event, ${g.uid})">
+                <div class="pg-box" style="background:${g.def.bg};box-shadow:0 0 6px ${g.def.glow}">
+                  <span class="pg-sym">${g.def.sym}</span>
+                </div>
+              </div>`;
     }
   });
   html += `</div>`;
@@ -1570,6 +1683,8 @@ async function syncFromServer(reason) {
         _lastServerOutput = d.output || '';
         const parsed = _parseTextDraw(_lastServerOutput);
         if (parsed && parsed.gates.length > 0) {
+            // Aplicar normalización de mediciones antes de asignar
+            parsed.gates = normalizeMeasurements(parsed.gates);
             circuit.qubits = Math.min(parsed.numQubits, MAX_QUBITS);
             circuit.gates = parsed.gates;
             renderCircuit();
@@ -1770,13 +1885,11 @@ json.dumps({
                     newGates.push({ id: gateId, q: sorted[0], q2: sorted[1], q3: sorted[2], def: def, uid: uid });
                 }
             }
-            // Mediciones siempre al final
-            const _nonM = newGates.filter(g => g.id !== 'M');
-            const _meas  = newGates.filter(g => g.id === 'M');
-            circuit.gates = [..._nonM, ..._meas];
+            // Normalizar antes de asignar
+            circuit.gates = normalizeMeasurements(newGates);
             
-            const _gCount = _nonM.length;
-            const _mCount = _meas.length;
+            const _mCount = circuit.gates.filter(g => g.id === 'M').length;
+            const _gCount = circuit.gates.length - _mCount;
             
             renderCircuit();
             updateCircuitInfo();
@@ -1903,6 +2016,7 @@ async function runServerCode() {
             _lastServerOutput = d.output || '';
             const _sp = _parseTextDraw(_lastServerOutput);
             if (_sp && _sp.gates.length > 0) {
+                _sp.gates = normalizeMeasurements(_sp.gates);
                 const _vg = circuit.gates.filter(g => g.id !== 'M').length;
                 const _sg = _sp.gates.filter(g => g.id !== 'M').length;
                 const _pct = _sg > 0 ? Math.abs(_vg - _sg) / _sg : 0;
@@ -2221,7 +2335,15 @@ function applyBlochGate(gate) {
 }
 
 function addQubit() { if (circuit.qubits < MAX_QUBITS) { circuit.qubits++; if (!blochStates[circuit.qubits-1]) blochStates[circuit.qubits-1] = { theta: 0, phi: 0 }; renderCircuit(); updateCircuitInfo(); updateCodeFromCircuit(); notify(`${circuit.qubits} qubits`); } else notify(`Máximo ${MAX_QUBITS} qubits`); }
-function removeQubit() { if (circuit.qubits > 1) { circuit.gates = circuit.gates.filter(g => g.q < circuit.qubits-1 && (!g.q2 || g.q2 < circuit.qubits-1) && (!g.q3 || g.q3 < circuit.qubits-1)); circuit.qubits--; if (currentBlochQubit >= circuit.qubits) currentBlochQubit = circuit.qubits-1; renderCircuit(); updateCircuitInfo(); updateCodeFromCircuit(); notify(`${circuit.qubits} qubits`); } }
+function removeQubit() {
+    if (circuit.qubits > 1) {
+        circuit.gates = circuit.gates.filter(g => g.q < circuit.qubits-1 && (!g.q2 || g.q2 < circuit.qubits-1) && (!g.q3 || g.q3 < circuit.qubits-1));
+        circuit.qubits--;
+        circuit.gates = normalizeMeasurements(circuit.gates); // asegurar mediciones al final
+        if (currentBlochQubit >= circuit.qubits) currentBlochQubit = circuit.qubits-1;
+        renderCircuit(); updateCircuitInfo(); updateCodeFromCircuit(); notify(`${circuit.qubits} qubits`);
+    }
+}
 function clearCircuit() { circuit.gates = []; for (let i = 0; i < circuit.qubits; i++) blochStates[i] = { theta: 0, phi: 0 }; renderCircuit(); updateCircuitInfo(); updateCodeFromCircuit(); drawBloch(); notify('Circuito limpiado'); }
 function clearCode() { 
     const defaultCode = `from qiskit import QuantumCircuit
@@ -2255,7 +2377,6 @@ function saveCircuit() {
     if (idx >= 0) all[idx] = entry;
     else all.unshift(entry);
     localStorage.setItem(key, JSON.stringify(all.slice(0, 100)));
-    // Sincronizar circuito a DB de GitHub vía postMessage al core
     window.parent.postMessage({
         type: 'QCOL_SAVE_CIRCUIT',
         username: curUser?.username,
@@ -2281,7 +2402,15 @@ function loadCircuit(i) {
     if (!c) return;
     document.getElementById('code-ta').value = c.code;
     document.getElementById('save-name').value = c.name;
-    if (c.circ) { try { const cc = JSON.parse(c.circ); circuit = cc; renderCircuit(); updateCircuitInfo(); } catch (e) { } }
+    if (c.circ) {
+        try {
+            const cc = JSON.parse(c.circ);
+            circuit = cc;
+            circuit.gates = normalizeMeasurements(circuit.gates); // normalizar al cargar
+            renderCircuit();
+            updateCircuitInfo();
+        } catch (e) {}
+    }
     onCodeEdit();
     setTab('out');
     notify('Cargado: ' + c.name);
@@ -2479,8 +2608,12 @@ function init() {
     setTimeout(() => { initPyodide().catch(console.error); }, 1000);
 }
 
-window.onDragStart = onDragStart;
-window.onDragEnd = onDragEnd;
+// Exponer funciones globales
+window.onDragStartPalette = onDragStartPalette;
+window.onDragEndPalette = onDragEndPalette;
+window.onDragStartExisting = onDragStartExisting;
+window.onDragEndExisting = onDragEndExisting;
+window.onGateClick = onGateClick;
 window.onWireDragOver = onWireDragOver;
 window.onWireDragLeave = onWireDragLeave;
 window.onWireDrop = onWireDrop;
@@ -2490,25 +2623,20 @@ window.deleteCircuit = deleteCircuit;
 window.removeFromQueue = removeFromQueue;
 
 // ── MODO EDICIÓN DESDE NOTEBOOK ──────────────────────────────
-let _notebookCellId = null;  // cellId de la celda en Quantum Notebook
-let _notebookMode   = false; // true cuando se abre desde el notebook
+let _notebookCellId = null;
+let _notebookMode   = false;
 
 function postCore(type, data={}) {
     try { window.parent.postMessage({type, ...data}, '*'); } catch(e) {}
 }
 
-// ── VOLVER AL NOTEBOOK CON DATOS DEL CIRCUITO ────────────────
 function updateCircuitFromCode(){
-    // Regenera el diagrama del circuito a partir del código en el editor
-    // Usa syncFromServer (que ya existe en el arquitecto) si hay motor disponible
-    // o intenta parsear localmente con normalizeQiskitCode
     const ta = document.getElementById('code-ta');
     const code = ta ? ta.value.trim() : '';
     if(!code) return;
     if(engineOK && engineURL){
         syncFromServer('from-notebook').catch(e=>console.warn('sync failed',e));
     } else {
-        // Sin motor: intentar parsear con normalizeQiskitCode si existe
         if(typeof normalizeQiskitCode === 'function'){
             try{
                 const nc = normalizeQiskitCode(code);
@@ -2520,15 +2648,11 @@ function updateCircuitFromCode(){
 
 function returnToNotebook(){
     if(!_notebookMode || !_notebookCellId){
-        // No estamos en modo edición — comportamiento normal (ir al home)
         postCore('QCOL_NAV', {screen:'home'});
         return;
     }
-    // Obtener código actual del editor
     const ta   = document.getElementById('code-ta');
     const code = ta ? ta.value.trim() : '';
-    // Serializar la estructura interna del circuito
-    // Incluir def simplificado (solo lo necesario para dibujar)
     const circuitData = {
         qubits: circuit.qubits,
         gates:  circuit.gates.map(g => ({
@@ -2544,7 +2668,6 @@ function returnToNotebook(){
             }
         }))
     };
-    // Enviar al notebook
     window.parent.postMessage({
         type:        'QCOL_CIRCUIT_RETURN',
         cellId:       _notebookCellId,
@@ -2552,7 +2675,6 @@ function returnToNotebook(){
         circuitData:  circuitData
     }, '*');
     notify('⚛ Circuito guardado — volviendo al Notebook...');
-    // Pequeño delay para que el mensaje llegue antes de navegar
     setTimeout(()=>{ postCore('QCOL_NAV', {screen:'architect-pro'}); }, 400);
 }
 
@@ -2567,7 +2689,6 @@ async function checkEngine() {
     };
     setStatus('⏳ Conectando...', 'badge-warn');
     notify('🔄 Conectando al compilador...', 4000);
-
     for (let attempt = 1; attempt <= 3; attempt++) {
         try {
             setStatus(`⏳ Intento ${attempt}/3...`, 'badge-warn');
@@ -2607,39 +2728,33 @@ async function checkEngine() {
 
 window.addEventListener('message', e => {
     const d = e.data || {};
-
-    // ── NOTEBOOK envía celda circuit para editar ──────────────
     if(d.type === 'QCOL_OPEN_ARCHITECT_EDIT'){
         _notebookCellId = d.cellId || null;
         _notebookMode   = true;
-        // Mostrar botón ← GUARDAR Y VOLVER
         const btnBack = document.getElementById('btn-back-nb');
         const sepBack = document.getElementById('sep-back-nb');
         if(btnBack){ btnBack.style.display=''; }
         if(sepBack){ sepBack.style.display=''; }
-        // Si viene con código, cargarlo en el editor
         if(d.code && d.code.trim()){
             const ta = document.getElementById('code-ta');
             if(ta){
                 ta.value = d.code;
-                onCodeEdit(); // actualiza highlight y circuito
+                onCodeEdit();
                 updateCircuitFromCode();
             }
         } else if(d.circuitData && d.circuitData.gates){
-            // Si no hay código pero sí estructura, reconstruir circuito
             circuit.qubits = d.circuitData.qubits || 2;
             circuit.gates  = d.circuitData.gates  || [];
+            circuit.gates = normalizeMeasurements(circuit.gates);
             renderCircuit();
             updateCircuitInfo();
             updateCodeFromCircuit();
         } else {
-            // Celda vacía — limpiar y empezar fresco
             clearCircuit();
         }
         notify('⚛ Editando celda del Notebook — presiona ← GUARDAR Y VOLVER al terminar');
         return;
     }
-
     if (d.type === 'QCOL_USER') {
         curUser = d.user;
         const pill = document.getElementById('user-pill');

@@ -455,8 +455,6 @@ s.blt{color:#ffb86c;}
   <button class="stab on" id="stab-1" onclick="setView('notebook')">📝 NOTEBOOK</button>
   <button class="stab" id="stab-2" onclick="setView('manage')">📂 MIS NOTEBOOKS</button>
   <div class="secbar-right">
-    <button class="tbtn" id="btn-add-code" onclick="addCellAt(-1,'code')">＋ Código</button>
-    <button class="tbtn" id="btn-add-qk" onclick="addCellAt(-1,'qiskit')" style="color:var(--cy);border-color:rgba(0,255,221,.25);">⚛ Qiskit</button>
     <button class="tbtn" id="btn-add-md" onclick="addCellAt(-1,'markdown')">✦ Texto</button>
     <button class="tbtn" id="btn-add-circ" onclick="addCellAt(-1,'circuit')" style="color:#00ff88;border-color:rgba(0,200,100,.25);">⚛ Circuito</button>
     <button class="tbtn" id="btn-import" onclick="importNb()">📂 Abrir</button>
@@ -475,8 +473,6 @@ s.blt{color:#ffb86c;}
   <div id="view-notebook" style="display:flex;">
     <div class="nb-scroll" id="nb-scroll">
       <div class="nb-bottom" id="nb-bottom-btns">
-        <button class="nb-add-big" onclick="addCellAt(-1,'code')">＋ Código Python</button>
-        <button class="nb-add-big" onclick="addCellAt(-1,'qiskit')" style="border-color:rgba(0,255,221,.2);color:rgba(0,255,221,.5);">⚛ Celda Qiskit</button>
         <button class="nb-add-big" onclick="addCellAt(-1,'markdown')">✦ Texto / LaTeX</button>
         <button class="nb-add-big" onclick="addCellAt(-1,'circuit')" style="border-color:rgba(0,200,100,.2);color:rgba(0,200,100,.5);">⚛ Circuito Visual</button>
       </div>
@@ -541,7 +537,8 @@ function genId(){return 'c'+Date.now()+Math.random().toString(36).slice(2,6);}
 // ── NAVEGACIÓN ────────────────────────────────────────────────
 function goBack(){
   if(_expositionMode){
-    // En modo exposición: volver a proyectos sin deactivar (el core maneja el nav)
+    // Quitar modo exposición → volver al repositorio de proyectos
+    deactivateExpositionMode();
     postCore('QCOL_NAV',{screen:'projects'});
   } else {
     postCore('QCOL_NAV',{screen:'home'});
@@ -558,11 +555,11 @@ function activateExpositionMode(){
   // Ocultar secbar completa — en expo solo se usa el botón ← ATRÁS del topbar
   const secbar=document.getElementById('secbar');
   if(secbar)secbar.style.display='none';
-  // Ocultar botones individuales por si acaso
-  ['btn-add-code','btn-add-qk','btn-add-md','btn-import',
-   'btn-download','btn-save','btn-publish','stab-2'].forEach(id=>{
+  // Ocultar botones de edición en expo — dejar solo los de circuito
+  ['btn-add-md','btn-import','btn-download','btn-save','btn-publish','stab-2'].forEach(id=>{
     const el=document.getElementById(id);if(el)el.style.display='none';
   });
+  // btn-add-circ se mantiene visible: las celdas circuit son editables en expo
   const rst=document.getElementById('btn-restore-all');if(rst)rst.style.display='';
   const ni=document.getElementById('nb-name-inp');if(ni){ni.readOnly=true;ni.style.opacity='.6';}
   // Cambiar texto del botón atrás para indicar que va a Proyectos
@@ -580,7 +577,7 @@ function deactivateExpositionMode(){
   const secbar=document.getElementById('secbar');
   if(secbar)secbar.style.display='flex';
   // Restaurar botones
-  ['btn-add-code','btn-add-qk','btn-add-md','btn-import',
+  ['btn-add-md','btn-add-circ','btn-import',
    'btn-download','btn-save','btn-publish','stab-2'].forEach(id=>{
     const el=document.getElementById(id);if(el)el.style.display='';
   });
@@ -655,6 +652,27 @@ function renderOutput(outArea, d, elapsed, cellId){
   const t0=elapsed?`${elapsed}s`:null;
   let html='';
 
+  // Determinar si la celda es de tipo 'circuit' (ya tiene diagrama visual — no repetir)
+  const cell = cellId ? cells.find(c=>c.id===cellId) : null;
+  const isCellCircuit = cell && cell.type === 'circuit';
+
+  // Extraer shots REALES del código de la celda (no asumir 1024)
+  // Busca: shots=N en el código fuente (funciona para circuit, qiskit y code)
+  function extractShots(sourceCode){
+    if(!sourceCode) return null;
+    // Patrones: shots=512, shots = 512, shots=1_024, shots=2048
+    const m = sourceCode.match(/shots\s*=\s*([\d_]+)/);
+    if(m) return parseInt(m[1].replace(/_/g,''));
+    return null;
+  }
+  // Código fuente relevante (hiddenCode para circuit, code para las demás)
+  const srcCode = cell ? (cell.hiddenCode || cell.code || '') : '';
+  // También buscar en el output text por si el servidor reporta shots
+  const shotsFromServer = d.bloch?.shots || d.shots || null;
+  const shotsFromCode   = extractShots(srcCode);
+  // Prioridad: servidor > código > 1024
+  const realShots = shotsFromServer || shotsFromCode || 1024;
+
   // Cabecera
   const isOk=d.success!==false;
   const hdrCls=isOk?'out-header-ok':'out-header-err';
@@ -663,18 +681,28 @@ function renderOutput(outArea, d, elapsed, cellId){
 
   // ── STDOUT completo ──
   if(d.output&&d.output.trim()){
-    // Detectar si la salida contiene un diagrama de circuito (líneas con ─, │, ┤, ├, etc.)
     const lines=d.output.split('\n');
     let circuitBlock=[];
     let textBlock=[];
     let inCircuit=false;
     for(const line of lines){
       const isCircLine=/[─┤├┼╫│┐┘└┌╥╨╩╦╣╠═║╗╚╔╝╞╡╟╢]/.test(line)||/q_?\d+\s*:/.test(line)||/c:\s*\d/.test(line)||/^\s*(q\[|c\[|cr\[|qr\[)/.test(line);
-      if(isCircLine){if(!inCircuit&&textBlock.length){html+=buildTextOut(textBlock.join('\n'));textBlock=[];}inCircuit=true;circuitBlock.push(line);}
-      else{if(inCircuit){html+=buildCircuitOut(circuitBlock.join('\n'));circuitBlock=[];inCircuit=false;}textBlock.push(line);}
+      if(isCircLine){
+        if(!inCircuit&&textBlock.length){html+=buildTextOut(textBlock.join('\n'));textBlock=[];}
+        inCircuit=true;
+        circuitBlock.push(line);
+      } else {
+        if(inCircuit){
+          // Para celdas circuit: NO mostrar el ASCII del circuito en output
+          // (ya hay un diagrama visual en la celda)
+          if(!isCellCircuit) html+=buildCircuitOut(circuitBlock.join('\n'));
+          circuitBlock=[];inCircuit=false;
+        }
+        textBlock.push(line);
+      }
     }
-    if(inCircuit)html+=buildCircuitOut(circuitBlock.join('\n'));
-    if(textBlock.length&&textBlock.join('').trim())html+=buildTextOut(textBlock.join('\n'));
+    if(inCircuit && !isCellCircuit) html+=buildCircuitOut(circuitBlock.join('\n'));
+    if(textBlock.length&&textBlock.join('').trim()) html+=buildTextOut(textBlock.join('\n'));
   }
 
   // ── STDERR ──
@@ -682,14 +710,13 @@ function renderOutput(outArea, d, elapsed, cellId){
     html+=`<div class="out-stderr">${escH(d.stderr)}</div>`;
   }
 
-  // ── PROBABILIDADES / COUNTS ──
+  // ── PROBABILIDADES / COUNTS — con shots reales ──
   if(d.bloch&&d.bloch.probabilities){
-    html+=buildProbsOut(d.bloch.probabilities,d.bloch.shots||1024,d.bloch.simulator||'AerSimulator');
-    // Añadir histograma canvas
-    html+=buildHistogramOut(d.bloch.probabilities,d.bloch.shots||1024);
+    html+=buildProbsOut(d.bloch.probabilities, realShots, d.bloch.simulator||'AerSimulator');
+    html+=buildHistogramOut(d.bloch.probabilities, realShots);
   }else if(d.counts){
-    html+=buildProbsOut(d.counts,d.bloch?.shots||1024,'');
-    html+=buildHistogramOut(d.counts,d.bloch?.shots||1024);
+    html+=buildProbsOut(d.counts, realShots, '');
+    html+=buildHistogramOut(d.counts, realShots);
   }
 
   // ── ESFERA DE BLOCH ──
@@ -894,7 +921,7 @@ function openCircuitEditor(cellId){
     code:        cell.hiddenCode || '',
     circuitData: cell.circuitData || null
   });
-  notify('⚛ Abriendo Arquitecto Cuántico...');
+  notify('⚛ Abriendo editor de circuito...');
 }
 
 function buildCircuitOut(text){
@@ -1367,84 +1394,159 @@ function buildProbsOut(probs,shots,sim){
   const entries=Object.entries(probs).sort((a,b)=>b[1]-a[1]);
   if(!entries.length)return'';
   const total=entries.reduce((s,[,v])=>s+v,0);
+
+  // Detectar si los valores son counts directos o probabilidades
+  // Si la suma total ≈ shots → son counts directos
+  // Si la suma total ≈ 1.0  → son probabilidades
+  const sumV = entries.reduce((s,[,v])=>s+v,0);
+  const areCounts = sumV > 1.5; // counts directos si suma > 1.5
+
+  // Calcular el total real de shots desde los datos (más preciso que el parámetro)
+  const totalCounts = areCounts ? sumV : shots;
+  const displayShots = areCounts ? Math.round(sumV) : shots;
+
   const rows=entries.map(([st,v])=>{
-    // v puede ser count (int) o probability (float)
-    const isCount=v>1;
-    const prob=isCount?v/total:v;
-    const count=isCount?v:Math.round(v*shots);
-    const pct=(prob*100).toFixed(1);
-    const fill=Math.round(prob*100);
+    const count  = areCounts ? Math.round(v) : Math.round(v*shots);
+    const prob   = areCounts ? v/totalCounts : v;
+    const pct    = (prob*100).toFixed(1);
+    const fill   = Math.max(1, Math.round(prob*100));
     return`<div class="prob-row">
       <span class="prob-state">|${escH(st)}⟩</span>
       <div class="prob-bar-bg"><div class="prob-bar-fill" style="width:${fill}%"></div></div>
       <span class="prob-pct">${pct}%</span>
-      <span class="prob-count">${count}/${shots}</span>
+      <span class="prob-count">${count}/${displayShots}</span>
     </div>`;
   }).join('');
   return`<div class="out-probs">
-    <div class="out-probs-title">RESULTADOS${sim?' · '+sim:''} · ${shots} shots</div>
+    <div class="out-probs-title">RESULTADOS${sim?' · '+sim:''} · ${displayShots} shots</div>
     ${rows}
   </div>`;
 }
 
 function buildHistogramOut(probs, shots){
-  const entries=Object.entries(probs).sort((a,b)=>a[0].localeCompare(a[0]));
+  // Ordenar estados de menor a mayor (orden binario natural)
+  const entries=Object.entries(probs).sort((a,b)=>a[0].localeCompare(b[0]));
   if(!entries.length) return '';
-  const total=entries.reduce((s,[,v])=>s+v,0);
+
+  // Detectar si son counts directos o probabilidades
+  const sumV = entries.reduce((s,[,v])=>s+v,0);
+  const areCounts = sumV > 1.5;
+
+  // Calcular counts reales y total real de shots
+  const totalReal  = areCounts ? Math.round(sumV) : shots;
+  const countsData = entries.map(([st,v])=>({
+    state: st,
+    count: areCounts ? Math.round(v) : Math.round(v*shots),
+    prob:  areCounts ? v/sumV : v
+  }));
+  const maxCount = Math.max(...countsData.map(d=>d.count), 1);
+
   const canvasId='hist-'+genId();
   setTimeout(()=>{
     const canvas=document.getElementById(canvasId);
     if(!canvas)return;
     const ctx=canvas.getContext('2d');
-    const w=canvas.width=Math.min(600,entries.length*70+60);
-    const h=canvas.height=200;
-    const padLeft=45,padRight=20,padTop=15,padBottom=35;
-    const chartW=w-padLeft-padRight;
-    const chartH=h-padTop-padBottom;
-    const barW=Math.min(40,chartW/entries.length-8);
-    const maxVal=Math.max(...entries.map(([,v])=>v));
-    ctx.clearRect(0,0,w,h);
-    // Grid
-    ctx.strokeStyle='rgba(255,255,255,0.08)';
-    ctx.lineWidth=0.5;
-    for(let i=0;i<=4;i++){
-      const y=padTop+chartH*(1-i/4);
-      ctx.beginPath();
-      ctx.moveTo(padLeft,y);
-      ctx.lineTo(w-padRight,y);
-      ctx.stroke();
+    // Ancho adaptativo: más barras → canvas más ancho
+    const nBars = countsData.length;
+    const barW  = Math.max(18, Math.min(44, Math.floor(520/nBars)-10));
+    const barGap = Math.max(4, Math.min(10, Math.floor(80/nBars)));
+    const padL=52, padR=16, padT=22, padB=42;
+    const chartW = nBars*(barW+barGap)+barGap;
+    const W = Math.min(700, padL+chartW+padR);
+    const H = 210;
+    const chartH = H-padT-padB;
+    canvas.width=W; canvas.height=H;
+
+    ctx.clearRect(0,0,W,H);
+    // Fondo
+    ctx.fillStyle='#050810'; ctx.fillRect(0,0,W,H);
+
+    // Calcular ticks del eje Y en counts reales (no probabilidades)
+    // Elegir un número "bonito" de ticks
+    const nTicks=5;
+    const tickStep = Math.ceil(maxCount/nTicks/10)*10 || 1;
+    const yMax = tickStep*nTicks;
+
+    // Grid horizontal + etiquetas eje Y (counts)
+    ctx.font='9px JetBrains Mono,monospace';
+    ctx.textAlign='right';
+    for(let i=0;i<=nTicks;i++){
+      const val = i*tickStep;
+      const y   = padT+chartH*(1-val/yMax);
+      ctx.strokeStyle='rgba(0,136,255,0.1)';
+      ctx.lineWidth=0.6;
+      ctx.beginPath(); ctx.moveTo(padL,y); ctx.lineTo(W-padR,y); ctx.stroke();
+      ctx.fillStyle='rgba(0,180,255,0.55)';
+      ctx.fillText(val>999?(val/1000).toFixed(1)+'k':val, padL-4, y+3);
     }
-    // Barras
-    entries.forEach(([st,v],i)=>{
-      const x=padLeft+i*(barW+8)+8;
-      const barH=(v/maxVal)*chartH;
-      const y=padTop+chartH-barH;
-      const grad=ctx.createLinearGradient(x,y,x+barW,y+barH);
-      grad.addColorStop(0,'#00aaff');
-      grad.addColorStop(1,'#00ffdd');
+
+    // Barras con gradiente azul-cian (misma estética que el ecosistema)
+    countsData.forEach((d,i)=>{
+      const x    = padL+barGap+i*(barW+barGap);
+      const bH   = Math.max(2,(d.count/yMax)*chartH);
+      const y    = padT+chartH-bH;
+      // Gradiente
+      const grad = ctx.createLinearGradient(x,y+bH,x,y);
+      grad.addColorStop(0,'rgba(0,100,220,.85)');
+      grad.addColorStop(0.5,'rgba(0,160,255,.92)');
+      grad.addColorStop(1,'rgba(0,220,255,1)');
       ctx.fillStyle=grad;
-      ctx.fillRect(x,y,barW,barH);
-      ctx.fillStyle='#aabcda';
-      ctx.font='9px JetBrains Mono,monospace';
-      ctx.textAlign='center';
-      ctx.fillText(st,x+barW/2,padTop+chartH+15);
-      // Valor encima
+      if(ctx.roundRect) ctx.roundRect(x,y,barW,bH,3); else ctx.rect(x,y,barW,bH);
+      ctx.fill();
+      // Brillo superior
+      ctx.fillStyle='rgba(0,255,255,0.45)';
+      ctx.fillRect(x,y,barW,2);
+      // Count encima de la barra
       ctx.fillStyle='#e2ecff';
       ctx.font='bold 8px JetBrains Mono,monospace';
-      ctx.fillText(v>1?v:v.toFixed(2),x+barW/2,y-3);
+      ctx.textAlign='center';
+      const label = d.count>0?String(d.count):'0';
+      ctx.fillText(label, x+barW/2, y-4);
+      // Estado debajo
+      ctx.fillStyle='rgba(140,190,255,0.8)';
+      ctx.font='9px JetBrains Mono,monospace';
+      // Rotar etiqueta si hay muchas barras
+      if(nBars>8){
+        ctx.save();
+        ctx.translate(x+barW/2, padT+chartH+8);
+        ctx.rotate(Math.PI/4);
+        ctx.textAlign='left';
+        ctx.fillText('|'+d.state+'⟩',0,0);
+        ctx.restore();
+      } else {
+        ctx.textAlign='center';
+        ctx.fillText('|'+d.state+'⟩', x+barW/2, padT+chartH+14);
+        // Porcentaje
+        ctx.fillStyle='rgba(100,150,200,0.6)';
+        ctx.font='8px JetBrains Mono,monospace';
+        ctx.fillText((d.prob*100).toFixed(1)+'%', x+barW/2, padT+chartH+25);
+      }
     });
+
     // Ejes
-    ctx.strokeStyle='rgba(255,255,255,0.3)';
-    ctx.lineWidth=1;
+    ctx.strokeStyle='rgba(0,136,255,0.35)';
+    ctx.lineWidth=1.2;
     ctx.beginPath();
-    ctx.moveTo(padLeft-2,padTop);
-    ctx.lineTo(padLeft-2,padTop+chartH);
-    ctx.lineTo(w-padRight,padTop+chartH);
+    ctx.moveTo(padL,padT); ctx.lineTo(padL,padT+chartH); ctx.lineTo(W-padR,padT+chartH);
     ctx.stroke();
-  },20);
-  return `<div style="padding:.6rem;background:#040c18;border-top:1px solid rgba(0,136,255,.1);">
-    <div style="font-family:var(--orb);font-size:.42rem;color:var(--mu);margin-bottom:.4rem;">📊 HISTOGRAMA · ${shots} SHOTS</div>
-    <canvas id="${canvasId}" style="max-width:100%;height:auto;background:#050810;border-radius:6px;"></canvas>
+
+    // Etiqueta eje Y
+    ctx.save();
+    ctx.translate(12, padT+chartH/2);
+    ctx.rotate(-Math.PI/2);
+    ctx.fillStyle='rgba(0,136,255,0.5)';
+    ctx.font='9px Orbitron,monospace';
+    ctx.textAlign='center';
+    ctx.fillText('CONTEOS', 0, 0);
+    ctx.restore();
+
+  }, 20);
+
+  return `<div style="padding:.5rem .55rem .6rem;background:#040c18;border-top:1px solid rgba(0,136,255,.1);">
+    <div style="font-family:var(--orb);font-size:.42rem;color:var(--mu);margin-bottom:.35rem;letter-spacing:.05em;">
+      📊 HISTOGRAMA · ${totalReal} shots
+    </div>
+    <canvas id="${canvasId}" style="max-width:100%;height:auto;display:block;border-radius:6px;"></canvas>
   </div>`;
 }
 
@@ -1604,7 +1706,7 @@ async function runCell(id){
   // Para celdas circuit: ejecutar hiddenCode (el código generado por el arquitecto)
   const rawCode = isCircuit ? (cell.hiddenCode||'') : (isQk?(QISKIT_PREAMBLE+'\n'+cell.code.trim()):cell.code.trim());
   const code = isCircuit ? (QISKIT_PREAMBLE+'\n'+rawCode) : rawCode;
-  if(!rawCode.trim()){notify('⚛ Celda sin código — ábrela en el Arquitecto Cuántico');return;}
+  if(!rawCode.trim()){notify('⚛ Celda sin código — edita el circuito primero');return;}
   if(!code.trim())return;
   running=true;setSbRun(true);
   const rbtn=document.getElementById('rbtn-'+id);
@@ -1686,7 +1788,7 @@ function downloadNb(){
     cells:cells.map(c=>{
       const isCircuit = c.type==='circuit';
       const tags = c.type==='qiskit'?['qiskit-cell']:isCircuit?['circuit-cell']:[];
-      const source = isCircuit ? [c.hiddenCode||'# Celda de circuito visual (editar en el Arquitecto Cuántico)'] : [c.code];
+      const source = isCircuit ? [c.hiddenCode||'# Celda de circuito visual'] : [c.code];
       const meta = {tags};
       if(isCircuit){ meta.hidden_code=c.hiddenCode||''; meta.circuit_data=c.circuitData||null; }
       return {cell_type:c.type==='markdown'?'markdown':'code', source, metadata:meta, outputs:[], execution_count:c.exec_count};
@@ -1702,7 +1804,7 @@ document.addEventListener('keydown',e=>{
 });
 
 // ── GESTIÓN NOTEBOOKS ─────────────────────────────────────────
-function newNotebook(){if(!confirm('¿Crear nuevo notebook?'))return;cells=[];execCounter=0;curCellId=null;document.getElementById('nb-name-inp').value='Nuevo Notebook';addCellAt(-1,'code');notify('✅ Nuevo notebook');}
+function newNotebook(){if(!confirm('¿Crear nuevo notebook?'))return;cells=[];execCounter=0;curCellId=null;document.getElementById('nb-name-inp').value='Nuevo Notebook';addCellAt(-1,'markdown');notify('✅ Nuevo notebook');}
 function importNb(){document.getElementById('import-file').click();}
 function handleImport(e){
   const file=e.target.files[0];if(!file)return;
@@ -1717,8 +1819,7 @@ function handleImport(e){
         const src=Array.isArray(c.source)?c.source.join(''):c.source||'';
         const tags=c.metadata?.tags||[];
         const type=c.cell_type==='markdown'?'markdown':
-          (tags.includes('qiskit-cell')?'qiskit':
-          (tags.includes('circuit-cell')?'circuit':'code'));
+          (tags.includes('circuit-cell')?'circuit':'markdown');  // solo markdown y circuit
         const hiddenCode = c.metadata?.hidden_code || '';
         const circuitData = c.metadata?.circuit_data || null;
         cells.push({id:genId(),type,code:src,output:'',exec_count:null,
@@ -1767,7 +1868,9 @@ function setView(v){
 }
 
 // ── CELDAS ────────────────────────────────────────────────────
-function addCellAt(afterIdx,type='code'){
+function addCellAt(afterIdx,type='markdown'){
+  // Solo se permiten celdas markdown y circuit
+  if(type==='code'||type==='qiskit') type='markdown';
   if(_expositionMode)return;
   const defaultQk=`# Celda Qiskit — imports automáticos: qc, AerSimulator, np, pi, plt
 qc = QuantumCircuit(2, 2)
@@ -1852,7 +1955,7 @@ function renderCells(){
 }
 function buildAddRow(idx){
   const row=document.createElement('div');row.className='add-cell-row';
-  row.innerHTML=`<div class="add-cell-line"></div><div class="add-cell-btns"><button class="add-btn" onclick="addCellAt(${idx},'code')">＋ Código</button><button class="add-btn" onclick="addCellAt(${idx},'qiskit')">⚛ Qiskit</button><button class="add-btn" onclick="addCellAt(${idx},'markdown')">✦ Texto</button><button class="add-btn" style="color:#00ff88" onclick="addCellAt(${idx},'circuit')">⚛ Circuito</button></div><div class="add-cell-line"></div>`;
+  row.innerHTML=`<div class="add-cell-line"></div><div class="add-cell-btns"><button class="add-btn" onclick="addCellAt(${idx},'markdown')">✦ Texto</button><button class="add-btn" style="color:#00ff88" onclick="addCellAt(${idx},'circuit')">⚛ Circuito</button></div><div class="add-cell-line"></div>`;
   return row;
 }
 
@@ -1991,18 +2094,14 @@ function buildCellEl(cell,i){
     // cell.circuitData = {qubits, gates} — estructura interna del arquitecto
     const hasCircuit = cell.circuitData && cell.circuitData.gates && cell.circuitData.gates.length > 0;
     const hasCode    = (cell.hiddenCode || '').trim().length > 0;
-    const circuitToolbar = _expositionMode
-      ? `<div class="cell-toolbar">
-          <button class="ct-btn ct-run" onclick="event.stopPropagation();runCell('${cell.id}')" title="Ejecutar">▶</button>
-        </div>`
-      : `<div class="cell-toolbar">
-          <button class="ct-btn" onclick="event.stopPropagation();moveCellUp('${cell.id}')" title="Subir">↑</button>
-          <button class="ct-btn" onclick="event.stopPropagation();moveCellDown('${cell.id}')" title="Bajar">↓</button>
-          <button class="ct-btn danger" onclick="event.stopPropagation();deleteCell('${cell.id}')" title="Eliminar">✕</button>
-        </div>`;
-    const restoreBtn = _expositionMode
-      ? `<button class="cell-restore-btn" onclick="event.stopPropagation();restoreCell('${cell.id}')">↺ Original</button>`
-      : '';
+    // En modo EXPO: circuit es EDITABLE (mismo toolbar que normal)
+    // Solo Markdown se bloquea en expo
+    const circuitToolbar = `<div class="cell-toolbar">
+        <button class="ct-btn" onclick="event.stopPropagation();moveCellUp('${cell.id}')" title="Subir">↑</button>
+        <button class="ct-btn" onclick="event.stopPropagation();moveCellDown('${cell.id}')" title="Bajar">↓</button>
+        ${_expositionMode ? '' : `<button class="ct-btn danger" onclick="event.stopPropagation();deleteCell('${cell.id}')" title="Eliminar">✕</button>`}
+      </div>`;
+    const restoreBtn = '';  // Sin restore en circuit (siempre editable)
     // Renderizar el diagrama del circuito a partir de circuitData
     const circuitSVG = hasCircuit ? buildCircuitFromData(cell.circuitData) : '';
     const outContent = cell.output ? `<div class="cell-output-area" id="out-${cell.id}">${'<!-- output -->'}</div>` : '';
@@ -2011,30 +2110,30 @@ function buildCellEl(cell,i){
       <div class="cell-gutter">
         <div class="cell-num">${cell.exec_count!==null?`[${cell.exec_count}]`:'[ ]'}</div>
         <button class="cell-run-btn" id="rbtn-${cell.id}"
-          onclick="event.stopPropagation();runCell('${cell.id}')" title="${hasCode?'Ejecutar circuito':'Editar primero en el Arquitecto'}">▶</button>
+          onclick="event.stopPropagation();runCell('${cell.id}')" title="${hasCode?'Ejecutar circuito':'Editar el circuito primero'}">>▶</button>
       </div>
       <div class="cell-body">
         <div class="cell-type-badge ctb-circ">
           ⚛ Circuito Visual${hasCode?' · <span style="color:rgba(0,200,100,.5);font-size:.38rem;">código listo</span>':' · <span style="color:rgba(255,180,0,.6);font-size:.38rem;">sin código</span>'}
         </div>
         <div class="cell-circuit-preview" id="cprev-${cell.id}"
-          onclick="${_expositionMode?'':'event.stopPropagation();openCircuitEditor(\''+cell.id+'\')'}"
-          title="${_expositionMode?'':'Haz clic para editar en el Arquitecto Cuántico'}">
+          onclick="event.stopPropagation();openCircuitEditor('${cell.id}')"
+          title="Haz clic para editar el circuito">
           ${hasCircuit
-            ? `<div class="circ-preview-hint">⚛ CIRCUITO CUÁNTICO${_expositionMode?'':' — clic para editar'}</div>${circuitSVG}`
-            : `<div class="circ-empty-hint" onclick="event.stopPropagation();${_expositionMode?'':('openCircuitEditor(\''+cell.id+'\')')}">
+            ? `<div class="circ-preview-hint">⚛ CIRCUITO CUÁNTICO — clic para editar</div>${circuitSVG}`
+            : `<div class="circ-empty-hint" onclick="event.stopPropagation();openCircuitEditor('${cell.id}')">
                 ⚛ Celda de Circuito Visual<br>
-                <span style="font-size:.4rem;color:rgba(0,200,100,.4);">${_expositionMode?'(sin circuito)':'Haz clic para abrir el Arquitecto Cuántico y diseñar el circuito'}</span>
+                <span style="font-size:.4rem;color:rgba(0,200,100,.4);">Haz clic para editar el circuito visual</span>
               </div>`
           }
         </div>
-        ${!_expositionMode ? `<div style="display:flex;gap:.4rem;margin-top:.3rem;align-items:center;">
+        <div style="display:flex;gap:.4rem;margin-top:.3rem;align-items:center;">
           <button class="circ-edit-btn" onclick="event.stopPropagation();openCircuitEditor('${cell.id}')">
-            ✏ Editar en Arquitecto
+            ✏ Editar Circuito
           </button>
           ${hasCode?`<button class="circ-edit-btn" style="background:rgba(0,136,255,.1);border-color:rgba(0,136,255,.3);color:var(--bl2);"
             onclick="event.stopPropagation();runCell('${cell.id}')">▶ Ejecutar</button>`:''}
-        </div>` : ''}
+        </div>
         <div class="cell-output-area" id="out-${cell.id}">${cell.output?`<div class="out-stdout">${escH(cell.output)}</div>`:''}</div>
         ${restoreBtn}
       </div>`;
@@ -2269,10 +2368,10 @@ window.addEventListener('message',e=>{
       document.body.classList.add('expo-mode');
       // Botones
       document.getElementById('expo-badge').style.display='inline-flex';
-      ['btn-add-code','btn-add-qk','btn-add-md','btn-import',
-       'btn-download','btn-save','btn-publish','stab-2'].forEach(id=>{
+      ['btn-add-md','btn-import','btn-download','btn-save','btn-publish','stab-2'].forEach(id=>{
         const el=document.getElementById(id); if(el) el.style.display='none';
       });
+      // circuit sigue visible en expo
       const rst=document.getElementById('btn-restore-all'); if(rst) rst.style.display='';
       const ni=document.getElementById('nb-name-inp');
       if(ni){ ni.readOnly=true; ni.style.opacity='.6'; }
@@ -2286,11 +2385,11 @@ window.addEventListener('message',e=>{
       if(cells[0]) focusCell(cells[0].id);
       notify('👁 Modo exposición — lee el material y experimenta con el código');
     } else {
-      // Modo normal
+      // Modo normal — restaurar sin btn-add-code/btn-add-qk (ya no existen)
       _expositionMode = false;
       document.body.classList.remove('expo-mode');
       document.getElementById('expo-badge').style.display='none';
-      ['btn-add-code','btn-add-qk','btn-add-md','btn-import',
+      ['btn-add-md','btn-add-circ','btn-import',
        'btn-download','btn-save','btn-publish','stab-2'].forEach(id=>{
         const el=document.getElementById(id); if(el) el.style.display='';
       });

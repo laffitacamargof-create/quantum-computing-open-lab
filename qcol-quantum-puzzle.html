@@ -1,0 +1,1309 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+<title>Quantum Puzzle · Laboratorio de Apps Cuánticas</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;800&family=JetBrains+Mono:wght@400;500&family=Exo+2:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+    --bg: #010608;
+    --s: #071220;
+    --s2: #0c1c30;
+    --b: #0d2a4a;
+    --b2: #1a3a5c;
+    --bl: #0088ff;
+    --bl2: #00ccff;
+    --gr: #00ff88;
+    --gd: #ffd700;
+    --rd: #ff4466;
+    --pu: #c084fc;
+    --tx: #ddeeff;
+    --mu: #4a7a9b;
+    --orb: 'Orbitron', monospace;
+    --mono: 'JetBrains Mono', monospace;
+    --exo: 'Exo 2', sans-serif;
+}
+body{
+    background: var(--bg);
+    color: var(--tx);
+    font-family: var(--exo);
+    min-height: 100vh;
+}
+body::before{
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: radial-gradient(rgba(0,200,255,.05) 0.8px, transparent 0.8px);
+    background-size: 28px 28px;
+    pointer-events: none;
+    z-index:0;
+}
+.notif{
+    position:fixed;
+    top:.8rem;
+    right:.8rem;
+    z-index:1000;
+    padding:.6rem 1.2rem;
+    background:rgba(4,14,28,.98);
+    border-left:3px solid var(--bl2);
+    border-radius:10px;
+    font-family:var(--orb);
+    font-size:.65rem;
+    color:var(--bl2);
+    backdrop-filter:blur(10px);
+    transform:translateX(130%);
+    transition:transform .25s;
+    box-shadow:0 4px 15px rgba(0,0,0,0.5);
+}
+.notif.show{transform:translateX(0);}
+.admin-bar{
+    display:none;
+    background:rgba(0,20,50,.75);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--gd);
+    padding:.6rem 1.5rem;
+    font-family:var(--orb);
+    font-size:.58rem;
+    color:var(--gd);
+    align-items:center;
+    gap:.8rem;
+    z-index:20;
+}
+.admin-bar.show{display:flex;}
+.toolbar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:.8rem;
+    padding:.9rem 1.5rem;
+    background:linear-gradient(135deg, rgba(7,18,32,0.85), rgba(12,28,48,0.9));
+    backdrop-filter:blur(12px);
+    border-bottom:1px solid var(--b);
+    flex-wrap:wrap;
+    position:sticky;
+    top:0;
+    z-index:15;
+}
+.search-box{
+    display:flex;
+    align-items:center;
+    gap:.45rem;
+    background:rgba(0,0,0,.45);
+    border:1px solid var(--b2);
+    border-radius:40px;
+    padding:.38rem 1rem;
+    flex:1;
+    max-width:300px;
+}
+.search-box input{
+    background:transparent;
+    border:none;
+    color:var(--tx);
+    font-size:.78rem;
+    outline:none;
+    width:100%;
+}
+.filter-tag{
+    display:flex;
+    gap:.5rem;
+    flex-wrap:wrap;
+}
+.tag-chip{
+    background:transparent;
+    border:1px solid var(--b2);
+    padding:.28rem .85rem;
+    border-radius:40px;
+    color:var(--mu);
+    font-family:var(--orb);
+    font-size:.55rem;
+    cursor:pointer;
+    transition:all .2s;
+}
+.tag-chip.active{
+    background:linear-gradient(135deg, rgba(0,136,255,0.2), rgba(0,200,255,0.1));
+    border-color:var(--bl);
+    color:var(--bl2);
+}
+.btn{
+    padding:.4rem .9rem;
+    border:none;
+    border-radius:40px;
+    font-family:var(--orb);
+    font-size:.55rem;
+    font-weight:600;
+    cursor:pointer;
+    transition:all .2s;
+}
+.btn-pri{
+    background:linear-gradient(125deg, #0055aa, var(--bl));
+    color:white;
+}
+.btn-pri:hover{
+    transform:translateY(-1px);
+    box-shadow:0 6px 14px rgba(0,136,255,0.5);
+}
+.grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(280px, 1fr));
+    gap:1.4rem;
+    padding:1.8rem;
+    max-width:1400px;
+    margin:0 auto;
+}
+.card{
+    background:linear-gradient(145deg, var(--s), #081828);
+    border:1px solid rgba(0,136,255,0.25);
+    border-radius:24px;
+    overflow:hidden;
+    transition:all 0.3s;
+    animation:fadeUp 0.4s ease both;
+}
+@keyframes fadeUp{
+    from{opacity:0; transform:translateY(16px);}
+    to{opacity:1;transform:translateY(0);}
+}
+.card:hover{
+    border-color:rgba(0,200,255,0.6);
+    transform:translateY(-3px);
+}
+.card-header{
+    padding:.9rem 1.2rem;
+    background:rgba(0,40,65,0.5);
+    border-bottom:1px solid var(--b);
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
+.badge-app{
+    background:linear-gradient(95deg, #7c3aed, #c084fc);
+    padding:.2rem .65rem;
+    border-radius:40px;
+    font-family:var(--orb);
+    font-size:.5rem;
+    font-weight:bold;
+    color:#f0e6ff;
+}
+.card-body{padding:1.1rem 1.2rem 1.2rem;}
+.card-title{
+    font-family:var(--orb);
+    font-size:.85rem;
+    font-weight:700;
+    letter-spacing:-0.2px;
+    color:var(--bl2);
+    margin-bottom:.45rem;
+}
+.card-desc{
+    font-size:.7rem;
+    color:var(--mu);
+    line-height:1.55;
+    margin-bottom:.9rem;
+}
+.card-meta{
+    display:flex;
+    gap:1rem;
+    font-size:.6rem;
+    font-family:var(--mono);
+    color:#5f8ab0;
+    margin-bottom:.9rem;
+}
+.tags{
+    display:flex;
+    flex-wrap:wrap;
+    gap:.35rem;
+    margin-bottom:1rem;
+}
+.tag{
+    background:rgba(100,100,200,0.1);
+    border-radius:12px;
+    padding:.18rem .6rem;
+    font-size:.55rem;
+    font-family:var(--mono);
+    color:var(--bl2);
+}
+.card-actions{
+    display:flex;
+    gap:.6rem;
+    margin-top:.5rem;
+}
+.btn-execute{
+    flex:1;
+    background:linear-gradient(95deg, rgba(0,136,255,0.2), rgba(0,200,255,0.05));
+    border:1px solid rgba(0,136,255,0.5);
+    border-radius:40px;
+    padding:.55rem 0;
+    font-family:var(--orb);
+    font-size:.6rem;
+    font-weight:bold;
+    color:var(--bl2);
+    cursor:pointer;
+    text-align:center;
+}
+.btn-execute:hover{
+    background:rgba(0,136,255,0.4);
+}
+.btn-icon{
+    background:rgba(255,68,102,0.1);
+    border:1px solid rgba(255,68,102,0.3);
+    border-radius:40px;
+    padding:.5rem .9rem;
+    font-size:.6rem;
+    cursor:pointer;
+    color:#ff99aa;
+}
+.btn-icon.edit{
+    background:rgba(0,255,136,0.08);
+    border-color:rgba(0,255,136,0.3);
+    color:#aaffcc;
+}
+.empty-state{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    padding:4rem 1.5rem;
+    text-align:center;
+}
+.empty-icon{font-size:4rem;opacity:0.5;margin-bottom:1rem;}
+.empty-title{font-family:var(--orb);font-size:1rem;color:var(--mu);}
+.modal-ov{
+    display:none;
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,0.96);
+    backdrop-filter:blur(8px);
+    z-index:500;
+    align-items:center;
+    justify-content:center;
+}
+.modal-ov.open{display:flex;}
+.modal{
+    background:linear-gradient(145deg, #0a1428, #030a14);
+    border:1px solid var(--bl);
+    border-radius:28px;
+    padding:1.8rem;
+    width:min(520px, 92vw);
+    max-height:90vh;
+    overflow-y:auto;
+}
+.modal-title{
+    font-family:var(--orb);
+    font-size:.95rem;
+    color:var(--bl2);
+    margin-bottom:1.4rem;
+    border-left:3px solid var(--bl);
+    padding-left:.8rem;
+}
+.fg{margin-bottom:1rem;}
+.fl{
+    font-family:var(--orb);
+    font-size:.52rem;
+    letter-spacing:1px;
+    color:var(--mu);
+    display:block;
+    margin-bottom:.3rem;
+}
+.fi{
+    width:100%;
+    background:rgba(0,0,0,0.6);
+    border:1px solid var(--b2);
+    border-radius:14px;
+    padding:.6rem .9rem;
+    color:var(--tx);
+    font-family:var(--exo);
+    font-size:.8rem;
+    outline:none;
+}
+.fi:focus{border-color:var(--bl);}
+.btn-row{display:flex;gap:.7rem;margin-top:1.2rem;}
+.btn-cancel{
+    background:transparent;
+    border:1px solid var(--b2);
+    border-radius:40px;
+    padding:.5rem 1rem;
+    color:var(--mu);
+    font-family:var(--orb);
+    cursor:pointer;
+}
+.pending-grid {
+    background: rgba(0,0,0,0.3);
+    border-radius: 20px;
+    padding: 0.8rem;
+    margin: 0 1rem 1rem 1rem;
+}
+.pending-title {
+    font-family: var(--orb);
+    font-size: 0.7rem;
+    color: var(--gd);
+    margin-bottom: 0.5rem;
+}
+/* Estilos para el modal del estudio (iframe) */
+.studio-modal .modal {
+    width: min(1200px, 95vw);
+    height: 90vh;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+.studio-modal .modal-title {
+    padding: 0.8rem 1rem;
+    margin: 0;
+    border-left: none;
+    border-bottom: 1px solid var(--b);
+}
+.studio-iframe {
+    flex: 1;
+    width: 100%;
+    border: none;
+    background: #0a0e1a;
+}
+/* Modal de preview para apps pendientes */
+.preview-modal .modal {
+    width: min(1000px, 95vw);
+    height: 80vh;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+}
+.preview-modal .modal-title {
+    padding: 0.8rem 1rem;
+    margin: 0;
+    border-left: none;
+    border-bottom: 1px solid var(--b);
+}
+.preview-iframe {
+    flex: 1;
+    width: 100%;
+    border: none;
+    background: white;
+}
+
+/* Modal de ejecución */
+.exec-modal .modal {
+    width: 100vw;
+    height: 100vh;
+    max-height: 100vh;
+    border-radius: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+.exec-modal .modal-header {
+    padding: 0.4rem 1rem;
+    background: linear-gradient(135deg, #0a1428, #050a14);
+    border-bottom: 1px solid var(--bl);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+}
+.exec-modal .modal-header h3 {
+    font-family: var(--orb);
+    font-size: 0.7rem;
+    color: var(--bl2);
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.btn-close-x {
+    background: transparent;
+    border: none;
+    color: var(--mu);
+    font-size: 1.2rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0 0.2rem;
+    transition: color 0.2s;
+}
+.btn-close-x:hover {
+    color: var(--rd);
+}
+.exec-tabs {
+    display: flex;
+    gap: 0.5rem;
+    background: rgba(0,0,0,0.3);
+    padding: 0.3rem 0.8rem;
+    border-radius: 40px;
+}
+.exec-tab {
+    padding: 0.3rem 1rem;
+    border-radius: 30px;
+    font-size: 0.65rem;
+    font-family: var(--orb);
+    cursor: pointer;
+    background: transparent;
+    color: var(--mu);
+    transition: all 0.2s;
+}
+.exec-tab.active {
+    background: var(--bl);
+    color: white;
+}
+.exec-content {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+}
+.exec-iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    background: white;
+}
+.exec-code-panel {
+    display: none;
+    height: 100%;
+    overflow-y: auto;
+    padding: 1rem;
+    background: #050a14;
+    font-family: var(--mono);
+    font-size: 0.7rem;
+}
+.exec-code-panel.active {
+    display: block;
+}
+.exec-code-block {
+    margin-bottom: 1.5rem;
+}
+.exec-code-block h4 {
+    color: var(--gd);
+    font-size: 0.7rem;
+    margin-bottom: 0.5rem;
+    font-family: var(--orb);
+}
+.exec-code-block pre {
+    background: #010608;
+    padding: 0.8rem;
+    border-radius: 12px;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    color: #aaffdd;
+}
+.exec-footer {
+    padding: 0.6rem 1rem;
+    background: #0a1428;
+    border-top: 1px solid var(--b);
+    display: flex;
+    gap: 0.8rem;
+    align-items: center;
+    flex-shrink: 0;
+    font-size: 0.6rem;
+}
+.exec-status {
+    flex: 1;
+    color: var(--mu);
+}
+.exec-status.success { color: var(--gr); }
+.exec-status.error { color: var(--rd); }
+.btn-small {
+    padding: 0.3rem 0.8rem;
+    font-size: 0.55rem;
+    background: rgba(0,136,255,0.2);
+    border: 1px solid var(--bl);
+    border-radius: 20px;
+    cursor: pointer;
+    color: var(--bl2);
+}
+.btn-small:hover {
+    background: var(--bl);
+    color: white;
+}
+.loading-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    backdrop-filter: blur(4px);
+}
+.loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid var(--b2);
+    border-top-color: var(--bl2);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<div class="notif" id="notifMsg"></div>
+<div class="admin-bar" id="adminBar">
+    ⚛️ MODO FUNDADOR/ADMIN · GESTIÓN DE APPS
+    <button class="btn btn-pri" style="margin-left:auto;" onclick="openPendingManager()">📋 PENDIENTES</button>
+    <button class="btn btn-pri" onclick="openQuantumAppStudio()">🎛️ QUANTUM APP STUDIO</button>
+</div>
+
+<div class="toolbar">
+    <div class="search-box">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="8" stroke="#4a7a9b" stroke-width="2"/><path d="M21 21l-4.35-4.35" stroke="#4a7a9b" stroke-width="2"/></svg>
+        <input id="searchInput" placeholder="Buscar app cuántica..." oninput="renderPublishedApps()">
+    </div>
+    <div class="filter-tag" id="filterTagsContainer"></div>
+    <div>
+        <button class="btn btn-pri" onclick="openQuantumAppStudio()" style="background: #6d28d9;">🎛️ QUANTUM APP STUDIO</button>
+    </div>
+</div>
+
+<div id="puzzleGrid"></div>
+
+<!-- MODAL PARA EL STUDIO REAL (iframe) -->
+<div class="modal-ov" id="studioModalReal">
+    <div class="modal" style="width: min(1200px, 95vw); height: 90vh; padding: 0; display: flex; flex-direction: column;">
+        <div class="modal-title" style="padding: 0.8rem 1rem; margin: 0; border-left: none; border-bottom: 1px solid var(--b); display: flex; justify-content: space-between; align-items: center;">
+            <span>🌀 QUANTUM APP STUDIO · Editor de aplicaciones cuánticas</span>
+            <button class="btn-cancel" onclick="closeStudioModal()" style="margin:0;">CERRAR</button>
+        </div>
+        <iframe id="studioIframe" class="studio-iframe" src="qcol-quantum-app-studio.html" sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-modals allow-same-origin"></iframe>
+    </div>
+</div>
+
+<!-- MODAL: PENDIENTES (solo admin/founder) -->
+<div class="modal-ov" id="pendingModal">
+    <div class="modal" style="max-width:780px;">
+        <div class="modal-title">📋 APPS PENDIENTES DE APROBACIÓN</div>
+        <div id="pendingListContainer" style="max-height: 60vh; overflow-y: auto;"></div>
+        <div class="btn-row"><button class="btn-cancel" onclick="closePendingModal()">CERRAR</button></div>
+    </div>
+</div>
+
+<!-- MODAL: PREVIEW DE APP PENDIENTE -->
+<div class="modal-ov preview-modal" id="previewAppModal">
+    <div class="modal" style="width: min(1000px, 95vw); height: 80vh; padding: 0; display: flex; flex-direction: column;">
+        <div class="modal-title" style="padding: 0.8rem 1rem; margin: 0; border-left: none; border-bottom: 1px solid var(--b); display: flex; justify-content: space-between;">
+            <span>🔬 Vista previa de la app</span>
+            <button class="btn-cancel" onclick="closePreviewModal()">CERRAR</button>
+        </div>
+        <iframe id="previewIframe" class="preview-iframe" sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-modals"></iframe>
+    </div>
+</div>
+
+<!-- MODAL DE EJECUCIÓN DE APP -->
+<div class="modal-ov exec-modal" id="execAppModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 id="execAppTitle">⚛️ Ejecutando app cuántica...</h3>
+            <button class="btn-close-x" onclick="closeExecModal()" title="Cerrar">✕</button>
+        </div>
+        <div class="exec-content">
+            <div id="execRunPanel" style="width:100%;height:100%;">
+                <iframe id="execIframe" class="exec-iframe" sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-modals"></iframe>
+                <div id="execLoading" class="loading-overlay" style="display: none;">
+                    <div class="loading-spinner"></div>
+                </div>
+            </div>
+            <div id="execCodePanel" class="exec-code-panel">
+                <!-- El panel de código queda oculto permanentemente al eliminar los tabs -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// ---------- GLOBALS ----------
+let currentUser = null;
+let isAdmin = false;
+let isFounder = false;
+let activeTagFilter = "all";
+let studioIframeReady = false;
+let studioIframeLoaded = false;
+let pendingPreviewApp = null;
+let compilerUrl = '';
+let currentExecutingApp = null;
+let pendingCompileRequest = null;
+
+// Inicialización de stores
+function getPublishedApps() {
+    const stored = localStorage.getItem('qcol_published_quantum_apps');
+    if(stored) return JSON.parse(stored);
+    return [];
+}
+function savePublishedApps(apps) {
+    localStorage.setItem('qcol_published_quantum_apps', JSON.stringify(apps));
+}
+function getPendingApps() {
+    const stored = localStorage.getItem('qcol_pending_quantum_apps');
+    if(stored) return JSON.parse(stored);
+    return [];
+}
+function savePendingApps(apps) {
+    localStorage.setItem('qcol_pending_quantum_apps', JSON.stringify(apps));
+}
+
+// Inicializar con datos demo si está vacío
+if(!localStorage.getItem('qcol_published_quantum_apps')) {
+    savePublishedApps([
+        {
+            id: 'demo_1',
+            title: 'Demo: Saludo Cuántico',
+            desc: 'Una app simple que saluda usando Python remoto',
+            tags: 'demo,ejemplo',
+            duration: 5,
+            pythonCode: `def saludar(nombre):\n    return f"¡Hola {nombre}! desde el servidor cuántico 🧪"\n\ndef suma(a,b):\n    return a + b`,
+            htmlCode: `<!DOCTYPE html>\n<html>\n<head><meta charset="UTF-8"></head>\n<body style="background:#0a0e1a; color:white; font-family:monospace; padding:2rem;">\n<h2>Demo Cuántica</h2>\n<input id="nameInput" placeholder="Tu nombre" style="padding:0.5rem;">\n<button onclick="callGreet()">Saludar</button>\n<p id="result"></p>\n<script>\nwindow.callGreet = async () => {\n    const name = document.getElementById('nameInput').value;\n    const res = await window.pyCall("saludar", name);\n    document.getElementById('result').innerText = res;\n};\n<\/script>\n</body>\n</html>`,
+            serverUrl: '',
+            createdAt: Date.now()
+        }
+    ]);
+}
+if(!localStorage.getItem('qcol_pending_quantum_apps')) savePendingApps([]);
+
+function escapeHtml(str) {
+    if(!str) return '';
+    return String(str).replace(/[&<>]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;'})[m]);
+}
+
+function extractUniqueTags(apps) {
+    const tagsSet = new Set();
+    apps.forEach(app => {
+        (app.tags || '').split(',').forEach(t => { let tt = t.trim().toLowerCase(); if(tt) tagsSet.add(tt); });
+    });
+    return Array.from(tagsSet);
+}
+
+function renderTagFilters() {
+    const apps = getPublishedApps();
+    const allTags = extractUniqueTags(apps);
+    const container = document.getElementById('filterTagsContainer');
+    if(!container) return;
+    let html = `<span class="tag-chip ${activeTagFilter === 'all' ? 'active' : ''}" data-tag="all" onclick="setTagFilter('all')">🎲 TODAS</span>`;
+    allTags.forEach(tag => {
+        html += `<span class="tag-chip ${activeTagFilter === tag ? 'active' : ''}" data-tag="${tag}" onclick="setTagFilter('${tag}')">#${tag}</span>`;
+    });
+    container.innerHTML = html;
+}
+
+function setTagFilter(tag) {
+    activeTagFilter = tag;
+    renderTagFilters();
+    renderPublishedApps();
+}
+
+function renderPublishedApps() {
+    const apps = getPublishedApps();
+    const searchTerm = document.getElementById('searchInput')?.value.toLowerCase() || "";
+    let filtered = apps.filter(app => {
+        const matchSearch = app.title.toLowerCase().includes(searchTerm) || (app.desc || "").toLowerCase().includes(searchTerm) || (app.tags || "").toLowerCase().includes(searchTerm);
+        let matchTag = true;
+        if(activeTagFilter !== 'all') {
+            const appTags = (app.tags || "").toLowerCase().split(',').map(t => t.trim());
+            matchTag = appTags.includes(activeTagFilter);
+        }
+        return matchSearch && matchTag;
+    });
+    
+    const container = document.getElementById('puzzleGrid');
+    if(!filtered.length){
+        container.innerHTML = `<div class="empty-state"><div class="empty-icon">⚛️📦</div>
+        <div class="empty-title">Repositorio cuántico vacío</div>
+        <p style="font-size:0.7rem;color:#4a7a9b;margin-top:0.5rem;">Usa "QUANTUM APP STUDIO" para crear nuevas aplicaciones.</p></div>`;
+        return;
+    }
+    
+    let gridHtml = `<div class="grid">`;
+    filtered.forEach(app => {
+        const tagsArray = (app.tags || "").split(',').map(t => t.trim()).filter(t => t);
+        const tagsHtml = tagsArray.map(tag => `<span class="tag">#${escapeHtml(tag)}</span>`).join('');
+        const canDelete = isFounder;
+        const delBtn = canDelete ? `<button class="btn-icon" onclick="deletePublishedApp('${app.id}')">🗑️</button>` : '';
+        gridHtml += `
+            <div class="card">
+                <div class="card-header"><span class="badge-app">⚛️ APP CUÁNTICA</span></div>
+                <div class="card-body">
+                    <div class="card-title">${escapeHtml(app.title)}</div>
+                    <div class="card-desc">${escapeHtml(app.desc || 'Sin descripción')}</div>
+                    <div class="card-meta"><span>⏱️ ${app.duration || 8} min</span></div>
+                    <div class="tags">${tagsHtml}</div>
+                    <div class="card-actions">
+                        <button class="btn-execute" onclick="executeQuantumApp('${app.id}')">▶ EJECUTAR PROGRAMA</button>
+                        ${delBtn}
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    gridHtml += `</div>`;
+    container.innerHTML = gridHtml;
+}
+
+// ========== EJECUTAR APP USANDO QUANTUM APP STUDIO ==========
+function executeQuantumApp(appId) {
+    const apps = getPublishedApps();
+    const app = apps.find(a => a.id === appId);
+    if(!app) { showNotification('⚠️ App no encontrada'); return; }
+    
+    currentExecutingApp = app;
+    
+    // Mostrar modal de ejecución
+    const modal = document.getElementById('execAppModal');
+    const titleSpan = document.getElementById('execAppTitle');
+    titleSpan.innerHTML = `⚛️ ${escapeHtml(app.title)}`;
+    
+    // No mostramos código, ni pestañas, la interfaz queda totalmente dedicada a la app
+    modal.classList.add('open');
+    
+    // Intentar ejecutar la app
+    executeWithStudio(app);
+}
+
+// ── Ejecutar app cuántica DIRECTAMENTE — sin depender del Studio ──
+// El Puzzle construye el blob con el bridge pyCall inyectado y lo
+// carga en el execIframe. El Studio solo se usa para editar/crear.
+
+// Ejecutar Python en el servidor remoto
+async function _runPythonRemote(code, serverUrl) {
+    const base = (serverUrl || '').replace(/\/+$/, '');
+    if (!base) throw new Error('No hay URL del servidor cuántico configurada');
+    const isHF  = base.includes('hf.space') || base.includes('huggingface');
+    const url   = base + (isHF ? '/run/predict' : '/run');
+    const body  = isHF
+        ? JSON.stringify({ data: [code], fn_index: 1 })
+        : JSON.stringify({ code });
+    const res   = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status + ' — ' + res.statusText);
+    const raw = await res.json();
+    const out = isHF ? (raw.data?.[0] ?? raw) : raw;
+    if (out?.success === false) throw new Error(out.output || out.error || 'Error en el servidor');
+    return out?.output ?? out?.result ?? String(out ?? '');
+}
+
+// Map pyCall pendientes del execIframe
+const _execPyCalls = new Map();
+
+// Escuchar pyCall del execIframe y ejecutarlos remotamente
+window.addEventListener('message', async function _execPyCallHandler(ev) {
+    const d = ev.data;
+    if (!d || d.type !== 'pyCall') return;
+    const { id, func, args, serverUrl: appUrl, pythonCode } = d;
+    const src = ev.source;
+
+    const tid = setTimeout(() => {
+        _execPyCalls.delete(id);
+        try { src.postMessage({ type: 'pyResult', id, error: 'Timeout 35s' }, '*'); } catch(e) {}
+    }, 35000);
+    _execPyCalls.set(id, { src, tid });
+
+    const serverUrl = appUrl || compilerUrl || localStorage.getItem('qcol_colab_url') || '';
+    try {
+        if (!serverUrl) throw new Error('Sin URL del servidor. Configúrala en el Panel Fundador.');
+        // Construir llamada Python: ejecutar la función pedida por la app
+        const callCode = (pythonCode ? pythonCode + '\n\n' : '') +
+            'import json as _json\n' +
+            '_args = _json.loads(' + JSON.stringify(JSON.stringify(args)) + ')\n' +
+            '_result = ' + func + '(*_args)\n' +
+            'print(_json.dumps(_result, ensure_ascii=False, default=str))';
+        const output = await _runPythonRemote(callCode, serverUrl);
+        clearTimeout(tid); _execPyCalls.delete(id);
+        let parsed = (output || '').trim();
+        try { parsed = JSON.parse(parsed); } catch(e) {}
+        src.postMessage({ type: 'pyResult', id, result: parsed }, '*');
+    } catch(err) {
+        clearTimeout(tid); _execPyCalls.delete(id);
+        src.postMessage({ type: 'pyResult', id, error: err.message }, '*');
+    }
+});
+
+// Construir blob HTML con bridge pyCall inyectado
+function _buildAppBlob(pythonCode, htmlCode, serverUrl) {
+    const bridge = `<script>
+(function(){
+    window.__serverUrl  = ${JSON.stringify(serverUrl  || '')};
+    window.__pyCode     = ${JSON.stringify(pythonCode || '')};
+    window.pyCall = function(funcName) {
+        const args = Array.prototype.slice.call(arguments, 1);
+        return new Promise(function(resolve, reject) {
+            var msgId = Date.now() + '-' + Math.random().toString(36).slice(2);
+            function handler(ev) {
+                var d = ev.data;
+                if (d && d.type === 'pyResult' && d.id === msgId) {
+                    window.removeEventListener('message', handler);
+                    if (d.error) reject(new Error(d.error));
+                    else resolve(d.result);
+                }
+            }
+            window.addEventListener('message', handler);
+            window.parent.postMessage({
+                type: 'pyCall', id: msgId, func: funcName, args: args,
+                serverUrl: window.__serverUrl, pythonCode: window.__pyCode
+            }, '*');
+        });
+    };
+})();
+<\/script>`;
+
+    let html = htmlCode || [
+        '<!DOCTYPE html><html><head><meta charset="UTF-8">',
+        '<style>body{background:#0a0e1a;color:#c8d8f0;font-family:monospace;',
+        'padding:2rem;display:flex;flex-direction:column;align-items:center;gap:1rem;}',
+        'h2{color:#00ccff;font-family:Orbitron,monospace;}',
+        '.info{color:#4a7a9b;font-size:.85rem;}</style></head>',
+        '<body><h2>⚛️ App sin interfaz</h2>',
+        '<p class="info">Esta app no tiene código HTML.<br>',
+        'El código Python se ejecuta con <code>pyCall()</code>.</p></body></html>'
+    ].join('');
+
+    // Inyectar el bridge
+    if (html.includes('</head>'))        html = html.replace('</head>', bridge + '</head>');
+    else if (html.includes('<body'))      html = html.replace('<body', bridge + '<body');
+    else if (html.includes('<html'))      html = html.replace('<html>', '<html>' + bridge);
+    else                                  html = bridge + html;
+
+    return URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+}
+
+function executeWithStudio(app) {
+    const loadingDiv = document.getElementById('execLoading');
+    const statusSpan = document.getElementById('execStatus'); // puede ser null tras eliminar el footer
+    const iframe     = document.getElementById('execIframe');
+
+    loadingDiv.style.display = 'flex';
+    if (statusSpan) {
+        statusSpan.innerHTML = '⏳ Preparando aplicación cuántica...';
+        statusSpan.className = 'exec-status';
+    }
+
+    const serverUrl = app.serverUrl || compilerUrl || localStorage.getItem('qcol_colab_url') || '';
+
+    if (!app.htmlCode && !app.pythonCode) {
+        loadingDiv.style.display = 'none';
+        if (statusSpan) {
+            statusSpan.innerHTML = '❌ La app no tiene código HTML ni Python.';
+            statusSpan.className = 'exec-status error';
+        }
+        return;
+    }
+
+    if (!serverUrl && app.pythonCode) {
+        // Avisar pero seguir — la app puede funcionar sin backend
+        if (statusSpan) {
+            statusSpan.innerHTML = '⚠️ Sin servidor configurado — funciones pyCall no disponibles';
+            statusSpan.className = 'exec-status';
+        }
+    }
+
+    // Liberar blob anterior
+    if (window._execBlobUrl) { URL.revokeObjectURL(window._execBlobUrl); }
+
+    try {
+        window._execBlobUrl = _buildAppBlob(app.pythonCode, app.htmlCode, serverUrl);
+        iframe.src = window._execBlobUrl;
+
+        iframe.onload = function() {
+            loadingDiv.style.display = 'none';
+            if (statusSpan) {
+                statusSpan.innerHTML = serverUrl
+                    ? '✅ App ejecutándose · servidor cuántico conectado'
+                    : '✅ App ejecutándose · modo sin servidor';
+                statusSpan.className = 'exec-status success';
+            }
+        };
+
+        setTimeout(function() {
+            if (loadingDiv.style.display !== 'none') {
+                loadingDiv.style.display = 'none';
+                if (statusSpan) {
+                    statusSpan.innerHTML = '✅ App cargada';
+                    statusSpan.className = 'exec-status success';
+                }
+            }
+        }, 5000);
+
+    } catch(err) {
+        loadingDiv.style.display = 'none';
+        if (statusSpan) {
+            statusSpan.innerHTML = '❌ Error: ' + escapeHtml(err.message);
+            statusSpan.className = 'exec-status error';
+        }
+        showNotification('Error al construir la app: ' + err.message);
+    }
+}
+
+// sendCompileRequest ya no es necesaria pero la mantenemos por compatibilidad
+function sendCompileRequest(app) { executeWithStudio(app); }
+
+function onCompileResponse(requestId, compiledHtml, error) {
+    if (pendingCompileRequest !== requestId) return;
+    pendingCompileRequest = null;
+    
+    const loadingDiv = document.getElementById('execLoading');
+    loadingDiv.style.display = 'none';
+    const statusSpan = document.getElementById('execStatus');
+    const iframe = document.getElementById('execIframe');
+    
+    if (error) {
+        if (statusSpan) {
+            statusSpan.innerHTML = `❌ Error: ${error}`;
+            statusSpan.className = 'exec-status error';
+        }
+        iframe.src = 'about:blank';
+        showNotification(`Error de compilación: ${error}`);
+        return;
+    }
+    
+    if (!compiledHtml) {
+        if (statusSpan) {
+            statusSpan.innerHTML = '❌ No se recibió respuesta del Studio';
+            statusSpan.className = 'exec-status error';
+        }
+        return;
+    }
+    
+    // Liberar URL anterior si existe
+    if (window._currentExecBlobUrl) {
+        URL.revokeObjectURL(window._currentExecBlobUrl);
+    }
+    
+    const blob = new Blob([compiledHtml], { type: 'text/html' });
+    const blobUrl = URL.createObjectURL(blob);
+    window._currentExecBlobUrl = blobUrl;
+    
+    iframe.src = blobUrl;
+    if (statusSpan) {
+        statusSpan.innerHTML = '✅ App ejecutándose correctamente';
+        statusSpan.className = 'exec-status success';
+    }
+    showNotification('App cargada correctamente', 1500);
+}
+
+function reloadExecApp() {
+    if (currentExecutingApp) {
+        executeWithStudio(currentExecutingApp);
+    }
+}
+
+function closeExecModal() {
+    const modal = document.getElementById('execAppModal');
+    modal.classList.remove('open');
+    const iframe = document.getElementById('execIframe');
+    if (iframe.src) {
+        iframe.src = 'about:blank';
+    }
+    if (window._currentExecBlobUrl) {
+        URL.revokeObjectURL(window._currentExecBlobUrl);
+        window._currentExecBlobUrl = null;
+    }
+    pendingCompileRequest = null;
+    currentExecutingApp = null;
+}
+
+// ========== COMUNICACIÓN CON QUANTUM APP STUDIO ==========
+const studioModal = document.getElementById('studioModalReal');
+const studioIframe = document.getElementById('studioIframe');
+
+function openQuantumAppStudio() {
+    studioModal.classList.add('open');
+    // Enviar handshake al Studio para que responda QCOL_STUDIO_OPENED
+    setTimeout(function() {
+        var sf = document.getElementById('studioIframe');
+        if (sf && sf.contentWindow) {
+            sf.contentWindow.postMessage({ type: 'QCOL_REQUEST_STUDIO_CONNECTION' }, '*');
+            // Si tenemos la URL, enviarla también
+            var url = compilerUrl || localStorage.getItem('qcol_colab_url') || '';
+            if (url) {
+                sf.contentWindow.postMessage({ type: 'QCOL_SET_COMPILER_URL', url: url }, '*');
+                sf.contentWindow.postMessage({ type: 'QCOL_COMPILER_URL', url: url }, '*');
+            }
+        }
+    }, 400);
+}
+
+function closeStudioModal() {
+    studioModal.classList.remove('open');
+}
+
+// Escuchar mensajes del Studio
+window.addEventListener('message', (e) => {
+    const data = e.data;
+    if (!data || typeof data !== 'object') return;
+    
+    // Recibir URL del compilador
+    if (data.type === 'QCOL_COMPILER_URL' && data.url) {
+        compilerUrl = data.url;
+        console.log('URL del compilador:', compilerUrl);
+        showNotification('Servidor cuántico configurado', 1500);
+        return;
+    }
+    
+    // Studio listo
+    if (data.type === 'QCOL_STUDIO_OPENED') {
+        studioIframeReady = true;
+        studioIframeLoaded = true;
+        console.log('[Puzzle] Studio conectado y listo');
+        showNotification('⚡ Quantum App Studio listo', 1500);
+        // Enviar URL del compilador si la tenemos
+        var urlNow = compilerUrl || localStorage.getItem('qcol_colab_url') || '';
+        if (urlNow && e.source) {
+            e.source.postMessage({ type: 'QCOL_SET_COMPILER_URL', url: urlNow }, '*');
+            e.source.postMessage({ type: 'QCOL_COMPILER_URL',     url: urlNow }, '*');
+        }
+        return;
+    }
+    
+    // Respuesta de compilación
+    if (data.type === 'QCOL_COMPILE_RESPONSE') {
+        const { requestId, html, error } = data;
+        onCompileResponse(requestId, html, error);
+        return;
+    }
+    
+    if (data.type === 'QCOL_APP_SAVED') {
+        renderTagFilters();
+        renderPublishedApps();
+    }
+    
+    if (data.type === 'QCOL_APP_DELETED') {
+        renderTagFilters();
+        renderPublishedApps();
+    }
+    
+    if (data.type === 'QCOL_LAUNCH_QUANTUM_APP') {
+        var launchId     = data.appId;
+        var launchTitle  = data.appTitle;
+        var launchMeta   = data.appMetadata || {};
+        if (!launchId || !launchTitle) return;
+        var pendingApps  = getPendingApps();
+        var publishedApps = getPublishedApps();
+        // ── Protección: no sobreescribir si ya existe
+        if (publishedApps.find(function(p){ return p.id === launchId; })) {
+            showNotification('ℹ️ "' + launchTitle + '" ya está publicada. No se sobreescribió.');
+            return;
+        }
+        if (pendingApps.find(function(p){ return p.id === launchId; })) {
+            showNotification('ℹ️ "' + launchTitle + '" ya está en pendientes.');
+            return;
+        }
+        pendingApps.push({
+            id:         launchId,
+            title:      launchTitle,
+            desc:       launchMeta.description || '',
+            tags:       launchMeta.tags        || '',
+            duration:   launchMeta.duration    || 8,
+            pythonCode: launchMeta.pythonCode  || '',
+            htmlCode:   launchMeta.htmlCode    || '',
+            serverUrl:  launchMeta.serverUrl   || '',
+            createdBy:  currentUser?.username  || 'studio',
+            createdAt:  Date.now()
+        });
+        savePendingApps(pendingApps);
+        showNotification('📥 App "' + launchTitle + '" recibida. Revisa pendientes.');
+        if (document.getElementById('pendingModal').classList.contains('open')) {
+            renderPendingList();
+        }
+        return;
+    }
+    
+    if(data.type === 'QCOL_USER_UPDATE') {
+        currentUser = data.user;
+        isAdmin = (currentUser?.role === 'admin' || currentUser?.role === 'founder');
+        isFounder = (currentUser?.role === 'founder');
+        const adminBar = document.getElementById('adminBar');
+        if(adminBar) adminBar.classList.toggle('show', isFounder);
+        renderTagFilters();
+        renderPublishedApps();
+    }
+});
+
+// Inicializar comunicación con el padre (Panel Fundador)
+function postCore(type, data={}) {
+    if(window.parent !== window) window.parent.postMessage({type, ...data}, '*');
+}
+postCore('QCOL_GET_CONFIG');
+if (window.parent !== window) {
+    window.parent.postMessage({ type: 'QCOL_GET_COMPILER_URL' }, '*');
+}
+
+// ========== FUNCIONES DE ADMINISTRACIÓN ==========
+function openPendingManager() {
+    if(!isFounder && !isAdmin) { showNotification("Acceso solo para fundadores/admins"); return; }
+    renderPendingList();
+    document.getElementById('pendingModal').classList.add('open');
+}
+function closePendingModal() {
+    document.getElementById('pendingModal').classList.remove('open');
+}
+function renderPendingList() {
+    const pending = getPendingApps();
+    const container = document.getElementById('pendingListContainer');
+    if(!container) return;
+    if(pending.length === 0) {
+        container.innerHTML = `<div style="padding:2rem; text-align:center; color:var(--mu);">📭 No hay apps pendientes de aprobación.</div>`;
+        return;
+    }
+    let html = `<div class="pending-grid">`;
+    pending.forEach(app => {
+        html += `
+            <div style="background: #0a1222; border-radius: 16px; margin-bottom: 12px; padding: 12px; border-left: 3px solid var(--gd);">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <strong style="font-family:var(--orb); color:var(--bl2);">${escapeHtml(app.title)}</strong>
+                    <span style="font-size:0.55rem; background:#1f2a44; padding:2px 8px; border-radius:20px;">${escapeHtml(app.id)}</span>
+                </div>
+                <div style="font-size:0.6rem; margin:6px 0;">📝 ${escapeHtml(app.desc || '')}</div>
+                <div style="font-size:0.55rem; color:#aaa; display:flex; gap:12px; flex-wrap:wrap;">🏷️ ${escapeHtml(app.tags)} | ⏱️ ${app.duration} min | 👤 creado por ${escapeHtml(app.createdBy || 'anon')}</div>
+                <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">
+                    <button class="btn" style="background: #2a5f8a;" onclick="previewPendingApp('${app.id}')">🔍 EJECUTAR</button>
+                    <!-- Botón EDITAR eliminado -->
+                    <button class="btn" style="background: #00aa66;" onclick="publishPendingApp('${app.id}')">✅ PUBLICAR</button>
+                    <button class="btn" style="background: #aa3355;" onclick="rejectPendingApp('${app.id}')">🗑️ RECHAZAR</button>
+                </div>
+            </div>
+        `;
+    });
+    html += `</div>`;
+    container.innerHTML = html;
+}
+
+function previewPendingApp(appId) {
+    const pending = getPendingApps();
+    const app = pending.find(p => p.id === appId);
+    if(!app) { showNotification("App no encontrada"); return; }
+    pendingPreviewApp = app;
+    buildAppBlobAndPreview(app);
+}
+
+async function buildAppBlobAndPreview(app) {
+    const server = app.serverUrl || compilerUrl;
+    const bridge = `
+    <script>
+    window.__serverUrl = ${JSON.stringify(server)};
+    window.__pyCode = ${JSON.stringify(app.pythonCode || '# Python vacío')};
+    window.pyCall = async (funcName, ...args) => {
+        return new Promise((resolve, reject) => {
+            const msgId = Date.now() + '-' + Math.random();
+            const handler = (event) => {
+                if (event.data.type === 'pyResult' && event.data.id === msgId) {
+                    window.removeEventListener('message', handler);
+                    if (event.data.error) reject(new Error(event.data.error));
+                    else resolve(event.data.result);
+                }
+            };
+            window.addEventListener('message', handler);
+            window.parent.postMessage({ type: 'pyCall', id: msgId, func: funcName, args: args, serverUrl: window.__serverUrl, pythonCode: window.__pyCode }, '*');
+        });
+    };
+    console.log("Bridge preview listo");
+    <\/script>
+    `;
+    let finalHtml = app.htmlCode || '<!DOCTYPE html><html><body><h1>App sin interfaz</h1></body></html>';
+    if (finalHtml.includes('<head>')) {
+        finalHtml = finalHtml.replace('<head>', '<head>' + bridge);
+    } else if (finalHtml.includes('<html>')) {
+        finalHtml = finalHtml.replace('<html>', '<html><head>' + bridge + '</head>');
+    } else {
+        finalHtml = bridge + finalHtml;
+    }
+    const blob = new Blob([finalHtml], { type: 'text/html' });
+    const blobUrl = URL.createObjectURL(blob);
+    const previewIframe = document.getElementById('previewIframe');
+    previewIframe.src = blobUrl;
+    if(window._currentPreviewBlobUrl) URL.revokeObjectURL(window._currentPreviewBlobUrl);
+    window._currentPreviewBlobUrl = blobUrl;
+    document.getElementById('previewAppModal').classList.add('open');
+}
+
+function closePreviewModal() {
+    document.getElementById('previewAppModal').classList.remove('open');
+    const iframe = document.getElementById('previewIframe');
+    if (iframe.src) {
+        iframe.src = 'about:blank';
+        if(window._currentPreviewBlobUrl) {
+            URL.revokeObjectURL(window._currentPreviewBlobUrl);
+            window._currentPreviewBlobUrl = null;
+        }
+    }
+    pendingPreviewApp = null;
+}
+
+function editPendingApp(appId) {
+    const pending = getPendingApps();
+    const app = pending.find(p => p.id === appId);
+    if(!app) { showNotification("App no encontrada"); return; }
+    openQuantumAppStudio();
+    const waitForStudio = setInterval(() => {
+        if (studioIframeReady && studioIframe && studioIframe.contentWindow) {
+            clearInterval(waitForStudio);
+            studioIframe.contentWindow.postMessage({
+                type: 'QCOL_OPEN_APP_FROM_PUZZLE',
+                appId: app.id,
+                appName: app.title,
+                pythonCode: app.pythonCode || '',
+                htmlCode: app.htmlCode || '',
+                serverUrl: app.serverUrl || ''
+            }, '*');
+            showNotification(`Editando "${app.title}" en el Studio.`);
+        }
+    }, 500);
+    setTimeout(() => clearInterval(waitForStudio), 10000);
+}
+
+function publishPendingApp(appId) {
+    const pending = getPendingApps();
+    const index = pending.findIndex(p => p.id === appId);
+    if(index === -1) return;
+    const appToPublish = { ...pending[index] };
+    delete appToPublish.status;
+    delete appToPublish.createdBy;
+    const published = getPublishedApps();
+    if(published.find(p => p.id === appToPublish.id)) {
+        showNotification("⚠️ Ya existe una app con este ID publicada");
+        return;
+    }
+    published.push(appToPublish);
+    savePublishedApps(published);
+    pending.splice(index,1);
+    savePendingApps(pending);
+    showNotification(`✅ App "${appToPublish.title}" publicada`);
+    renderPendingList();
+    renderTagFilters();
+    renderPublishedApps();
+}
+function rejectPendingApp(appId) {
+    if(!confirm("Eliminar esta app pendiente?")) return;
+    let pending = getPendingApps();
+    pending = pending.filter(p => p.id !== appId);
+    savePendingApps(pending);
+    showNotification("App rechazada");
+    renderPendingList();
+}
+function deletePublishedApp(appId) {
+    if(!isFounder) { showNotification("Solo fundador puede eliminar apps publicadas"); return; }
+    if(!confirm(`Eliminar app del repositorio?`)) return;
+    let published = getPublishedApps();
+    published = published.filter(p => p.id !== appId);
+    savePublishedApps(published);
+    showNotification("App eliminada");
+    renderTagFilters();
+    renderPublishedApps();
+}
+function showNotification(msg, dur=2800) {
+    const n = document.getElementById('notifMsg');
+    n.textContent = msg;
+    n.classList.add('show');
+    if(n._timeout) clearTimeout(n._timeout);
+    n._timeout = setTimeout(() => n.classList.remove('show'), dur);
+}
+
+// Inicialización
+renderTagFilters();
+renderPublishedApps();
+
+// Cerrar modales al hacer clic fuera
+document.getElementById('studioModalReal')?.addEventListener('click', (e) => { if(e.target === document.getElementById('studioModalReal')) closeStudioModal(); });
+document.getElementById('pendingModal')?.addEventListener('click', (e) => { if(e.target === document.getElementById('pendingModal')) closePendingModal(); });
+document.getElementById('previewAppModal')?.addEventListener('click', (e) => { if(e.target === document.getElementById('previewAppModal')) closePreviewModal(); });
+document.getElementById('execAppModal')?.addEventListener('click', (e) => { if(e.target === document.getElementById('execAppModal')) closeExecModal(); });
+</script>
+</body>
+</html>

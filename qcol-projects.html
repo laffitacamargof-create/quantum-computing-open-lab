@@ -207,18 +207,39 @@ function execProj(id) {
     if (!p) { notify('Proyecto no encontrado'); return; }
     
     if (p.type === 'nb') {
-        // Enviar al core para que abra el arquitecto pro en modo exposición
+        // Preparar el notebook — asegurar que tenga estructura válida
+        const nb = {
+            title:  p.title  || p.name || 'Sin título',
+            name:   p.name   || p.title || 'Sin título',
+            desc:   p.desc   || '',
+            cells:  (p.cells && p.cells.length > 0) ? p.cells : [
+                // Si no tiene celdas, crear una de bienvenida
+                {
+                    id: 'c'+Date.now(),
+                    type: 'markdown',
+                    code: `# ${p.title||'Notebook'}
+
+${p.desc||''}`,
+                    output: '', exec_count: null, mdEdit: false
+                }
+            ]
+        };
+        // Navegar al Quantum Notebook primero, luego enviar el mensaje
+        // El core debe enrutar este mensaje al iframe del Quantum Notebook
         window.parent.postMessage({
             type: 'QCOL_OPEN_NB_EXPOSITION',
-            nb: p   // contiene cells, title, desc, etc.
+            nb: nb,
+            expositionMode: true
         }, '*');
-        notify('Abriendo notebook en modo exposición...');
+        notify('👁 Abriendo en modo exposición...');
     } else if (p.type === 'pdf') {
-        const gh = cfg.ghUser || 'laffitacamargof-create';
-        const repo = cfg.ghRepo || 'quantum-computing-open-lab';
+        const gh = cfg && cfg.ghUser ? cfg.ghUser : 'laffitacamargof-create';
+        const repo = cfg && cfg.ghRepo ? cfg.ghRepo : 'quantum-computing-open-lab';
         window.open(`https://github.com/${gh}/${repo}/blob/main/docs/${id}.pdf`, '_blank');
     } else if (p.type === 'video') {
         window.open(p.url || '#', '_blank');
+    } else {
+        notify('Tipo de proyecto no reconocido: ' + p.type);
     }
 }
 
