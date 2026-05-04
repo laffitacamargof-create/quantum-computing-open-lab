@@ -1285,11 +1285,11 @@ body::before{content:'';position:fixed;inset:0;
   async function callAI(msg) {
     const temp   = aiCfg.temp   || 0.7;
     const tokens = aiCfg.tokens || 600;
-    const lang   = aiCfg.lang   || 'en';
+    const lang   = aiCfg.lang   || 'en';                    // ← CHANGED from 'es' to 'en'
     const langNote = lang==='es' ? ' Always respond in Spanish.'
                    : lang==='en' ? ' Always respond in English.'
                    : ' Respond in both Spanish and English.';
-    const sys = (aiCfg.prompt || 'You are the QCOL assistant, a quantum computing ecosystem. Respond concisely and technically.') + langNote;
+    const sys = (aiCfg.prompt || 'You are the QCOL assistant, a quantum computing ecosystem. Respond concisely and technically.') + langNote;  // ← CHANGED from Spanish to English
     const msgs = [
       { role:'system', content:sys },
       ...aiHistory.slice(-6),
