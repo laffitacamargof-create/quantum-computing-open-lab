@@ -1,14 +1,14 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>QCOL — Panel Fundador</title>
+<title>QCOL — Founder Panel</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=JetBrains+Mono:wght@400;500&family=Exo+2:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.5/dist/purify.min.js"></script>
 <style>
-/* === TODOS LOS ESTILOS ORIGINALES SE MANTIENEN ÍNTEGROS === */
+/* === ALL ORIGINAL STYLES PRESERVED === */
 :root{--bg:#010608;--s:#071220;--s2:#0c1c30;--b:#0d2a4a;--b2:#1a3a5c;--bl:#0088ff;--bl2:#00ccff;--cy:#00ffdd;--gr:#00ff88;--gd:#ffd700;--rd:#ff4466;--pu:#bd93f9;--tx:#ddeeff;--mu:#4a7a9b;--orb:'Orbitron',monospace;--mono:'JetBrains Mono',monospace;--exo:'Exo 2',sans-serif;}
 *{margin:0;padding:0;box-sizing:border-box;}
 body{background:var(--bg);color:var(--tx);font-family:var(--exo);padding:1rem;min-height:100vh;}
@@ -125,77 +125,77 @@ textarea.fi{resize:vertical;min-height:70px;line-height:1.6;}
 <div class="notif" id="notif"></div>
 
 <div class="tabs">
-  <button class="tab active" onclick="showTab('modules')">🧩 Módulos</button>
-  <button class="tab" onclick="showTab('colab')">🤗 Compilador HuggingFace</button>
+  <button class="tab active" onclick="showTab('modules')">🧩 Modules</button>
+  <button class="tab" onclick="showTab('colab')">🤗 HuggingFace Compiler</button>
   <button class="tab" onclick="showTab('github')">⬡ GitHub</button>
-  <button class="tab" onclick="showTab('ai')">🤖 IA</button>
-  <button class="tab" onclick="showTab('iaresolver')">🧠 IA Resolver</button>
-  <button class="tab" onclick="showTab('users')">👥 Usuarios</button>
-  <button class="tab" onclick="showTab('content')">📂 Contenido</button>
-  <button class="tab" onclick="showTab('config')">⚙️ Sistema</button>
+  <button class="tab" onclick="showTab('ai')">🤖 AI</button>
+  <button class="tab" onclick="showTab('iaresolver')">🧠 AI Resolver</button>
+  <button class="tab" onclick="showTab('users')">👥 Users</button>
+  <button class="tab" onclick="showTab('content')">📂 Content</button>
+  <button class="tab" onclick="showTab('config')">⚙️ System</button>
   <button class="tab" onclick="showTab('deploy')">🌐 Internet</button>
   <button class="tab" onclick="showTab('monitor')">📊 Monitor</button>
 </div>
 
-<!-- ════════════ MÓDULOS ════════════ -->
+<!-- ════════════ MODULES ════════════ -->
 <div class="panel active" id="tab-modules">
   <div class="sec">
-    <div class="sec-title">🧩 Estado de los Módulos del Ecosistema</div>
-    <div class="alert alert-info">Cada módulo es un archivo HTML independiente. Para actualizar un módulo: descárgalo, modifícalo y sube el nuevo archivo a GitHub. El ecosistema lo carga automáticamente.</div>
+    <div class="sec-title">🧩 Ecosystem Modules Status</div>
+    <div class="alert alert-info">Each module is an independent HTML file. To update a module: download it, modify it, and upload the new file to GitHub. The ecosystem loads it automatically.</div>
     <table class="tbl">
-      <thead><tr><th>MÓDULO</th><th>ARCHIVO</th><th>FUNCIÓN</th><th>ESTADO</th><th>ACCIONES</th> </thead>
+      <thead><tr><th>MODULE</th><th>FILE</th><th>FUNCTION</th><th>STATUS</th><th>ACTIONS</th> </thead>
       <tbody>
-        <tr><td style="font-family:var(--mono);font-size:.6rem;color:var(--gr);">index.html</a></td><td style="font-size:.62rem;color:var(--mu);">Núcleo — une todo el ecosistema</a><td><span class="rb rba">ACTIVO</span></td><td><button class="bsm" onclick="downloadModule('core')">📥 Core</button></td> </tr>
-        <tr><td style="font-family:var(--mono);font-size:.6rem;color:var(--gr);">qcol-projects.html</a></td><td style="font-size:.62rem;color:var(--mu);">Notebooks desde GitHub</a><td><span class="rb" id="st-projects" style="background:rgba(255,184,0,.12);color:#ffb800;border:1px solid rgba(255,184,0,.3);">PENDIENTE</span></td><td><button class="bsm" onclick="downloadModule('projects')">📥</button></td> </tr>
-        <tr><td style="font-family:var(--mono);font-size:.6rem;color:var(--gr);">qcol-architect.html</a></td><td style="font-size:.62rem;color:var(--mu);">Editor Qiskit · Cirq · QuTiP + GPU HuggingFace</a><td><span class="rb" id="st-architect" style="background:rgba(255,184,0,.12);color:#ffb800;border:1px solid rgba(255,184,0,.3);">PENDIENTE</span></td><td><button class="bsm" onclick="downloadModule('architect')">📥</button></td> </tr>
-        <tr><td style="font-family:var(--mono);font-size:.6rem;color:var(--gr);">qcol-architect-pro.html</a></td><td style="font-size:.62rem;color:var(--mu);">Notebooks completos — Admin+</a><td><span class="rb" id="st-archpro" style="background:rgba(255,184,0,.12);color:#ffb800;border:1px solid rgba(255,184,0,.3);">PENDIENTE</span></td><td><button class="bsm" onclick="downloadModule('architect-pro')">📥</button></td> </tr>
-        <tr><td style="font-family:var(--mono);font-size:.6rem;color:var(--gr);">qcol-library.html</a></td><td style="font-size:.62rem;color:var(--mu);">Recursos educativos desde GitHub</a><td><span class="rb" id="st-library" style="background:rgba(255,184,0,.12);color:#ffb800;border:1px solid rgba(255,184,0,.3);">PENDIENTE</span></td><td><button class="bsm" onclick="downloadModule('library')">📥</button></td> </tr>
-        <tr><td style="font-family:var(--mono);font-size:.6rem;color:var(--gr);">qcol-account.html</a></td><td style="font-size:.62rem;color:var(--mu);">Perfil y circuitos guardados</a><td><span class="rb" id="st-account" style="background:rgba(255,184,0,.12);color:#ffb800;border:1px solid rgba(255,184,0,.3);">PENDIENTE</span></td><td><button class="bsm" onclick="downloadModule('account')">📥</button></td> </tr>
-        <tr><td style="font-family:var(--mono);font-size:.6rem;color:var(--gr);">qcol-help.html</a></td><td style="font-size:.62rem;color:var(--mu);">Documentación del ecosistema</a><td><span class="rb" id="st-help" style="background:rgba(255,184,0,.12);color:#ffb800;border:1px solid rgba(255,184,0,.3);">PENDIENTE</span></td><td><button class="bsm" onclick="downloadModule('help')">📥</button></td> </tr>
-        <tr><td style="font-family:var(--mono);font-size:.6rem;color:var(--cy);">quantum-app-studio.html</a></td><td style="font-size:.62rem;color:var(--mu);">Editor visual de aplicaciones cuánticas con backend remoto</a><td><span class="rb" id="st-quantumapp" style="background:rgba(255,184,0,.12);color:#ffb800;border:1px solid rgba(255,184,0,.3);">PENDIENTE</span></td><td><button class="bsm" onclick="downloadModule('quantumapp')">📥</button></td> </tr>
+        <tr><td style="font-family:var(--mono);font-size:.6rem;color:var(--gr);">index.html</a></td><td style="font-size:.62rem;color:var(--mu);">Core — ties the entire ecosystem together</a><td><span class="rb rba">ACTIVE</span></td><td><button class="bsm" onclick="downloadModule('core')">📥 Core</button></td> </tr>
+        <tr><td style="font-family:var(--mono);font-size:.6rem;color:var(--gr);">qcol-projects.html</a></td><td style="font-size:.62rem;color:var(--mu);">Notebooks from GitHub</a><td><span class="rb" id="st-projects" style="background:rgba(255,184,0,.12);color:#ffb800;border:1px solid rgba(255,184,0,.3);">PENDING</span></td><td><button class="bsm" onclick="downloadModule('projects')">📥</button></td> </tr>
+        <tr><td style="font-family:var(--mono);font-size:.6rem;color:var(--gr);">qcol-architect.html</a></td><td style="font-size:.62rem;color:var(--mu);">Qiskit · Cirq · QuTiP Editor + HuggingFace GPU</a><td><span class="rb" id="st-architect" style="background:rgba(255,184,0,.12);color:#ffb800;border:1px solid rgba(255,184,0,.3);">PENDING</span></td><td><button class="bsm" onclick="downloadModule('architect')">📥</button></td> </tr>
+        <tr><td style="font-family:var(--mono);font-size:.6rem;color:var(--gr);">qcol-architect-pro.html</a></td><td style="font-size:.62rem;color:var(--mu);">Full Notebooks — Admin+</a><td><span class="rb" id="st-archpro" style="background:rgba(255,184,0,.12);color:#ffb800;border:1px solid rgba(255,184,0,.3);">PENDING</span></td><td><button class="bsm" onclick="downloadModule('architect-pro')">📥</button></td> </tr>
+        <tr><td style="font-family:var(--mono);font-size:.6rem;color:var(--gr);">qcol-library.html</a></td><td style="font-size:.62rem;color:var(--mu);">Educational resources from GitHub</a><td><span class="rb" id="st-library" style="background:rgba(255,184,0,.12);color:#ffb800;border:1px solid rgba(255,184,0,.3);">PENDING</span></td><td><button class="bsm" onclick="downloadModule('library')">📥</button></td> </tr>
+        <tr><td style="font-family:var(--mono);font-size:.6rem;color:var(--gr);">qcol-account.html</a></td><td style="font-size:.62rem;color:var(--mu);">Profile and saved circuits</a><td><span class="rb" id="st-account" style="background:rgba(255,184,0,.12);color:#ffb800;border:1px solid rgba(255,184,0,.3);">PENDING</span></td><td><button class="bsm" onclick="downloadModule('account')">📥</button></td> </tr>
+        <tr><td style="font-family:var(--mono);font-size:.6rem;color:var(--gr);">qcol-help.html</a></td><td style="font-size:.62rem;color:var(--mu);">Ecosystem documentation</a><td><span class="rb" id="st-help" style="background:rgba(255,184,0,.12);color:#ffb800;border:1px solid rgba(255,184,0,.3);">PENDING</span></td><td><button class="bsm" onclick="downloadModule('help')">📥</button></td> </tr>
+        <tr><td style="font-family:var(--mono);font-size:.6rem;color:var(--cy);">quantum-app-studio.html</a></td><td style="font-size:.62rem;color:var(--mu);">Visual editor for quantum apps with remote backend</a><td><span class="rb" id="st-quantumapp" style="background:rgba(255,184,0,.12);color:#ffb800;border:1px solid rgba(255,184,0,.3);">PENDING</span></td><td><button class="bsm" onclick="downloadModule('quantumapp')">📥</button></td> </tr>
       </tbody>
     </table>
-    <div class="btn-row" style="margin-top:.8rem;"><button class="btn btn-ok" onclick="checkModules()">🔍 Verificar módulos</button></div>
+    <div class="btn-row" style="margin-top:.8rem;"><button class="btn btn-ok" onclick="checkModules()">🔍 Verify modules</button></div>
   </div>
   <div class="sec">
-    <div class="sec-title">➕ Crear nuevo módulo personalizado</div>
-    <div class="alert alert-info">Agrega módulos propios al ecosistema. Cada módulo es un archivo HTML que se carga en el menú principal. Crea el archivo HTML, súbelo a GitHub con el nombre que especifiques, y aparecerá automáticamente.</div>
+    <div class="sec-title">➕ Create new custom module</div>
+    <div class="alert alert-info">Add your own modules to the ecosystem. Each module is an HTML file loaded into the main menu. Create the HTML file, upload it to GitHub with the name you specify, and it will automatically appear.</div>
     <div class="grid2">
-      <div><div class="fg"><label class="fl">NOMBRE DEL MÓDULO</label><input class="fi" id="nm-name" placeholder="Mi Módulo"></div><div class="fg"><label class="fl">IDENTIFICADOR (sin espacios)</label><input class="fi" id="nm-id" placeholder="mi-modulo"></div><div class="fg"><label class="fl">ARCHIVO HTML</label><input class="fi" id="nm-file" placeholder="qcol-mi-modulo.html"></div></div>
-      <div><div class="fg"><label class="fl">ÍCONO (emoji)</label><input class="fi" id="nm-icon" placeholder="🔬" style="width:80px;text-align:center;font-size:1.2rem;"></div><div class="fg"><label class="fl">DESCRIPCIÓN</label><input class="fi" id="nm-desc" placeholder="Descripción del módulo"></div><div class="fg"><label class="fl">ACCESO MÍNIMO</label><select class="fi" id="nm-role"><option value="guest">Todos los usuarios</option><option value="user">Solo usuarios con sesión</option><option value="admin">Solo Admin / Fundador</option></select></div></div>
+      <div><div class="fg"><label class="fl">MODULE NAME</label><input class="fi" id="nm-name" placeholder="My Module"></div><div class="fg"><label class="fl">IDENTIFIER (no spaces)</label><input class="fi" id="nm-id" placeholder="my-module"></div><div class="fg"><label class="fl">HTML FILE</label><input class="fi" id="nm-file" placeholder="qcol-my-module.html"></div></div>
+      <div><div class="fg"><label class="fl">ICON (emoji)</label><input class="fi" id="nm-icon" placeholder="🔬" style="width:80px;text-align:center;font-size:1.2rem;"></div><div class="fg"><label class="fl">DESCRIPTION</label><input class="fi" id="nm-desc" placeholder="Module description"></div><div class="fg"><label class="fl">MINIMUM ACCESS</label><select class="fi" id="nm-role"><option value="guest">All users</option><option value="user">Logged-in users only</option><option value="admin">Admin / Founder only</option></select></div></div>
     </div>
-    <div class="btn-row"><button class="btn btn-pri" onclick="createModule()">➕ Crear módulo</button></div>
+    <div class="btn-row"><button class="btn btn-pri" onclick="createModule()">➕ Create module</button></div>
   </div>
-  <div class="sec"><div class="sec-title">🧩 Módulos personalizados activos</div><div id="custom-modules-list" style="font-size:.65rem;color:var(--mu);">Sin módulos personalizados.</div></div>
+  <div class="sec"><div class="sec-title">🧩 Active custom modules</div><div id="custom-modules-list" style="font-size:.65rem;color:var(--mu);">No custom modules.</div></div>
 </div>
 
-<!-- ════════════ COMPILADOR HUGGINGFACE ════════════ -->
+<!-- ════════════ HUGGINGFACE COMPILER ════════════ -->
 <div class="panel" id="tab-colab">
   <div class="sec">
-    <div class="sec-title">🤗 Compilador Cuántico — HuggingFace GPU</div>
-    <div class="alert alert-info">El Arquitecto usa <strong>HuggingFace Spaces</strong> como compilador permanente con GPU. Qiskit, Cirq, QuTiP y PennyLane disponibles. Configura la URL una sola vez.</div>
-    <div class="status-row"><div class="sdot off" id="colab-dot"></div><div class="stxt" id="colab-status">Sin conectar</div><div class="ssub" id="colab-sub">—</div></div>
-    <div class="fg"><label class="fl">URL DEL COMPILADOR EN HUGGINGFACE</label><div style="display:flex;gap:.4rem;"><input class="fi" id="colab-url" placeholder="https://[usuario]-qcol-compilador.hf.space" value="https://francilaffita1027-qcol-motor.hf.space"><button class="btn btn-ok" onclick="testColab()" style="white-space:nowrap;">🧪 PROBAR</button><button class="btn btn-ok" onclick="checkEngine()" style="white-space:nowrap;">🔄 RECONECTAR</button></div><div style="font-size:.58rem;color:var(--mu);margin-top:.28rem;">Ejemplo: <code style="color:var(--gr);">https://laffitacamargo-qcol-compilador.hf.space</code></div></div>
-    <div class="logbox" id="colab-log">— Log de conexión —</div>
-    <div class="btn-row"><button class="btn btn-pri" onclick="saveColab()">💾 Guardar URL</button><button class="btn btn-sec" onclick="window.open('https://huggingface.co/spaces','_blank')">🤗 Abrir HuggingFace ↗</button></div>
+    <div class="sec-title">🤗 Quantum Compiler — HuggingFace GPU</div>
+    <div class="alert alert-info">The Architect uses <strong>HuggingFace Spaces</strong> as a permanent compiler with GPU. Qiskit, Cirq, QuTiP and PennyLane available. Configure the URL just once.</div>
+    <div class="status-row"><div class="sdot off" id="colab-dot"></div><div class="stxt" id="colab-status">Not connected</div><div class="ssub" id="colab-sub">—</div></div>
+    <div class="fg"><label class="fl">HUGGINGFACE COMPILER URL</label><div style="display:flex;gap:.4rem;"><input class="fi" id="colab-url" placeholder="https://[user]-qcol-compiler.hf.space" value="https://francilaffita1027-qcol-motor.hf.space"><button class="btn btn-ok" onclick="testColab()" style="white-space:nowrap;">🧪 TEST</button><button class="btn btn-ok" onclick="checkEngine()" style="white-space:nowrap;">🔄 RECONNECT</button></div><div style="font-size:.58rem;color:var(--mu);margin-top:.28rem;">Example: <code style="color:var(--gr);">https://laffitacamargo-qcol-compiler.hf.space</code></div></div>
+    <div class="logbox" id="colab-log">— Connection log —</div>
+    <div class="btn-row"><button class="btn btn-pri" onclick="saveColab()">💾 Save URL</button><button class="btn btn-sec" onclick="window.open('https://huggingface.co/spaces','_blank')">🤗 Open HuggingFace ↗</button></div>
   </div>
   <div class="sec">
-    <div class="sec-title">🚀 Cómo montar el compilador en HuggingFace — paso a paso</div>
-    <div class="alert alert-ok">✅ HuggingFace es gratis, sin tarjeta, con GPU disponible.</div>
-    <div style="font-size:.68rem;color:var(--mu);line-height:2;margin-bottom:.8rem;"><strong style="color:var(--bl2);">PASO 1 — Crear cuenta</strong><br>Ve a <a onclick="window.open('https://huggingface.co','_blank')" style="color:var(--gr);cursor:pointer;">huggingface.co</a> → Sign Up (gratis, sin tarjeta)</div>
-    <div style="font-size:.68rem;color:var(--mu);line-height:2;margin-bottom:.8rem;"><strong style="color:var(--bl2);">PASO 2 — Crear Space</strong><br>New Space → SDK: <strong>Docker</strong> → Name: <code style="color:var(--gr);">qcol-compilador</code> → Public</div>
-    <div style="font-size:.68rem;color:var(--mu);line-height:2;margin-bottom:.8rem;"><strong style="color:var(--bl2);">PASO 3 — Subir 4 archivos al Space</strong><br><code style="color:var(--gr);">Dockerfile</code> &nbsp; <code style="color:var(--gr);">app.py</code> &nbsp; <code style="color:var(--gr);">requirements.txt</code> &nbsp; <code style="color:var(--gr);">README.md</code></div>
-    <div style="font-size:.68rem;color:var(--mu);line-height:2;margin-bottom:.8rem;"><strong style="color:var(--bl2);">PASO 4 — Esperar el build</strong><br>HuggingFace instala Qiskit + Cirq + QuTiP — tarda <strong>10-15 minutos</strong> la primera vez.</div>
-    <div style="font-size:.68rem;color:var(--mu);line-height:2;"><strong style="color:var(--bl2);">PASO 5 — Pegar la URL arriba y probar</strong><br>Tu URL: <code style="color:var(--gr);">https://[usuario]-qcol-compilador.hf.space</code></div>
-    <div class="btn-row" style="margin-top:.8rem;"><button class="btn btn-sec" onclick="window.open('https://huggingface.co/new-space','_blank')">🤗 Crear Space ↗</button><button class="btn btn-ok" onclick="testColab()">🧪 Probar compilador</button></div>
+    <div class="sec-title">🚀 How to set up the compiler on HuggingFace — step by step</div>
+    <div class="alert alert-ok">✅ HuggingFace is free, no credit card, with GPU available.</div>
+    <div style="font-size:.68rem;color:var(--mu);line-height:2;margin-bottom:.8rem;"><strong style="color:var(--bl2);">STEP 1 — Create account</strong><br>Go to <a onclick="window.open('https://huggingface.co','_blank')" style="color:var(--gr);cursor:pointer;">huggingface.co</a> → Sign Up (free, no credit card)</div>
+    <div style="font-size:.68rem;color:var(--mu);line-height:2;margin-bottom:.8rem;"><strong style="color:var(--bl2);">STEP 2 — Create Space</strong><br>New Space → SDK: <strong>Docker</strong> → Name: <code style="color:var(--gr);">qcol-compiler</code> → Public</div>
+    <div style="font-size:.68rem;color:var(--mu);line-height:2;margin-bottom:.8rem;"><strong style="color:var(--bl2);">STEP 3 — Upload 4 files to the Space</strong><br><code style="color:var(--gr);">Dockerfile</code> &nbsp; <code style="color:var(--gr);">app.py</code> &nbsp; <code style="color:var(--gr);">requirements.txt</code> &nbsp; <code style="color:var(--gr);">README.md</code></div>
+    <div style="font-size:.68rem;color:var(--mu);line-height:2;margin-bottom:.8rem;"><strong style="color:var(--bl2);">STEP 4 — Wait for the build</strong><br>HuggingFace installs Qiskit + Cirq + QuTiP — takes <strong>10-15 minutes</strong> the first time.</div>
+    <div style="font-size:.68rem;color:var(--mu);line-height:2;"><strong style="color:var(--bl2);">STEP 5 — Paste the URL above and test</strong><br>Your URL: <code style="color:var(--gr);">https://[user]-qcol-compiler.hf.space</code></div>
+    <div class="btn-row" style="margin-top:.8rem;"><button class="btn btn-sec" onclick="window.open('https://huggingface.co/new-space','_blank')">🤗 Create Space ↗</button><button class="btn btn-ok" onclick="testColab()">🧪 Test compiler</button></div>
   </div>
   <div class="sec">
-    <div class="sec-title">📦 Librerías disponibles en el compilador</div>
+    <div class="sec-title">📦 Libraries available in the compiler</div>
     <div class="grid2">
-      <div style="background:rgba(0,0,0,.2);border:1px solid var(--b);border-radius:8px;padding:.85rem;"><div style="font-family:var(--orb);font-size:.62rem;color:var(--bl2);margin-bottom:.4rem;">⚛ Qiskit + Aer</div><div style="font-size:.62rem;color:var(--mu);line-height:1.7;">qiskit, qiskit-aer<br>Statevector, AerSimulator<br>Shots reales, transpile</div></div>
-      <div style="background:rgba(0,0,0,.2);border:1px solid var(--b);border-radius:8px;padding:.85rem;"><div style="font-family:var(--orb);font-size:.62rem;color:var(--bl2);margin-bottom:.4rem;">🔵 Cirq</div><div style="font-size:.62rem;color:var(--mu);line-height:1.7;">cirq, cirq.Simulator<br>LineQubit, GridQubit<br>Circuitos Google-style</div></div>
-      <div style="background:rgba(0,0,0,.2);border:1px solid var(--b);border-radius:8px;padding:.85rem;"><div style="font-family:var(--orb);font-size:.62rem;color:var(--bl2);margin-bottom:.4rem;">🌀 QuTiP</div><div style="font-size:.62rem;color:var(--mu);line-height:1.7;">qutip, Qobj<br>Sistemas abiertos<br>Dinámica cuántica</div></div>
-      <div style="background:rgba(0,0,0,.2);border:1px solid var(--b);border-radius:8px;padding:.85rem;"><div style="font-family:var(--orb);font-size:.62rem;color:var(--bl2);margin-bottom:.4rem;">🍁 PennyLane + Otros</div><div style="font-size:.62rem;color:var(--mu);line-height:1.7;">pennylane, numpy<br>scipy, matplotlib<br>sympy</div></div>
+      <div style="background:rgba(0,0,0,.2);border:1px solid var(--b);border-radius:8px;padding:.85rem;"><div style="font-family:var(--orb);font-size:.62rem;color:var(--bl2);margin-bottom:.4rem;">⚛ Qiskit + Aer</div><div style="font-size:.62rem;color:var(--mu);line-height:1.7;">qiskit, qiskit-aer<br>Statevector, AerSimulator<br>Real shots, transpile</div></div>
+      <div style="background:rgba(0,0,0,.2);border:1px solid var(--b);border-radius:8px;padding:.85rem;"><div style="font-family:var(--orb);font-size:.62rem;color:var(--bl2);margin-bottom:.4rem;">🔵 Cirq</div><div style="font-size:.62rem;color:var(--mu);line-height:1.7;">cirq, cirq.Simulator<br>LineQubit, GridQubit<br>Google-style circuits</div></div>
+      <div style="background:rgba(0,0,0,.2);border:1px solid var(--b);border-radius:8px;padding:.85rem;"><div style="font-family:var(--orb);font-size:.62rem;color:var(--bl2);margin-bottom:.4rem;">🌀 QuTiP</div><div style="font-size:.62rem;color:var(--mu);line-height:1.7;">qutip, Qobj<br>Open systems<br>Quantum dynamics</div></div>
+      <div style="background:rgba(0,0,0,.2);border:1px solid var(--b);border-radius:8px;padding:.85rem;"><div style="font-family:var(--orb);font-size:.62rem;color:var(--bl2);margin-bottom:.4rem;">🍁 PennyLane + Others</div><div style="font-size:.62rem;color:var(--mu);line-height:1.7;">pennylane, numpy<br>scipy, matplotlib<br>sympy</div></div>
     </div>
   </div>
 </div>
@@ -203,143 +203,144 @@ textarea.fi{resize:vertical;min-height:70px;line-height:1.6;}
 <!-- ════════════ GITHUB ════════════ -->
 <div class="panel" id="tab-github">
   <div class="sec">
-    <div class="sec-title">⬡ Configuración GitHub — Almacenamiento del Ecosistema</div>
-    <div class="fg"><label class="fl">USUARIO GITHUB</label><input class="fi" id="gh-user" value="laffitacamargof-create"></div>
-    <div class="fg"><label class="fl">REPOSITORIO</label><input class="fi" id="gh-repo" value="quantum-computing-open-lab"></div>
-    <div class="fg"><label class="fl">RAMA</label><input class="fi" id="gh-branch" value="main" style="width:120px;display:inline-block;"></div>
-    <div class="fg"><label class="fl">TOKEN GITHUB (para subir archivos desde el ecosistema)</label><input class="fi" id="gh-token" type="password" placeholder="ghp_xxxxxxxxxxxx"><div style="font-size:.58rem;color:var(--mu);margin-top:.25rem;">Genera en: GitHub → Settings → Developer Settings → Personal Access Tokens → Fine-grained tokens → repo scope</div></div>
-    <div class="btn-row"><button class="btn btn-pri" onclick="saveGH()">💾 Guardar</button><button class="btn btn-ok" onclick="testGH()">🧪 Verificar repositorio</button><button class="btn btn-sec" onclick="openGH()">⬡ Ver repositorio ↗</button></div>
-    <div class="status-row" style="margin-top:.7rem;"><div class="sdot off" id="gh-dot"></div><div class="stxt" id="gh-status">Sin verificar</div></div>
+    <div class="sec-title">⬡ GitHub Configuration — Ecosystem Storage</div>
+    <div class="fg"><label class="fl">GITHUB USERNAME</label><input class="fi" id="gh-user" value="laffitacamargof-create"></div>
+    <div class="fg"><label class="fl">REPOSITORY</label><input class="fi" id="gh-repo" value="quantum-computing-open-lab"></div>
+    <div class="fg"><label class="fl">BRANCH</label><input class="fi" id="gh-branch" value="main" style="width:120px;display:inline-block;"></div>
+    <div class="fg"><label class="fl">GITHUB TOKEN (to upload files from the ecosystem)</label><input class="fi" id="gh-token" type="password" placeholder="ghp_xxxxxxxxxxxx"><div style="font-size:.58rem;color:var(--mu);margin-top:.25rem;">Generate at: GitHub → Settings → Developer Settings → Personal Access Tokens → Fine-grained tokens → repo scope</div></div>
+    <div class="btn-row"><button class="btn btn-pri" onclick="saveGH()">💾 Save</button><button class="btn btn-ok" onclick="testGH()">🧪 Verify repository</button><button class="btn btn-sec" onclick="openGH()">⬡ View repository ↗</button></div>
+    <div class="status-row" style="margin-top:.7rem;"><div class="sdot off" id="gh-dot"></div><div class="stxt" id="gh-status">Not verified</div></div>
   </div>
   <div class="sec">
-    <div class="sec-title">📤 Subir archivos al repositorio GitHub</div>
-    <div class="alert alert-info">Sube cualquier archivo directamente a tu repositorio usando la API de GitHub. Requiere el <strong>Token GitHub</strong> configurado arriba con permiso <code>repo</code>.</div>
-    <div class="fg"><label class="fl">SELECCIONAR ARCHIVO</label><input type="file" id="gh-file-input" class="fi" style="padding:.3rem;" onchange="previewUpload(this)"><div id="gh-file-preview" style="font-size:.6rem;color:var(--mu);margin-top:.25rem;"></div></div>
-    <div class="fg"><label class="fl">CARPETA DESTINO EN GITHUB (dejar vacío para raíz)</label><input class="fi" id="gh-folder" placeholder="notebooks/ ó docs/ ó vacío para raíz" style="width:220px;"></div>
-    <div class="fg"><label class="fl">MENSAJE DE COMMIT</label><input class="fi" id="gh-commit-msg" value="Subido desde QCOL" style="width:280px;"></div>
-    <div class="btn-row"><button class="btn btn-pri" onclick="uploadToGitHub()">📤 Subir a GitHub</button><button class="btn btn-sec" onclick="openGH()">⬡ Ver repositorio ↗</button></div>
-    <div class="logbox" id="gh-upload-log">— Log de subida —</div>
+    <div class="sec-title">📤 Upload files to GitHub repository</div>
+    <div class="alert alert-info">Upload any file directly to your repository using the GitHub API. Requires the <strong>GitHub Token</strong> configured above with <code>repo</code> permission.</div>
+    <div class="fg"><label class="fl">SELECT FILE</label><input type="file" id="gh-file-input" class="fi" style="padding:.3rem;" onchange="previewUpload(this)"><div id="gh-file-preview" style="font-size:.6rem;color:var(--mu);margin-top:.25rem;"></div></div>
+    <div class="fg"><label class="fl">DESTINATION FOLDER ON GITHUB (leave empty for root)</label><input class="fi" id="gh-folder" placeholder="notebooks/ or docs/ or empty for root" style="width:220px;"></div>
+    <div class="fg"><label class="fl">COMMIT MESSAGE</label><input class="fi" id="gh-commit-msg" value="Uploaded from QCOL" style="width:280px;"></div>
+    <div class="btn-row"><button class="btn btn-pri" onclick="uploadToGitHub()">📤 Upload to GitHub</button><button class="btn btn-sec" onclick="openGH()">⬡ View repository ↗</button></div>
+    <div class="logbox" id="gh-upload-log">— Upload log —</div>
   </div>
 </div>
 
-<!-- ════════════ IA ════════════ -->
+<!-- ════════════ AI ════════════ -->
 <div class="panel" id="tab-ai">
   <div class="sec">
-    <div class="sec-title">🤖 Configuración de IA — Optimizado para Mistral 3</div>
-    <div class="alert alert-info"><strong>Mistral 3</strong> es la opción recomendada — gratuito, sin VPN desde Cuba, el modelo más avanzado disponible.</div>
+    <div class="sec-title">🤖 AI Configuration — Optimized for Mistral 3</div>
+    <div class="alert alert-info"><strong>Mistral 3</strong> is the recommended option — free, no VPN needed from Cuba, the most advanced model available.</div>
     <div class="grid2">
       <div>
-        <div class="fg"><label class="fl">PROVEEDOR DE IA</label><select class="fi" id="ai-prov" onchange="aiProviderChange()"><option value="none">Sin IA (modo demo)</option><option value="mistral" selected>⭐ Mistral AI — Recomendado, sin VPN Cuba</option><option value="groq">Groq — LLaMA 3, gratis, sin VPN Cuba</option><option value="huggingface">Hugging Face Inference — gratis, sin VPN</option><option value="openai">OpenAI GPT — pago</option><option value="gemini">Google Gemini — necesita VPN</option></select></div>
-        <div class="fg"><label class="fl">MODELO</label><select class="fi" id="ai-model-sel" onchange="document.getElementById('ai-model').value=this.value"><option value="mistral-large-latest" selected>mistral-large-latest — Mistral 3 Large ⭐</option><option value="mistral-small-latest">mistral-small-latest — Mistral 3 Small</option><option value="mistral-medium-latest">mistral-medium-latest — Mistral Medium</option><option value="open-mistral-nemo">open-mistral-nemo — Nemo (más rápido)</option><option value="open-mixtral-8x22b">open-mixtral-8x22b — Mixtral 8x22B</option><option value="llama3-70b-8192">llama3-70b-8192 — Groq LLaMA 3 70B</option><option value="llama3-8b-8192">llama3-8b-8192 — Groq LLaMA 3 8B</option><option value="gemma2-9b-it">gemma2-9b-it — Groq Gemma 2</option><option value="gpt-4o-mini">gpt-4o-mini — OpenAI GPT-4o Mini</option><option value="gpt-4o">gpt-4o — OpenAI GPT-4o</option></select><input class="fi" id="ai-model" value="mistral-large-latest" style="margin-top:.3rem;" placeholder="O escribe el modelo manualmente"></div>
-        <div class="fg"><label class="fl">API KEY</label><input class="fi" id="ai-key" type="password" placeholder="API key del proveedor" value="sk-0270ed332a5544038b51acf653296f89"><div id="ai-key-hint" style="font-size:.58rem;color:var(--mu);margin-top:.22rem;line-height:1.6;">Mistral: <a onclick="window.open('https://console.mistral.ai','_blank')" style="color:var(--gr);cursor:pointer;">console.mistral.ai</a> → API Keys → Create</div></div>
-        <div class="fg"><label class="fl">TEMPERATURA (0.0 preciso · 1.0 creativo)</label><input class="fi" id="ai-temp" type="number" min="0" max="1" step="0.1" value="0.7" style="width:90px;display:inline-block;"><span style="font-size:.58rem;color:var(--mu);margin-left:.5rem;">Recomendado: 0.7</span></div>
-        <div class="fg"><label class="fl">TOKENS MÁXIMOS POR RESPUESTA</label><select class="fi" id="ai-tokens" style="width:170px;"><option value="400">400 — Respuestas cortas</option><option value="600" selected>600 — Estándar</option><option value="1000">1000 — Respuestas largas</option><option value="2000">2000 — Muy detalladas</option></select></div>
-        <div class="fg"><label class="fl">IDIOMA DE RESPUESTA</label><select class="fi" id="ai-lang" style="width:170px;"><option value="es" selected>Español</option><option value="en">English</option><option value="both">Español e Inglés</option></select></div>
-        <div class="btn-row"><button class="btn btn-pri" onclick="saveAI()">💾 Guardar</button><button class="btn btn-ok" onclick="testAI()">🧪 Probar IA</button></div>
-        <div class="status-row" style="margin-top:.7rem;"><div class="sdot off" id="ai-dot"></div><div class="stxt" id="ai-status">Sin configurar</div></div>
+        <div class="fg"><label class="fl">AI PROVIDER</label><select class="fi" id="ai-prov" onchange="aiProviderChange()"><option value="none">No AI (demo mode)</option><option value="mistral" selected>⭐ Mistral AI — Recommended, no VPN Cuba</option><option value="groq">Groq — LLaMA 3, free, no VPN Cuba</option><option value="huggingface">Hugging Face Inference — free, no VPN</option><option value="openai">OpenAI GPT — paid</option><option value="gemini">Google Gemini — needs VPN</option></select></div>
+        <div class="fg"><label class="fl">MODEL</label><select class="fi" id="ai-model-sel" onchange="document.getElementById('ai-model').value=this.value"><option value="mistral-large-latest" selected>mistral-large-latest — Mistral 3 Large ⭐</option><option value="mistral-small-latest">mistral-small-latest — Mistral 3 Small</option><option value="mistral-medium-latest">mistral-medium-latest — Mistral Medium</option><option value="open-mistral-nemo">open-mistral-nemo — Nemo (faster)</option><option value="open-mixtral-8x22b">open-mixtral-8x22b — Mixtral 8x22B</option><option value="llama3-70b-8192">llama3-70b-8192 — Groq LLaMA 3 70B</option><option value="llama3-8b-8192">llama3-8b-8192 — Groq LLaMA 3 8B</option><option value="gemma2-9b-it">gemma2-9b-it — Groq Gemma 2</option><option value="gpt-4o-mini">gpt-4o-mini — OpenAI GPT-4o Mini</option><option value="gpt-4o">gpt-4o — OpenAI GPT-4o</option></select><input class="fi" id="ai-model" value="mistral-large-latest" style="margin-top:.3rem;" placeholder="Or type the model manually"></div>
+        <div class="fg"><label class="fl">API KEY</label><input class="fi" id="ai-key" type="password" placeholder="Provider API key" value="sk-0270ed332a5544038b51acf653296f89"><div id="ai-key-hint" style="font-size:.58rem;color:var(--mu);margin-top:.22rem;line-height:1.6;">Mistral: <a onclick="window.open('https://console.mistral.ai','_blank')" style="color:var(--gr);cursor:pointer;">console.mistral.ai</a> → API Keys → Create</div></div>
+        <div class="fg"><label class="fl">TEMPERATURE (0.0 precise · 1.0 creative)</label><input class="fi" id="ai-temp" type="number" min="0" max="1" step="0.1" value="0.7" style="width:90px;display:inline-block;"><span style="font-size:.58rem;color:var(--mu);margin-left:.5rem;">Recommended: 0.7</span></div>
+        <div class="fg"><label class="fl">MAX TOKENS PER RESPONSE</label><select class="fi" id="ai-tokens" style="width:170px;"><option value="400">400 — Short responses</option><option value="600" selected>600 — Standard</option><option value="1000">1000 — Long responses</option><option value="2000">2000 — Very detailed</option></select></div>
+        <!-- ─── language selector swapped ─── -->
+        <div class="fg"><label class="fl">RESPONSE LANGUAGE</label><select class="fi" id="ai-lang" style="width:170px;"><option value="en" selected>English</option><option value="es">Spanish</option><option value="both">Spanish and English</option></select></div>
+        <div class="btn-row"><button class="btn btn-pri" onclick="saveAI()">💾 Save</button><button class="btn btn-ok" onclick="testAI()">🧪 Test AI</button></div>
+        <div class="status-row" style="margin-top:.7rem;"><div class="sdot off" id="ai-dot"></div><div class="stxt" id="ai-status">Not configured</div></div>
       </div>
       <div>
-        <div class="sec-title" style="font-size:.62rem;margin-bottom:.6rem;">Cómo obtener API key gratis</div>
-        <div style="font-size:.64rem;color:var(--mu);line-height:1.85;"><strong style="color:var(--bl2);">⭐ Mistral AI (recomendado):</strong><br>1. <a onclick="window.open('https://console.mistral.ai','_blank')" style="color:var(--gr);cursor:pointer;">console.mistral.ai</a><br>2. Crear cuenta gratuita<br>3. API Keys → Create new key<br>4. Modelo: <code style="color:var(--cy);">mistral-large-latest</code><br><br><strong style="color:var(--bl2);">Groq (alternativa):</strong><br>1. <a onclick="window.open('https://console.groq.com','_blank')" style="color:var(--gr);cursor:pointer;">console.groq.com</a><br>2. API Keys → Create Key<br>3. Modelo: <code style="color:var(--cy);">llama3-70b-8192</code><br><br><strong style="color:var(--bl2);">Hugging Face (gratis):</strong><br>1. <a onclick="window.open('https://huggingface.co/settings/tokens','_blank')" style="color:var(--gr);cursor:pointer;">hf.co/settings/tokens</a><br>2. New token → Read</div>
+        <div class="sec-title" style="font-size:.62rem;margin-bottom:.6rem;">How to get a free API key</div>
+        <div style="font-size:.64rem;color:var(--mu);line-height:1.85;"><strong style="color:var(--bl2);">⭐ Mistral AI (recommended):</strong><br>1. <a onclick="window.open('https://console.mistral.ai','_blank')" style="color:var(--gr);cursor:pointer;">console.mistral.ai</a><br>2. Create free account<br>3. API Keys → Create new key<br>4. Model: <code style="color:var(--cy);">mistral-large-latest</code><br><br><strong style="color:var(--bl2);">Groq (alternative):</strong><br>1. <a onclick="window.open('https://console.groq.com','_blank')" style="color:var(--gr);cursor:pointer;">console.groq.com</a><br>2. API Keys → Create Key<br>3. Model: <code style="color:var(--cy);">llama3-70b-8192</code><br><br><strong style="color:var(--bl2);">Hugging Face (free):</strong><br>1. <a onclick="window.open('https://huggingface.co/settings/tokens','_blank')" style="color:var(--gr);cursor:pointer;">hf.co/settings/tokens</a><br>2. New token → Read</div>
         <div class="btn-row" style="margin-top:.7rem;flex-wrap:wrap;gap:.3rem;"><button class="btn btn-sec" onclick="window.open('https://console.mistral.ai','_blank')">⭐ Mistral ↗</button><button class="btn btn-sec" onclick="window.open('https://console.groq.com','_blank')">🚀 Groq ↗</button><button class="btn btn-sec" onclick="window.open('https://huggingface.co/settings/tokens','_blank')">🤗 HF ↗</button></div>
-        <div style="margin-top:1rem;background:rgba(0,0,0,.2);border:1px solid var(--b);border-radius:8px;padding:.75rem;"><div style="font-family:var(--orb);font-size:.54rem;color:var(--bl2);margin-bottom:.5rem;">MODELOS RECOMENDADOS</div><div style="font-size:.6rem;color:var(--mu);line-height:2;"><span style="color:var(--cy);">mistral-large-latest</span> — Mejor calidad ⭐<br><span style="color:var(--cy);">open-mistral-nemo</span> — Más rápido<br><span style="color:var(--cy);">llama3-70b-8192</span> — Groq, muy potente<br><span style="color:var(--cy);">open-mixtral-8x22b</span> — Tareas complejas</div></div>
+        <div style="margin-top:1rem;background:rgba(0,0,0,.2);border:1px solid var(--b);border-radius:8px;padding:.75rem;"><div style="font-family:var(--orb);font-size:.54rem;color:var(--bl2);margin-bottom:.5rem;">RECOMMENDED MODELS</div><div style="font-size:.6rem;color:var(--mu);line-height:2;"><span style="color:var(--cy);">mistral-large-latest</span> — Best quality ⭐<br><span style="color:var(--cy);">open-mistral-nemo</span> — Faster<br><span style="color:var(--cy);">llama3-70b-8192</span> — Groq, very powerful<br><span style="color:var(--cy);">open-mixtral-8x22b</span> — Complex tasks</div></div>
       </div>
     </div>
   </div>
   <div class="sec">
-    <div class="sec-title">💬 Prompt del sistema</div>
-    <div style="display:flex;gap:.35rem;flex-wrap:wrap;margin-bottom:.55rem;"><button class="bsm" onclick="setPrompt('quantum')">⚛ Cuántico</button><button class="bsm" onclick="setPrompt('teacher')">🎓 Profesor</button><button class="bsm" onclick="setPrompt('concise')">⚡ Conciso</button><button class="bsm" onclick="setPrompt('bilingual')">🌍 Bilingüe</button><button class="bsm" onclick="setPrompt('code')">{ } Código</button></div>
-    <div class="fg"><textarea class="fi" id="ai-prompt" rows="5">Eres el asistente de QCOL (Quantum Computing Open Lab), creado por Franci Laffita Camargo, estudiante de Física Nuclear. Ayudas con Qiskit, Cirq, PennyLane, QuTiP, circuitos cuánticos y física cuántica. Responde en español, de forma concisa y técnicamente precisa.</textarea></div>
-    <div class="btn-row"><button class="btn btn-pri" onclick="saveAI()">💾 Guardar prompt</button></div>
+    <div class="sec-title">💬 System Prompt</div>
+    <div style="display:flex;gap:.35rem;flex-wrap:wrap;margin-bottom:.55rem;"><button class="bsm" onclick="setPrompt('quantum')">⚛ Quantum</button><button class="bsm" onclick="setPrompt('teacher')">🎓 Teacher</button><button class="bsm" onclick="setPrompt('concise')">⚡ Concise</button><button class="bsm" onclick="setPrompt('bilingual')">🌍 Bilingual</button><button class="bsm" onclick="setPrompt('code')">{ } Code</button></div>
+    <div class="fg"><textarea class="fi" id="ai-prompt" rows="5">You are the QCOL (Quantum Computing Open Lab) assistant, created by Franci Laffita Camargo, a Nuclear Physics student. You help with Qiskit, Cirq, PennyLane, QuTiP, quantum circuits and quantum physics. Respond in English, concisely and technically precise.</textarea></div>
+    <div class="btn-row"><button class="btn btn-pri" onclick="saveAI()">💾 Save prompt</button></div>
   </div>
   <div class="sec">
-    <div class="sec-title">💬 Chat con IA (respuestas en Markdown)</div>
-    <div class="alert alert-info">Escribe tu mensaje y la IA responderá con formato Markdown (negritas, listas, código, tablas). El chat mantiene el contexto de la conversación.</div>
-    <div class="chat-container"><div class="chat-messages" id="chat-messages"><div class="chat-message assistant-message"><p>👋 ¡Hola! Soy el asistente de QCOL. Puedes preguntarme sobre computación cuántica, Qiskit, Cirq, QuTiP o cualquier duda técnica. Escribe tu mensaje.</p></div></div><div class="chat-input-area"><input type="text" id="chat-input" placeholder="Escribe tu mensaje..." onkeypress="if(event.key==='Enter') sendChatMessage()"><button class="btn btn-pri" onclick="sendChatMessage()">Enviar</button><button class="btn btn-sec" onclick="clearChat()">Limpiar chat</button></div></div>
-    <div id="chat-loading" style="display:none; text-align:center; margin-top:.5rem; font-size:.6rem; color:var(--mu);"><span class="loading-dots">● ● ●</span> IA pensando...</div>
+    <div class="sec-title">💬 Chat with AI (Markdown responses)</div>
+    <div class="alert alert-info">Write your message and the AI will respond with Markdown formatting (bold, lists, code, tables). The chat maintains conversation context.</div>
+    <div class="chat-container"><div class="chat-messages" id="chat-messages"><div class="chat-message assistant-message"><p>👋 Hello! I'm the QCOL assistant. You can ask me about quantum computing, Qiskit, Cirq, QuTiP or any technical questions. Write your message.</p></div></div><div class="chat-input-area"><input type="text" id="chat-input" placeholder="Write your message..." onkeypress="if(event.key==='Enter') sendChatMessage()"><button class="btn btn-pri" onclick="sendChatMessage()">Send</button><button class="btn btn-sec" onclick="clearChat()">Clear chat</button></div></div>
+    <div id="chat-loading" style="display:none; text-align:center; margin-top:.5rem; font-size:.6rem; color:var(--mu);"><span class="loading-dots">● ● ●</span> AI thinking...</div>
   </div>
 </div>
 
-<!-- ════════════ IA RESOLVER ════════════ -->
+<!-- ════════════ AI RESOLVER ════════════ -->
 <div class="panel" id="tab-iaresolver">
   <div class="sec">
-    <div class="sec-title">🧠 IA Resolver — Clasificación automática de errores</div>
-    <div class="alert alert-info">El editor <strong>Arquitecto Cuántico</strong> puede consultar a <strong>DeepSeek</strong> para clasificar atributos no reconocidos durante la sincronización. Los atributos considerados <strong>innecesarios</strong> para dibujar el circuito se ignorarán permanentemente, evitando futuras consultas.</div>
+    <div class="sec-title">🧠 AI Resolver — Automatic error classification</div>
+    <div class="alert alert-info">The <strong>Quantum Architect</strong> editor can query <strong>DeepSeek</strong> to classify unrecognized attributes during synchronization. Attributes considered <strong>unnecessary</strong> for drawing the circuit will be permanently ignored, avoiding future queries.</div>
     <div class="grid2">
       <div>
-        <div class="fg"><label class="fl">🔑 API Key de DeepSeek</label><input class="fi" id="mistral-key" type="password" placeholder="Ingresa tu API key de DeepSeek" value="sk-0270ed332a5544038b51acf653296f89"><div style="font-size:.58rem;color:var(--mu);margin-top:.25rem;">Obtén tu clave gratis en <a onclick="window.open('https://platform.deepseek.com/api_keys','_blank')" style="color:var(--gr);cursor:pointer;">platform.deepseek.com/api_keys</a></div></div>
-        <div class="fg"><label class="fl">🤖 Modelo de IA</label><select class="fi" id="mistral-model"><option value="deepseek-chat" selected>DeepSeek Chat (recomendado)</option><option value="deepseek-coder">DeepSeek Coder</option></select></div>
-        <div class="fg"><label class="fl">⏱️ Timeout (segundos)</label><input class="fi" id="mistral-timeout" type="number" min="5" max="30" value="10" style="width:100px;"></div>
-        <div class="btn-row"><button class="btn btn-pri" onclick="saveMistralSettings()">💾 Guardar configuración</button><button class="btn btn-ok" onclick="testMistralConnection()">🧪 Probar conexión</button></div>
+        <div class="fg"><label class="fl">🔑 DeepSeek API Key</label><input class="fi" id="mistral-key" type="password" placeholder="Enter your DeepSeek API key" value="sk-0270ed332a5544038b51acf653296f89"><div style="font-size:.58rem;color:var(--mu);margin-top:.25rem;">Get your free key at <a onclick="window.open('https://platform.deepseek.com/api_keys','_blank')" style="color:var(--gr);cursor:pointer;">platform.deepseek.com/api_keys</a></div></div>
+        <div class="fg"><label class="fl">🤖 AI Model</label><select class="fi" id="mistral-model"><option value="deepseek-chat" selected>DeepSeek Chat (recommended)</option><option value="deepseek-coder">DeepSeek Coder</option></select></div>
+        <div class="fg"><label class="fl">⏱️ Timeout (seconds)</label><input class="fi" id="mistral-timeout" type="number" min="5" max="30" value="10" style="width:100px;"></div>
+        <div class="btn-row"><button class="btn btn-pri" onclick="saveMistralSettings()">💾 Save settings</button><button class="btn btn-ok" onclick="testMistralConnection()">🧪 Test connection</button></div>
       </div>
       <div>
-        <div class="tog-row"><div><div class="tog-name">🧠 Clasificación automática de errores</div><div class="tog-desc">Permite a DeepSeek clasificar errores y silenciar los innecesarios</div></div><label class="tog"><input type="checkbox" id="mistral-toggle" checked><span class="tog-sl"></span></label></div>
-        <div class="status-row"><div class="sdot" id="mistral-dot"></div><div class="stxt" id="mistral-status">Cargando...</div></div>
-        <div class="btn-row"><button class="btn btn-ok" onclick="syncIgnoredAttrsWithCloud()">☁️ Sincronizar con la nube</button><button class="btn btn-sec" onclick="resetMistralCalls()">🔄 Reiniciar contador</button></div>
+        <div class="tog-row"><div><div class="tog-name">🧠 Automatic error classification</div><div class="tog-desc">Allows DeepSeek to classify errors and silence non-essential ones</div></div><label class="tog"><input type="checkbox" id="mistral-toggle" checked><span class="tog-sl"></span></label></div>
+        <div class="status-row"><div class="sdot" id="mistral-dot"></div><div class="stxt" id="mistral-status">Loading...</div></div>
+        <div class="btn-row"><button class="btn btn-ok" onclick="syncIgnoredAttrsWithCloud()">☁️ Sync with cloud</button><button class="btn btn-sec" onclick="resetMistralCalls()">🔄 Reset counter</button></div>
       </div>
     </div>
-    <div class="fg"><label class="fl">📝 Prompt del sistema (opcional)</label><textarea class="fi" id="mistral-prompt" rows="4" placeholder="Deja en blanco para usar el prompt por defecto"></textarea><div style="font-size:.58rem;color:var(--mu);margin-top:.25rem;">El prompt por defecto ya está optimizado para el Arquitecto Cuántico. Solo modifícalo si sabes lo que haces.</div></div>
+    <div class="fg"><label class="fl">📝 System prompt (optional)</label><textarea class="fi" id="mistral-prompt" rows="4" placeholder="Leave blank to use the default prompt"></textarea><div style="font-size:.58rem;color:var(--mu);margin-top:.25rem;">The default prompt is already optimized for the Quantum Architect. Only modify it if you know what you're doing.</div></div>
   </div>
-  <div class="sec"><div class="sec-title">📊 Estadísticas de llamadas a DeepSeek</div><div class="status-row"><div class="sdot ok"></div><div class="stxt" id="mistral-calls-count">0 llamadas realizadas</div><button class="bsm" onclick="resetMistralCalls()" style="margin-left:auto;">Reiniciar contador</button></div></div>
-  <div class="sec"><div class="sec-title">📋 Atributos ignorados permanentemente</div><div class="alert alert-info">Estos atributos/métodos han sido clasificados como <strong>innecesarios</strong> por DeepSeek y serán ignorados en el editor. Puedes eliminarlos de la lista si quieres que se reconsideren.</div><div id="ignored-attrs-table" style="font-size:.65rem;color:var(--mu);">Cargando lista...</div></div>
+  <div class="sec"><div class="sec-title">📊 DeepSeek call statistics</div><div class="status-row"><div class="sdot ok"></div><div class="stxt" id="mistral-calls-count">0 calls made</div><button class="bsm" onclick="resetMistralCalls()" style="margin-left:auto;">Reset counter</button></div></div>
+  <div class="sec"><div class="sec-title">📋 Permanently ignored attributes</div><div class="alert alert-info">These attributes/methods have been classified as <strong>non-essential</strong> by DeepSeek and will be ignored in the editor. You can remove them from the list if you want them reconsidered.</div><div id="ignored-attrs-table" style="font-size:.65rem;color:var(--mu);">Loading list...</div></div>
 </div>
 
-<!-- ════════════ USUARIOS ════════════ -->
+<!-- ════════════ USERS ════════════ -->
 <div class="panel" id="tab-users">
   <div class="grid2">
-    <div class="sec"><div class="sec-title" style="justify-content:space-between;"><span>👥 Usuarios registrados</span><button class="btn btn-ok" style="padding:.2rem .6rem; font-size:.5rem;" onclick="syncUsersFromCloud()">🔄 Sincronizar desde nube</button></div><div style="overflow-x:auto;"><table class="tbl" id="users-tbl"><thead><tr><th>USUARIO</th><th>ROL</th><th>UPLOAD</th><th>ACCIONES</th> </thead><tbody id="users-tbody"><tr><td style="font-size:.62rem;">franci_laffita — Franci Laffita</a></td><td><span class="rb rbf">FUNDADOR</span></td><td style="color:var(--gr)">✅</a><td>—</a></tr></tbody> </table></div></div>
-    <div class="sec"><div class="sec-title">➕ Crear usuario</div><div class="fg"><label class="fl">NOMBRE</label><input class="fi" id="nu-name" placeholder="Nombre completo"></div><div class="fg"><label class="fl">USUARIO</label><input class="fi" id="nu-user" placeholder="usuario_unico"></div><div class="fg"><label class="fl">CONTRASEÑA</label><input class="fi" id="nu-pass" type="password"></div><div class="fg"><label class="fl">ROL</label><select class="fi" id="nu-role"><option value="user">Usuario</option><option value="admin">Administrador</option></select></div><div class="btn-row"><button class="btn btn-pri" onclick="createUser()">➕ Crear</button></div></div>
+    <div class="sec"><div class="sec-title" style="justify-content:space-between;"><span>👥 Registered users</span><button class="btn btn-ok" style="padding:.2rem .6rem; font-size:.5rem;" onclick="syncUsersFromCloud()">🔄 Sync from cloud</button></div><div style="overflow-x:auto;"><table class="tbl" id="users-tbl"><thead><tr><th>USER</th><th>ROLE</th><th>UPLOAD</th><th>ACTIONS</th> </thead><tbody id="users-tbody"><tr><td style="font-size:.62rem;">franci_laffita — Franci Laffita</a></td><td><span class="rb rbf">FOUNDER</span></td><td style="color:var(--gr)">✅</a><td>—</a></tr></tbody> </table></div></div>
+    <div class="sec"><div class="sec-title">➕ Create user</div><div class="fg"><label class="fl">NAME</label><input class="fi" id="nu-name" placeholder="Full name"></div><div class="fg"><label class="fl">USERNAME</label><input class="fi" id="nu-user" placeholder="unique_username"></div><div class="fg"><label class="fl">PASSWORD</label><input class="fi" id="nu-pass" type="password"></div><div class="fg"><label class="fl">ROLE</label><select class="fi" id="nu-role"><option value="user">User</option><option value="admin">Administrator</option></select></div><div class="btn-row"><button class="btn btn-pri" onclick="createUser()">➕ Create</button></div></div>
   </div>
-  <div class="sec"><div class="sec-title">⚙️ Contraseña del Fundador</div><div class="grid2"><div class="fg"><label class="fl">CONTRASEÑA ACTUAL</label><input class="fi" id="fp-cur" type="password"></div><div class="fg"><label class="fl">NUEVA CONTRASEÑA</label><input class="fi" id="fp-new" type="password"></div></div><div class="btn-row"><button class="btn btn-warn" onclick="changeFounderPass()">🔑 Cambiar contraseña fundador</button></div></div>
+  <div class="sec"><div class="sec-title">⚙️ Founder Password</div><div class="grid2"><div class="fg"><label class="fl">CURRENT PASSWORD</label><input class="fi" id="fp-cur" type="password"></div><div class="fg"><label class="fl">NEW PASSWORD</label><input class="fi" id="fp-new" type="password"></div></div><div class="btn-row"><button class="btn btn-warn" onclick="changeFounderPass()">🔑 Change founder password</button></div></div>
 </div>
 
-<!-- ════════════ CONTENIDO ════════════ -->
+<!-- ════════════ CONTENT ════════════ -->
 <div class="panel" id="tab-content">
   <div class="sec">
-    <div class="sec-title">📓 Proyectos/Notebooks del ecosistema</div>
-    <table class="tbl"><thead><tr><th>TÍTULO</th><th>TIPO</th><th>ID/ARCHIVO</th><th>ACCIONES</th> </thead><tbody id="projs-tbody"></tbody> </table>
-    <div class="sec" style="margin-top:.8rem;padding:.9rem;"><div class="sec-title" style="font-size:.62rem;margin-bottom:.7rem;">➕ Agregar proyecto</div><div class="grid2"><div class="fg"><label class="fl">TÍTULO</label><input class="fi" id="pj-t" placeholder="Nombre del notebook"></div><div class="fg"><label class="fl">ID (nombre del .ipynb sin extensión)</label><input class="fi" id="pj-id" placeholder="circuito_bell"></div><div class="fg"><label class="fl">TIPO</label><select class="fi" id="pj-type"><option value="nb">Notebook .ipynb</option><option value="pdf">PDF LaTeX</option></select></div><div class="fg"><label class="fl">TAGS</label><input class="fi" id="pj-tags" placeholder="Qiskit·LaTeX"></div></div><div class="fg"><label class="fl">DESCRIPCIÓN</label><textarea class="fi" id="pj-desc" rows="2" placeholder="Breve descripción"></textarea></div><div class="btn-row"><button class="btn btn-pri" onclick="addProj()">➕ Agregar</button></div></div>
+    <div class="sec-title">📓 Ecosystem Projects/Notebooks</div>
+    <table class="tbl"><thead><tr><th>TITLE</th><th>TYPE</th><th>ID/FILE</th><th>ACTIONS</th> </thead><tbody id="projs-tbody"></tbody> </table>
+    <div class="sec" style="margin-top:.8rem;padding:.9rem;"><div class="sec-title" style="font-size:.62rem;margin-bottom:.7rem;">➕ Add project</div><div class="grid2"><div class="fg"><label class="fl">TITLE</label><input class="fi" id="pj-t" placeholder="Notebook name"></div><div class="fg"><label class="fl">ID (filename without .ipynb extension)</label><input class="fi" id="pj-id" placeholder="bell_circuit"></div><div class="fg"><label class="fl">TYPE</label><select class="fi" id="pj-type"><option value="nb">Notebook .ipynb</option><option value="pdf">PDF LaTeX</option></select></div><div class="fg"><label class="fl">TAGS</label><input class="fi" id="pj-tags" placeholder="Qiskit·LaTeX"></div></div><div class="fg"><label class="fl">DESCRIPTION</label><textarea class="fi" id="pj-desc" rows="2" placeholder="Brief description"></textarea></div><div class="btn-row"><button class="btn btn-pri" onclick="addProj()">➕ Add</button></div></div>
   </div>
 </div>
 
-<!-- ════════════ SISTEMA ════════════ -->
+<!-- ════════════ SYSTEM ════════════ -->
 <div class="panel" id="tab-config">
   <div class="grid2">
-    <div class="sec"><div class="sec-title">🏷️ Identidad de la plataforma</div><div class="fg"><label class="fl">NOMBRE</label><input class="fi" id="plt-name" value="Quantum Computing Open Lab"></div><div class="fg"><label class="fl">AUTOR</label><input class="fi" id="plt-author" value="Franci Laffita Camargo"></div><div class="fg"><label class="fl">TÍTULO DEL AUTOR</label><input class="fi" id="plt-title" value="Estudiante de Física Nuclear"></div><div class="fg"><label class="fl">VERSIÓN</label><input class="fi" id="plt-version" value="2.0.0" style="width:100px;display:inline-block;"></div><div class="btn-row"><button class="btn btn-pri" onclick="savePlatform()">💾 Guardar</button></div></div>
-    <div class="sec"><div class="sec-title">⚙️ Funciones del sistema</div><div class="tog-row"><div><div class="tog-name">Registro público</div><div class="tog-desc">Usuarios pueden registrarse</div></div><label class="tog"><input type="checkbox" id="tog-reg" checked><span class="tog-sl"></span></label></div><div class="tog-row"><div><div class="tog-name">Pantalla splash</div><div class="tog-desc">Mostrar intro al cargar</div></div><label class="tog"><input type="checkbox" id="tog-splash" checked><span class="tog-sl"></span></label></div><div class="tog-row"><div><div class="tog-name">Modo mantenimiento</div><div class="tog-desc">Bloquear acceso público</div></div><label class="tog"><input type="checkbox" id="tog-maint"><span class="tog-sl"></span></label></div><div class="btn-row"><button class="btn btn-pri" onclick="saveSystem()">💾 Guardar</button></div></div>
+    <div class="sec"><div class="sec-title">🏷️ Platform Identity</div><div class="fg"><label class="fl">NAME</label><input class="fi" id="plt-name" value="Quantum Computing Open Lab"></div><div class="fg"><label class="fl">AUTHOR</label><input class="fi" id="plt-author" value="Franci Laffita Camargo"></div><div class="fg"><label class="fl">AUTHOR TITLE</label><input class="fi" id="plt-title" value="Nuclear Physics Student"></div><div class="fg"><label class="fl">VERSION</label><input class="fi" id="plt-version" value="2.0.0" style="width:100px;display:inline-block;"></div><div class="btn-row"><button class="btn btn-pri" onclick="savePlatform()">💾 Save</button></div></div>
+    <div class="sec"><div class="sec-title">⚙️ System Functions</div><div class="tog-row"><div><div class="tog-name">Public registration</div><div class="tog-desc">Users can register</div></div><label class="tog"><input type="checkbox" id="tog-reg" checked><span class="tog-sl"></span></label></div><div class="tog-row"><div><div class="tog-name">Splash screen</div><div class="tog-desc">Show intro on load</div></div><label class="tog"><input type="checkbox" id="tog-splash" checked><span class="tog-sl"></span></label></div><div class="tog-row"><div><div class="tog-name">Maintenance mode</div><div class="tog-desc">Block public access</div></div><label class="tog"><input type="checkbox" id="tog-maint"><span class="tog-sl"></span></label></div><div class="btn-row"><button class="btn btn-pri" onclick="saveSystem()">💾 Save</button></div></div>
   </div>
-  <div class="sec"><div class="sec-title">💾 Backup y Restore</div><div class="grid2"><div><div style="font-size:.66rem;color:var(--mu);margin-bottom:.7rem;">Exporta toda la configuración: compilador, GitHub, IA, usuarios y proyectos en un archivo JSON.</div><div class="btn-row"><button class="btn btn-pri" onclick="exportAll()">📤 Exportar todo</button><button class="btn btn-sec" onclick="document.getElementById('import-file').click()">📥 Importar backup</button><input type="file" id="import-file" style="display:none" accept=".json" onchange="importBackup(event)"></div></div><div><div class="logbox" id="sys-log">— Actividad del sistema —</div></div></div></div>
+  <div class="sec"><div class="sec-title">💾 Backup and Restore</div><div class="grid2"><div><div style="font-size:.66rem;color:var(--mu);margin-bottom:.7rem;">Export all configuration: compiler, GitHub, AI, users and projects to a JSON file.</div><div class="btn-row"><button class="btn btn-pri" onclick="exportAll()">📤 Export all</button><button class="btn btn-sec" onclick="document.getElementById('import-file').click()">📥 Import backup</button><input type="file" id="import-file" style="display:none" accept=".json" onchange="importBackup(event)"></div></div><div><div class="logbox" id="sys-log">— System activity —</div></div></div></div>
 </div>
 
 <!-- ════════════ INTERNET ════════════ -->
 <div class="panel" id="tab-deploy">
-  <div class="sec"><div class="sec-title">🌐 Publicar en Internet — GitHub Pages</div><div class="alert alert-ok">✅ GitHub Pages es la forma más fácil. Tu ecosistema queda en: <strong>laffitacamargof-create.github.io/quantum-computing-open-lab</strong></div><div style="font-size:.68rem;color:var(--mu);line-height:1.9;margin-bottom:1rem;"><strong style="color:var(--bl2); font-family:var(--orb);">PASO 1 — Subir archivos a GitHub</strong><br>Sube estos archivos a tu repositorio: <code style="color:var(--gr);">index.html</code>, <code style="color:var(--gr);">qcol-founder.html</code>, y todos los módulos que hayas descargado.</div><div style="font-size:.68rem;color:var(--mu);line-height:1.9;margin-bottom:1rem;"><strong style="color:var(--bl2); font-family:var(--orb);">PASO 2 — Activar GitHub Pages</strong><br>En tu repositorio: Settings → Pages → Source: "Deploy from a branch" → Branch: main → Save</div><div style="font-size:.68rem;color:var(--mu);line-height:1.9;margin-bottom:1rem;"><strong style="color:var(--bl2); font-family:var(--orb);">PASO 3 — Compilador HuggingFace</strong><br>Ve a la pestaña <strong>🤗 Compilador HuggingFace</strong> → sigue los pasos → pega tu URL del Space.</div><div style="font-size:.68rem;color:var(--mu);line-height:1.9;margin-bottom:1rem;"><strong style="color:var(--bl2); font-family:var(--orb);">PASO 4 — Configurar IA (opcional)</strong><br>Crea cuenta en Groq → Obtén API key gratuita → Configura en pestaña IA</div><div style="font-size:.68rem;color:var(--mu);line-height:1.9;margin-bottom:1.2rem;"><strong style="color:var(--bl2); font-family:var(--orb);">PASO 5 — ¡Listo!</strong><br>Tu ecosistema está en internet. Comparte la URL con cualquiera.</div><div class="btn-row"><button class="btn btn-pri" onclick="window.open('https://github.com/laffitacamargof-create/quantum-computing-open-lab/upload/main','_blank')">📤 Subir a GitHub ↗</button><button class="btn btn-sec" onclick="window.open('https://github.com/laffitacamargof-create/quantum-computing-open-lab/settings/pages','_blank')">⚙️ Activar Pages ↗</button></div></div>
-  <div class="sec"><div class="sec-title">📦 Estructura de archivos en GitHub</div><div class="codebox">quantum-computing-open-lab/
-├── index.html              ← Core del ecosistema (SUBE ESTE PRIMERO)
-├── qcol-founder.html       ← Panel fundador
-├── qcol-projects.html      ← Módulo proyectos
-├── qcol-architect.html     ← Módulo arquitecto
-├── qcol-architect-pro.html ← Módulo arquitecto profesional
-├── qcol-library.html       ← Módulo librería
-├── qcol-account.html       ← Módulo mi cuenta
-├── qcol-help.html          ← Módulo ayuda
-├── quantum-app-studio.html ← ⚛️ Quantum App Studio (EDITOR VISUAL)
-├── notebooks/              ← Tus notebooks .ipynb
-│   ├── circuito_bell.ipynb
-│   └── algoritmo_grover.ipynb
-└── docs/                   ← PDFs y documentos
-    └── mecanica_cuantica.pdf</div><div class="alert alert-info" style="margin-top:.7rem;">ℹ️ Cada módulo es un archivo HTML independiente. Para actualizar un módulo: sube solo ese archivo nuevo. El ecosistema lo carga automáticamente sin tocar los demás.</div></div>
+  <div class="sec"><div class="sec-title">🌐 Publish on the Internet — GitHub Pages</div><div class="alert alert-ok">✅ GitHub Pages is the easiest way. Your ecosystem will be at: <strong>laffitacamargof-create.github.io/quantum-computing-open-lab</strong></div><div style="font-size:.68rem;color:var(--mu);line-height:1.9;margin-bottom:1rem;"><strong style="color:var(--bl2); font-family:var(--orb);">STEP 1 — Upload files to GitHub</strong><br>Upload these files to your repository: <code style="color:var(--gr);">index.html</code>, <code style="color:var(--gr);">qcol-founder.html</code>, and all modules you've downloaded.</div><div style="font-size:.68rem;color:var(--mu);line-height:1.9;margin-bottom:1rem;"><strong style="color:var(--bl2); font-family:var(--orb);">STEP 2 — Activate GitHub Pages</strong><br>In your repository: Settings → Pages → Source: "Deploy from a branch" → Branch: main → Save</div><div style="font-size:.68rem;color:var(--mu);line-height:1.9;margin-bottom:1rem;"><strong style="color:var(--bl2); font-family:var(--orb);">STEP 3 — HuggingFace Compiler</strong><br>Go to the <strong>🤗 HuggingFace Compiler</strong> tab → follow the steps → paste your Space URL.</div><div style="font-size:.68rem;color:var(--mu);line-height:1.9;margin-bottom:1rem;"><strong style="color:var(--bl2); font-family:var(--orb);">STEP 4 — Configure AI (optional)</strong><br>Create a Groq account → Get free API key → Configure in the AI tab</div><div style="font-size:.68rem;color:var(--mu);line-height:1.9;margin-bottom:1.2rem;"><strong style="color:var(--bl2); font-family:var(--orb);">STEP 5 — Done!</strong><br>Your ecosystem is on the internet. Share the URL with anyone.</div><div class="btn-row"><button class="btn btn-pri" onclick="window.open('https://github.com/laffitacamargof-create/quantum-computing-open-lab/upload/main','_blank')">📤 Upload to GitHub ↗</button><button class="btn btn-sec" onclick="window.open('https://github.com/laffitacamargof-create/quantum-computing-open-lab/settings/pages','_blank')">⚙️ Activate Pages ↗</button></div></div>
+  <div class="sec"><div class="sec-title">📦 File structure on GitHub</div><div class="codebox">quantum-computing-open-lab/
+├── index.html              ← Ecosystem core (UPLOAD THIS FIRST)
+├── qcol-founder.html       ← Founder panel
+├── qcol-projects.html      ← Projects module
+├── qcol-architect.html     ← Architect module
+├── qcol-architect-pro.html ← Professional architect module
+├── qcol-library.html       ← Library module
+├── qcol-account.html       ← My account module
+├── qcol-help.html          ← Help module
+├── quantum-app-studio.html ← ⚛️ Quantum App Studio (VISUAL EDITOR)
+├── notebooks/              ← Your .ipynb notebooks
+│   ├── bell_circuit.ipynb
+│   └── grover_algorithm.ipynb
+└── docs/                   ← PDFs and documents
+    └── quantum_mechanics.pdf</div><div class="alert alert-info" style="margin-top:.7rem;">ℹ️ Each module is an independent HTML file. To update a module: just upload the new file. The ecosystem loads it automatically without touching the others.</div></div>
 </div>
 
 <!-- ════════════ MONITOR ════════════ -->
 <div class="panel" id="tab-monitor">
-  <div class="sec"><div class="sec-title">⚙️ Regulación de Servidores</div><div class="alert alert-info">Controla el uso de los compiladores HuggingFace. Los límites se guardan en GitHub.</div><div class="grid2"><div><div class="fg"><label class="fl">MÁXIMO EJECUCIONES POR USUARIO/DÍA</label><input class="fi" id="mon-max-runs" type="number" min="1" max="500" value="50" style="width:100px;"><span style="font-size:.58rem;color:var(--mu);margin-left:.5rem;">ejecuciones/día</span></div><div class="fg"><label class="fl">MÁXIMO QUBITS POR EJECUCIÓN</label><select class="fi" id="mon-max-qubits" style="width:140px;"><option value="10">10 qubits</option><option value="15">15 qubits</option><option value="20" selected>20 qubits</option></select></div><div class="fg"><label class="fl">TIEMPO MÁXIMO POR EJECUCIÓN (segundos)</label><input class="fi" id="mon-max-time" type="number" min="10" max="120" value="60" style="width:100px;"></div><div class="fg"><label class="fl">MODO DEL COMPILADOR</label><select class="fi" id="mon-mode" style="width:180px;"><option value="open">Abierto — todos los usuarios</option><option value="users">Solo usuarios registrados</option><option value="admin">Solo administradores</option><option value="off">Desactivado</option></select></div><div class="btn-row"><button class="btn btn-pri" onclick="saveMonitorConfig()">💾 Guardar límites</button></div><div class="status-row" style="margin-top:.5rem;"><div class="sdot off" id="mon-dot"></div><div class="stxt" id="mon-status">Sin guardar</div></div></div><div><div class="sec-title" style="font-size:.62rem;margin-bottom:.5rem;">ESTADO ACTUAL DEL COMPILADOR</div><div style="background:rgba(0,0,0,.2);border:1px solid var(--b);border-radius:8px;padding:.85rem;"><div style="display:flex;justify-content:space-between;margin-bottom:.5rem;"><span style="font-size:.62rem;color:var(--mu);">Compilador:</span><span style="font-size:.62rem;color:var(--gr);" id="mon-engine-url">—</span></div><div style="display:flex;justify-content:space-between;margin-bottom:.5rem;"><span style="font-size:.62rem;color:var(--mu);">Ejecuciones hoy:</span><span style="font-size:.62rem;color:var(--bl2);" id="mon-runs-today">—</span></div><div style="display:flex;justify-content:space-between;margin-bottom:.5rem;"><span style="font-size:.62rem;color:var(--mu);">Usuarios activos hoy:</span><span style="font-size:.62rem;color:var(--bl2);" id="mon-users-today">—</span></div><div style="display:flex;justify-content:space-between;"><span style="font-size:.62rem;color:var(--mu);">Total ejecuciones:</span><span style="font-size:.62rem;color:var(--cy);" id="mon-total-runs">—</span></div></div><button class="btn btn-ok" style="margin-top:.6rem;width:100%;" onclick="refreshMonitor()">🔄 Actualizar stats</button></div></div></div>
-  <div class="sec"><div class="sec-title">👥 Uso por usuario</div><div style="display:flex;gap:.4rem;margin-bottom:.6rem;flex-wrap:wrap;"><button class="bsm" onclick="loadUserStats()">🔄 Cargar</button><button class="bsm" onclick="exportMonitorData()">📥 Exportar CSV</button><button class="bsm" onclick="syncMonitorToGitHub()">⬡ Sincronizar GitHub</button><button class="bsm danger" onclick="clearMonitorData()">🗑 Limpiar historial</button></div><div id="user-stats-table" style="font-size:.6rem;color:var(--mu);">Clic en "Cargar" para ver el uso por usuario.</div></div>
-  <div class="sec"><div class="sec-title">📋 Historial de ejecuciones</div><div style="display:flex;gap:.4rem;margin-bottom:.5rem;align-items:center;flex-wrap:wrap;"><input class="fi" id="mon-filter-user" placeholder="Filtrar por usuario..." style="width:180px;"><select class="fi" id="mon-filter-lib" style="width:120px;"><option value="">Todas las libs</option><option value="qiskit">Qiskit</option><option value="cirq">Cirq</option><option value="qutip">QuTiP</option></select><button class="bsm" onclick="loadHistorial()">🔍 Buscar</button></div><div class="logbox" id="mon-historial" style="max-height:200px;">— Sin historial cargado —</div><div style="font-size:.58rem;color:var(--mu);margin-top:.3rem;">El historial se guarda en tu repositorio GitHub: <code style="color:var(--cy);">data/monitor.json</code></div></div>
+  <div class="sec"><div class="sec-title">⚙️ Server Regulation</div><div class="alert alert-info">Control the usage of HuggingFace compilers. Limits are saved to GitHub.</div><div class="grid2"><div><div class="fg"><label class="fl">MAX EXECUTIONS PER USER/DAY</label><input class="fi" id="mon-max-runs" type="number" min="1" max="500" value="50" style="width:100px;"><span style="font-size:.58rem;color:var(--mu);margin-left:.5rem;">executions/day</span></div><div class="fg"><label class="fl">MAX QUBITS PER EXECUTION</label><select class="fi" id="mon-max-qubits" style="width:140px;"><option value="10">10 qubits</option><option value="15">15 qubits</option><option value="20" selected>20 qubits</option></select></div><div class="fg"><label class="fl">MAX TIME PER EXECUTION (seconds)</label><input class="fi" id="mon-max-time" type="number" min="10" max="120" value="60" style="width:100px;"></div><div class="fg"><label class="fl">COMPILER MODE</label><select class="fi" id="mon-mode" style="width:180px;"><option value="open">Open — all users</option><option value="users">Registered users only</option><option value="admin">Administrators only</option><option value="off">Disabled</option></select></div><div class="btn-row"><button class="btn btn-pri" onclick="saveMonitorConfig()">💾 Save limits</button></div><div class="status-row" style="margin-top:.5rem;"><div class="sdot off" id="mon-dot"></div><div class="stxt" id="mon-status">Not saved</div></div></div><div><div class="sec-title" style="font-size:.62rem;margin-bottom:.5rem;">CURRENT COMPILER STATUS</div><div style="background:rgba(0,0,0,.2);border:1px solid var(--b);border-radius:8px;padding:.85rem;"><div style="display:flex;justify-content:space-between;margin-bottom:.5rem;"><span style="font-size:.62rem;color:var(--mu);">Compiler:</span><span style="font-size:.62rem;color:var(--gr);" id="mon-engine-url">—</span></div><div style="display:flex;justify-content:space-between;margin-bottom:.5rem;"><span style="font-size:.62rem;color:var(--mu);">Executions today:</span><span style="font-size:.62rem;color:var(--bl2);" id="mon-runs-today">—</span></div><div style="display:flex;justify-content:space-between;margin-bottom:.5rem;"><span style="font-size:.62rem;color:var(--mu);">Active users today:</span><span style="font-size:.62rem;color:var(--bl2);" id="mon-users-today">—</span></div><div style="display:flex;justify-content:space-between;"><span style="font-size:.62rem;color:var(--mu);">Total executions:</span><span style="font-size:.62rem;color:var(--cy);" id="mon-total-runs">—</span></div></div><button class="btn btn-ok" style="margin-top:.6rem;width:100%;" onclick="refreshMonitor()">🔄 Update stats</button></div></div></div>
+  <div class="sec"><div class="sec-title">👥 Usage by user</div><div style="display:flex;gap:.4rem;margin-bottom:.6rem;flex-wrap:wrap;"><button class="bsm" onclick="loadUserStats()">🔄 Load</button><button class="bsm" onclick="exportMonitorData()">📥 Export CSV</button><button class="bsm" onclick="syncMonitorToGitHub()">⬡ Sync to GitHub</button><button class="bsm danger" onclick="clearMonitorData()">🗑 Clear history</button></div><div id="user-stats-table" style="font-size:.6rem;color:var(--mu);">Click "Load" to see usage by user.</div></div>
+  <div class="sec"><div class="sec-title">📋 Execution history</div><div style="display:flex;gap:.4rem;margin-bottom:.5rem;align-items:center;flex-wrap:wrap;"><input class="fi" id="mon-filter-user" placeholder="Filter by user..." style="width:180px;"><select class="fi" id="mon-filter-lib" style="width:120px;"><option value="">All libs</option><option value="qiskit">Qiskit</option><option value="cirq">Cirq</option><option value="qutip">QuTiP</option></select><button class="bsm" onclick="loadHistorial()">🔍 Search</button></div><div class="logbox" id="mon-historial" style="max-height:200px;">— No history loaded —</div><div style="font-size:.58rem;color:var(--mu);margin-top:.3rem;">History is saved in your GitHub repository: <code style="color:var(--cy);">data/monitor.json</code></div></div>
 </div>
 
 <script>
-// ══ COMUNICACIÓN CON EL CORE ══
+// ══ COMMUNICATION WITH THE CORE ══
 function postToCore(type, data = {}) {
   window.parent.postMessage({ type, ...data }, '*');
 }
@@ -357,7 +358,7 @@ window.addEventListener('message', (e) => {
   if (d.type === 'QCOL_USER_UPDATE') {
     currentUser = d.user;
   }
-  // Respuesta a solicitud de configuración desde iframes hijos
+  // Response to configuration request from child iframes
   if (d.type === 'QCOL_GET_CONFIG') {
     sendFullConfigTo(e.source);
   }
@@ -373,8 +374,8 @@ window.addEventListener('message', (e) => {
       if (Array.isArray(usersFromCloud)) {
         localStorage.setItem('qcol_users', JSON.stringify(usersFromCloud));
         renderUsers();
-        notify('✅ Usuarios sincronizados desde GitHub');
-        addSysLog('Usuarios sincronizados desde la nube', 'ok');
+        notify('✅ Users synced from GitHub');
+        addSysLog('Users synced from cloud', 'ok');
       }
     } catch(e) { console.error(e); }
   }
@@ -383,7 +384,7 @@ window.addEventListener('message', (e) => {
 let currentUser = null;
 let chatHistory = [];
 
-// ========== NUEVA FUNCIÓN: enviar configuración completa a un iframe ==========
+// ========== NEW FUNCTION: send full configuration to an iframe ==========
 function sendFullConfigTo(targetWindow) {
   if (!targetWindow) return;
   const gh = getGH();
@@ -407,36 +408,36 @@ function sendFullConfigTo(targetWindow) {
   }, '*');
 }
 
-// ========== FUNCIÓN PARA ASEGURAR VALORES PREDETERMINADOS EN LOCALSTORAGE ==========
+// ========== FUNCTION TO ENSURE DEFAULT VALUES IN LOCALSTORAGE ==========
 function ensureDefaultConfig() {
-  // 1. URL del compilador
+  // 1. Compiler URL
   if (!localStorage.getItem('qcol_colab_url')) {
     localStorage.setItem('qcol_colab_url', 'https://francilaffita1027-qcol-motor.hf.space');
-    addSysLog('✅ URL del compilador predeterminada guardada', 'ok');
+    addSysLog('✅ Default compiler URL saved', 'ok');
   }
-  // 2. Configuración de IA
+  // 2. AI configuration — default lang now 'en', prompt changed
   let aiConfig = getAI();
   if (!aiConfig.provider || aiConfig.provider === 'none') {
     aiConfig = {
       provider: 'mistral',
       key: 'sk-0270ed332a5544038b51acf653296f89',
       model: 'mistral-large-latest',
-      prompt: 'Eres el asistente de QCOL (Quantum Computing Open Lab), creado por Franci Laffita Camargo, estudiante de Física Nuclear. Ayudas con Qiskit, Cirq, PennyLane, QuTiP, circuitos cuánticos y física cuántica. Responde en español, de forma concisa y técnicamente precisa.',
+      prompt: 'You are the QCOL (Quantum Computing Open Lab) assistant, created by Franci Laffita Camargo, a Nuclear Physics student. You help with Qiskit, Cirq, PennyLane, QuTiP, quantum circuits and quantum physics. Respond in English, concisely and technically precise.',
       temp: 0.7,
       tokens: 600,
-      lang: 'es'
+      lang: 'en'      // ← 'en' instead of 'es'
     };
     localStorage.setItem('qcol_ai', JSON.stringify(aiConfig));
-    addSysLog('✅ Configuración de IA predeterminada guardada', 'ok');
+    addSysLog('✅ Default AI configuration saved', 'ok');
   } else if (!aiConfig.key || aiConfig.key === '') {
     aiConfig.key = 'sk-0270ed332a5544038b51acf653296f89';
     localStorage.setItem('qcol_ai', JSON.stringify(aiConfig));
-    addSysLog('✅ API key de IA añadida automáticamente', 'ok');
+    addSysLog('✅ AI API key automatically added', 'ok');
   }
-  // 3. Configuración de DeepSeek (IA Resolver)
+  // 3. DeepSeek configuration (AI Resolver)
   if (!localStorage.getItem('qcol_mistral_key')) {
     localStorage.setItem('qcol_mistral_key', 'sk-0270ed332a5544038b51acf653296f89');
-    addSysLog('✅ API key de DeepSeek predeterminada guardada', 'ok');
+    addSysLog('✅ Default DeepSeek API key saved', 'ok');
   }
   if (localStorage.getItem('qcol_mistral_enabled') === null) {
     localStorage.setItem('qcol_mistral_enabled', 'true');
@@ -447,12 +448,12 @@ function ensureDefaultConfig() {
   if (!localStorage.getItem('qcol_mistral_timeout')) {
     localStorage.setItem('qcol_mistral_timeout', '10');
   }
-  // 4. Forzar que el core también reciba los valores
+  // 4. Force the core to also receive the values
   postToCore('QCOL_SAVE_CONFIG', { key: 'colab_url', value: localStorage.getItem('qcol_colab_url') });
   postToCore('QCOL_SAVE', { key: 'qcol_ai', val: JSON.parse(localStorage.getItem('qcol_ai')) });
 }
 
-// ========== FUNCIÓN PARA DIFUNDIR CONFIGURACIÓN A TODOS LOS IFRAMES HIJOS ==========
+// ========== FUNCTION TO BROADCAST CONFIG TO ALL CHILD IFRAMES ==========
 function broadcastConfigToAllIframes() {
   const allIframes = document.querySelectorAll('iframe');
   allIframes.forEach(iframe => {
@@ -460,13 +461,13 @@ function broadcastConfigToAllIframes() {
       sendFullConfigTo(iframe.contentWindow);
     } catch(e) {}
   });
-  // También al core padre
+  // Also to the parent core
   if (window.parent !== window) {
     sendFullConfigTo(window.parent);
   }
 }
 
-// ========== FUNCIONES AUXILIARES ==========
+// ========== HELPER FUNCTIONS ==========
 function notify(msg) {
   const n = document.getElementById('notif');
   n.textContent = msg; n.classList.add('show');
@@ -505,7 +506,7 @@ function showTab(id) {
   loadSaved();
 }
 
-// ══ FETCH CON REINTENTOS ══
+// ══ FETCH WITH RETRIES ══
 async function fetchWithRetry(url, options, retries = 3, delay = 4000, timeout = 30000) {
   let lastError;
   for (let attempt = 1; attempt <= retries; attempt++) {
@@ -517,14 +518,14 @@ async function fetchWithRetry(url, options, retries = 3, delay = 4000, timeout =
       if (res.ok) return res;
       lastError = new Error(`HTTP ${res.status}`);
       if (attempt < retries) {
-        addColabLog(`⏳ Intento ${attempt}/${retries} falló (${lastError.message}). Reintentando en ${delay/1000}s...`);
+        addColabLog(`⏳ Attempt ${attempt}/${retries} failed (${lastError.message}). Retrying in ${delay/1000}s...`);
         await new Promise(r => setTimeout(r, delay));
       }
     } catch (e) {
       lastError = e;
       if (e.name === 'AbortError') lastError = new Error(`Timeout (${timeout/1000}s)`);
       if (attempt < retries) {
-        addColabLog(`⚠️ Intento ${attempt}/${retries}: ${lastError.message}. Reintentando...`);
+        addColabLog(`⚠️ Attempt ${attempt}/${retries}: ${lastError.message}. Retrying...`);
         await new Promise(r => setTimeout(r, delay));
       }
     }
@@ -536,14 +537,14 @@ async function checkEngine() {
   const url = document.getElementById('colab-url').value.trim();
   if (!url) {
     document.getElementById('colab-dot').className = 'sdot off';
-    document.getElementById('colab-status').textContent = 'Sin URL';
+    document.getElementById('colab-status').textContent = 'No URL';
     return false;
   }
   const baseURL = url.replace(/\/$/, '');
   const healthURL = baseURL + '/health/predict';
   document.getElementById('colab-dot').className = 'sdot warn';
-  document.getElementById('colab-status').textContent = 'Conectando...';
-  addColabLog(`🔄 Conectando a ${baseURL} (3 intentos, 30s c/u)...`);
+  document.getElementById('colab-status').textContent = 'Connecting...';
+  addColabLog(`🔄 Connecting to ${baseURL} (3 attempts, 30s each)...`);
 
   try {
     const res = await fetchWithRetry(healthURL, {
@@ -556,9 +557,9 @@ async function checkEngine() {
     const engine = d.engine || 'qiskit';
     const libs = (d.libs || []).slice(0, 4).join(', ');
     document.getElementById('colab-dot').className = 'sdot ok';
-    document.getElementById('colab-status').textContent = `✅ Conectado — ${engine}`;
+    document.getElementById('colab-status').textContent = `✅ Connected — ${engine}`;
     document.getElementById('colab-sub').textContent = libs;
-    addColabLog(`✅ Compilador activo: ${engine} · ${libs}`);
+    addColabLog(`✅ Compiler active: ${engine} · ${libs}`);
     return true;
   } catch (err) {
     document.getElementById('colab-dot').className = 'sdot err';
@@ -570,21 +571,21 @@ async function checkEngine() {
 
 async function testColab() {
   const success = await checkEngine();
-  if (success) notify('✅ Compilador HuggingFace conectado');
-  else notify('❌ No se pudo conectar al compilador después de 3 intentos');
+  if (success) notify('✅ HuggingFace compiler connected');
+  else notify('❌ Could not connect to compiler after 3 attempts');
 }
 
 function saveColab() {
   const url = document.getElementById('colab-url').value.trim();
   localStorage.setItem('qcol_colab_url', url);
   postToCore('QCOL_SAVE_CONFIG', { key: 'colab_url', value: url });
-  notify('✅ URL del compilador guardada');
-  addSysLog('Compilador HuggingFace URL guardada', 'ok');
+  notify('✅ Compiler URL saved');
+  addSysLog('HuggingFace Compiler URL saved', 'ok');
   setTimeout(() => checkEngine(), 500);
-  broadcastConfigToAllIframes();   // difundir a iframes
+  broadcastConfigToAllIframes();   // broadcast to iframes
 }
 
-// ══ CARGAR CONFIGURACIÓN DE MISTRAL (DEEPSEEK) ══
+// ══ LOAD MISTRAL (DEEPSEEK) CONFIGURATION ══
 function loadMistralSettings() {
   const enabled = localStorage.getItem('qcol_mistral_enabled') === 'true';
   const key = localStorage.getItem('qcol_mistral_key') || '';
@@ -614,34 +615,34 @@ function saveMistralSettings() {
   localStorage.setItem('qcol_mistral_prompt', prompt);
   updateMistralUI();
   const keyPreview = cleanKey.slice(0, 8) + (cleanKey.length > 8 ? '...' : '');
-  notify(`✅ Configuración de DeepSeek guardada — clave: ${keyPreview}`);
-  addSysLog('DeepSeek: configuración actualizada', 'ok');
+  notify(`✅ DeepSeek configuration saved — key: ${keyPreview}`);
+  addSysLog('DeepSeek: configuration updated', 'ok');
 }
 
 async function testMistralConnection() {
   let apiKey = localStorage.getItem('qcol_mistral_key');
-  if (!apiKey) { notify('❌ No hay API key configurada'); return; }
+  if (!apiKey) { notify('❌ No API key configured'); return; }
   apiKey = apiKey.replace(/[\s"'\n\r\t]/g, '').trim();
   const url = 'https://api.deepseek.com/v1/chat/completions';
   const model = 'deepseek-chat';
-  notify(`🔄 Probando conexión con DeepSeek (clave: ${apiKey.slice(0,8)}...)`);
+  notify(`🔄 Testing DeepSeek connection (key: ${apiKey.slice(0,8)}...)`);
   try {
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: model, messages: [{ role: 'user', content: 'Di "OK"' }], max_tokens: 5 })
+      body: JSON.stringify({ model: model, messages: [{ role: 'user', content: 'Say "OK"' }], max_tokens: 5 })
     });
     const text = await res.text();
     if (res.ok) {
-      notify('✅ Conexión exitosa con DeepSeek');
-      addSysLog('DeepSeek: conexión probada correctamente', 'ok');
+      notify('✅ DeepSeek connection successful');
+      addSysLog('DeepSeek: connection tested successfully', 'ok');
     } else {
-      notify(`❌ Error HTTP ${res.status}: ${text.substring(0, 200)}`);
+      notify(`❌ HTTP Error ${res.status}: ${text.substring(0, 200)}`);
       addSysLog(`DeepSeek: HTTP ${res.status}`, 'err');
     }
   } catch (err) {
-    notify('❌ Error de red: ' + err.message);
-    addSysLog('DeepSeek: error de conexión', 'err');
+    notify('❌ Network error: ' + err.message);
+    addSysLog('DeepSeek: connection error', 'err');
   }
 }
 
@@ -656,13 +657,13 @@ function updateMistralUI() {
     else dot.className = 'sdot off';
   }
   if (status) {
-    if (enabled && hasKey) status.textContent = '✅ Activo · Clasificando errores automáticamente';
-    else if (enabled && !hasKey) status.textContent = '⚠️ Activado sin API key';
-    else status.textContent = '⏸️ Desactivado';
+    if (enabled && hasKey) status.textContent = '✅ Active · Classifying errors automatically';
+    else if (enabled && !hasKey) status.textContent = '⚠️ Activated without API key';
+    else status.textContent = '⏸️ Disabled';
   }
   const calls = parseInt(localStorage.getItem('qcol_mistral_calls') || '0');
   const callsSpan = document.getElementById('mistral-calls-count');
-  if (callsSpan) callsSpan.textContent = calls + ' llamadas realizadas';
+  if (callsSpan) callsSpan.textContent = calls + ' calls made';
   loadIgnoredAttrsTable();
 }
 
@@ -673,24 +674,24 @@ function loadIgnoredAttrsTable() {
   const raw = localStorage.getItem('qcol_ignored_attrs');
   try { attrs = raw ? JSON.parse(raw) : []; } catch(e) { attrs = []; }
   if (attrs.length === 0) {
-    container.innerHTML = '<div style="padding:.5rem;color:var(--mu);">No hay atributos ignorados aún.</div>';
+    container.innerHTML = '<div style="padding:.5rem;color:var(--mu);">No ignored attributes yet.</div>';
     return;
   }
   let reasons = {};
   const reasonsRaw = localStorage.getItem('qcol_ignored_attrs_reasons');
   if (reasonsRaw) try { reasons = JSON.parse(reasonsRaw); } catch(e) {}
-  let html = `<table class="tbl" style="width:100%;"><thead></td><th>Atributo</th><th>Razón</th><th>Fecha</th><th></th> </thead><tbody>`;
+  let html = `<table class="tbl" style="width:100%;"><thead></td><th>Attribute</th><th>Reason</th><th>Date</th><th></th> </thead><tbody>`;
   for (let attr of attrs) {
-    const reason = reasons[attr] || 'Clasificado por DeepSeek';
+    const reason = reasons[attr] || 'Classified by DeepSeek';
     const date = new Date().toLocaleDateString();
-    html += `<tr><td style="font-family:var(--mono);font-size:.65rem;">${escapeHtml(attr)}</a></td><td style="font-size:.6rem;color:var(--mu);">${escapeHtml(reason)}</a></td><td style="font-size:.6rem;">${date}</a><td><button class="bsm red" onclick="removeIgnoredAttr('${escapeHtml(attr)}')">✕ Revertir</button></a></tr>`;
+    html += `<tr><td style="font-family:var(--mono);font-size:.65rem;">${escapeHtml(attr)}</a></td><td style="font-size:.6rem;color:var(--mu);">${escapeHtml(reason)}</a></td><td style="font-size:.6rem;">${date}</a><td><button class="bsm red" onclick="removeIgnoredAttr('${escapeHtml(attr)}')">✕ Revert</button></a></tr>`;
   }
   html += `</tbody></table>`;
   container.innerHTML = html;
 }
 
 function removeIgnoredAttr(attr) {
-  if (!confirm(`¿Eliminar "${attr}" de la lista de atributos ignorados?`)) return;
+  if (!confirm(`Remove "${attr}" from the ignored attributes list?`)) return;
   let attrs = [];
   const raw = localStorage.getItem('qcol_ignored_attrs');
   try { attrs = raw ? JSON.parse(raw) : []; } catch(e) {}
@@ -702,20 +703,20 @@ function removeIgnoredAttr(attr) {
   delete reasons[attr];
   localStorage.setItem('qcol_ignored_attrs_reasons', JSON.stringify(reasons));
   loadIgnoredAttrsTable();
-  notify(`✅ "${attr}" eliminado de la lista de ignorados`);
+  notify(`✅ "${attr}" removed from ignored list`);
   window.parent.postMessage({ type: 'QCOL_REFRESH_IGNORED', attrs: newAttrs }, '*');
 }
 
 function resetMistralCalls() {
   localStorage.setItem('qcol_mistral_calls', '0');
   updateMistralUI();
-  notify('Contador de llamadas reiniciado');
+  notify('Call counter reset');
 }
 
 function syncIgnoredAttrsWithCloud() {
   const engineURL = localStorage.getItem('qcol_colab_url');
-  if (!engineURL) { notify('❌ No hay URL del compilador configurada'); return; }
-  notify('☁️ Sincronizando con la nube...');
+  if (!engineURL) { notify('❌ No compiler URL configured'); return; }
+  notify('☁️ Syncing with cloud...');
   fetch(engineURL.replace(/\/$/, '') + '/run/get_ignored_attrs', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ data: [] })
@@ -730,11 +731,11 @@ function syncIgnoredAttrsWithCloud() {
       const merged = [...new Set([...local, ...cloudList])];
       localStorage.setItem('qcol_ignored_attrs', JSON.stringify(merged));
       loadIgnoredAttrsTable();
-      notify(`✅ Sincronizado: ${merged.length} atributos ignorados`);
+      notify(`✅ Synced: ${merged.length} ignored attributes`);
       window.parent.postMessage({ type: 'QCOL_REFRESH_IGNORED', attrs: merged }, '*');
-    } else { notify('⚠️ Formato de respuesta inesperado'); }
+    } else { notify('⚠️ Unexpected response format'); }
   })
-  .catch(e => notify('❌ Error sincronizando: ' + e.message));
+  .catch(e => notify('❌ Sync error: ' + e.message));
 }
 
 function loadSaved() {
@@ -758,8 +759,9 @@ function loadSaved() {
   if (stemp) stemp.value = ai.temp || '0.7';
   const stok = document.getElementById('ai-tokens');
   if (stok) stok.value = ai.tokens || '600';
+  // ─── language selection defaults to 'en' ───
   const slang = document.getElementById('ai-lang');
-  if (slang) slang.value = ai.lang || 'es';
+  if (slang) slang.value = ai.lang || 'en';   // ← 'en' instead of 'es'
   const cu = document.getElementById('colab-url');
   if (cu && !cu.value) cu.value = localStorage.getItem('qcol_colab_url') || 'https://francilaffita1027-qcol-motor.hf.space';
   const cfg = getConfig();
@@ -770,7 +772,7 @@ function loadSaved() {
     document.getElementById('plt-version').value = cfg.version || '2.0.0';
   }
   loadMistralSettings();
-  // Conectar automáticamente si hay URL guardada o la predeterminada
+  // Auto-connect if there's a saved URL or the default one
   const savedUrl = localStorage.getItem('qcol_colab_url') || 'https://francilaffita1027-qcol-motor.hf.space';
   if (savedUrl) {
     document.getElementById('colab-url').value = savedUrl;
@@ -779,25 +781,22 @@ function loadSaved() {
 }
 
 // ══ HELPERS ══
-function getGH() {
-  const s = JSON.parse(localStorage.getItem('qcol_gh') || '{}');
-  return { user: s.user || 'laffitacamargof-create', repo: s.repo || 'quantum-computing-open-lab', branch: s.branch || 'main', token: s.token || '' };
-}
-function getAI() { return JSON.parse(localStorage.getItem('qcol_ai') || '{"provider":"mistral","key":"sk-0270ed332a5544038b51acf653296f89","model":"mistral-large-latest"}'); }
+// ─── getAI now includes "lang":"en" in the fallback ───
+function getAI() { return JSON.parse(localStorage.getItem('qcol_ai') || '{"provider":"mistral","key":"sk-0270ed332a5544038b51acf653296f89","model":"mistral-large-latest","lang":"en"}'); }
 function getConfig() { return JSON.parse(localStorage.getItem('qcol_cfg') || '{}'); }
 
-// ══ USUARIOS ══
+// ══ USERS ══
 function getUsers() { const dbRaw = localStorage.getItem('qcol_users'); return dbRaw ? JSON.parse(dbRaw) : []; }
 function saveUsersFn(u) {
   localStorage.setItem('qcol_users', JSON.stringify(u));
   window.parent.postMessage({ type: 'QCOL_SAVE', key: 'qcol_users', val: JSON.stringify(u) }, '*');
 }
-function syncUsersFromCloud() { window.parent.postMessage({ type: 'QCOL_GET_DB', section: 'users' }, '*'); notify('🔄 Sincronizando usuarios desde GitHub...'); }
+function syncUsersFromCloud() { window.parent.postMessage({ type: 'QCOL_GET_DB', section: 'users' }, '*'); notify('🔄 Syncing users from GitHub...'); }
 function renderUsers() {
   const tbody = document.getElementById('users-tbody');
   if (!tbody) return;
   const all = getUsers();
-  let r = `<tr><td style="font-size:.62rem;">franci_laffita — Franci Laffita</a></td><td><span class="rb rbf">FUNDADOR</span></a></td><td style="color:var(--gr)">✅</a><td>—</a></tr>`;
+  let r = `<tr><td style="font-size:.62rem;">franci_laffita — Franci Laffita</a></td><td><span class="rb rbf">FOUNDER</span></a></td><td style="color:var(--gr)">✅</a><td>—</a></tr>`;
   all.forEach(u => {
     const upb = u.canUpload ? `<button class="bsm" onclick="toggleUp('${u.username}',false)">✕Up</button>` : `<button class="bsm" onclick="toggleUp('${u.username}',true)">+Up</button>`;
     const rb = u.role !== 'admin' ? `<button class="bsm" onclick="promUser('${u.username}')">→ADM</button>` : `<button class="bsm" onclick="demUser('${u.username}')">→USR</button>`;
@@ -807,25 +806,25 @@ function renderUsers() {
 }
 function createUser() {
   const name=document.getElementById('nu-name').value.trim(),u=document.getElementById('nu-user').value.trim(),p=document.getElementById('nu-pass').value,role=document.getElementById('nu-role').value;
-  if(!name||!u||!p){notify('Completa todos los campos');return;}
+  if(!name||!u||!p){notify('Complete all fields');return;}
   const all=getUsers();
-  if(all.find(x=>x.username===u)){notify('Usuario ya existe');return;}
+  if(all.find(x=>x.username===u)){notify('User already exists');return;}
   all.push({name,username:u,password:p,role,canUpload:role==='admin',joined:new Date().toLocaleDateString()});
-  saveUsersFn(all);renderUsers();notify('✅ Usuario creado: '+u);addSysLog('Usuario creado: '+u,'ok');
+  saveUsersFn(all);renderUsers();notify('✅ User created: '+u);addSysLog('User created: '+u,'ok');
   ['nu-name','nu-user','nu-pass'].forEach(id=>{document.getElementById(id).value='';});
 }
-function toggleUp(un,v){const all=getUsers();const u=all.find(x=>x.username===un);if(u){u.canUpload=v;saveUsersFn(all);renderUsers();notify(un+(v?' puede subir':' sin permiso de subida'));}}
-function promUser(un){const all=getUsers();const u=all.find(x=>x.username===un);if(u){u.role='admin';u.canUpload=true;saveUsersFn(all);renderUsers();notify(un+' → Administrador');}}
-function demUser(un){const all=getUsers();const u=all.find(x=>x.username===un);if(u){u.role='user';saveUsersFn(all);renderUsers();notify(un+' → Usuario');}}
-function delUser(un){if(confirm('¿Eliminar '+un+'?')){const all=getUsers().filter(x=>x.username!==un);saveUsersFn(all);renderUsers();notify('Usuario eliminado');}}
+function toggleUp(un,v){const all=getUsers();const u=all.find(x=>x.username===un);if(u){u.canUpload=v;saveUsersFn(all);renderUsers();notify(un+(v?' can now upload':' upload permission removed'));}}
+function promUser(un){const all=getUsers();const u=all.find(x=>x.username===un);if(u){u.role='admin';u.canUpload=true;saveUsersFn(all);renderUsers();notify(un+' → Administrator');}}
+function demUser(un){const all=getUsers();const u=all.find(x=>x.username===un);if(u){u.role='user';saveUsersFn(all);renderUsers();notify(un+' → User');}}
+function delUser(un){if(confirm('Delete '+un+'?')){const all=getUsers().filter(x=>x.username!==un);saveUsersFn(all);renderUsers();notify('User deleted');}}
 function changeFounderPass() {
   const cur=document.getElementById('fp-cur').value,nw=document.getElementById('fp-new').value;
   const stored=localStorage.getItem('qcol_fp')||'1027';
-  if(cur!==stored){notify('Contraseña actual incorrecta');return;}
-  if(!nw){notify('Ingresa la nueva contraseña');return;}
+  if(cur!==stored){notify('Incorrect current password');return;}
+  if(!nw){notify('Enter new password');return;}
   localStorage.setItem('qcol_fp',nw);
   postToCore('QCOL_SAVE_CONFIG',{key:'founder_pass',value:nw});
-  notify('✅ Contraseña del fundador actualizada');addSysLog('Contraseña fundador cambiada','ok');
+  notify('✅ Founder password updated');addSysLog('Founder password changed','ok');
   ['fp-cur','fp-new'].forEach(id=>document.getElementById(id).value='');
 }
 
@@ -834,32 +833,32 @@ function getProjs() { return JSON.parse(localStorage.getItem('qcol_projs')||'[]'
 function renderProjs() {
   const tbody=document.getElementById('projs-tbody');if(!tbody)return;
   const all=getProjs();
-  if(all.length===0){ tbody.innerHTML=`<tr><td colspan="4" style="text-align:center;color:var(--mu);font-size:.66rem;padding:1.2rem;">Sin proyectos aún. Agrega el primero abajo ↓</a></tr>`; return; }
-  tbody.innerHTML=all.map(p=>`<tr><td style="font-family:var(--mono);font-size:.62rem;">${p.title}</a><td><span class="rb ${p.type==='nb'?'rba':'rbu'}">${p.type==='nb'?'NB':'PDF'}</span></a><td>${p.id}</a><td><button class="bsm red" onclick="delProj('${p.id}')">✕ Eliminar</button></a></tr>`).join('');
+  if(all.length===0){ tbody.innerHTML=`<tr><td colspan="4" style="text-align:center;color:var(--mu);font-size:.66rem;padding:1.2rem;">No projects yet. Add the first one below ↓</a></tr>`; return; }
+  tbody.innerHTML=all.map(p=>`<tr><td style="font-family:var(--mono);font-size:.62rem;">${p.title}</a><td><span class="rb ${p.type==='nb'?'rba':'rbu'}">${p.type==='nb'?'NB':'PDF'}</span></a><td>${p.id}</a><td><button class="bsm red" onclick="delProj('${p.id}')">✕ Delete</button></a></tr>`).join('');
 }
 function addProj() {
   const t=document.getElementById('pj-t').value.trim(),id=document.getElementById('pj-id').value.trim().replace(/\s/g,'_').toLowerCase(),type=document.getElementById('pj-type').value,tags=document.getElementById('pj-tags').value.trim(),desc=document.getElementById('pj-desc').value.trim();
-  if(!t||!id){notify('Título e ID son obligatorios');return;}
+  if(!t||!id){notify('Title and ID are required');return;}
   const all=getProjs();
-  if(all.find(p=>p.id===id)){notify('ID ya existe');return;}
+  if(all.find(p=>p.id===id)){notify('ID already exists');return;}
   all.push({id,type,title:t,desc,tags,cells:10,time:10});
-  localStorage.setItem('qcol_projs',JSON.stringify(all));renderProjs();notify('✅ Proyecto añadido: '+t);addSysLog('Proyecto añadido: '+t,'ok');
+  localStorage.setItem('qcol_projs',JSON.stringify(all));renderProjs();notify('✅ Project added: '+t);addSysLog('Project added: '+t,'ok');
   ['pj-t','pj-id','pj-tags','pj-desc'].forEach(k=>{document.getElementById(k).value='';});
 }
 function delProj(id){
-  if(!confirm('¿Eliminar proyecto '+id+'?'))return;
+  if(!confirm('Delete project '+id+'?'))return;
   const all=getProjs().filter(p=>p.id!==id);
-  localStorage.setItem('qcol_projs',JSON.stringify(all));renderProjs();notify('Proyecto eliminado');
+  localStorage.setItem('qcol_projs',JSON.stringify(all));renderProjs();notify('Project deleted');
 }
 
 // ══ PLATFORM CONFIG ══
 function savePlatform() {
   const cfg={name:document.getElementById('plt-name').value,author:document.getElementById('plt-author').value,authorTitle:document.getElementById('plt-title').value,version:document.getElementById('plt-version').value};
-  localStorage.setItem('qcol_cfg',JSON.stringify(cfg));notify('✅ Plataforma guardada');addSysLog('Config plataforma guardada','ok');
+  localStorage.setItem('qcol_cfg',JSON.stringify(cfg));notify('✅ Platform saved');addSysLog('Platform config saved','ok');
 }
 function saveSystem() {
   const cfg = { reg: document.getElementById('tog-reg')?.checked, splash: document.getElementById('tog-splash')?.checked, maint: document.getElementById('tog-maint')?.checked };
-  localStorage.setItem('qcol_sys', JSON.stringify(cfg)); postToCore('QCOL_SAVE', {key:'qcol_sys', val:cfg}); notify('✅ Sistema guardado'); addSysLog('Sistema actualizado','ok');
+  localStorage.setItem('qcol_sys', JSON.stringify(cfg)); postToCore('QCOL_SAVE', {key:'qcol_sys', val:cfg}); notify('✅ System saved'); addSysLog('System updated','ok');
 }
 
 // ══ MONITOR ══
@@ -867,7 +866,7 @@ function getMonitorConfig(){ return JSON.parse(localStorage.getItem('qcol_monito
 function getMonitorData(){ return JSON.parse(localStorage.getItem('qcol_monitor_data')||'{"runs":[],"total":0}'); }
 function saveMonitorConfig(){
   const cfg = { maxRuns: parseInt(document.getElementById('mon-max-runs')?.value||'50'), maxQubits: parseInt(document.getElementById('mon-max-qubits')?.value||'20'), maxTime: parseInt(document.getElementById('mon-max-time')?.value||'60'), mode: document.getElementById('mon-mode')?.value||'open', updated: new Date().toISOString() };
-  localStorage.setItem('qcol_monitor_cfg', JSON.stringify(cfg)); postToCore('QCOL_SAVE', {key:'qcol_monitor_cfg', val:cfg}); notify('✅ Límites del compilador guardados'); addSysLog('Monitor: límites actualizados','ok'); syncMonitorToGitHub();
+  localStorage.setItem('qcol_monitor_cfg', JSON.stringify(cfg)); postToCore('QCOL_SAVE', {key:'qcol_monitor_cfg', val:cfg}); notify('✅ Compiler limits saved'); addSysLog('Monitor: limits updated','ok'); syncMonitorToGitHub();
 }
 function loadMonitorConfig(){
   const cfg = getMonitorConfig(); const mr = document.getElementById('mon-max-runs'); const mq = document.getElementById('mon-max-qubits'); const mt = document.getElementById('mon-max-time'); const mm = document.getElementById('mon-mode'); const eu = document.getElementById('mon-engine-url');
@@ -880,42 +879,42 @@ function refreshMonitor(){
 }
 function loadUserStats(){
   const data = getMonitorData(); const runs = data.runs||[];
-  if(runs.length===0){ document.getElementById('user-stats-table').innerHTML='<div style="color:var(--mu);padding:.5rem;">Sin datos de uso aún.</div>'; return; }
+  if(runs.length===0){ document.getElementById('user-stats-table').innerHTML='<div style="color:var(--mu);padding:.5rem;">No usage data yet.</div>'; return; }
   const byUser = {};
   runs.forEach(r=>{ if(!byUser[r.user]) byUser[r.user]={runs:0,libs:{},lastRun:r.ts,qubits:0}; byUser[r.user].runs++; byUser[r.user].libs[r.lib]=(byUser[r.user].libs[r.lib]||0)+1; if(r.ts>byUser[r.user].lastRun) byUser[r.user].lastRun=r.ts; if(r.qubits>byUser[r.user].qubits) byUser[r.user].qubits=r.qubits; });
   const rows = Object.entries(byUser).sort((a,b)=>b[1].runs-a[1].runs).map(([user,s])=>`<tr><td style="padding:.3rem .5rem;color:var(--tx);">${user}</a></td><td style="padding:.3rem .5rem;color:var(--bl2);text-align:center;">${s.runs}</a><td>${Object.entries(s.libs).map(([l,n])=>l+':'+n).join(', ')}</a><td>${s.qubits} max</a><td>${new Date(s.lastRun).toLocaleDateString()}</a></tr>`).join('');
-  document.getElementById('user-stats-table').innerHTML=`<table style="width:100%;border-collapse:collapse;font-size:.6rem;"><thead><tr style="background:rgba(0,0,0,.3);"><th style="padding:.3rem .5rem;text-align:left;color:var(--bl2);">Usuario</th><th style="padding:.3rem .5rem;color:var(--bl2);">Ejecuciones</th><th style="padding:.3rem .5rem;text-align:left;color:var(--bl2);">Libs usadas</th><th style="padding:.3rem .5rem;color:var(--bl2);">Qubits</th><th style="padding:.3rem .5rem;color:var(--bl2);">Último uso</th></tr></thead><tbody>${rows}</tbody></table>`;
+  document.getElementById('user-stats-table').innerHTML=`<table style="width:100%;border-collapse:collapse;font-size:.6rem;"><thead><tr style="background:rgba(0,0,0,.3);"><th style="padding:.3rem .5rem;text-align:left;color:var(--bl2);">User</th><th style="padding:.3rem .5rem;color:var(--bl2);">Executions</th><th style="padding:.3rem .5rem;text-align:left;color:var(--bl2);">Libs used</th><th style="padding:.3rem .5rem;color:var(--bl2);">Qubits</th><th style="padding:.3rem .5rem;color:var(--bl2);">Last use</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 function loadHistorial(){
   const data = getMonitorData(); let runs = data.runs||[]; const filterUser = document.getElementById('mon-filter-user')?.value.trim().toLowerCase(); const filterLib = document.getElementById('mon-filter-lib')?.value;
-  if(filterUser) runs = runs.filter(r=>r.user.toLowerCase().includes(filterUser)); if(filterLib) runs = runs.filter(r=>r.lib===filterLib); const log = document.getElementById('mon-historial'); if(!log) return; if(runs.length===0){ log.innerHTML='Sin resultados.'; return; }
+  if(filterUser) runs = runs.filter(r=>r.user.toLowerCase().includes(filterUser)); if(filterLib) runs = runs.filter(r=>r.lib===filterLib); const log = document.getElementById('mon-historial'); if(!log) return; if(runs.length===0){ log.innerHTML='No results.'; return; }
   log.innerHTML = runs.slice(-100).reverse().map(r=>{ const d=new Date(r.ts).toLocaleString(); const ok=r.success?'<span style="color:var(--gr);">✅</span>':'<span style="color:var(--rd);">❌</span>'; return `[${d}] ${ok} <span style="color:var(--bl2);">${r.user}</span> · ${r.lib} · ${r.qubits}q · ${r.time}s`; }).join('\n');
 }
 function exportMonitorData(){
-  const data = getMonitorData(); const runs = data.runs||[]; if(runs.length===0){ notify('Sin datos para exportar'); return; }
-  const header='Fecha,Usuario,Librería,Qubits,Tiempo(s),Éxito\n'; const rows=runs.map(r=>`${new Date(r.ts).toLocaleString()},${r.user},${r.lib},${r.qubits},${r.time},${r.success}`).join('\n');
-  const blob=new Blob([header+rows],{type:'text/csv'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='qcol_monitor_'+new Date().toISOString().split('T')[0]+'.csv'; a.click(); notify('📥 CSV exportado');
+  const data = getMonitorData(); const runs = data.runs||[]; if(runs.length===0){ notify('No data to export'); return; }
+  const header='Date,User,Library,Qubits,Time(s),Success\n'; const rows=runs.map(r=>`${new Date(r.ts).toLocaleString()},${r.user},${r.lib},${r.qubits},${r.time},${r.success}`).join('\n');
+  const blob=new Blob([header+rows],{type:'text/csv'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='qcol_monitor_'+new Date().toISOString().split('T')[0]+'.csv'; a.click(); notify('📥 CSV exported');
 }
 async function syncMonitorToGitHub(){
-  const gh=getGH(); if(!gh.token||!gh.user||!gh.repo){ notify('Configura el token GitHub primero'); return; }
+  const gh=getGH(); if(!gh.token||!gh.user||!gh.repo){ notify('Configure GitHub token first'); return; }
   const data=getMonitorData(); const cfg=getMonitorConfig(); const payload=JSON.stringify({config:cfg,data,synced:new Date().toISOString()},null,2); const content=btoa(unescape(encodeURIComponent(payload))); const path='data/monitor.json'; const apiURL=`https://api.github.com/repos/${gh.user}/${gh.repo}/contents/${path}`;
-  try{ let sha; try{ const chk=await fetch(apiURL,{headers:{'Authorization':'token '+gh.token,'Accept':'application/vnd.github.v3+json'}}); if(chk.ok){const d=await chk.json();sha=d.sha;} }catch(e){} const body={message:'QCOL: sincronizar monitor',content}; if(sha) body.sha=sha; const res=await fetch(apiURL,{method:'PUT',headers:{'Authorization':'token '+gh.token,'Accept':'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify(body)}); if(res.ok){notify('✅ Monitor sincronizado con GitHub');addSysLog('Monitor sincronizado con GitHub','ok');} else{const e=await res.json();notify('❌ '+e.message);} }catch(e){notify('❌ '+e.message);}
+  try{ let sha; try{ const chk=await fetch(apiURL,{headers:{'Authorization':'token '+gh.token,'Accept':'application/vnd.github.v3+json'}}); if(chk.ok){const d=await chk.json();sha=d.sha;} }catch(e){} const body={message:'QCOL: sync monitor',content}; if(sha) body.sha=sha; const res=await fetch(apiURL,{method:'PUT',headers:{'Authorization':'token '+gh.token,'Accept':'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify(body)}); if(res.ok){notify('✅ Monitor synced to GitHub');addSysLog('Monitor synced to GitHub','ok');} else{const e=await res.json();notify('❌ '+e.message);} }catch(e){notify('❌ '+e.message);}
 }
 async function loadMonitorFromGitHub(){
-  const gh=getGH(); if(!gh.user||!gh.repo) return; try{ const res=await fetch(`https://api.github.com/repos/${gh.user}/${gh.repo}/contents/data/monitor.json`,{headers:{'Accept':'application/vnd.github.v3+json'}}); if(res.ok){ const d=await res.json(); const payload=JSON.parse(atob(d.content.replace(/\n/g,''))); if(payload.data) localStorage.setItem('qcol_monitor_data',JSON.stringify(payload.data)); if(payload.config) localStorage.setItem('qcol_monitor_cfg',JSON.stringify(payload.config)); loadMonitorConfig(); refreshMonitor(); addSysLog('Monitor cargado desde GitHub','ok'); } }catch(e){}
+  const gh=getGH(); if(!gh.user||!gh.repo) return; try{ const res=await fetch(`https://api.github.com/repos/${gh.user}/${gh.repo}/contents/data/monitor.json`,{headers:{'Accept':'application/vnd.github.v3+json'}}); if(res.ok){ const d=await res.json(); const payload=JSON.parse(atob(d.content.replace(/\n/g,''))); if(payload.data) localStorage.setItem('qcol_monitor_data',JSON.stringify(payload.data)); if(payload.config) localStorage.setItem('qcol_monitor_cfg',JSON.stringify(payload.config)); loadMonitorConfig(); refreshMonitor(); addSysLog('Monitor loaded from GitHub','ok'); } }catch(e){}
 }
 function clearMonitorData(){
-  if(!confirm('¿Limpiar todo el historial de ejecuciones?')) return; localStorage.setItem('qcol_monitor_data',JSON.stringify({runs:[],total:0})); refreshMonitor(); document.getElementById('mon-historial').innerHTML='— Historial limpiado —'; document.getElementById('user-stats-table').innerHTML=''; notify('Historial limpiado'); addSysLog('Historial de monitor limpiado','warn');
+  if(!confirm('Clear all execution history?')) return; localStorage.setItem('qcol_monitor_data',JSON.stringify({runs:[],total:0})); refreshMonitor(); document.getElementById('mon-historial').innerHTML='— History cleared —'; document.getElementById('user-stats-table').innerHTML=''; notify('History cleared'); addSysLog('Monitor history cleared','warn');
 }
 
 // ══ BACKUP ══
 function exportAll() {
   const data={config:getConfig(),github:getGH(),ai:{...getAI(),key:'***'},users:getUsers(),projects:getProjs(),exported:new Date().toISOString(),version:'2.0.0'};
-  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='qcol-backup-'+Date.now()+'.json'; a.click(); notify('📤 Backup exportado'); addSysLog('Backup exportado','ok');
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='qcol-backup-'+Date.now()+'.json'; a.click(); notify('📤 Backup exported'); addSysLog('Backup exported','ok');
 }
 function importBackup(e) {
   const file=e.target.files[0]; if(!file)return; const reader=new FileReader();
-  reader.onload=ev=>{ try{ const d=JSON.parse(ev.target.result); if(d.config)localStorage.setItem('qcol_cfg',JSON.stringify(d.config)); if(d.github)localStorage.setItem('qcol_gh',JSON.stringify(d.github)); if(d.users)saveUsersFn(d.users); if(d.projects)localStorage.setItem('qcol_projs',JSON.stringify(d.projects)); loadSaved(); notify('✅ Backup importado'); addSysLog('Backup importado: '+file.name,'ok'); }catch(err){notify('❌ Error: '+err.message);} };
+  reader.onload=ev=>{ try{ const d=JSON.parse(ev.target.result); if(d.config)localStorage.setItem('qcol_cfg',JSON.stringify(d.config)); if(d.github)localStorage.setItem('qcol_gh',JSON.stringify(d.github)); if(d.users)saveUsersFn(d.users); if(d.projects)localStorage.setItem('qcol_projs',JSON.stringify(d.projects)); loadSaved(); notify('✅ Backup imported'); addSysLog('Backup imported: '+file.name,'ok'); }catch(err){notify('❌ Error: '+err.message);} };
   reader.readAsText(file); e.target.value='';
 }
 
@@ -924,57 +923,57 @@ function checkModules() {
   const mods = ['projects','architect','architect-pro','library','account','help','quantumapp'];
   mods.forEach(async (m) => {
     let file = 'qcol-' + m + '.html'; if (m === 'quantumapp') file = 'quantum-app-studio.html';
-    try { const res = await fetch(file, { method: 'HEAD' }); const el = document.getElementById('st-' + (m === 'quantumapp' ? 'quantumapp' : m.replace('-',''))); if (el) { if (res.ok) { el.textContent = 'ACTIVO'; el.style.cssText = 'background:rgba(0,255,136,.1);color:var(--gr);border:1px solid rgba(0,255,136,.3);'; } else { el.textContent = 'FALTANTE'; } } } catch(e) {}
-  }); notify('Verificando módulos...');
+    try { const res = await fetch(file, { method: 'HEAD' }); const el = document.getElementById('st-' + (m === 'quantumapp' ? 'quantumapp' : m.replace('-',''))); if (el) { if (res.ok) { el.textContent = 'ACTIVE'; el.style.cssText = 'background:rgba(0,255,136,.1);color:var(--gr);border:1px solid rgba(0,255,136,.3);'; } else { el.textContent = 'MISSING'; } } } catch(e) {}
+  }); notify('Verifying modules...');
 }
 
 function downloadModule(mod) {
-  if (mod === 'core') { notify('El core (index.html) ya fue descargado desde Claude'); return; }
-  if (mod === 'quantumapp') { notify('⚛️ Quantum App Studio — descargando módulo...'); const quantumStudioContent = `<!DOCTYPE html>...`; const blob = new Blob([quantumStudioContent], {type: 'text/html'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'quantum-app-studio.html'; a.click(); URL.revokeObjectURL(a.href); notify('✅ quantum-app-studio.html descargado'); return; }
-  notify('Módulo ' + mod + ' — pendiente de desarrollo.');
+  if (mod === 'core') { notify('Core (index.html) was already downloaded from Claude'); return; }
+  if (mod === 'quantumapp') { notify('⚛️ Quantum App Studio — downloading module...'); const quantumStudioContent = `<!DOCTYPE html>...`; const blob = new Blob([quantumStudioContent], {type: 'text/html'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'quantum-app-studio.html'; a.click(); URL.revokeObjectURL(a.href); notify('✅ quantum-app-studio.html downloaded'); return; }
+  notify('Module ' + mod + ' — pending development.');
 }
 
-function downloadAll() { notify('Los módulos se descargan individualmente.'); }
+function downloadAll() { notify('Modules are downloaded individually.'); }
 
 function getCustomModules(){return JSON.parse(localStorage.getItem('qcol_custom_modules')||'[]');}
 function saveCustomModules(m){localStorage.setItem('qcol_custom_modules',JSON.stringify(m));}
 function createModule(){
   const name=document.getElementById('nm-name').value.trim(); const id=document.getElementById('nm-id').value.trim().replace(/\s/g,'-').toLowerCase(); const file=document.getElementById('nm-file').value.trim(); const icon=document.getElementById('nm-icon').value.trim()||'🔬'; const desc=document.getElementById('nm-desc').value.trim(); const role=document.getElementById('nm-role').value;
-  if(!name||!id||!file){notify('Nombre, ID y archivo son obligatorios');return;}
-  const mods=getCustomModules(); if(mods.find(m=>m.id===id)){notify('Ya existe un módulo con ese ID');return;}
-  mods.push({name,id,file,icon,desc,role,created:new Date().toLocaleDateString()}); saveCustomModules(mods); renderCustomModules(); notify('✅ Módulo "'+name+'" creado. Sube '+file+' a GitHub.'); addSysLog('Módulo creado: '+name+' → '+file,'ok');
+  if(!name||!id||!file){notify('Name, ID and file are required');return;}
+  const mods=getCustomModules(); if(mods.find(m=>m.id===id)){notify('A module with that ID already exists');return;}
+  mods.push({name,id,file,icon,desc,role,created:new Date().toLocaleDateString()}); saveCustomModules(mods); renderCustomModules(); notify('✅ Module "'+name+'" created. Upload '+file+' to GitHub.'); addSysLog('Module created: '+name+' → '+file,'ok');
   ['nm-name','nm-id','nm-file','nm-icon','nm-desc'].forEach(k=>document.getElementById(k).value='');
 }
 function renderCustomModules(){
   const div=document.getElementById('custom-modules-list'); if(!div)return; const mods=getCustomModules();
-  if(mods.length===0){div.innerHTML='<div style="font-size:.65rem;color:var(--mu);padding:.5rem 0;">Sin módulos personalizados.</div>';return;}
-  div.innerHTML=mods.map((m,i)=>`<div style="display:flex;align-items:center;gap:.6rem;padding:.45rem .75rem;background:rgba(0,0,0,.2);border:1px solid var(--b);border-radius:7px;margin-bottom:.35rem;"><span style="font-size:1rem;">${m.icon}</span><div style="flex:1;"><div style="font-family:var(--orb);font-size:.62rem;color:var(--bl2);">${m.name}</div><div style="font-family:var(--mono);font-size:.55rem;color:var(--mu);">${m.file} · acceso: ${m.role}</div></div><button class="bsm red" onclick="deleteModule(${i})">✕ Eliminar</button></div>`).join('');
+  if(mods.length===0){div.innerHTML='<div style="font-size:.65rem;color:var(--mu);padding:.5rem 0;">No custom modules.</div>';return;}
+  div.innerHTML=mods.map((m,i)=>`<div style="display:flex;align-items:center;gap:.6rem;padding:.45rem .75rem;background:rgba(0,0,0,.2);border:1px solid var(--b);border-radius:7px;margin-bottom:.35rem;"><span style="font-size:1rem;">${m.icon}</span><div style="flex:1;"><div style="font-family:var(--orb);font-size:.62rem;color:var(--bl2);">${m.name}</div><div style="font-family:var(--mono);font-size:.55rem;color:var(--mu);">${m.file} · access: ${m.role}</div></div><button class="bsm red" onclick="deleteModule(${i})">✕ Delete</button></div>`).join('');
 }
-function deleteModule(i){ if(!confirm('¿Eliminar este módulo del menú?'))return; const mods=getCustomModules(); mods.splice(i,1); saveCustomModules(mods); renderCustomModules(); notify('Módulo eliminado del menú'); addSysLog('Módulo eliminado','warn'); }
+function deleteModule(i){ if(!confirm('Delete this module from the menu?'))return; const mods=getCustomModules(); mods.splice(i,1); saveCustomModules(mods); renderCustomModules(); notify('Module removed from menu'); addSysLog('Module removed','warn'); }
 
-// ══ FUNCIONES GITHUB ══
-function saveGH(){ const user=document.getElementById('gh-user').value.trim(); const repo=document.getElementById('gh-repo').value.trim(); const branch=document.getElementById('gh-branch').value.trim(); const token=document.getElementById('gh-token').value.trim(); localStorage.setItem('qcol_gh',JSON.stringify({user,repo,branch,token})); notify('✅ GitHub guardado'); addSysLog('Config GitHub guardada','ok'); }
+// ══ GITHUB FUNCTIONS ══
+function saveGH(){ const user=document.getElementById('gh-user').value.trim(); const repo=document.getElementById('gh-repo').value.trim(); const branch=document.getElementById('gh-branch').value.trim(); const token=document.getElementById('gh-token').value.trim(); localStorage.setItem('qcol_gh',JSON.stringify({user,repo,branch,token})); notify('✅ GitHub saved'); addSysLog('GitHub config saved','ok'); }
 function openGH(){const gh=getGH();if(gh.user&&gh.repo)window.open(`https://github.com/${gh.user}/${gh.repo}`,'_blank');}
 async function testGH(){
-  const gh=getGH(); if(!gh.user||!gh.repo){notify('Usuario o repo vacío');return;} const dot=document.getElementById('gh-dot');const st=document.getElementById('gh-status'); dot.className='sdot warn';st.textContent='Verificando...';
-  try{ const res=await fetch(`https://api.github.com/repos/${gh.user}/${gh.repo}`,{headers:gh.token?{'Authorization':'token '+gh.token}:{}}); if(res.ok){dot.className='sdot ok';st.textContent='✅ Repositorio accesible';notify('✅ Repositorio acceso OK');} else if(res.status===401){dot.className='sdot err';st.textContent='❌ Token inválido';notify('Token inválido');} else{dot.className='sdot err';st.textContent='❌ Repo no encontrado';notify('Repo no encontrado');} }catch(e){dot.className='sdot err';st.textContent='❌ Error';notify(e.message);}
+  const gh=getGH(); if(!gh.user||!gh.repo){notify('User or repo empty');return;} const dot=document.getElementById('gh-dot');const st=document.getElementById('gh-status'); dot.className='sdot warn';st.textContent='Verifying...';
+  try{ const res=await fetch(`https://api.github.com/repos/${gh.user}/${gh.repo}`,{headers:gh.token?{'Authorization':'token '+gh.token}:{}}); if(res.ok){dot.className='sdot ok';st.textContent='✅ Repository accessible';notify('✅ Repository access OK');} else if(res.status===401){dot.className='sdot err';st.textContent='❌ Invalid token';notify('Invalid token');} else{dot.className='sdot err';st.textContent='❌ Repo not found';notify('Repo not found');} }catch(e){dot.className='sdot err';st.textContent='❌ Error';notify(e.message);}
 }
 function previewUpload(input){const p=document.getElementById('gh-file-preview');if(input.files.length){p.innerHTML='📄 '+input.files[0].name+' ('+(input.files[0].size/1024).toFixed(1)+' KB)';}else{p.innerHTML='';}}
 async function uploadToGitHub(){
   const gh=getGH(); const fileInput=document.getElementById('gh-file-input'); const folder=document.getElementById('gh-folder').value.trim(); const commitMsg=document.getElementById('gh-commit-msg').value.trim();
-  if(!gh.token){notify('Token requerido');return;} if(!fileInput.files.length){notify('Selecciona archivo');return;}
+  if(!gh.token){notify('Token required');return;} if(!fileInput.files.length){notify('Select file');return;}
   const file=fileInput.files[0]; const reader=new FileReader();
-  reader.onload=async()=>{ const content=btoa(unescape(encodeURIComponent(reader.result))); let path=folder?folder+'/'+file.name:file.name; const apiURL=`https://api.github.com/repos/${gh.user}/${gh.repo}/contents/${path}`; const log=document.getElementById('gh-upload-log'); log.innerHTML='🔄 Subiendo...';
-    try{ let sha; try{const chk=await fetch(apiURL,{headers:{'Authorization':'token '+gh.token,'Accept':'application/vnd.github.v3+json'}});if(chk.ok){const d=await chk.json();sha=d.sha;}}catch(e){} const body={message:commitMsg||'Subido desde QCOL',content};if(sha)body.sha=sha; const res=await fetch(apiURL,{method:'PUT',headers:{'Authorization':'token '+gh.token,'Accept':'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify(body)});
-    if(res.ok){log.innerHTML='✅ Subido: '+path;notify('✅ Archivo subido a GitHub');addSysLog('Subido: '+path,'ok');fileInput.value='';document.getElementById('gh-file-preview').innerHTML='';} else{const e=await res.json();log.innerHTML='❌ Error: '+e.message;notify('❌ '+e.message);} }catch(e){log.innerHTML='❌ '+e.message;notify(e.message);} };
+  reader.onload=async()=>{ const content=btoa(unescape(encodeURIComponent(reader.result))); let path=folder?folder+'/'+file.name:file.name; const apiURL=`https://api.github.com/repos/${gh.user}/${gh.repo}/contents/${path}`; const log=document.getElementById('gh-upload-log'); log.innerHTML='🔄 Uploading...';
+    try{ let sha; try{const chk=await fetch(apiURL,{headers:{'Authorization':'token '+gh.token,'Accept':'application/vnd.github.v3+json'}});if(chk.ok){const d=await chk.json();sha=d.sha;}}catch(e){} const body={message:commitMsg||'Uploaded from QCOL',content};if(sha)body.sha=sha; const res=await fetch(apiURL,{method:'PUT',headers:{'Authorization':'token '+gh.token,'Accept':'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify(body)});
+    if(res.ok){log.innerHTML='✅ Uploaded: '+path;notify('✅ File uploaded to GitHub');addSysLog('Uploaded: '+path,'ok');fileInput.value='';document.getElementById('gh-file-preview').innerHTML='';} else{const e=await res.json();log.innerHTML='❌ Error: '+e.message;notify('❌ '+e.message);} }catch(e){log.innerHTML='❌ '+e.message;notify(e.message);} };
   reader.readAsText(file);
 }
 
-// ========== INICIALIZACIÓN PRINCIPAL ==========
-ensureDefaultConfig();   // fuerza todas las claves predeterminadas
+// ========== MAIN INITIALIZATION ==========
+ensureDefaultConfig();   // force all default keys
 loadSaved();
-addSysLog('Configuración del ecosistema iniciada','info');
-addSysLog('QCOL v3.0.0 — Sistema modular','info');
+addSysLog('Ecosystem configuration started','info');
+addSysLog('QCOL v3.0.0 — Modular system','info');
 renderCustomModules();
 loadMonitorConfig();
 refreshMonitor();
@@ -985,7 +984,7 @@ const toggle = document.getElementById('mistral-toggle');
 if (toggle) toggle.addEventListener('change', saveMistralSettings);
 updateMistralUI();
 
-// ========== DIFUSIÓN PERIÓDICA Y EN CADA NUEVO IFRAME ==========
+// ========== PERIODIC BROADCAST AND ON EACH NEW IFRAME ==========
 function broadcastCompilerUrlToModules() {
     const compilerUrl = localStorage.getItem('qcol_colab_url');
     if (!compilerUrl) return;
@@ -994,7 +993,7 @@ function broadcastCompilerUrlToModules() {
         try { iframe.contentWindow?.postMessage({ type: 'QCOL_COMPILER_URL', url: compilerUrl }, '*'); } catch(e) {}
     });
     if (window.parent !== window) { window.parent.postMessage({ type: 'QCOL_COMPILER_URL', url: compilerUrl }, '*'); }
-    broadcastConfigToAllIframes();  // también envía la configuración completa
+    broadcastConfigToAllIframes();  // also sends full config
 }
 
 const observer = new MutationObserver((mutations) => {
@@ -1009,9 +1008,9 @@ observer.observe(document.body, { childList: true, subtree: true });
 setInterval(() => { broadcastConfigToAllIframes(); broadcastCompilerUrlToModules(); }, 5000);
 setTimeout(() => broadcastConfigToAllIframes(), 1000);
 
-// ========== HANDLER PARA PYTHON REMOTE (pyCall) ==========
+// ========== REMOTE PYTHON HANDLER (pyCall) ==========
 async function executePythonRemoteFull(codeToExec, serverUrl) {
-    if (!serverUrl) throw new Error("No hay URL de servidor configurada");
+    if (!serverUrl) throw new Error("No server URL configured");
     const base = serverUrl.replace(/\/+$/, '');
     const isHF = base.includes('hf.space') || base.includes('huggingface');
     let url, body;
@@ -1021,7 +1020,7 @@ async function executePythonRemoteFull(codeToExec, serverUrl) {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const raw = await res.json();
     const outputData = isHF ? (raw.data?.[0] || raw) : raw;
-    if (outputData.success === false) throw new Error(outputData.output || outputData.error || "Error remoto");
+    if (outputData.success === false) throw new Error(outputData.output || outputData.error || "Remote error");
     return outputData.output || outputData.result || "";
 }
 
@@ -1029,15 +1028,15 @@ window.addEventListener('message', async (event) => {
     const data = event.data;
     if (!data || data.type !== 'pyCall') return;
     const { id, func, args, serverUrl, pythonCode } = data;
-    const timeoutId = setTimeout(() => { event.source.postMessage({ type: 'pyResult', id: id, error: 'Timeout: el servidor no respondió' }, '*'); }, 30000);
+    const timeoutId = setTimeout(() => { event.source.postMessage({ type: 'pyResult', id: id, error: 'Timeout: server did not respond' }, '*'); }, 30000);
     try {
-        if (!serverUrl) throw new Error("No se ha configurado la URL del servidor cuántico. Ve a la pestaña 🤗 Compilador HuggingFace y guarda la URL.");
+        if (!serverUrl) throw new Error("No quantum server URL configured. Go to the 🤗 HuggingFace Compiler tab and save the URL.");
         const functionDef = pythonCode || "";
         const callCode = `${functionDef}\nimport json\n_result = ${func}(*${JSON.stringify(args)})\nprint(json.dumps(_result, ensure_ascii=False))`;
         const output = await executePythonRemoteFull(callCode, serverUrl);
         clearTimeout(timeoutId);
         let parsed = output.trim();
-        try { parsed = JSON.parse(parsed); } catch(e) { /* no es JSON */ }
+        try { parsed = JSON.parse(parsed); } catch(e) { /* not JSON */ }
         event.source.postMessage({ type: 'pyResult', id: id, result: parsed }, '*');
     } catch (err) {
         clearTimeout(timeoutId);
@@ -1045,9 +1044,9 @@ window.addEventListener('message', async (event) => {
     }
 });
 
-// ========== LISTENER PARA APPS CUÁNTICAS ==========
+// ========== LISTENER FOR QUANTUM APPS ==========
 async function buildAppBlobForApp(pythonCode, htmlCode, serverUrl) {
-    const bridge = `<script> window.__serverUrl = ${JSON.stringify(serverUrl)}; window.__pyCode = ${JSON.stringify(pythonCode)}; window.pyCall = async (funcName, ...args) => { return new Promise((resolve, reject) => { const msgId = Date.now() + '-' + Math.random(); const handler = (event) => { if (event.data.type === 'pyResult' && event.data.id === msgId) { window.removeEventListener('message', handler); if (event.data.error) reject(new Error(event.data.error)); else resolve(event.data.result); } }; window.addEventListener('message', handler); window.parent.postMessage({ type: 'pyCall', id: msgId, func: funcName, args: args, serverUrl: window.__serverUrl, pythonCode: window.__pyCode }, '*'); }); }; console.log("App bridge listo, servidor:", window.__serverUrl); <\/script>`;
+    const bridge = `<script> window.__serverUrl = ${JSON.stringify(serverUrl)}; window.__pyCode = ${JSON.stringify(pythonCode)}; window.pyCall = async (funcName, ...args) => { return new Promise((resolve, reject) => { const msgId = Date.now() + '-' + Math.random(); const handler = (event) => { if (event.data.type === 'pyResult' && event.data.id === msgId) { window.removeEventListener('message', handler); if (event.data.error) reject(new Error(event.data.error)); else resolve(event.data.result); } }; window.addEventListener('message', handler); window.parent.postMessage({ type: 'pyCall', id: msgId, func: funcName, args: args, serverUrl: window.__serverUrl, pythonCode: window.__pyCode }, '*'); }); }; console.log("App bridge ready, server:", window.__serverUrl); <\/script>`;
     let finalHtml = htmlCode;
     if (finalHtml.includes('<head>')) finalHtml = finalHtml.replace('<head>', '<head>' + bridge);
     else if (finalHtml.includes('<html>')) finalHtml = finalHtml.replace('<html>', '<html><head>' + bridge + '</head>');
@@ -1058,30 +1057,30 @@ async function buildAppBlobForApp(pythonCode, htmlCode, serverUrl) {
 }
 
 function launchQuantumAppModal(pythonCode, htmlCode, serverUrl, appTitle) {
-    if (!serverUrl) { notify(`❌ No se ha configurado la URL del compilador. Ve a la pestaña 🤗 Compilador HuggingFace y guarda la URL.`); return; }
+    if (!serverUrl) { notify(`❌ No compiler URL configured. Go to the 🤗 HuggingFace Compiler tab and save the URL.`); return; }
     const modal = document.createElement('div');
     modal.style.position = 'fixed'; modal.style.top = '0'; modal.style.left = '0'; modal.style.width = '100%'; modal.style.height = '100%'; modal.style.backgroundColor = 'rgba(0,0,0,0.95)'; modal.style.zIndex = '20000'; modal.style.display = 'flex'; modal.style.flexDirection = 'column'; modal.style.alignItems = 'center'; modal.style.justifyContent = 'center'; modal.style.backdropFilter = 'blur(8px)';
     const modalContainer = document.createElement('div'); modalContainer.style.width = 'min(1200px, 95%)'; modalContainer.style.height = '85%'; modalContainer.style.backgroundColor = '#0a0e1a'; modalContainer.style.border = '1px solid #0088ff'; modalContainer.style.borderRadius = '16px'; modalContainer.style.display = 'flex'; modalContainer.style.flexDirection = 'column'; modalContainer.style.overflow = 'hidden';
-    const header = document.createElement('div'); header.style.display = 'flex'; header.style.justifyContent = 'space-between'; header.style.alignItems = 'center'; header.style.padding = '0.8rem 1rem'; header.style.backgroundColor = '#060912'; header.style.borderBottom = '1px solid #1a2a48'; header.style.fontFamily = 'Orbitron, monospace'; header.style.fontSize = '0.7rem'; header.style.color = '#00ccff'; header.innerHTML = `<span>⚛️ ${escapeHtml(appTitle)}</span><button style="background:transparent; border:1px solid #1e3058; border-radius:30px; padding:0.3rem 1rem; color:white; cursor:pointer;">CERRAR</button>`;
+    const header = document.createElement('div'); header.style.display = 'flex'; header.style.justifyContent = 'space-between'; header.style.alignItems = 'center'; header.style.padding = '0.8rem 1rem'; header.style.backgroundColor = '#060912'; header.style.borderBottom = '1px solid #1a2a48'; header.style.fontFamily = 'Orbitron, monospace'; header.style.fontSize = '0.7rem'; header.style.color = '#00ccff'; header.innerHTML = `<span>⚛️ ${escapeHtml(appTitle)}</span><button style="background:transparent; border:1px solid #1e3058; border-radius:30px; padding:0.3rem 1rem; color:white; cursor:pointer;">CLOSE</button>`;
     const closeBtn = header.querySelector('button');
     const iframe = document.createElement('iframe'); iframe.style.flex = '1'; iframe.style.border = 'none'; iframe.style.width = '100%'; iframe.style.backgroundColor = 'white'; iframe.sandbox = 'allow-same-origin allow-scripts allow-popups allow-forms allow-modals';
     modalContainer.appendChild(header); modalContainer.appendChild(iframe); modal.appendChild(modalContainer); document.body.appendChild(modal);
-    buildAppBlobForApp(pythonCode, htmlCode, serverUrl).then(({ blobUrl, revoke }) => { iframe.src = blobUrl; iframe.onload = () => revoke(); }).catch(err => { iframe.srcdoc = `<html><body style="background:#0a0e1a;color:white;padding:2rem;"><h3>Error al cargar la app</h3><pre>${err.message}</pre></body></html>`; });
+    buildAppBlobForApp(pythonCode, htmlCode, serverUrl).then(({ blobUrl, revoke }) => { iframe.src = blobUrl; iframe.onload = () => revoke(); }).catch(err => { iframe.srcdoc = `<html><body style="background:#0a0e1a;color:white;padding:2rem;"><h3>Error loading app</h3><pre>${err.message}</pre></body></html>`; });
     const closeHandler = () => { modal.remove(); }; closeBtn.onclick = closeHandler; modal.onclick = (e) => { if (e.target === modal) closeHandler(); };
 }
 
 window.addEventListener('message', function(e) {
     const data = e.data; if (!data || data.type !== 'QCOL_LAUNCH_QUANTUM_APP') return;
-    console.log('[Fundador] App recibida:', data);
+    console.log('[Founder] App received:', data);
     const { appMetadata, appTitle } = data;
     if (appMetadata && appMetadata.pythonCode && appMetadata.htmlCode) {
         const serverUrl = appMetadata.serverUrl || localStorage.getItem('qcol_colab_url') || '';
-        if (!serverUrl) { notify(`❌ No hay URL del servidor. Configúrala en la pestaña 🤗 Compilador HuggingFace.`); return; }
-        launchQuantumAppModal(appMetadata.pythonCode, appMetadata.htmlCode, serverUrl, appTitle || 'Aplicación cuántica');
-    } else { notify(`❌ La app "${appTitle}" no contiene código Python o HTML. No se puede ejecutar.`); }
+        if (!serverUrl) { notify(`❌ No server URL. Configure it in the 🤗 HuggingFace Compiler tab.`); return; }
+        launchQuantumAppModal(appMetadata.pythonCode, appMetadata.htmlCode, serverUrl, appTitle || 'Quantum application');
+    } else { notify(`❌ The app "${appTitle}" does not contain Python or HTML code. Cannot execute.`); }
 });
 
-// Funciones de chat (IA)
+// Chat functions (AI)
 async function sendChatMessage() {
     const input = document.getElementById('chat-input'); const message = input.value.trim();
     if (!message) return;
@@ -1091,7 +1090,7 @@ async function sendChatMessage() {
     try {
         let response;
         if (hasValidConfig) response = await callAIChat(message, aiConfig);
-        else response = "⚠️ **Modo demostración activo**\n\nPara usar la IA completa, configura tu API key en la pestaña **🤖 IA**.\n\nPuedes obtener una clave gratuita en:\n- [Mistral AI](https://console.mistral.ai) (recomendado)\n- [Groq](https://console.groq.com)\n- [Hugging Face](https://huggingface.co/settings/tokens)";
+        else response = "⚠️ **Demo mode active**\n\nTo use the full AI, configure your API key in the **🤖 AI** tab.\n\nYou can get a free key at:\n- [Mistral AI](https://console.mistral.ai) (recommended)\n- [Groq](https://console.groq.com)\n- [Hugging Face](https://huggingface.co/settings/tokens)";
         if (loadingDiv) loadingDiv.style.display = 'none';
         addChatMessage(response, 'assistant');
     } catch (error) {
@@ -1101,9 +1100,11 @@ async function sendChatMessage() {
 }
 async function callAIChat(message, aiConfig) {
     chatHistory.push({ role: 'user', content: message });
-    const temp = aiConfig.temp || 0.7; const tokens = aiConfig.tokens || 600; const lang = aiConfig.lang || 'es';
-    const langNote = lang === 'es' ? ' Responde siempre en español.' : lang === 'en' ? ' Always respond in English.' : ' Respond in both Spanish and English.';
-    const sysPrompt = (aiConfig.prompt || 'Eres el asistente de QCOL, ecosistema de computación cuántica. Responde de forma concisa y técnica. Puedes usar formato Markdown para mejorar la legibilidad (negritas, listas, bloques de código, tablas si es necesario).') + langNote;
+    const temp = aiConfig.temp || 0.7; const tokens = aiConfig.tokens || 600;
+    // ─── default lang now 'en' ───
+    const lang = aiConfig.lang || 'en';
+    const langNote = lang === 'es' ? ' Always respond in Spanish.' : lang === 'en' ? ' Always respond in English.' : ' Respond in both Spanish and English.';
+    const sysPrompt = (aiConfig.prompt || 'You are the QCOL assistant, a quantum computing ecosystem. Respond concisely and technically. You can use Markdown formatting to improve readability (bold, lists, code blocks, tables if necessary).') + langNote;
     const msgs = [{ role: 'system', content: sysPrompt }, ...chatHistory.slice(-10)];
     const endpoints = { mistral: 'https://api.mistral.ai/v1/chat/completions', groq: 'https://api.groq.com/openai/v1/chat/completions', openai: 'https://api.openai.com/v1/chat/completions' };
     if (aiConfig.provider === 'huggingface') {
@@ -1112,16 +1113,16 @@ async function callAIChat(message, aiConfig) {
         const prompt = msgs.map(m => `${m.role}: ${m.content}`).join('\n') + '\nassistant:';
         const res = await fetch(url, { method: 'POST', headers: { 'Authorization': 'Bearer ' + aiConfig.key, 'Content-Type': 'application/json' }, body: JSON.stringify({ inputs: prompt, parameters: { max_new_tokens: tokens, temperature: temp } }), signal: AbortSignal.timeout(20000) });
         const d = await res.json();
-        if (!res.ok) throw new Error(d.error || 'Error HuggingFace');
+        if (!res.ok) throw new Error(d.error || 'HuggingFace Error');
         let response = Array.isArray(d) ? d[0].generated_text.split('assistant:').pop().trim() : d.generated_text;
         chatHistory.push({ role: 'assistant', content: response });
         return response;
     }
-    const url = endpoints[aiConfig.provider]; if (!url) throw new Error('Proveedor no soportado');
+    const url = endpoints[aiConfig.provider]; if (!url) throw new Error('Unsupported provider');
     const defaultModel = aiConfig.provider === 'mistral' ? 'mistral-large-latest' : aiConfig.provider === 'groq' ? 'llama3-70b-8192' : 'gpt-4o-mini';
     const res = await fetch(url, { method: 'POST', headers: { 'Authorization': 'Bearer ' + aiConfig.key, 'Content-Type': 'application/json' }, body: JSON.stringify({ model: aiConfig.model || defaultModel, messages: msgs, max_tokens: tokens, temperature: temp }), signal: AbortSignal.timeout(20000) });
     const d = await res.json();
-    if (!res.ok) throw new Error(d.error?.message || 'Error API');
+    if (!res.ok) throw new Error(d.error?.message || 'API Error');
     const response = d.choices[0].message.content;
     chatHistory.push({ role: 'assistant', content: response });
     return response;
@@ -1134,13 +1135,15 @@ function addChatMessage(content, role) {
     else messageDiv.textContent = content;
     container.appendChild(messageDiv); container.scrollTop = container.scrollHeight;
 }
-function clearChat() { const container = document.getElementById('chat-messages'); if (container) { container.innerHTML = '<div class="chat-message assistant-message"><p>👋 ¡Hola! Soy el asistente de QCOL. Puedes preguntarme sobre computación cuántica, Qiskit, Cirq, QuTiP o cualquier duda técnica. Escribe tu mensaje.</p></div>'; } chatHistory = []; }
+function clearChat() { const container = document.getElementById('chat-messages'); if (container) { container.innerHTML = '<div class="chat-message assistant-message"><p>👋 Hello! I\'m the QCOL assistant. You can ask me about quantum computing, Qiskit, Cirq, QuTiP or any technical questions. Write your message.</p></div>'; } chatHistory = []; }
 
-function aiProviderChange() { const p = document.getElementById('ai-prov').value; const models = { mistral: 'mistral-large-latest', groq: 'llama3-70b-8192', huggingface: 'mistralai/Mistral-7B-Instruct-v0.3', openai: 'gpt-4o-mini', gemini: 'gemini-pro', none: '' }; const sel = document.getElementById('ai-model-sel'); const inp = document.getElementById('ai-model'); const hint = document.getElementById('ai-key-hint'); const hints = { mistral: 'Mistral: <a onclick="window.open(\'https://console.mistral.ai\',\'_blank\')" style="color:var(--gr);cursor:pointer;">console.mistral.ai</a> → API Keys → Create', groq: 'Groq: <a onclick="window.open(\'https://console.groq.com\',\'_blank\')" style="color:var(--gr);cursor:pointer;">console.groq.com</a> → API Keys → Create Key', huggingface: 'HuggingFace: <a onclick="window.open(\'https://huggingface.co/settings/tokens\',\'_blank\')" style="color:var(--gr);cursor:pointer;">hf.co/settings/tokens</a> → New token', openai: 'OpenAI: <a onclick="window.open(\'https://platform.openai.com/api-keys\',\'_blank\')" style="color:var(--gr);cursor:pointer;">platform.openai.com/api-keys</a>', gemini: 'Google: <a onclick="window.open(\'https://aistudio.google.com/app/apikey\',\'_blank\')" style="color:var(--gr);cursor:pointer;">aistudio.google.com</a> (necesita VPN)', none: '' }; if (inp) inp.value = models[p] || ''; if (sel) sel.value = models[p] || sel.options[0]?.value; if (hint) hint.innerHTML = hints[p] || ''; }
-const PROMPTS = { quantum: 'Eres el asistente de QCOL (Quantum Computing Open Lab), creado por Franci Laffita Camargo, estudiante de Física Nuclear. Ayudas con Qiskit, Cirq, PennyLane, QuTiP, circuitos cuánticos y física cuántica. Responde en español, de forma concisa y técnicamente precisa. Puedes usar formato Markdown.', teacher: 'Eres un profesor experto en computación cuántica del ecosistema QCOL. Explicas conceptos de forma clara y pedagógica, con ejemplos prácticos. Usas analogías para hacer accesibles los conceptos difíciles. Responde siempre en español. Usa Markdown para mejorar la legibilidad.', concise: 'Eres el asistente cuántico de QCOL. Responde siempre en español, de forma muy concisa. Máximo 3-4 líneas por respuesta. Solo lo esencial. Para código Qiskit, muestra directamente el código.', bilingual: 'You are the QCOL quantum computing assistant. Respond in both Spanish and English. First answer in Spanish, then provide the English translation. Be concise and technically precise. Use Markdown formatting.', code: 'Eres el asistente de código cuántico de QCOL. Tu especialidad es generar código Qiskit y Cirq. Cuando te pidan un circuito o algoritmo, responde directamente con el código Python funcional, con comentarios breves. Usa siempre sintaxis moderna de Qiskit 1.x. Muestra el código en bloques de Markdown con triple backticks y el lenguaje especificado.' };
+function aiProviderChange() { const p = document.getElementById('ai-prov').value; const models = { mistral: 'mistral-large-latest', groq: 'llama3-70b-8192', huggingface: 'mistralai/Mistral-7B-Instruct-v0.3', openai: 'gpt-4o-mini', gemini: 'gemini-pro', none: '' }; const sel = document.getElementById('ai-model-sel'); const inp = document.getElementById('ai-model'); const hint = document.getElementById('ai-key-hint'); const hints = { mistral: 'Mistral: <a onclick="window.open(\'https://console.mistral.ai\',\'_blank\')" style="color:var(--gr);cursor:pointer;">console.mistral.ai</a> → API Keys → Create', groq: 'Groq: <a onclick="window.open(\'https://console.groq.com\',\'_blank\')" style="color:var(--gr);cursor:pointer;">console.groq.com</a> → API Keys → Create Key', huggingface: 'HuggingFace: <a onclick="window.open(\'https://huggingface.co/settings/tokens\',\'_blank\')" style="color:var(--gr);cursor:pointer;">hf.co/settings/tokens</a> → New token', openai: 'OpenAI: <a onclick="window.open(\'https://platform.openai.com/api-keys\',\'_blank\')" style="color:var(--gr);cursor:pointer;">platform.openai.com/api-keys</a>', gemini: 'Google: <a onclick="window.open(\'https://aistudio.google.com/app/apikey\',\'_blank\')" style="color:var(--gr);cursor:pointer;">aistudio.google.com</a> (needs VPN)', none: '' }; if (inp) inp.value = models[p] || ''; if (sel) sel.value = models[p] || sel.options[0]?.value; if (hint) hint.innerHTML = hints[p] || ''; }
+// ─── PROMPTS now default to English ───
+const PROMPTS = { quantum: 'You are the QCOL (Quantum Computing Open Lab) assistant, created by Franci Laffita Camargo, a Nuclear Physics student. You help with Qiskit, Cirq, PennyLane, QuTiP, quantum circuits and quantum physics. Respond in English, concisely and technically precise. You can use Markdown formatting.', teacher: 'You are an expert quantum computing professor in the QCOL ecosystem. You explain concepts clearly and pedagogically, with practical examples. You use analogies to make difficult concepts accessible. Always respond in English. Use Markdown to improve readability.', concise: 'You are the QCOL quantum assistant. Always respond in English, very concisely. Maximum 3-4 lines per response. Only the essentials. For Qiskit code, show the code directly.', bilingual: 'You are the QCOL quantum computing assistant. Respond in both Spanish and English. First answer in English, then provide the Spanish translation. Be concise and technically precise. Use Markdown formatting.', code: 'You are the QCOL quantum code assistant. Your specialty is generating Qiskit and Cirq code. When asked for a circuit or algorithm, respond directly with functional Python code, with brief comments. Always use modern Qiskit 1.x syntax. Show the code in Markdown blocks with triple backticks and the specified language.' };
 function setPrompt(type) { const el = document.getElementById('ai-prompt'); if (el && PROMPTS[type]) { el.value = PROMPTS[type]; notify('Prompt: ' + type); } }
-function saveAI() { const ai = { provider: document.getElementById('ai-prov').value, key: document.getElementById('ai-key').value.trim(), model: document.getElementById('ai-model').value.trim(), prompt: document.getElementById('ai-prompt').value.trim(), temp: parseFloat(document.getElementById('ai-temp')?.value || '0.7'), tokens: parseInt(document.getElementById('ai-tokens')?.value || '600'), lang: document.getElementById('ai-lang')?.value || 'es' }; localStorage.setItem('qcol_ai', JSON.stringify(ai)); postToCore('QCOL_SAVE', { key: 'qcol_ai', val: ai }); notify('✅ IA guardada — ' + ai.provider + ' · ' + ai.model); addSysLog('IA configurada: ' + ai.provider + ' · ' + ai.model, 'ok'); document.getElementById('ai-dot').className = ai.provider !== 'none' ? 'sdot ok' : 'sdot off'; document.getElementById('ai-status').textContent = ai.provider !== 'none' ? '✅ ' + ai.provider + ' — ' + ai.model : 'Sin configurar'; }
-async function testAI() { const ai = getAI(); if (ai.provider === 'none' || !ai.key) { notify('Configura la IA primero'); return; } notify('🔄 Probando IA...'); const temp = ai.temp || 0.7; const tokens = ai.tokens || 600; try { let url, body, headers; headers = { 'Content-Type': 'application/json' }; if (ai.provider === 'mistral') { url = 'https://api.mistral.ai/v1/chat/completions'; headers['Authorization'] = 'Bearer ' + ai.key; body = { model: ai.model || 'mistral-large-latest', messages: [{ role: 'user', content: 'Responde solo "QCOL OK" (sin comillas) en español' }], max_tokens: 10, temperature: temp }; } else if (ai.provider === 'groq') { url = 'https://api.groq.com/openai/v1/chat/completions'; headers['Authorization'] = 'Bearer ' + ai.key; body = { model: ai.model || 'llama3-70b-8192', messages: [{ role: 'user', content: 'Responde "QCOL OK"' }], max_tokens: 10, temperature: temp }; } else if (ai.provider === 'huggingface') { url = `https://api-inference.huggingface.co/models/${ai.model || 'mistralai/Mistral-7B-Instruct-v0.3'}`; headers['Authorization'] = 'Bearer ' + ai.key; body = { inputs: 'Responde "QCOL OK"', parameters: { max_new_tokens: 10 } }; } else if (ai.provider === 'openai') { url = 'https://api.openai.com/v1/chat/completions'; headers['Authorization'] = 'Bearer ' + ai.key; body = { model: ai.model || 'gpt-4o-mini', messages: [{ role: 'user', content: 'Responde "QCOL OK"' }], max_tokens: 10, temperature: temp }; } else { notify('Prueba manual para este proveedor'); return; } const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body), signal: AbortSignal.timeout(15000) }); const d = await res.json(); if (res.ok) { const resp = d.choices?.[0]?.message?.content?.trim() || d.generated_text || '✅ OK'; notify('✅ IA conectada: ' + resp); document.getElementById('ai-dot').className = 'sdot ok'; document.getElementById('ai-status').textContent = '✅ Conectada — ' + ai.provider + ' · ' + ai.model; addSysLog('IA probada: ' + ai.provider + ' · ' + ai.model, 'ok'); } else throw new Error(d.error?.message || d.message || 'Error ' + res.status); } catch(e) { notify('❌ ' + e.message); addSysLog('Error IA: ' + e.message, 'err'); } }
+// ─── saveAI now defaults lang to 'en' ───
+function saveAI() { const ai = { provider: document.getElementById('ai-prov').value, key: document.getElementById('ai-key').value.trim(), model: document.getElementById('ai-model').value.trim(), prompt: document.getElementById('ai-prompt').value.trim(), temp: parseFloat(document.getElementById('ai-temp')?.value || '0.7'), tokens: parseInt(document.getElementById('ai-tokens')?.value || '600'), lang: document.getElementById('ai-lang')?.value || 'en' }; localStorage.setItem('qcol_ai', JSON.stringify(ai)); postToCore('QCOL_SAVE', { key: 'qcol_ai', val: ai }); notify('✅ AI saved — ' + ai.provider + ' · ' + ai.model); addSysLog('AI configured: ' + ai.provider + ' · ' + ai.model, 'ok'); document.getElementById('ai-dot').className = ai.provider !== 'none' ? 'sdot ok' : 'sdot off'; document.getElementById('ai-status').textContent = ai.provider !== 'none' ? '✅ ' + ai.provider + ' — ' + ai.model : 'Not configured'; }
+async function testAI() { const ai = getAI(); if (ai.provider === 'none' || !ai.key) { notify('Configure AI first'); return; } notify('🔄 Testing AI...'); const temp = ai.temp || 0.7; const tokens = ai.tokens || 600; try { let url, body, headers; headers = { 'Content-Type': 'application/json' }; if (ai.provider === 'mistral') { url = 'https://api.mistral.ai/v1/chat/completions'; headers['Authorization'] = 'Bearer ' + ai.key; body = { model: ai.model || 'mistral-large-latest', messages: [{ role: 'user', content: 'Respond only "QCOL OK" (without quotes) in English' }], max_tokens: 10, temperature: temp }; } else if (ai.provider === 'groq') { url = 'https://api.groq.com/openai/v1/chat/completions'; headers['Authorization'] = 'Bearer ' + ai.key; body = { model: ai.model || 'llama3-70b-8192', messages: [{ role: 'user', content: 'Respond "QCOL OK"' }], max_tokens: 10, temperature: temp }; } else if (ai.provider === 'huggingface') { url = `https://api-inference.huggingface.co/models/${ai.model || 'mistralai/Mistral-7B-Instruct-v0.3'}`; headers['Authorization'] = 'Bearer ' + ai.key; body = { inputs: 'Respond "QCOL OK"', parameters: { max_new_tokens: 10 } }; } else if (ai.provider === 'openai') { url = 'https://api.openai.com/v1/chat/completions'; headers['Authorization'] = 'Bearer ' + ai.key; body = { model: ai.model || 'gpt-4o-mini', messages: [{ role: 'user', content: 'Respond "QCOL OK"' }], max_tokens: 10, temperature: temp }; } else { notify('Manual test for this provider'); return; } const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body), signal: AbortSignal.timeout(15000) }); const d = await res.json(); if (res.ok) { const resp = d.choices?.[0]?.message?.content?.trim() || d.generated_text || '✅ OK'; notify('✅ AI connected: ' + resp); document.getElementById('ai-dot').className = 'sdot ok'; document.getElementById('ai-status').textContent = '✅ Connected — ' + ai.provider + ' · ' + ai.model; addSysLog('AI tested: ' + ai.provider + ' · ' + ai.model, 'ok'); } else throw new Error(d.error?.message || d.message || 'Error ' + res.status); } catch(e) { notify('❌ ' + e.message); addSysLog('AI Error: ' + e.message, 'err'); } }
 
 function escapeHtml(str) { if (!str) return ''; return str.replace(/[&<>]/g, function(m) { if (m === '&') return '&amp;'; if (m === '<') return '&lt;'; if (m === '>') return '&gt;'; return m; }); }
 </script>
