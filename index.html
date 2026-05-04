@@ -1285,11 +1285,11 @@ body::before{content:'';position:fixed;inset:0;
   async function callAI(msg) {
     const temp   = aiCfg.temp   || 0.7;
     const tokens = aiCfg.tokens || 600;
-    const lang   = aiCfg.lang   || 'en';                    // ← CHANGED from 'es' to 'en'
+    const lang   = aiCfg.lang   || 'en';
     const langNote = lang==='es' ? ' Always respond in Spanish.'
                    : lang==='en' ? ' Always respond in English.'
                    : ' Respond in both Spanish and English.';
-    const sys = (aiCfg.prompt || 'You are the QCOL assistant, a quantum computing ecosystem. Respond concisely and technically.') + langNote;  // ← CHANGED from Spanish to English
+    const sys = (aiCfg.prompt || 'You are the QCOL assistant, a quantum computing ecosystem. Respond concisely and technically.') + langNote;
     const msgs = [
       { role:'system', content:sys },
       ...aiHistory.slice(-6),
@@ -1373,6 +1373,14 @@ body::before{content:'';position:fixed;inset:0;
   }
 
   async function init() {
+    // ── Force English default: overwrite any old Spanish setting ──
+    const storedAI = JSON.parse(localStorage.getItem('qcol_ai') || '{}');
+    if (!storedAI.lang || storedAI.lang === 'es') {
+      storedAI.lang = 'en';
+      localStorage.setItem('qcol_ai', JSON.stringify(storedAI));
+    }
+    // ────────────────────────────────────────────────────────────────
+
     const editorContainer = document.getElementById('ai-editor');
     cmEditor = new EditorView({
       doc: '',
