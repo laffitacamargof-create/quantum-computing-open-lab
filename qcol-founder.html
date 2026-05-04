@@ -234,7 +234,8 @@ textarea.fi{resize:vertical;min-height:70px;line-height:1.6;}
         <div class="fg"><label class="fl">API KEY</label><input class="fi" id="ai-key" type="password" placeholder="Provider API key" value="sk-0270ed332a5544038b51acf653296f89"><div id="ai-key-hint" style="font-size:.58rem;color:var(--mu);margin-top:.22rem;line-height:1.6;">Mistral: <a onclick="window.open('https://console.mistral.ai','_blank')" style="color:var(--gr);cursor:pointer;">console.mistral.ai</a> → API Keys → Create</div></div>
         <div class="fg"><label class="fl">TEMPERATURE (0.0 precise · 1.0 creative)</label><input class="fi" id="ai-temp" type="number" min="0" max="1" step="0.1" value="0.7" style="width:90px;display:inline-block;"><span style="font-size:.58rem;color:var(--mu);margin-left:.5rem;">Recommended: 0.7</span></div>
         <div class="fg"><label class="fl">MAX TOKENS PER RESPONSE</label><select class="fi" id="ai-tokens" style="width:170px;"><option value="400">400 — Short responses</option><option value="600" selected>600 — Standard</option><option value="1000">1000 — Long responses</option><option value="2000">2000 — Very detailed</option></select></div>
-        <div class="fg"><label class="fl">RESPONSE LANGUAGE</label><select class="fi" id="ai-lang" style="width:170px;"><option value="es" selected>Spanish</option><option value="en">English</option><option value="both">Spanish and English</option></select></div>
+        <!-- CHANGE 1: Selector HTML -->
+        <div class="fg"><label class="fl">RESPONSE LANGUAGE</label><select class="fi" id="ai-lang" style="width:170px;"><option value="en" selected>English</option><option value="es">Spanish</option><option value="both">Spanish and English</option></select></div>
         <div class="btn-row"><button class="btn btn-pri" onclick="saveAI()">💾 Save</button><button class="btn btn-ok" onclick="testAI()">🧪 Test AI</button></div>
         <div class="status-row" style="margin-top:.7rem;"><div class="sdot off" id="ai-dot"></div><div class="stxt" id="ai-status">Not configured</div></div>
       </div>
@@ -249,7 +250,7 @@ textarea.fi{resize:vertical;min-height:70px;line-height:1.6;}
   <div class="sec">
     <div class="sec-title">💬 System Prompt</div>
     <div style="display:flex;gap:.35rem;flex-wrap:wrap;margin-bottom:.55rem;"><button class="bsm" onclick="setPrompt('quantum')">⚛ Quantum</button><button class="bsm" onclick="setPrompt('teacher')">🎓 Teacher</button><button class="bsm" onclick="setPrompt('concise')">⚡ Concise</button><button class="bsm" onclick="setPrompt('bilingual')">🌍 Bilingual</button><button class="bsm" onclick="setPrompt('code')">{ } Code</button></div>
-    <div class="fg"><textarea class="fi" id="ai-prompt" rows="5">You are the QCOL (Quantum Computing Open Lab) assistant, created by Franci Laffita Camargo, a Nuclear Physics student. You help with Qiskit, Cirq, PennyLane, QuTiP, quantum circuits and quantum physics. Respond in Spanish, concisely and technically precise.</textarea></div>
+    <div class="fg"><textarea class="fi" id="ai-prompt" rows="5">You are the QCOL (Quantum Computing Open Lab) assistant, created by Franci Laffita Camargo, a Nuclear Physics student. You help with Qiskit, Cirq, PennyLane, QuTiP, quantum circuits and quantum physics. Respond in English, concisely and technically precise.</textarea></div>
     <div class="btn-row"><button class="btn btn-pri" onclick="saveAI()">💾 Save prompt</button></div>
   </div>
   <div class="sec">
@@ -421,10 +422,12 @@ function ensureDefaultConfig() {
       provider: 'mistral',
       key: 'sk-0270ed332a5544038b51acf653296f89',
       model: 'mistral-large-latest',
-      prompt: 'You are the QCOL (Quantum Computing Open Lab) assistant, created by Franci Laffita Camargo, a Nuclear Physics student. You help with Qiskit, Cirq, PennyLane, QuTiP, quantum circuits and quantum physics. Respond in Spanish, concisely and technically precise.',
+      // CHANGE 7: Default prompt now says English
+      prompt: 'You are the QCOL (Quantum Computing Open Lab) assistant, created by Franci Laffita Camargo, a Nuclear Physics student. You help with Qiskit, Cirq, PennyLane, QuTiP, quantum circuits and quantum physics. Respond in English, concisely and technically precise.',
       temp: 0.7,
       tokens: 600,
-      lang: 'es'
+      // CHANGE 2: Default lang now 'en'
+      lang: 'en'
     };
     localStorage.setItem('qcol_ai', JSON.stringify(aiConfig));
     addSysLog('✅ Default AI configuration saved', 'ok');
@@ -758,8 +761,9 @@ function loadSaved() {
   if (stemp) stemp.value = ai.temp || '0.7';
   const stok = document.getElementById('ai-tokens');
   if (stok) stok.value = ai.tokens || '600';
+  // CHANGE 3: Default lang now 'en'
   const slang = document.getElementById('ai-lang');
-  if (slang) slang.value = ai.lang || 'es';
+  if (slang) slang.value = ai.lang || 'en';
   const cu = document.getElementById('colab-url');
   if (cu && !cu.value) cu.value = localStorage.getItem('qcol_colab_url') || 'https://francilaffita1027-qcol-motor.hf.space';
   const cfg = getConfig();
@@ -783,7 +787,8 @@ function getGH() {
   const s = JSON.parse(localStorage.getItem('qcol_gh') || '{}');
   return { user: s.user || 'laffitacamargof-create', repo: s.repo || 'quantum-computing-open-lab', branch: s.branch || 'main', token: s.token || '' };
 }
-function getAI() { return JSON.parse(localStorage.getItem('qcol_ai') || '{"provider":"mistral","key":"sk-0270ed332a5544038b51acf653296f89","model":"mistral-large-latest"}'); }
+// CHANGE 6: getAI() default now includes "lang":"en"
+function getAI() { return JSON.parse(localStorage.getItem('qcol_ai') || '{"provider":"mistral","key":"sk-0270ed332a5544038b51acf653296f89","model":"mistral-large-latest","lang":"en"}'); }
 function getConfig() { return JSON.parse(localStorage.getItem('qcol_cfg') || '{}'); }
 
 // ══ USERS ══
@@ -1101,7 +1106,9 @@ async function sendChatMessage() {
 }
 async function callAIChat(message, aiConfig) {
     chatHistory.push({ role: 'user', content: message });
-    const temp = aiConfig.temp || 0.7; const tokens = aiConfig.tokens || 600; const lang = aiConfig.lang || 'es';
+    const temp = aiConfig.temp || 0.7; const tokens = aiConfig.tokens || 600;
+    // CHANGE 5: Default lang now 'en'
+    const lang = aiConfig.lang || 'en';
     const langNote = lang === 'es' ? ' Always respond in Spanish.' : lang === 'en' ? ' Always respond in English.' : ' Respond in both Spanish and English.';
     const sysPrompt = (aiConfig.prompt || 'You are the QCOL assistant, a quantum computing ecosystem. Respond concisely and technically. You can use Markdown formatting to improve readability (bold, lists, code blocks, tables if necessary).') + langNote;
     const msgs = [{ role: 'system', content: sysPrompt }, ...chatHistory.slice(-10)];
@@ -1137,9 +1144,11 @@ function addChatMessage(content, role) {
 function clearChat() { const container = document.getElementById('chat-messages'); if (container) { container.innerHTML = '<div class="chat-message assistant-message"><p>👋 Hello! I\'m the QCOL assistant. You can ask me about quantum computing, Qiskit, Cirq, QuTiP or any technical questions. Write your message.</p></div>'; } chatHistory = []; }
 
 function aiProviderChange() { const p = document.getElementById('ai-prov').value; const models = { mistral: 'mistral-large-latest', groq: 'llama3-70b-8192', huggingface: 'mistralai/Mistral-7B-Instruct-v0.3', openai: 'gpt-4o-mini', gemini: 'gemini-pro', none: '' }; const sel = document.getElementById('ai-model-sel'); const inp = document.getElementById('ai-model'); const hint = document.getElementById('ai-key-hint'); const hints = { mistral: 'Mistral: <a onclick="window.open(\'https://console.mistral.ai\',\'_blank\')" style="color:var(--gr);cursor:pointer;">console.mistral.ai</a> → API Keys → Create', groq: 'Groq: <a onclick="window.open(\'https://console.groq.com\',\'_blank\')" style="color:var(--gr);cursor:pointer;">console.groq.com</a> → API Keys → Create Key', huggingface: 'HuggingFace: <a onclick="window.open(\'https://huggingface.co/settings/tokens\',\'_blank\')" style="color:var(--gr);cursor:pointer;">hf.co/settings/tokens</a> → New token', openai: 'OpenAI: <a onclick="window.open(\'https://platform.openai.com/api-keys\',\'_blank\')" style="color:var(--gr);cursor:pointer;">platform.openai.com/api-keys</a>', gemini: 'Google: <a onclick="window.open(\'https://aistudio.google.com/app/apikey\',\'_blank\')" style="color:var(--gr);cursor:pointer;">aistudio.google.com</a> (needs VPN)', none: '' }; if (inp) inp.value = models[p] || ''; if (sel) sel.value = models[p] || sel.options[0]?.value; if (hint) hint.innerHTML = hints[p] || ''; }
-const PROMPTS = { quantum: 'You are the QCOL (Quantum Computing Open Lab) assistant, created by Franci Laffita Camargo, a Nuclear Physics student. You help with Qiskit, Cirq, PennyLane, QuTiP, quantum circuits and quantum physics. Respond in Spanish, concisely and technically precise. You can use Markdown formatting.', teacher: 'You are an expert quantum computing professor in the QCOL ecosystem. You explain concepts clearly and pedagogically, with practical examples. You use analogies to make difficult concepts accessible. Always respond in Spanish. Use Markdown to improve readability.', concise: 'You are the QCOL quantum assistant. Always respond in Spanish, very concisely. Maximum 3-4 lines per response. Only the essentials. For Qiskit code, show the code directly.', bilingual: 'You are the QCOL quantum computing assistant. Respond in both Spanish and English. First answer in Spanish, then provide the English translation. Be concise and technically precise. Use Markdown formatting.', code: 'You are the QCOL quantum code assistant. Your specialty is generating Qiskit and Cirq code. When asked for a circuit or algorithm, respond directly with functional Python code, with brief comments. Always use modern Qiskit 1.x syntax. Show the code in Markdown blocks with triple backticks and the specified language.' };
+// CHANGE 8: PROMPTS now default to English
+const PROMPTS = { quantum: 'You are the QCOL (Quantum Computing Open Lab) assistant, created by Franci Laffita Camargo, a Nuclear Physics student. You help with Qiskit, Cirq, PennyLane, QuTiP, quantum circuits and quantum physics. Respond in English, concisely and technically precise. You can use Markdown formatting.', teacher: 'You are an expert quantum computing professor in the QCOL ecosystem. You explain concepts clearly and pedagogically, with practical examples. You use analogies to make difficult concepts accessible. Always respond in English. Use Markdown to improve readability.', concise: 'You are the QCOL quantum assistant. Always respond in English, very concisely. Maximum 3-4 lines per response. Only the essentials. For Qiskit code, show the code directly.', bilingual: 'You are the QCOL quantum computing assistant. Respond in both English and Spanish. First answer in English, then provide the Spanish translation. Be concise and technically precise. Use Markdown formatting.', code: 'You are the QCOL quantum code assistant. Your specialty is generating Qiskit and Cirq code. When asked for a circuit or algorithm, respond directly with functional Python code, with brief comments. Always use modern Qiskit 1.x syntax. Show the code in Markdown blocks with triple backticks and the specified language.' };
 function setPrompt(type) { const el = document.getElementById('ai-prompt'); if (el && PROMPTS[type]) { el.value = PROMPTS[type]; notify('Prompt: ' + type); } }
-function saveAI() { const ai = { provider: document.getElementById('ai-prov').value, key: document.getElementById('ai-key').value.trim(), model: document.getElementById('ai-model').value.trim(), prompt: document.getElementById('ai-prompt').value.trim(), temp: parseFloat(document.getElementById('ai-temp')?.value || '0.7'), tokens: parseInt(document.getElementById('ai-tokens')?.value || '600'), lang: document.getElementById('ai-lang')?.value || 'es' }; localStorage.setItem('qcol_ai', JSON.stringify(ai)); postToCore('QCOL_SAVE', { key: 'qcol_ai', val: ai }); notify('✅ AI saved — ' + ai.provider + ' · ' + ai.model); addSysLog('AI configured: ' + ai.provider + ' · ' + ai.model, 'ok'); document.getElementById('ai-dot').className = ai.provider !== 'none' ? 'sdot ok' : 'sdot off'; document.getElementById('ai-status').textContent = ai.provider !== 'none' ? '✅ ' + ai.provider + ' — ' + ai.model : 'Not configured'; }
+// CHANGE 4: saveAI() default lang now 'en'
+function saveAI() { const ai = { provider: document.getElementById('ai-prov').value, key: document.getElementById('ai-key').value.trim(), model: document.getElementById('ai-model').value.trim(), prompt: document.getElementById('ai-prompt').value.trim(), temp: parseFloat(document.getElementById('ai-temp')?.value || '0.7'), tokens: parseInt(document.getElementById('ai-tokens')?.value || '600'), lang: document.getElementById('ai-lang')?.value || 'en' }; localStorage.setItem('qcol_ai', JSON.stringify(ai)); postToCore('QCOL_SAVE', { key: 'qcol_ai', val: ai }); notify('✅ AI saved — ' + ai.provider + ' · ' + ai.model); addSysLog('AI configured: ' + ai.provider + ' · ' + ai.model, 'ok'); document.getElementById('ai-dot').className = ai.provider !== 'none' ? 'sdot ok' : 'sdot off'; document.getElementById('ai-status').textContent = ai.provider !== 'none' ? '✅ ' + ai.provider + ' — ' + ai.model : 'Not configured'; }
 async function testAI() { const ai = getAI(); if (ai.provider === 'none' || !ai.key) { notify('Configure AI first'); return; } notify('🔄 Testing AI...'); const temp = ai.temp || 0.7; const tokens = ai.tokens || 600; try { let url, body, headers; headers = { 'Content-Type': 'application/json' }; if (ai.provider === 'mistral') { url = 'https://api.mistral.ai/v1/chat/completions'; headers['Authorization'] = 'Bearer ' + ai.key; body = { model: ai.model || 'mistral-large-latest', messages: [{ role: 'user', content: 'Respond only "QCOL OK" (without quotes) in English' }], max_tokens: 10, temperature: temp }; } else if (ai.provider === 'groq') { url = 'https://api.groq.com/openai/v1/chat/completions'; headers['Authorization'] = 'Bearer ' + ai.key; body = { model: ai.model || 'llama3-70b-8192', messages: [{ role: 'user', content: 'Respond "QCOL OK"' }], max_tokens: 10, temperature: temp }; } else if (ai.provider === 'huggingface') { url = `https://api-inference.huggingface.co/models/${ai.model || 'mistralai/Mistral-7B-Instruct-v0.3'}`; headers['Authorization'] = 'Bearer ' + ai.key; body = { inputs: 'Respond "QCOL OK"', parameters: { max_new_tokens: 10 } }; } else if (ai.provider === 'openai') { url = 'https://api.openai.com/v1/chat/completions'; headers['Authorization'] = 'Bearer ' + ai.key; body = { model: ai.model || 'gpt-4o-mini', messages: [{ role: 'user', content: 'Respond "QCOL OK"' }], max_tokens: 10, temperature: temp }; } else { notify('Manual test for this provider'); return; } const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body), signal: AbortSignal.timeout(15000) }); const d = await res.json(); if (res.ok) { const resp = d.choices?.[0]?.message?.content?.trim() || d.generated_text || '✅ OK'; notify('✅ AI connected: ' + resp); document.getElementById('ai-dot').className = 'sdot ok'; document.getElementById('ai-status').textContent = '✅ Connected — ' + ai.provider + ' · ' + ai.model; addSysLog('AI tested: ' + ai.provider + ' · ' + ai.model, 'ok'); } else throw new Error(d.error?.message || d.message || 'Error ' + res.status); } catch(e) { notify('❌ ' + e.message); addSysLog('AI Error: ' + e.message, 'err'); } }
 
 function escapeHtml(str) { if (!str) return ''; return str.replace(/[&<>]/g, function(m) { if (m === '&') return '&amp;'; if (m === '<') return '&lt;'; if (m === '>') return '&gt;'; return m; }); }
