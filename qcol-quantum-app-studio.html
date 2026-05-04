@@ -309,6 +309,40 @@
     let parentOrigin = null;          // trusted origin when embedded
     let receivedUrl = false;
 
+    // ═══════════════════════════════════════════════════════════
+    // 🛡️ PROTECTION: Force English AI + Clean editor on project switch
+    // ═══════════════════════════════════════════════════════════
+    (function initProtections() {
+        // 1. Force AI language to English
+        const storedAI = JSON.parse(localStorage.getItem('qcol_ai') || '{}');
+        if (!storedAI.lang || storedAI.lang === 'es') {
+            storedAI.lang = 'en';
+            localStorage.setItem('qcol_ai', JSON.stringify(storedAI));
+        }
+
+        // 2. Validate saved projects integrity on load
+        const stored = localStorage.getItem('quantum_apps_repo_v2');
+        if (stored) {
+            try {
+                const parsed = JSON.parse(stored);
+                // Remove any project that has contaminated content (matching another project's code)
+                const cleanProjects = parsed.filter((proj, idx, arr) => {
+                    return !arr.some((other, otherIdx) => 
+                        otherIdx !== idx && 
+                        other.pythonCode === proj.pythonCode && 
+                        other.htmlCode === proj.htmlCode &&
+                        other.pythonCode.length > 10 // only flag if there's actual content
+                    );
+                });
+                if (cleanProjects.length !== parsed.length) {
+                    localStorage.setItem('quantum_apps_repo_v2', JSON.stringify(cleanProjects));
+                    localStorage.setItem('quantum_apps_repo_v2_backup', stored); // keep backup
+                }
+            } catch(e) {}
+        }
+    })();
+    // ═══════════════════════════════════════════════════════════
+
     function notify(msg, dur=2000) {
         const n = document.getElementById('notif');
         n.textContent = msg;
@@ -629,11 +663,14 @@
             }
         }
 
-        // ── Load snapshot from array (source of truth), never from DOM
-        currentEditId = id;
+        // ── 🛡️ CRITICAL: Clear editor BEFORE loading new project content
+        // This prevents the old project's code from appearing briefly
         document.getElementById('project-name-input').value = '';
         document.getElementById('python-editor').value      = '';
         document.getElementById('html-editor').value        = '';
+
+        // ── Load snapshot from array (source of truth), never from DOM
+        currentEditId = id;
         document.getElementById('project-name-input').value = proj.name;
         document.getElementById('python-editor').value      = proj.pythonCode || '';
         document.getElementById('html-editor').value        = proj.htmlCode   || '';
@@ -745,7 +782,7 @@
     }
 
     async function launchProject(id) {
-        // ── PROTECTION: ALWAYS load from projects array, never from editor
+        // ── 🛡️ PROTECTION: ALWAYS load from projects array, never from editor
         // The editor may contain content from another project if not saved
         const proj = projects.find(p => p.id === id);
         if (!proj) return;
@@ -813,6 +850,20 @@
         const htmlVal  = document.getElementById('html-editor').value;
         // serverUrl comes from Founder automatically, not from input (hidden)
         const urlVal   = localStorage.getItem('qcol_colab_url') || '';
+
+        // 🛡️ PROTECTION: Check if editor content matches another project (contamination)
+        if (currentEditId) {
+            const contaminated = projects.some(p => 
+                p.id !== currentEditId && 
+                p.pythonCode === pyVal && 
+                p.htmlCode === htmlVal &&
+                pyVal.length > 10
+            );
+            if (contaminated) {
+                notify("⚠️ Editor contains code from another project. Switch projects to fix.");
+                return;
+            }
+        }
 
         if (!currentEditId) {
             // Create new project
