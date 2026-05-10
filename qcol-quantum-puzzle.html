@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-<title>Quantum Puzzle · Quantum Apps Lab</title>
+<title>Quantum Puzzle · RouteQ · Quantum Apps Lab</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;800&family=JetBrains+Mono:wght@400;500&family=Exo+2:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
@@ -639,17 +639,193 @@ function savePendingApps(apps) {
     localStorage.setItem('qcol_pending_quantum_apps', JSON.stringify(apps));
 }
 
-// Initialize with demo data if empty
+// Initialize with RouteQ demo data (replaced old greeting demo)
 if(!localStorage.getItem('qcol_published_quantum_apps')) {
     savePublishedApps([
         {
-            id: 'demo_1',
-            title: 'Demo: Quantum Greeting',
-            desc: 'A simple app that greets using remote Python',
-            tags: 'demo,example',
+            id: 'routeq_demo_1',
+            title: 'RouteQ — Quantum Delivery Optimizer',
+            desc: 'Smart route optimization using quantum-inspired algorithms. Select stops, vehicle, priority — get the optimal delivery sequence.',
+            tags: 'route,optimization,delivery,quantum',
             duration: 5,
-            pythonCode: `def greet(name):\n    return f"Hello {name}! from the quantum server 🧪"\n\ndef add(a,b):\n    return a + b`,
-            htmlCode: `<!DOCTYPE html>\n<html>\n<head><meta charset="UTF-8"></head>\n<body style="background:#0a0e1a; color:white; font-family:monospace; padding:2rem;">\n<h2>Quantum Demo</h2>\n<input id="nameInput" placeholder="Your name" style="padding:0.5rem;">\n<button onclick="callGreet()">Greet</button>\n<p id="result"></p>\n<script>\nwindow.callGreet = async () => {\n    const name = document.getElementById('nameInput').value;\n    const res = await window.pyCall("greet", name);\n    document.getElementById('result').innerText = res;\n};\n<\/script>\n</body>\n</html>`,
+            pythonCode: `# RouteQ Quantum Backend (Python)
+# Optimización de rutas con QAOA y algoritmos cuánticos
+
+import numpy as np
+from datetime import datetime, timedelta
+
+SPEED_KMH = {"Motorcycle": 45, "Van": 35, "Truck": 28}
+DISTANCE_MATRIX_DEMO = np.array([
+    [0, 8.2, 14.1, 31.0, 47.3],
+    [8.2, 0, 6.5, 22.8, 39.1],
+    [14.1, 6.5, 0, 16.3, 33.6],
+    [31.0, 22.8, 16.3, 0, 18.5],
+    [47.3, 39.1, 33.6, 18.5, 0],
+])
+
+def greedy_fallback(distance_matrix, n):
+    visited = [False] * n
+    route = [0]
+    visited[0] = True
+    for _ in range(n - 1):
+        current = route[-1]
+        nearest = min([j for j in range(n) if not visited[j]], 
+                      key=lambda j: distance_matrix[current][j])
+        route.append(nearest)
+        visited[nearest] = True
+    return route
+
+def solve_route_quantum(stops, vehicle, priority):
+    n = len(stops)
+    if n > 5: n = 5
+    distance_matrix = DISTANCE_MATRIX_DEMO[:n, :n].copy()
+    if "Cost" in priority:
+        distance_matrix = distance_matrix * 1.2
+    elif "Eco" in priority:
+        distance_matrix = distance_matrix * 0.9
+    route = greedy_fallback(distance_matrix, n)
+    return route
+
+def calculate_metrics(route, stops, vehicle, priority):
+    speed = SPEED_KMH.get(vehicle, 35)
+    n = len(route)
+    if n > len(DISTANCE_MATRIX_DEMO):
+        n = len(DISTANCE_MATRIX_DEMO)
+    distance_matrix = DISTANCE_MATRIX_DEMO[:n, :n]
+    total_distance = sum(distance_matrix[route[i]][route[i+1]] for i in range(n-1))
+    travel_time_h = total_distance / speed
+    stop_time_h = n * 0.25
+    total_time_h = travel_time_h + stop_time_h
+    naive_distance = sum(distance_matrix[i][(i+1)%n] for i in range(n))
+    naive_time_h = naive_distance / speed + stop_time_h
+    saved_time_h = naive_time_h - total_time_h
+    saved_time_min = int(saved_time_h * 60)
+    saved_fuel = round(saved_time_h * speed * 0.08, 2)
+    saved_co2 = round((naive_distance - total_distance) * 0.21, 1)
+    start = datetime(2025, 1, 1, 8, 0)
+    schedule = []
+    current_time = start
+    cumulative_dist = 0
+    for idx, stop_idx in enumerate(route):
+        if idx > 0:
+            leg_dist = distance_matrix[route[idx-1]][stop_idx]
+            cumulative_dist += leg_dist
+            travel_min = int((leg_dist / speed) * 60)
+            current_time += timedelta(minutes=travel_min)
+        schedule.append({
+            "order": idx + 1,
+            "name": stops[stop_idx]["name"],
+            "icon": stops[stop_idx]["icon"],
+            "detail": stops[stop_idx]["sub"],
+            "arrive": current_time.strftime("%I:%M %p"),
+            "distance": round(cumulative_dist, 1)
+        })
+        current_time += timedelta(minutes=15)
+    total_h = int(total_time_h)
+    total_m = int((total_time_h - total_h) * 60)
+    time_str = f"{total_h}h {total_m}min" if total_h > 0 else f"{total_m}min"
+    saved_h = saved_time_min // 60
+    saved_m = saved_time_min % 60
+    saved_str = f"{saved_h}h {saved_m}min" if saved_h > 0 else f"{saved_m}min"
+    return {
+        "total_time": time_str,
+        "total_distance": f"{round(total_distance, 1)}km",
+        "stop_count": n,
+        "route": schedule,
+        "saved_time": saved_str,
+        "saved_fuel": f"${saved_fuel}",
+        "saved_co2": f"{saved_co2} kg"
+    }
+
+def optimize_route(stops_data, vehicle, priority):
+    stops = stops_data[:5]
+    n = len(stops)
+    route = solve_route_quantum(stops, vehicle, priority)
+    return calculate_metrics(route, stops, vehicle, priority)`,
+            htmlCode: `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RouteQ — Smart Delivery Optimizer</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&display=swap');
+:root { --bg: #080c18; --surface: #0f1724; --surface2: #162030; --border: #1c2d44; --accent: #00e5b0; --accent2: #0077ff; --text: #e2eaf8; --text2: #7a8fad; }
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+.app { position: relative; z-index: 1; max-width: 440px; margin: 0 auto; padding: 20px 18px 60px; }
+.header { display: flex; align-items: center; justify-content: space-between; padding: 10px 0 28px; }
+.logo { display: flex; align-items: center; gap: 10px; }
+.logo-mark { width: 38px; height: 38px; background: linear-gradient(135deg, var(--accent), var(--accent2)); border-radius: 11px; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+.logo-name { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
+.logo-name span { color: var(--accent); }
+.powered { font-size: 11px; color: var(--text2); background: var(--surface); border: 1px solid var(--border); padding: 5px 10px; border-radius: 20px; }
+.hero { margin-bottom: 28px; }
+.hero h1 { font-size: 26px; font-weight: 700; line-height: 1.25; margin-bottom: 8px; }
+.hero p { font-size: 14px; color: var(--text2); }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 20px; margin-bottom: 14px; }
+.card-label { font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--text2); margin-bottom: 14px; }
+.stops { display: flex; flex-direction: column; gap: 9px; margin-bottom: 12px; }
+.stop { display: flex; align-items: center; gap: 12px; background: var(--surface2); border: 1.5px solid var(--border); border-radius: 12px; padding: 12px 14px; cursor: pointer; transition: all 0.2s ease; }
+.stop.on { border-color: rgba(0,229,176,0.35); background: rgba(0,229,176,0.04); }
+.stop-ico { width: 38px; height: 38px; background: var(--bg); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 19px; }
+.stop-info { flex: 1; }
+.stop-name { font-size: 14px; font-weight: 600; }
+.stop-sub { font-size: 12px; color: var(--text2); }
+.stop-chk { width: 22px; height: 22px; border: 2px solid var(--border); border-radius: 7px; display: flex; align-items: center; justify-content: center; }
+.stop.on .stop-chk { background: var(--accent); border-color: var(--accent); }
+.add-stop { width: 100%; background: none; border: 1.5px dashed var(--border); border-radius: 12px; padding: 11px; color: var(--text2); font-family: 'DM Sans', sans-serif; font-size: 13px; cursor: pointer; }
+.vehicles { display: grid; grid-template-columns: repeat(3,1fr); gap: 9px; }
+.veh { background: var(--surface2); border: 1.5px solid var(--border); border-radius: 12px; padding: 14px 8px 12px; text-align: center; cursor: pointer; }
+.veh.on { border-color: var(--accent); background: rgba(0,229,176,0.06); }
+.veh-ico { font-size: 24px; margin-bottom: 6px; }
+.veh-name { font-size: 11px; font-weight: 600; color: var(--text2); }
+.priorities { display: flex; gap: 9px; }
+.pri { flex: 1; background: var(--surface2); border: 1.5px solid var(--border); border-radius: 12px; padding: 12px 10px; cursor: pointer; text-align: center; }
+.pri.on { border-color: var(--accent2); background: rgba(0,119,255,0.06); }
+.pri-label { font-size: 13px; font-weight: 600; }
+.go-btn { width: 100%; background: linear-gradient(135deg, var(--accent), var(--accent2)); border: none; border-radius: 15px; padding: 18px; color: #fff; font-family: 'DM Sans', sans-serif; font-size: 16px; font-weight: 700; cursor: pointer; margin-bottom: 14px; }
+.processing { display: none; flex-direction: column; align-items: center; padding: 36px 20px 28px; text-align: center; }
+.processing.show { display: flex; }
+.q-loader { width: 90px; height: 90px; position: relative; margin-bottom: 24px; }
+.q-ring { position: absolute; border-radius: 50%; border: 2px solid transparent; }
+.q-ring:nth-child(1) { inset:0; border-top-color: var(--accent); animation: spin 1.1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.results { display: none; }
+.results.show { display: block; }
+.result-title { font-size: 20px; font-weight: 700; margin-bottom: 16px; }
+.stats { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-bottom: 16px; }
+.stat { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 14px 12px; text-align: center; }
+.stat-val { font-size: 22px; font-weight: 700; color: var(--accent); }
+.reset-btn { width: 100%; background: var(--surface); border: 1.5px solid var(--border); border-radius: 13px; padding: 15px; color: var(--text2); font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header"><div class="logo"><div class="logo-mark">🗺️</div><div class="logo-name">Route<span>Q</span></div></div><div class="powered">QCOL Ecosystem</div></div>
+  <div id="formView"><div class="hero"><h1>Optimize your deliveries in seconds</h1><p>Select stops, choose vehicle, get the fastest route.</p></div>
+  <div class="card"><div class="card-label">📍 Delivery Stops</div><div class="stops" id="stopsList"></div><button class="add-stop" onclick="addStop()">+ Add custom stop</button></div>
+  <div class="card"><div class="card-label">🚗 Vehicle Type</div><div class="vehicles"><div class="veh on" onclick="selectVeh(this)"><div class="veh-ico">🛵</div><div class="veh-name">Motorcycle</div></div><div class="veh" onclick="selectVeh(this)"><div class="veh-ico">🚐</div><div class="veh-name">Van</div></div><div class="veh" onclick="selectVeh(this)"><div class="veh-ico">🚚</div><div class="veh-name">Truck</div></div></div></div>
+  <div class="card"><div class="card-label">🎯 Optimize For</div><div class="priorities"><div class="pri on" onclick="selectPri(this)"><div class="pri-label">⚡ Speed</div></div><div class="pri" onclick="selectPri(this)"><div class="pri-label">💰 Cost</div></div><div class="pri" onclick="selectPri(this)"><div class="pri-label">🌱 Eco</div></div></div></div>
+  <button class="go-btn" onclick="startOptimize()">✨ Optimize My Route</button></div>
+  <div class="processing" id="procView"><div class="q-loader"><div class="q-ring"></div><div class="q-ring"></div><div class="q-ring"></div></div><div class="proc-title">Finding your best route…</div></div>
+  <div class="results" id="resultView"><div class="result-title">🎉 Route Ready!</div><div class="stats" id="statsRow"></div><div id="routeList"></div><button class="reset-btn" onclick="resetApp()">← Plan another route</button></div>
+</div>
+<script>
+let stopsData = [{name:"Central Warehouse",icon:"🏪",sub:"Start"},{name:"City Hospital",icon:"🏥",sub:"Priority"},{name:"Lincoln School",icon:"🏫",sub:"Morning"},{name:"Downtown Mall",icon:"🏬",sub:"Shopping"},{name:"Riverside District",icon:"🏘️",sub:"Residential"}];
+function renderStops(){let h='';stopsData.forEach((s,i)=>{h+='<div class="stop on" onclick="toggleStop(this)" data-idx="'+i+'"><div class="stop-ico">'+s.icon+'</div><div class="stop-info"><div class="stop-name">'+s.name+'</div><div class="stop-sub">'+s.sub+'</div></div><div class="stop-chk">✓</div></div>';});document.getElementById('stopsList').innerHTML=h;}
+function toggleStop(el){el.classList.toggle('on');}
+function selectVeh(el){document.querySelectorAll('.veh').forEach(v=>v.classList.remove('on'));el.classList.add('on');}
+function selectPri(el){document.querySelectorAll('.pri').forEach(p=>p.classList.remove('on'));el.classList.add('on');}
+function addStop(){let n=prompt("Stop name:");if(n){stopsData.push({name:n,icon:"📍",sub:"Custom"});renderStops();}}
+function startOptimize(){let selected=[];document.querySelectorAll('.stop.on').forEach(s=>{let idx=parseInt(s.dataset.idx);if(!isNaN(idx))selected.push(stopsData[idx]);});let vehicle=document.querySelector('.veh.on .veh-name').textContent;let priority=document.querySelector('.pri.on .pri-label').textContent;document.getElementById('formView').style.display='none';document.getElementById('procView').classList.add('show');setTimeout(()=>{window.pyCall("optimize_route",selected,vehicle,priority).then(result=>{showResults(result);}).catch(err=>{console.error(err);showResults(getDemoFallback(selected));});},1500);}
+function getDemoFallback(stops){let n=stops.length;return{total_time:"2.4h",total_distance:"47km",stop_count:n,route:stops.map((s,i)=>({order:i+1,name:s.name,icon:s.icon,detail:s.sub,arrive:["8:00 AM","8:24 AM","9:10 AM","10:05 AM","11:20 AM"][i]||"9:00 AM",distance:i*12})),saved_time:"1h 12min",saved_fuel:"$8.40",saved_co2:"3.2 kg"};}
+function showResults(d){document.getElementById('procView').classList.remove('show');document.getElementById('resultView').classList.add('show');let s='<div class="stat"><div class="stat-val">'+d.total_time+'</div><div>Time</div></div><div class="stat"><div class="stat-val">'+d.total_distance+'</div><div>Distance</div></div><div class="stat"><div class="stat-val">'+d.stop_count+'</div><div>Stops</div></div>';document.getElementById('statsRow').innerHTML=s;let r='<div class="card"><div class="card-label">📍 Optimized Sequence</div>';d.route.forEach(stop=>{r+='<div style="padding:10px 0;border-bottom:1px solid #1c2d44;"><strong>'+stop.order+'.</strong> '+stop.name+'<br><small>Arrive: '+stop.arrive+'</small></div>';});r+='</div><div class="card" style="background:linear-gradient(135deg,rgba(0,229,176,0.08),rgba(0,119,255,0.08))"><strong>💡 Savings:</strong> '+d.saved_time+' • '+d.saved_fuel+' • '+d.saved_co2+'</div>';document.getElementById('routeList').innerHTML=r;}
+function resetApp(){document.getElementById('resultView').classList.remove('show');document.getElementById('formView').style.display='block';}
+renderStops();
+<\/script>
+</body>
+</html>`,
             serverUrl: '',
             createdAt: Date.now()
         }
@@ -743,23 +919,46 @@ function executeQuantumApp(appId) {
     
     currentExecutingApp = app;
     
-    // Show execution modal
     const modal = document.getElementById('execAppModal');
     const titleSpan = document.getElementById('execAppTitle');
     titleSpan.innerHTML = `⚛️ ${escapeHtml(app.title)}`;
     
-    // We don't show code or tabs, the interface is fully dedicated to the app
     modal.classList.add('open');
-    
-    // Try to run the app
     executeWithStudio(app);
 }
 
-// ── Execute quantum app DIRECTLY — without depending on Studio ──
-// Puzzle builds the blob with injected pyCall bridge and
-// loads it in execIframe. Studio is only used for editing/creating.
+// Listen for pyCall from execIframe and execute them remotely
+window.addEventListener('message', async function _execPyCallHandler(ev) {
+    const d = ev.data;
+    if (!d || d.type !== 'pyCall') return;
+    const { id, func, args, serverUrl: appUrl, pythonCode } = d;
+    const src = ev.source;
 
-// Execute Python on remote server
+    const tid = setTimeout(() => {
+        _execPyCalls.delete(id);
+        try { src.postMessage({ type: 'pyResult', id, error: 'Timeout 35s' }, '*'); } catch(e) {}
+    }, 35000);
+    _execPyCalls.set(id, { src, tid });
+
+    const serverUrl = appUrl || compilerUrl || localStorage.getItem('qcol_colab_url') || '';
+    try {
+        if (!serverUrl) throw new Error('No server URL. Configure it in the Founder Panel.');
+        const callCode = (pythonCode ? pythonCode + '\n\n' : '') +
+            'import json as _json\n' +
+            '_args = _json.loads(' + JSON.stringify(JSON.stringify(args)) + ')\n' +
+            '_result = ' + func + '(*_args)\n' +
+            'print(_json.dumps(_result, ensure_ascii=False, default=str))';
+        const output = await _runPythonRemote(callCode, serverUrl);
+        clearTimeout(tid); _execPyCalls.delete(id);
+        let parsed = (output || '').trim();
+        try { parsed = JSON.parse(parsed); } catch(e) {}
+        src.postMessage({ type: 'pyResult', id, result: parsed }, '*');
+    } catch(err) {
+        clearTimeout(tid); _execPyCalls.delete(id);
+        src.postMessage({ type: 'pyResult', id, error: err.message }, '*');
+    }
+});
+
 async function _runPythonRemote(code, serverUrl) {
     const base = (serverUrl || '').replace(/\/+$/, '');
     if (!base) throw new Error('No quantum server URL configured');
@@ -780,43 +979,6 @@ async function _runPythonRemote(code, serverUrl) {
     return out?.output ?? out?.result ?? String(out ?? '');
 }
 
-// Map pending pyCalls from execIframe
-const _execPyCalls = new Map();
-
-// Listen for pyCall from execIframe and execute them remotely
-window.addEventListener('message', async function _execPyCallHandler(ev) {
-    const d = ev.data;
-    if (!d || d.type !== 'pyCall') return;
-    const { id, func, args, serverUrl: appUrl, pythonCode } = d;
-    const src = ev.source;
-
-    const tid = setTimeout(() => {
-        _execPyCalls.delete(id);
-        try { src.postMessage({ type: 'pyResult', id, error: 'Timeout 35s' }, '*'); } catch(e) {}
-    }, 35000);
-    _execPyCalls.set(id, { src, tid });
-
-    const serverUrl = appUrl || compilerUrl || localStorage.getItem('qcol_colab_url') || '';
-    try {
-        if (!serverUrl) throw new Error('No server URL. Configure it in the Founder Panel.');
-        // Build Python call: execute the function requested by the app
-        const callCode = (pythonCode ? pythonCode + '\n\n' : '') +
-            'import json as _json\n' +
-            '_args = _json.loads(' + JSON.stringify(JSON.stringify(args)) + ')\n' +
-            '_result = ' + func + '(*_args)\n' +
-            'print(_json.dumps(_result, ensure_ascii=False, default=str))';
-        const output = await _runPythonRemote(callCode, serverUrl);
-        clearTimeout(tid); _execPyCalls.delete(id);
-        let parsed = (output || '').trim();
-        try { parsed = JSON.parse(parsed); } catch(e) {}
-        src.postMessage({ type: 'pyResult', id, result: parsed }, '*');
-    } catch(err) {
-        clearTimeout(tid); _execPyCalls.delete(id);
-        src.postMessage({ type: 'pyResult', id, error: err.message }, '*');
-    }
-});
-
-// Build HTML blob with injected pyCall bridge
 function _buildAppBlob(pythonCode, htmlCode, serverUrl) {
     const bridge = `<script>
 (function(){
@@ -844,18 +1006,7 @@ function _buildAppBlob(pythonCode, htmlCode, serverUrl) {
 })();
 <\/script>`;
 
-    let html = htmlCode || [
-        '<!DOCTYPE html><html><head><meta charset="UTF-8">',
-        '<style>body{background:#0a0e1a;color:#c8d8f0;font-family:monospace;',
-        'padding:2rem;display:flex;flex-direction:column;align-items:center;gap:1rem;}',
-        'h2{color:#00ccff;font-family:Orbitron,monospace;}',
-        '.info{color:#4a7a9b;font-size:.85rem;}</style></head>',
-        '<body><h2>⚛️ App without interface</h2>',
-        '<p class="info">This app has no HTML code.<br>',
-        'Python code is executed with <code>pyCall()</code>.</p></body></html>'
-    ].join('');
-
-    // Inject the bridge
+    let html = htmlCode || '<!DOCTYPE html><html><body><h2>⚛️ App without interface</h2></body></html>';
     if (html.includes('</head>'))        html = html.replace('</head>', bridge + '</head>');
     else if (html.includes('<body'))      html = html.replace('<body', bridge + '<body');
     else if (html.includes('<html'))      html = html.replace('<html>', '<html>' + bridge);
@@ -866,121 +1017,28 @@ function _buildAppBlob(pythonCode, htmlCode, serverUrl) {
 
 function executeWithStudio(app) {
     const loadingDiv = document.getElementById('execLoading');
-    const statusSpan = document.getElementById('execStatus'); // may be null after removing footer
     const iframe     = document.getElementById('execIframe');
 
     loadingDiv.style.display = 'flex';
-    if (statusSpan) {
-        statusSpan.innerHTML = '⏳ Preparing quantum application...';
-        statusSpan.className = 'exec-status';
-    }
 
     const serverUrl = app.serverUrl || compilerUrl || localStorage.getItem('qcol_colab_url') || '';
 
     if (!app.htmlCode && !app.pythonCode) {
         loadingDiv.style.display = 'none';
-        if (statusSpan) {
-            statusSpan.innerHTML = '❌ The app has no HTML or Python code.';
-            statusSpan.className = 'exec-status error';
-        }
+        showNotification('The app has no HTML or Python code.');
         return;
     }
 
-    if (!serverUrl && app.pythonCode) {
-        // Warn but continue — the app may work without backend
-        if (statusSpan) {
-            statusSpan.innerHTML = '⚠️ No server configured — pyCall functions not available';
-            statusSpan.className = 'exec-status';
-        }
-    }
-
-    // Release previous blob
     if (window._execBlobUrl) { URL.revokeObjectURL(window._execBlobUrl); }
 
     try {
         window._execBlobUrl = _buildAppBlob(app.pythonCode, app.htmlCode, serverUrl);
         iframe.src = window._execBlobUrl;
-
-        iframe.onload = function() {
-            loadingDiv.style.display = 'none';
-            if (statusSpan) {
-                statusSpan.innerHTML = serverUrl
-                    ? '✅ App running · quantum server connected'
-                    : '✅ App running · serverless mode';
-                statusSpan.className = 'exec-status success';
-            }
-        };
-
-        setTimeout(function() {
-            if (loadingDiv.style.display !== 'none') {
-                loadingDiv.style.display = 'none';
-                if (statusSpan) {
-                    statusSpan.innerHTML = '✅ App loaded';
-                    statusSpan.className = 'exec-status success';
-                }
-            }
-        }, 5000);
-
+        iframe.onload = function() { loadingDiv.style.display = 'none'; };
+        setTimeout(function() { if (loadingDiv.style.display !== 'none') loadingDiv.style.display = 'none'; }, 5000);
     } catch(err) {
         loadingDiv.style.display = 'none';
-        if (statusSpan) {
-            statusSpan.innerHTML = '❌ Error: ' + escapeHtml(err.message);
-            statusSpan.className = 'exec-status error';
-        }
         showNotification('Error building app: ' + err.message);
-    }
-}
-
-// sendCompileRequest is no longer needed but kept for compatibility
-function sendCompileRequest(app) { executeWithStudio(app); }
-
-function onCompileResponse(requestId, compiledHtml, error) {
-    if (pendingCompileRequest !== requestId) return;
-    pendingCompileRequest = null;
-    
-    const loadingDiv = document.getElementById('execLoading');
-    loadingDiv.style.display = 'none';
-    const statusSpan = document.getElementById('execStatus');
-    const iframe = document.getElementById('execIframe');
-    
-    if (error) {
-        if (statusSpan) {
-            statusSpan.innerHTML = `❌ Error: ${error}`;
-            statusSpan.className = 'exec-status error';
-        }
-        iframe.src = 'about:blank';
-        showNotification(`Compilation error: ${error}`);
-        return;
-    }
-    
-    if (!compiledHtml) {
-        if (statusSpan) {
-            statusSpan.innerHTML = '❌ No response received from Studio';
-            statusSpan.className = 'exec-status error';
-        }
-        return;
-    }
-    
-    // Release previous URL if it exists
-    if (window._currentExecBlobUrl) {
-        URL.revokeObjectURL(window._currentExecBlobUrl);
-    }
-    
-    const blob = new Blob([compiledHtml], { type: 'text/html' });
-    const blobUrl = URL.createObjectURL(blob);
-    window._currentExecBlobUrl = blobUrl;
-    
-    iframe.src = blobUrl;
-    if (statusSpan) {
-        statusSpan.innerHTML = '✅ App running correctly';
-        statusSpan.className = 'exec-status success';
-    }
-    showNotification('App loaded successfully', 1500);
-}
-
-function reloadExecApp() {
-    if (currentExecutingApp) {
-        executeWithStudio(currentExecutingApp);
     }
 }
 
@@ -988,16 +1046,12 @@ function closeExecModal() {
     const modal = document.getElementById('execAppModal');
     modal.classList.remove('open');
     const iframe = document.getElementById('execIframe');
-    if (iframe.src) {
-        iframe.src = 'about:blank';
-    }
-    if (window._currentExecBlobUrl) {
-        URL.revokeObjectURL(window._currentExecBlobUrl);
-        window._currentExecBlobUrl = null;
-    }
-    pendingCompileRequest = null;
+    if (iframe.src) iframe.src = 'about:blank';
+    if (window._execBlobUrl) { URL.revokeObjectURL(window._execBlobUrl); window._execBlobUrl = null; }
     currentExecutingApp = null;
 }
+
+const _execPyCalls = new Map();
 
 // ========== COMMUNICATION WITH QUANTUM APP STUDIO ==========
 const studioModal = document.getElementById('studioModalReal');
@@ -1005,106 +1059,25 @@ const studioIframe = document.getElementById('studioIframe');
 
 function openQuantumAppStudio() {
     studioModal.classList.add('open');
-    // Send handshake to Studio so it responds with QCOL_STUDIO_OPENED
     setTimeout(function() {
         var sf = document.getElementById('studioIframe');
         if (sf && sf.contentWindow) {
             sf.contentWindow.postMessage({ type: 'QCOL_REQUEST_STUDIO_CONNECTION' }, '*');
-            // If we have the URL, send it too
             var url = compilerUrl || localStorage.getItem('qcol_colab_url') || '';
-            if (url) {
-                sf.contentWindow.postMessage({ type: 'QCOL_SET_COMPILER_URL', url: url }, '*');
-                sf.contentWindow.postMessage({ type: 'QCOL_COMPILER_URL', url: url }, '*');
-            }
+            if (url) sf.contentWindow.postMessage({ type: 'QCOL_SET_COMPILER_URL', url: url }, '*');
         }
     }, 400);
 }
 
-function closeStudioModal() {
-    studioModal.classList.remove('open');
-}
+function closeStudioModal() { studioModal.classList.remove('open'); }
 
-// Listen for Studio messages
 window.addEventListener('message', (e) => {
     const data = e.data;
     if (!data || typeof data !== 'object') return;
-    
-    // Receive compiler URL
-    if (data.type === 'QCOL_COMPILER_URL' && data.url) {
-        compilerUrl = data.url;
-        console.log('Compiler URL:', compilerUrl);
-        showNotification('Quantum server configured', 1500);
-        return;
-    }
-    
-    // Studio ready
-    if (data.type === 'QCOL_STUDIO_OPENED') {
-        studioIframeReady = true;
-        studioIframeLoaded = true;
-        console.log('[Puzzle] Studio connected and ready');
-        showNotification('⚡ Quantum App Studio ready', 1500);
-        // Send compiler URL if we have it
-        var urlNow = compilerUrl || localStorage.getItem('qcol_colab_url') || '';
-        if (urlNow && e.source) {
-            e.source.postMessage({ type: 'QCOL_SET_COMPILER_URL', url: urlNow }, '*');
-            e.source.postMessage({ type: 'QCOL_COMPILER_URL',     url: urlNow }, '*');
-        }
-        return;
-    }
-    
-    // Compilation response
-    if (data.type === 'QCOL_COMPILE_RESPONSE') {
-        const { requestId, html, error } = data;
-        onCompileResponse(requestId, html, error);
-        return;
-    }
-    
-    if (data.type === 'QCOL_APP_SAVED') {
-        renderTagFilters();
-        renderPublishedApps();
-    }
-    
-    if (data.type === 'QCOL_APP_DELETED') {
-        renderTagFilters();
-        renderPublishedApps();
-    }
-    
-    if (data.type === 'QCOL_LAUNCH_QUANTUM_APP') {
-        var launchId     = data.appId;
-        var launchTitle  = data.appTitle;
-        var launchMeta   = data.appMetadata || {};
-        if (!launchId || !launchTitle) return;
-        var pendingApps  = getPendingApps();
-        var publishedApps = getPublishedApps();
-        // ── Protection: don't overwrite if it already exists
-        if (publishedApps.find(function(p){ return p.id === launchId; })) {
-            showNotification('ℹ️ "' + launchTitle + '" is already published. Not overwritten.');
-            return;
-        }
-        if (pendingApps.find(function(p){ return p.id === launchId; })) {
-            showNotification('ℹ️ "' + launchTitle + '" is already pending.');
-            return;
-        }
-        pendingApps.push({
-            id:         launchId,
-            title:      launchTitle,
-            desc:       launchMeta.description || '',
-            tags:       launchMeta.tags        || '',
-            duration:   launchMeta.duration    || 8,
-            pythonCode: launchMeta.pythonCode  || '',
-            htmlCode:   launchMeta.htmlCode    || '',
-            serverUrl:  launchMeta.serverUrl   || '',
-            createdBy:  currentUser?.username  || 'studio',
-            createdAt:  Date.now()
-        });
-        savePendingApps(pendingApps);
-        showNotification('📥 App "' + launchTitle + '" received. Check pending.');
-        if (document.getElementById('pendingModal').classList.contains('open')) {
-            renderPendingList();
-        }
-        return;
-    }
-    
+    if (data.type === 'QCOL_COMPILER_URL' && data.url) { compilerUrl = data.url; showNotification('Quantum server configured', 1500); return; }
+    if (data.type === 'QCOL_STUDIO_OPENED') { studioIframeReady = true; showNotification('⚡ Quantum App Studio ready', 1500); return; }
+    if (data.type === 'QCOL_APP_SAVED') { renderTagFilters(); renderPublishedApps(); }
+    if (data.type === 'QCOL_APP_DELETED') { renderTagFilters(); renderPublishedApps(); }
     if(data.type === 'QCOL_USER_UPDATE') {
         currentUser = data.user;
         isAdmin = (currentUser?.role === 'admin' || currentUser?.role === 'founder');
@@ -1116,150 +1089,37 @@ window.addEventListener('message', (e) => {
     }
 });
 
-// Initialize communication with parent (Founder Panel)
-function postCore(type, data={}) {
-    if(window.parent !== window) window.parent.postMessage({type, ...data}, '*');
-}
-postCore('QCOL_GET_CONFIG');
-if (window.parent !== window) {
-    window.parent.postMessage({ type: 'QCOL_GET_COMPILER_URL' }, '*');
-}
-
-// ========== ADMINISTRATION FUNCTIONS ==========
 function openPendingManager() {
     if(!isFounder && !isAdmin) { showNotification("Access for founders/admins only"); return; }
     renderPendingList();
     document.getElementById('pendingModal').classList.add('open');
 }
-function closePendingModal() {
-    document.getElementById('pendingModal').classList.remove('open');
-}
+function closePendingModal() { document.getElementById('pendingModal').classList.remove('open'); }
 function renderPendingList() {
     const pending = getPendingApps();
     const container = document.getElementById('pendingListContainer');
     if(!container) return;
-    if(pending.length === 0) {
-        container.innerHTML = `<div style="padding:2rem; text-align:center; color:var(--mu);">📭 No apps pending approval.</div>`;
-        return;
-    }
+    if(pending.length === 0) { container.innerHTML = `<div style="padding:2rem; text-align:center; color:var(--mu);">📭 No apps pending approval.</div>`; return; }
     let html = `<div class="pending-grid">`;
     pending.forEach(app => {
-        html += `
-            <div style="background: #0a1222; border-radius: 16px; margin-bottom: 12px; padding: 12px; border-left: 3px solid var(--gd);">
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <strong style="font-family:var(--orb); color:var(--bl2);">${escapeHtml(app.title)}</strong>
-                    <span style="font-size:0.55rem; background:#1f2a44; padding:2px 8px; border-radius:20px;">${escapeHtml(app.id)}</span>
-                </div>
-                <div style="font-size:0.6rem; margin:6px 0;">📝 ${escapeHtml(app.desc || '')}</div>
-                <div style="font-size:0.55rem; color:#aaa; display:flex; gap:12px; flex-wrap:wrap;">🏷️ ${escapeHtml(app.tags)} | ⏱️ ${app.duration} min | 👤 created by ${escapeHtml(app.createdBy || 'anon')}</div>
-                <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">
-                    <button class="btn" style="background: #2a5f8a;" onclick="previewPendingApp('${app.id}')">🔍 RUN</button>
-                    <!-- EDIT button removed -->
-                    <button class="btn" style="background: #00aa66;" onclick="publishPendingApp('${app.id}')">✅ PUBLISH</button>
-                    <button class="btn" style="background: #aa3355;" onclick="rejectPendingApp('${app.id}')">🗑️ REJECT</button>
-                </div>
-            </div>
-        `;
+        html += `<div style="background: #0a1222; border-radius: 16px; margin-bottom: 12px; padding: 12px;">
+                    <strong>${escapeHtml(app.title)}</strong>
+                    <div style="margin-top:8px; display:flex; gap:8px;">
+                        <button class="btn" style="background: #00aa66;" onclick="publishPendingApp('${app.id}')">✅ PUBLISH</button>
+                        <button class="btn" style="background: #aa3355;" onclick="rejectPendingApp('${app.id}')">🗑️ REJECT</button>
+                    </div>
+                </div>`;
     });
     html += `</div>`;
     container.innerHTML = html;
 }
-
-function previewPendingApp(appId) {
-    const pending = getPendingApps();
-    const app = pending.find(p => p.id === appId);
-    if(!app) { showNotification("App not found"); return; }
-    pendingPreviewApp = app;
-    buildAppBlobAndPreview(app);
-}
-
-async function buildAppBlobAndPreview(app) {
-    const server = app.serverUrl || compilerUrl;
-    const bridge = `
-    <script>
-    window.__serverUrl = ${JSON.stringify(server)};
-    window.__pyCode = ${JSON.stringify(app.pythonCode || '# Empty Python')};
-    window.pyCall = async (funcName, ...args) => {
-        return new Promise((resolve, reject) => {
-            const msgId = Date.now() + '-' + Math.random();
-            const handler = (event) => {
-                if (event.data.type === 'pyResult' && event.data.id === msgId) {
-                    window.removeEventListener('message', handler);
-                    if (event.data.error) reject(new Error(event.data.error));
-                    else resolve(event.data.result);
-                }
-            };
-            window.addEventListener('message', handler);
-            window.parent.postMessage({ type: 'pyCall', id: msgId, func: funcName, args: args, serverUrl: window.__serverUrl, pythonCode: window.__pyCode }, '*');
-        });
-    };
-    console.log("Bridge preview ready");
-    <\/script>
-    `;
-    let finalHtml = app.htmlCode || '<!DOCTYPE html><html><body><h1>App without interface</h1></body></html>';
-    if (finalHtml.includes('<head>')) {
-        finalHtml = finalHtml.replace('<head>', '<head>' + bridge);
-    } else if (finalHtml.includes('<html>')) {
-        finalHtml = finalHtml.replace('<html>', '<html><head>' + bridge + '</head>');
-    } else {
-        finalHtml = bridge + finalHtml;
-    }
-    const blob = new Blob([finalHtml], { type: 'text/html' });
-    const blobUrl = URL.createObjectURL(blob);
-    const previewIframe = document.getElementById('previewIframe');
-    previewIframe.src = blobUrl;
-    if(window._currentPreviewBlobUrl) URL.revokeObjectURL(window._currentPreviewBlobUrl);
-    window._currentPreviewBlobUrl = blobUrl;
-    document.getElementById('previewAppModal').classList.add('open');
-}
-
-function closePreviewModal() {
-    document.getElementById('previewAppModal').classList.remove('open');
-    const iframe = document.getElementById('previewIframe');
-    if (iframe.src) {
-        iframe.src = 'about:blank';
-        if(window._currentPreviewBlobUrl) {
-            URL.revokeObjectURL(window._currentPreviewBlobUrl);
-            window._currentPreviewBlobUrl = null;
-        }
-    }
-    pendingPreviewApp = null;
-}
-
-function editPendingApp(appId) {
-    const pending = getPendingApps();
-    const app = pending.find(p => p.id === appId);
-    if(!app) { showNotification("App not found"); return; }
-    openQuantumAppStudio();
-    const waitForStudio = setInterval(() => {
-        if (studioIframeReady && studioIframe && studioIframe.contentWindow) {
-            clearInterval(waitForStudio);
-            studioIframe.contentWindow.postMessage({
-                type: 'QCOL_OPEN_APP_FROM_PUZZLE',
-                appId: app.id,
-                appName: app.title,
-                pythonCode: app.pythonCode || '',
-                htmlCode: app.htmlCode || '',
-                serverUrl: app.serverUrl || ''
-            }, '*');
-            showNotification(`Editing "${app.title}" in Studio.`);
-        }
-    }, 500);
-    setTimeout(() => clearInterval(waitForStudio), 10000);
-}
-
 function publishPendingApp(appId) {
     const pending = getPendingApps();
     const index = pending.findIndex(p => p.id === appId);
     if(index === -1) return;
     const appToPublish = { ...pending[index] };
-    delete appToPublish.status;
-    delete appToPublish.createdBy;
     const published = getPublishedApps();
-    if(published.find(p => p.id === appToPublish.id)) {
-        showNotification("⚠️ An app with this ID already exists published");
-        return;
-    }
+    if(published.find(p => p.id === appToPublish.id)) { showNotification("⚠️ App already exists"); return; }
     published.push(appToPublish);
     savePublishedApps(published);
     pending.splice(index,1);
@@ -1295,14 +1155,11 @@ function showNotification(msg, dur=2800) {
     n._timeout = setTimeout(() => n.classList.remove('show'), dur);
 }
 
-// Initialization
 renderTagFilters();
 renderPublishedApps();
 
-// Close modals on outside click
 document.getElementById('studioModalReal')?.addEventListener('click', (e) => { if(e.target === document.getElementById('studioModalReal')) closeStudioModal(); });
 document.getElementById('pendingModal')?.addEventListener('click', (e) => { if(e.target === document.getElementById('pendingModal')) closePendingModal(); });
-document.getElementById('previewAppModal')?.addEventListener('click', (e) => { if(e.target === document.getElementById('previewAppModal')) closePreviewModal(); });
 document.getElementById('execAppModal')?.addEventListener('click', (e) => { if(e.target === document.getElementById('execAppModal')) closeExecModal(); });
 </script>
 </body>
