@@ -632,6 +632,14 @@ body::before{content:'';position:fixed;inset:0;
 
 </div>
 
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!--  MÓDULO DE SINCRONIZACIÓN EN LA NUBE (COMPLETAMENTE INVISIBLE) -->
+<!--  Este script se ejecuta en segundo plano y sincroniza automáticamente -->
+<!--  los datos públicos del ecosistema (proyectos, biblioteca, puzzle, etc.) -->
+<!--  sin necesidad de modificar ningún módulo existente.               -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+<script src="qcol-cloud-sync.js"></script>
+
 <script type="module">
   import { EditorView, basicSetup } from 'codemirror';
   import { markdown } from '@codemirror/lang-markdown';
