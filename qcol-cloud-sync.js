@@ -1,16 +1,15 @@
 // ============================================================
 //  QCOL Cloud Sync — Sincronización con GitHub
-//  Versión 3.0 — MULTIDISPOSITIVO
+//  Versión 4.0 — FLUJO COMPLETO DE PUBLICACIÓN DE APPS
 //  (c) 2026 QCOL Ecosystem
 // ============================================================
 (function() {
     'use strict';
 
     // ──────────────────────────────────────────────────────────
-    // 1. CONFIGURACIÓN (usa GitHub como backend)
+    // 1. CONFIGURACIÓN
     // ──────────────────────────────────────────────────────────
 
-    // Leer configuración de GitHub desde localStorage (configurada en Founder Panel)
     function getGitHubConfig() {
         try {
             const gh = JSON.parse(localStorage.getItem('qcol_gh') || '{}');
@@ -34,18 +33,11 @@
 
     // ═══ CLAVES PÚBLICAS QUE SE SINCRONIZAN ═══
     const PUBLIC_KEYS = [
-        // Proyectos y biblioteca
         'qcol_projs',
         'qcol_library',
-        
-        // Apps de Quantum Puzzle
-        'qcol_published_quantum_apps',
-        'qcol_pending_quantum_apps',
-        
-        // Apps de Quantum App Studio
-        'quantum_apps_repo_v2',
-        
-        // Configuración del ecosistema
+        'qcol_published_quantum_apps',    // Apps aprobadas (visibles para todos)
+        'qcol_pending_quantum_apps',      // Apps pendientes de aprobación
+        'quantum_apps_repo_v2',           // Apps locales del usuario (Studio)
         'qcol_colab_url',
         'qcol_ai',
         'qcol_gh',
@@ -62,11 +54,10 @@
     let isSyncing = false;
     let lastSyncTimestamp = null;
     let syncTimeout = null;
-    let isProcessingSync = false;
     let currentSha = null;
 
     // ──────────────────────────────────────────────────────────
-    // 3. FUNCIONES DE LECTURA/ESCRITURA DE DATOS
+    // 3. FUNCIONES DE LECTURA/ESCRITURA
     // ──────────────────────────────────────────────────────────
 
     function safeParse(key, fallback) {
@@ -79,12 +70,12 @@
     }
 
     function extractPublicData() {
-        const data = {
+        return {
             projects: safeParse('qcol_projs', []),
             library: safeParse('qcol_library', []),
-            puzzle: safeParse('qcol_published_quantum_apps', []),
-            pending: safeParse('qcol_pending_quantum_apps', []),
-            quantum_apps: safeParse('quantum_apps_repo_v2', []),
+            puzzle: safeParse('qcol_published_quantum_apps', []),    // APROBADAS
+            pending: safeParse('qcol_pending_quantum_apps', []),     // PENDIENTES
+            quantum_apps: safeParse('quantum_apps_repo_v2', []),     // LOCALES (Studio)
             config: {
                 colab_url: localStorage.getItem('qcol_colab_url') || '',
                 ai: safeParse('qcol_ai', {}),
@@ -96,47 +87,178 @@
             },
             timestamp: new Date().toISOString(),
             device: navigator.userAgent || 'unknown',
-            version: '3.0.0'
+            version: '4.0.0'
         };
-        return data;
     }
 
-    // ═══ Sincroniza apps entre Studio y Puzzle ═══
+    // ═══ OBTENER USUARIO ACTUAL ═══
+    function getCurrentUser() {
+        try {
+            const saved = localStorage.getItem('qcol_cur_user');
+            return saved ? JSON.parse(saved) : null;
+        } catch(e) {
+            return null;
+        }
+    }
+
+    // ═══ Sincroniza apps locales con pendientes/publicadas ═══
     function syncAppsBetweenKeys() {
         try {
             const studioApps = safeParse('quantum_apps_repo_v2', []);
             let publishedApps = safeParse('qcol_published_quantum_apps', []);
+            let pendingApps = safeParse('qcol_pending_quantum_apps', []);
             
             const publishedMap = {};
             publishedApps.forEach(app => { publishedMap[app.id] = app; });
             
+            const pendingMap = {};
+            pendingApps.forEach(app => { pendingMap[app.id] = app; });
+            
             let updated = false;
+            
+            // Para cada app del Studio, verificar si ya está en pendientes o publicadas
             studioApps.forEach(app => {
-                if (!publishedMap[app.id]) {
-                    publishedApps.push(app);
-                    updated = true;
-                } else {
-                    const existing = publishedMap[app.id];
+                // Si ya está publicada, no hacer nada
+                if (publishedMap[app.id]) return;
+                
+                // Si ya está pendiente, actualizar solo si cambió
+                if (pendingMap[app.id]) {
+                    const existing = pendingMap[app.id];
                     if (JSON.stringify(existing) !== JSON.stringify(app)) {
-                        const idx = publishedApps.findIndex(p => p.id === app.id);
+                        const idx = pendingApps.findIndex(p => p.id === app.id);
                         if (idx >= 0) {
-                            publishedApps[idx] = app;
+                            pendingApps[idx] = { ...app, status: 'pending', updated: new Date().toISOString() };
                             updated = true;
                         }
                     }
+                    return;
+                }
+                
+                // Nueva app: agregar a pendientes (solo si tiene nombre y código)
+                if (app.name && (app.pythonCode || app.htmlCode)) {
+                    pendingApps.push({
+                        ...app,
+                        status: 'pending',
+                        submittedBy: getCurrentUser()?.username || 'anonymous',
+                        submittedAt: new Date().toISOString()
+                    });
+                    updated = true;
                 }
             });
             
             if (updated) {
-                localStorage.setItem('qcol_published_quantum_apps', JSON.stringify(publishedApps));
-                console.log('[QCOL Cloud] 🔄 Apps sincronizadas entre Studio y Puzzle:', publishedApps.length);
+                localStorage.setItem('qcol_pending_quantum_apps', JSON.stringify(pendingApps));
+                console.log('[QCOL Cloud] 📋 Apps pendientes actualizadas:', pendingApps.length);
             }
+            
             return updated;
         } catch(e) {
             console.warn('[QCOL Cloud] ⚠️ Error sincronizando apps:', e.message);
             return false;
         }
     }
+
+    // ═══ PUBLICAR APP (Admin/Founder) ═══
+    window.publishApp = function(appId) {
+        const pendingApps = safeParse('qcol_pending_quantum_apps', []);
+        const publishedApps = safeParse('qcol_published_quantum_apps', []);
+        
+        const idx = pendingApps.findIndex(p => p.id === appId);
+        if (idx === -1) {
+            console.warn('[QCOL Cloud] ⚠️ App no encontrada en pendientes');
+            return false;
+        }
+        
+        const app = pendingApps[idx];
+        
+        // Verificar que no esté ya publicada
+        if (publishedApps.find(p => p.id === appId)) {
+            console.warn('[QCOL Cloud] ⚠️ App ya está publicada');
+            return false;
+        }
+        
+        // Mover a publicadas
+        publishedApps.push({
+            ...app,
+            status: 'published',
+            publishedAt: new Date().toISOString(),
+            publishedBy: getCurrentUser()?.username || 'admin'
+        });
+        
+        // Eliminar de pendientes
+        pendingApps.splice(idx, 1);
+        
+        localStorage.setItem('qcol_published_quantum_apps', JSON.stringify(publishedApps));
+        localStorage.setItem('qcol_pending_quantum_apps', JSON.stringify(pendingApps));
+        
+        console.log('[QCOL Cloud] ✅ App publicada:', app.name);
+        
+        // Notificar y sincronizar
+        window.dispatchEvent(new CustomEvent('qcol-apps-updated'));
+        scheduleSync();
+        
+        return true;
+    };
+
+    // ═══ RECHAZAR APP (Admin/Founder) ═══
+    window.rejectApp = function(appId) {
+        const pendingApps = safeParse('qcol_pending_quantum_apps', []);
+        
+        const idx = pendingApps.findIndex(p => p.id === appId);
+        if (idx === -1) {
+            console.warn('[QCOL Cloud] ⚠️ App no encontrada en pendientes');
+            return false;
+        }
+        
+        // Eliminar de pendientes
+        pendingApps.splice(idx, 1);
+        localStorage.setItem('qcol_pending_quantum_apps', JSON.stringify(pendingApps));
+        
+        console.log('[QCOL Cloud] 🗑️ App rechazada:', appId);
+        window.dispatchEvent(new CustomEvent('qcol-apps-updated'));
+        scheduleSync();
+        
+        return true;
+    };
+
+    // ═══ SUBIR APP MANUALMENTE A PENDIENTES ═══
+    window.submitAppToPending = function(appId) {
+        const studioApps = safeParse('quantum_apps_repo_v2', []);
+        const pendingApps = safeParse('qcol_pending_quantum_apps', []);
+        const publishedApps = safeParse('qcol_published_quantum_apps', []);
+        
+        const app = studioApps.find(a => a.id === appId);
+        if (!app) {
+            console.warn('[QCOL Cloud] ⚠️ App no encontrada en Studio');
+            return false;
+        }
+        
+        // Verificar si ya está pendiente o publicada
+        if (pendingApps.find(p => p.id === appId)) {
+            console.warn('[QCOL Cloud] ⚠️ App ya está en pendientes');
+            return false;
+        }
+        
+        if (publishedApps.find(p => p.id === appId)) {
+            console.warn('[QCOL Cloud] ⚠️ App ya está publicada');
+            return false;
+        }
+        
+        pendingApps.push({
+            ...app,
+            status: 'pending',
+            submittedBy: getCurrentUser()?.username || 'anonymous',
+            submittedAt: new Date().toISOString()
+        });
+        
+        localStorage.setItem('qcol_pending_quantum_apps', JSON.stringify(pendingApps));
+        
+        console.log('[QCOL Cloud] 📤 App enviada a pendientes:', app.name);
+        window.dispatchEvent(new CustomEvent('qcol-apps-updated'));
+        scheduleSync();
+        
+        return true;
+    };
 
     function applyCloudData(cloudData) {
         if (!cloudData) return false;
@@ -167,8 +289,8 @@
             }
         }
 
-        // ═══ Sincronizar apps entre Studio y Puzzle ═══
-        if (cloudData.quantum_apps !== undefined || cloudData.puzzle !== undefined) {
+        // ═══ Sincronizar apps ═══
+        if (cloudData.quantum_apps !== undefined || cloudData.puzzle !== undefined || cloudData.pending !== undefined) {
             const syncResult = syncAppsBetweenKeys();
             if (syncResult) updated = true;
         }
@@ -218,7 +340,7 @@
         const config = getGitHubConfig();
         
         if (!config.token) {
-            console.warn('[QCOL Cloud] ⚠️ Token de GitHub no configurado. Usa el Panel Fundador → GitHub para configurarlo.');
+            console.warn('[QCOL Cloud] ⚠️ Token de GitHub no configurado.');
             return false;
         }
 
@@ -232,7 +354,6 @@
                 branch: config.branch
             };
 
-            // Si tenemos SHA, actualizar el archivo existente
             if (currentSha) {
                 body.sha = currentSha;
             }
@@ -256,7 +377,7 @@
             const result = await response.json();
             currentSha = result.content.sha;
             
-            console.log('[QCOL Cloud] ✅ Datos subidos a GitHub:', result.content.path);
+            console.log('[QCOL Cloud] ✅ Datos subidos a GitHub');
             return true;
         } catch (error) {
             console.warn('[QCOL Cloud] ⚠️ Error subiendo a GitHub:', error.message);
@@ -269,9 +390,7 @@
         
         try {
             const url = getApiUrl(config);
-            const headers = {
-                'Accept': 'application/vnd.github.v3+json'
-            };
+            const headers = { 'Accept': 'application/vnd.github.v3+json' };
             
             if (config.token) {
                 headers['Authorization'] = `token ${config.token}`;
@@ -291,14 +410,12 @@
             const result = await response.json();
             currentSha = result.sha;
 
-            // Decodificar contenido
             const content = atob(result.content.replace(/\n/g, ''));
             const data = JSON.parse(content);
 
-            // Aplicar datos
             const updated = applyCloudData(data);
             if (updated) {
-                console.log('[QCOL Cloud] ✅ Datos descargados de GitHub:', result.path);
+                console.log('[QCOL Cloud] ✅ Datos descargados de GitHub');
             }
             return true;
         } catch (error) {
@@ -358,20 +475,12 @@
         }
     };
 
-    const originalRemoveItem = localStorage.removeItem;
-    localStorage.removeItem = function(key) {
-        originalRemoveItem.call(this, key);
-        if (PUBLIC_KEYS.includes(key)) {
-            scheduleSync();
-        }
-    };
-
     function scheduleSync() {
         if (syncTimeout) clearTimeout(syncTimeout);
         syncTimeout = setTimeout(() => {
             fullSync();
             syncTimeout = null;
-        }, 2000); // 2 segundos de debounce
+        }, 2000);
     }
 
     // ──────────────────────────────────────────────────────────
@@ -382,41 +491,43 @@
         const data = e.data;
         if (!data || typeof data !== 'object') return;
         
-        if (data.type === 'QCOL_SYNC_APPS' || data.type === 'QCOL_APP_SAVED' || data.type === 'QCOL_APP_PUBLISHED') {
+        if (data.type === 'QCOL_SYNC_APPS' || data.type === 'QCOL_APP_SAVED' || 
+            data.type === 'QCOL_APP_PUBLISHED' || data.type === 'QCOL_APP_SUBMITTED') {
             setTimeout(() => {
                 syncAppsBetweenKeys();
                 fullSync();
             }, 500);
         }
         
-        if (data.type === 'QCOL_APP_PUBLISHED' && data.app) {
-            const studioApps = safeParse('quantum_apps_repo_v2', []);
-            const existing = studioApps.findIndex(a => a.id === data.app.id);
-            if (existing === -1) {
-                studioApps.push(data.app);
-                localStorage.setItem('quantum_apps_repo_v2', JSON.stringify(studioApps));
-                scheduleSync();
-            }
+        // Publicar app (Admin/Founder)
+        if (data.type === 'QCOL_APPROVE_APP' && data.appId) {
+            window.publishApp(data.appId);
+        }
+        
+        // Rechazar app (Admin/Founder)
+        if (data.type === 'QCOL_REJECT_APP' && data.appId) {
+            window.rejectApp(data.appId);
+        }
+        
+        // Subir app a pendientes (Usuario)
+        if (data.type === 'QCOL_SUBMIT_APP' && data.appId) {
+            window.submitAppToPending(data.appId);
         }
     });
 
     // ──────────────────────────────────────────────────────────
-    // 8. SINCORNIZACIÓN PERIÓDICA
+    // 8. SINCRONIZACIÓN PERIÓDICA
     // ──────────────────────────────────────────────────────────
 
     setInterval(() => {
         if (!isSyncing) {
             syncAppsBetweenKeys();
-            // Verificar si hay cambios en GitHub
             downloadFromGitHub().then(() => {
-                // Si hubo cambios, subir los locales también
-                if (localStorage.getItem('_qcol_cloud_timestamp')) {
-                    const data = extractPublicData();
-                    uploadToGitHub(data);
-                }
+                const data = extractPublicData();
+                uploadToGitHub(data);
             });
         }
-    }, 30000); // Cada 30 segundos
+    }, 30000);
 
     // ──────────────────────────────────────────────────────────
     // 9. INICIALIZACIÓN
@@ -424,9 +535,8 @@
 
     async function init() {
         console.log('[QCOL Cloud] 🚀 Inicializando sincronización con GitHub...');
-        console.log('[QCOL Cloud] 📋 Claves sincronizadas:', PUBLIC_KEYS);
+        console.log('[QCOL Cloud] 📋 Flujo de publicación de apps activado');
 
-        // Verificar configuración de GitHub
         const config = getGitHubConfig();
         if (!config.token) {
             console.warn('[QCOL Cloud] ⚠️ Token de GitHub no configurado.');
@@ -435,60 +545,65 @@
             console.log('[QCOL Cloud] ✅ GitHub configurado:', config.owner + '/' + config.repo);
         }
 
-        // Sincronizar apps localmente
         syncAppsBetweenKeys();
-
-        // Descargar datos iniciales desde GitHub
         await downloadFromGitHub();
-
-        // Sincronizar apps localmente (después de descargar)
         syncAppsBetweenKeys();
 
-        // Subir datos locales a GitHub (si no existen)
         const data = extractPublicData();
         await uploadToGitHub(data);
 
-        // Escuchar eventos de apps
         window.addEventListener('qcol-apps-updated', function() {
             scheduleSync();
         });
 
         console.log('[QCOL Cloud] ✅ Sincronización con GitHub activa');
-        console.log('[QCOL Cloud] 📊 Apps sincronizadas entre Studio y Puzzle automáticamente');
+        console.log('[QCOL Cloud] 📊 Funciones disponibles:');
+        console.log('[QCOL Cloud]   - window.submitAppToPending(id)  → Enviar app a pendientes');
+        console.log('[QCOL Cloud]   - window.publishApp(id)          → Publicar app (Admin)');
+        console.log('[QCOL Cloud]   - window.rejectApp(id)           → Rechazar app (Admin)');
         
-        // Notificar al usuario que la sincronización está activa
+        // Notificar al usuario
         setTimeout(() => {
             if (config.token) {
                 console.log('[QCOL Cloud] ✅ Sincronización multi-dispositivo ACTIVADA');
+                console.log('[QCOL Cloud] 📋 Pendientes:', safeParse('qcol_pending_quantum_apps', []).length);
+                console.log('[QCOL Cloud] 📋 Publicadas:', safeParse('qcol_published_quantum_apps', []).length);
             } else {
                 console.log('[QCOL Cloud] ⚠️ Configura el token de GitHub para sincronización multi-dispositivo');
             }
         }, 1000);
     }
 
-    // Inicializar
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', init);
     } else {
         init();
     }
 
-    // Exponer funciones para depuración
+    // Exponer funciones
     window.__QCOL_CLOUD = {
         sync: fullSync,
         upload: uploadToGitHub,
         download: downloadFromGitHub,
         syncApps: syncAppsBetweenKeys,
+        publishApp: window.publishApp,
+        rejectApp: window.rejectApp,
+        submitApp: window.submitAppToPending,
         status: () => {
             const config = getGitHubConfig();
+            const pending = safeParse('qcol_pending_quantum_apps', []);
+            const published = safeParse('qcol_published_quantum_apps', []);
+            const studio = safeParse('quantum_apps_repo_v2', []);
             return {
                 connected: !!config.token,
                 lastSync: localStorage.getItem('_qcol_cloud_timestamp'),
                 github: config.owner + '/' + config.repo,
                 hasToken: !!config.token,
-                studioApps: safeParse('quantum_apps_repo_v2', []).length,
-                puzzleApps: safeParse('qcol_published_quantum_apps', []).length,
-                pendingApps: safeParse('qcol_pending_quantum_apps', []).length
+                studioApps: studio.length,
+                pendingApps: pending.length,
+                publishedApps: published.length,
+                pending: pending.map(a => ({ id: a.id, name: a.name, submittedBy: a.submittedBy })),
+                published: published.map(a => ({ id: a.id, name: a.name, publishedAt: a.publishedAt }))
             };
         },
         config: getGitHubConfig
