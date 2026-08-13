@@ -595,6 +595,9 @@
         document.querySelectorAll('.delete-proj').forEach(btn => btn.addEventListener('click', (e) => { e.stopPropagation(); deleteProject(btn.getAttribute('data-id')); }));
     }
 
+    // ============================================================
+    // 🔄 FUNCIÓN SEND TO PENDING CON SINCRONIZACIÓN A LA NUBE
+    // ============================================================
     function sendToPending(id) {
         const proj = projects.find(p => p.id === id);
         if (!proj) {
@@ -602,41 +605,67 @@
             return;
         }
         
-        const message = {
-            type: 'QCOL_LAUNCH_QUANTUM_APP',
-            appId: proj.id,
-            appTitle: proj.name,
-            appMetadata: {
-                name: proj.name,
-                pythonCode: proj.pythonCode,
-                htmlCode: proj.htmlCode,
-                serverUrl: proj.serverUrl || localStorage.getItem('qcol_colab_url') || '',
-                createdAt: proj.createdAt
-            }
+        // 1. Guardar en localStorage (comportamiento original)
+        let pendingApps = JSON.parse(localStorage.getItem('qcol_pending_apps') || '[]');
+        const existingIndex = pendingApps.findIndex(entry => entry.id === proj.id);
+        const newEntry = {
+            id: proj.id,
+            name: proj.name,
+            pythonCode: proj.pythonCode,
+            htmlCode: proj.htmlCode,
+            serverUrl: proj.serverUrl,
+            timestamp: Date.now()
         };
-        
-        if (window.parent !== window && parentOrigin) {
-            sendToParent(message);
-            notify(`🚀 App "${proj.name}" sent to Founder's pending list`, 2500);
+        if (existingIndex !== -1) {
+            pendingApps[existingIndex] = newEntry;
         } else {
-            let pendingApps = JSON.parse(localStorage.getItem('qcol_pending_apps') || '[]');
-            // 🛡️ Duplicate protection: if an entry with the same id already exists, update it
-            const existingIndex = pendingApps.findIndex(entry => entry.id === proj.id);
-            const newEntry = {
-                id: proj.id,
-                name: proj.name,
-                pythonCode: proj.pythonCode,
-                htmlCode: proj.htmlCode,
-                serverUrl: proj.serverUrl,
-                timestamp: Date.now()
-            };
-            if (existingIndex !== -1) {
-                pendingApps[existingIndex] = newEntry;
-            } else {
-                pendingApps.push(newEntry);
+            pendingApps.push(newEntry);
+        }
+        localStorage.setItem('qcol_pending_apps', JSON.stringify(pendingApps));
+        
+        // 2. 🔥 SINCRONIZAR CON LA NUBE (Supabase) usando window.quantumSync
+        if (window.quantumSync && window.quantumSync.isReady) {
+            try {
+                window.quantumSync.submitApp({
+                    id: proj.id,
+                    name: proj.name,
+                    title: proj.name,
+                    description: '',
+                    tags: '',
+                    pythonCode: proj.pythonCode,
+                    htmlCode: proj.htmlCode,
+                    serverUrl: proj.serverUrl || localStorage.getItem('qcol_colab_url') || '',
+                    duration: 8
+                }).then(() => {
+                    notify(`☁️ App "${proj.name}" enviada a la nube (pendiente)`);
+                }).catch((err) => {
+                    console.warn('⚠️ No se pudo sincronizar con la nube:', err);
+                    notify(`📦 App "${proj.name}" guardada localmente (sin conexión a la nube)`);
+                });
+            } catch (error) {
+                console.warn('⚠️ No se pudo sincronizar con la nube:', error);
+                notify(`📦 App "${proj.name}" guardada localmente (sin conexión a la nube)`);
             }
-            localStorage.setItem('qcol_pending_apps', JSON.stringify(pendingApps));
-            notify(`📦 App "${proj.name}" saved in local pending. Connect to Founder Panel to sync.`, 3000);
+        } else {
+            // Si no hay sync, notificar que está solo local
+            notify(`📦 App "${proj.name}" guardada localmente. Conecta con Founder Panel para sincronizar.`, 3000);
+        }
+        
+        // 3. Si está embebido, enviar al padre también
+        if (window.parent !== window && parentOrigin) {
+            const message = {
+                type: 'QCOL_LAUNCH_QUANTUM_APP',
+                appId: proj.id,
+                appTitle: proj.name,
+                appMetadata: {
+                    name: proj.name,
+                    pythonCode: proj.pythonCode,
+                    htmlCode: proj.htmlCode,
+                    serverUrl: proj.serverUrl || localStorage.getItem('qcol_colab_url') || '',
+                    createdAt: proj.createdAt
+                }
+            };
+            sendToParent(message);
         }
     }
 
@@ -886,7 +915,7 @@
             notify(`Project "${nameVal}" created`);
             
             // ── Sincronizar con la nube (Supabase) ──
-            if (window.quantumSync) {
+            if (window.quantumSync && window.quantumSync.isReady) {
                 try {
                     window.quantumSync.submitApp({
                         id: newId,
@@ -899,7 +928,7 @@
                         serverUrl: urlVal,
                         duration: 8
                     }).then(() => {
-                        notify('☁️ App sincronizada con la nube');
+                        notify('☁️ App sincronizada con la nube (pendiente)');
                     }).catch((err) => {
                         console.warn('⚠️ No se pudo sincronizar con la nube:', err);
                     });
@@ -930,7 +959,7 @@
         notify("Project saved");
         
         // ── Sincronizar con la nube (Supabase) ──
-        if (window.quantumSync) {
+        if (window.quantumSync && window.quantumSync.isReady) {
             try {
                 window.quantumSync.submitApp({
                     id: currentEditId,
@@ -943,7 +972,7 @@
                     serverUrl: urlVal,
                     duration: 8
                 }).then(() => {
-                    notify('☁️ App sincronizada con la nube');
+                    notify('☁️ App sincronizada con la nube (pendiente)');
                 }).catch((err) => {
                     console.warn('⚠️ No se pudo sincronizar con la nube:', err);
                 });
