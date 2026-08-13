@@ -706,7 +706,8 @@ async function savePublishedApps(apps) {
 }
 
 async function getPendingApps() {
-    if (window.quantumSync && window.quantumSync.isReady && (isAdmin || isFounder)) {
+    // SIEMPRE usar quantumSync si está disponible
+    if (window.quantumSync && window.quantumSync.isReady) {
         await window.quantumSync.syncPendingApps();
         return window.quantumSync.pendingApps;
     }
@@ -1189,7 +1190,6 @@ window.addEventListener('message', async function(e) {
                     duration: appData.duration || 8
                 });
                 
-                // Mostrar notificación en Puzzle
                 showNotification(`☁️ App "${result.title}" sincronizada con la nube (pendiente)`);
                 
                 // Actualizar la UI (pendientes)
@@ -1197,7 +1197,6 @@ window.addEventListener('message', async function(e) {
                     await renderPendingList();
                 }
                 
-                // Responder al Studio confirmando
                 if (e.source) {
                     e.source.postMessage({
                         type: 'QCOL_STUDIO_SYNC_CONFIRMED',
@@ -1221,7 +1220,6 @@ window.addEventListener('message', async function(e) {
             }
         } else {
             console.warn('⚠️ Quantum Sync no disponible, guardando localmente');
-            // Fallback: guardar en localStorage
             const pending = JSON.parse(localStorage.getItem('qcol_pending_quantum_apps') || '[]');
             const existing = pending.find(p => p.id === appId);
             if (existing) {
@@ -1232,7 +1230,6 @@ window.addEventListener('message', async function(e) {
             localStorage.setItem('qcol_pending_quantum_apps', JSON.stringify(pending));
             showNotification(`📦 App "${appData.title}" guardada localmente`);
             
-            // Actualizar UI pendientes
             if (typeof renderPendingList === 'function') {
                 await renderPendingList();
             }
@@ -1291,18 +1288,29 @@ function openPendingManager() {
 }
 function closePendingModal() { document.getElementById('pendingModal').classList.remove('open'); }
 
+// ============================================================
+// 🔥 RENDER PENDING LIST - CORREGIDO
+// ============================================================
 async function renderPendingList() {
+    console.log('🔄 Renderizando lista de pendientes...');
     const pending = await getPendingApps();
+    console.log('📋 Apps pendientes:', pending);
     const container = document.getElementById('pendingListContainer');
     if(!container) return;
-    if(pending.length === 0) { container.innerHTML = `<div style="padding:2rem; text-align:center; color:var(--mu);">📭 No apps pending approval.</div>`; return; }
+    if(pending.length === 0) { 
+        container.innerHTML = `<div style="padding:2rem; text-align:center; color:var(--mu);">📭 No apps pending approval.</div>`; 
+        return; 
+    }
     let html = `<div class="pending-grid">`;
     pending.forEach(app => {
+        // Asegurar que tenemos un título
+        const title = app.title || app.name || 'Untitled App';
+        const appId = app.id;
         html += `<div style="background: #0a1222; border-radius: 16px; margin-bottom: 12px; padding: 12px;">
-                    <strong>${escapeHtml(app.title)}</strong>
+                    <strong>${escapeHtml(title)}</strong>
                     <div style="margin-top:8px; display:flex; gap:8px;">
-                        <button class="btn" style="background: #00aa66;" onclick="publishPendingApp('${app.id}')">✅ PUBLISH</button>
-                        <button class="btn" style="background: #aa3355;" onclick="rejectPendingApp('${app.id}')">🗑️ REJECT</button>
+                        <button class="btn" style="background: #00aa66;" onclick="publishPendingApp('${appId}')">✅ PUBLISH</button>
+                        <button class="btn" style="background: #aa3355;" onclick="rejectPendingApp('${appId}')">🗑️ REJECT</button>
                     </div>
                 </div>`;
     });
@@ -1310,51 +1318,73 @@ async function renderPendingList() {
     container.innerHTML = html;
 }
 
+// ============================================================
+// 🔥 PUBLISH PENDING APP - CORREGIDO
+// ============================================================
 async function publishPendingApp(appId) {
-    if (!isFounder && !isAdmin) { showNotification("Solo fundadores/admins pueden publicar"); return; }
+    console.log('📤 Publicando app:', appId);
+    if (!isFounder && !isAdmin) { 
+        showNotification("Solo fundadores/admins pueden publicar"); 
+        return; 
+    }
     
-    // Usar sync si está disponible
+    // SIEMPRE usar quantumSync si está disponible
     if (window.quantumSync && window.quantumSync.isReady) {
         try {
+            console.log('🔄 Usando quantumSync para publicar...');
             const published = await window.quantumSync.approveApp(appId, currentUser?.id);
+            console.log('✅ App publicada:', published);
             showNotification(`✅ App "${published.title}" publicada en la nube`);
-            renderPendingList();
+            
+            // Actualizar UI
+            await renderPendingList();
             renderTagFilters();
             renderPublishedApps();
             return;
         } catch (error) {
+            console.error('❌ Error al publicar:', error);
             showNotification('❌ Error al publicar: ' + error.message);
             return;
         }
     }
     
     // Fallback a localStorage
+    console.log('🔄 Fallback a localStorage...');
     const pending = await getPendingApps();
     const index = pending.findIndex(p => p.id === appId);
-    if(index === -1) return;
+    if(index === -1) {
+        showNotification("⚠️ App no encontrada");
+        return;
+    }
     const appToPublish = { ...pending[index] };
     const published = await getPublishedApps();
-    if(published.find(p => p.id === appToPublish.id)) { showNotification("⚠️ App already exists"); return; }
+    if(published.find(p => p.id === appToPublish.id)) { 
+        showNotification("⚠️ App ya existe"); 
+        return; 
+    }
     published.push(appToPublish);
     await savePublishedApps(published);
     pending.splice(index,1);
     await savePendingApps(pending);
     showNotification(`✅ App "${appToPublish.title}" publicada`);
-    renderPendingList();
+    await renderPendingList();
     renderTagFilters();
     renderPublishedApps();
 }
 
+// ============================================================
+// 🔥 REJECT PENDING APP - CORREGIDO
+// ============================================================
 async function rejectPendingApp(appId) {
+    console.log('🗑️ Rechazando app:', appId);
     if (!isFounder && !isAdmin) return;
     if (!confirm("Delete this pending app?")) return;
     
-    // Usar sync si está disponible
     if (window.quantumSync && window.quantumSync.isReady) {
         try {
             await window.quantumSync.rejectApp(appId);
             showNotification("App rechazada en la nube");
-            renderPendingList();
+            await renderPendingList();
             return;
         } catch (error) {
             showNotification('❌ Error al rechazar: ' + error.message);
@@ -1367,14 +1397,13 @@ async function rejectPendingApp(appId) {
     pending = pending.filter(p => p.id !== appId);
     await savePendingApps(pending);
     showNotification("App rechazada");
-    renderPendingList();
+    await renderPendingList();
 }
 
 async function deletePublishedApp(appId) {
     if(!isFounder) { showNotification("Only founder can delete published apps"); return; }
     if(!confirm(`Delete app from repository?`)) return;
     
-    // Usar sync si está disponible
     if (window.quantumSync && window.quantumSync.isReady) {
         try {
             await window.quantumSync.deletePublishedApp(appId);
@@ -1388,7 +1417,6 @@ async function deletePublishedApp(appId) {
         }
     }
     
-    // Fallback a localStorage
     let published = await getPublishedApps();
     published = published.filter(p => p.id !== appId);
     await savePublishedApps(published);
