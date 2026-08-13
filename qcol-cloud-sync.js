@@ -18,6 +18,7 @@ class QuantumSync {
         
         // Estado local
         this.isInitialized = false;
+        this.isReady = false;
         this.currentUser = null;
         this.userRole = null;
         this.syncInterval = null;
@@ -57,6 +58,7 @@ class QuantumSync {
                 console.warn(`⚠️ Error de conexión: HTTP ${testResponse.status}`);
                 console.warn('⚠️ Modo offline/local activado.');
                 this.isInitialized = false;
+                this.isReady = false;
                 return false;
             }
             
@@ -66,6 +68,7 @@ class QuantumSync {
             await this.syncAll();
             
             this.isInitialized = true;
+            this.isReady = true;
             console.log('✅ Quantum Sync Module initialized');
             
             // Iniciar sincronización automática cada 30 segundos
@@ -75,6 +78,7 @@ class QuantumSync {
         } catch (error) {
             console.error('❌ Error initializing Quantum Sync:', error.message);
             this.isInitialized = false;
+            this.isReady = false;
             return false;
         }
     }
