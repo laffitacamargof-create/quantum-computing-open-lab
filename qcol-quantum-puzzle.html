@@ -621,21 +621,37 @@ let compilerUrl = '';
 let currentExecutingApp = null;
 let pendingCompileRequest = null;
 
-// Store initialization
-function getPublishedApps() {
+// ============================================================
+// 🔄 FUNCIONES CON INTEGRACIÓN SUPABASE SYNC
+// ============================================================
+
+async function getPublishedApps() {
+    if (window.quantumSync && window.quantumSync.isReady) {
+        await window.quantumSync.syncPublishedApps();
+        return window.quantumSync.publishedApps;
+    }
+    // Fallback a localStorage
     const stored = localStorage.getItem('qcol_published_quantum_apps');
     if(stored) return JSON.parse(stored);
     return [];
 }
-function savePublishedApps(apps) {
+
+async function savePublishedApps(apps) {
     localStorage.setItem('qcol_published_quantum_apps', JSON.stringify(apps));
 }
-function getPendingApps() {
+
+async function getPendingApps() {
+    if (window.quantumSync && window.quantumSync.isReady && (isAdmin || isFounder)) {
+        await window.quantumSync.syncPendingApps();
+        return window.quantumSync.pendingApps;
+    }
+    // Fallback a localStorage
     const stored = localStorage.getItem('qcol_pending_quantum_apps');
     if(stored) return JSON.parse(stored);
     return [];
 }
-function savePendingApps(apps) {
+
+async function savePendingApps(apps) {
     localStorage.setItem('qcol_pending_quantum_apps', JSON.stringify(apps));
 }
 
@@ -847,15 +863,16 @@ function extractUniqueTags(apps) {
 }
 
 function renderTagFilters() {
-    const apps = getPublishedApps();
-    const allTags = extractUniqueTags(apps);
-    const container = document.getElementById('filterTagsContainer');
-    if(!container) return;
-    let html = `<span class="tag-chip ${activeTagFilter === 'all' ? 'active' : ''}" data-tag="all" onclick="setTagFilter('all')">🎲 ALL</span>`;
-    allTags.forEach(tag => {
-        html += `<span class="tag-chip ${activeTagFilter === tag ? 'active' : ''}" data-tag="${tag}" onclick="setTagFilter('${tag}')">#${tag}</span>`;
+    getPublishedApps().then(apps => {
+        const allTags = extractUniqueTags(apps);
+        const container = document.getElementById('filterTagsContainer');
+        if(!container) return;
+        let html = `<span class="tag-chip ${activeTagFilter === 'all' ? 'active' : ''}" data-tag="all" onclick="setTagFilter('all')">🎲 ALL</span>`;
+        allTags.forEach(tag => {
+            html += `<span class="tag-chip ${activeTagFilter === tag ? 'active' : ''}" data-tag="${tag}" onclick="setTagFilter('${tag}')">#${tag}</span>`;
+        });
+        container.innerHTML = html;
     });
-    container.innerHTML = html;
 }
 
 function setTagFilter(tag) {
@@ -864,8 +881,8 @@ function setTagFilter(tag) {
     renderPublishedApps();
 }
 
-function renderPublishedApps() {
-    const apps = getPublishedApps();
+async function renderPublishedApps() {
+    const apps = await getPublishedApps();
     const searchTerm = document.getElementById('searchInput')?.value.toLowerCase() || "";
     let filtered = apps.filter(app => {
         const matchSearch = app.title.toLowerCase().includes(searchTerm) || (app.desc || "").toLowerCase().includes(searchTerm) || (app.tags || "").toLowerCase().includes(searchTerm);
@@ -913,18 +930,19 @@ function renderPublishedApps() {
 
 // ========== EXECUTE APP USING QUANTUM APP STUDIO ==========
 function executeQuantumApp(appId) {
-    const apps = getPublishedApps();
-    const app = apps.find(a => a.id === appId);
-    if(!app) { showNotification('⚠️ App not found'); return; }
-    
-    currentExecutingApp = app;
-    
-    const modal = document.getElementById('execAppModal');
-    const titleSpan = document.getElementById('execAppTitle');
-    titleSpan.innerHTML = `⚛️ ${escapeHtml(app.title)}`;
-    
-    modal.classList.add('open');
-    executeWithStudio(app);
+    getPublishedApps().then(apps => {
+        const app = apps.find(a => a.id === appId);
+        if(!app) { showNotification('⚠️ App not found'); return; }
+        
+        currentExecutingApp = app;
+        
+        const modal = document.getElementById('execAppModal');
+        const titleSpan = document.getElementById('execAppTitle');
+        titleSpan.innerHTML = `⚛️ ${escapeHtml(app.title)}`;
+        
+        modal.classList.add('open');
+        executeWithStudio(app);
+    });
 }
 
 // Listen for pyCall from execIframe and execute them remotely
@@ -1063,8 +1081,15 @@ function openQuantumAppStudio() {
         var sf = document.getElementById('studioIframe');
         if (sf && sf.contentWindow) {
             sf.contentWindow.postMessage({ type: 'QCOL_REQUEST_STUDIO_CONNECTION' }, '*');
-            var url = compilerUrl || localStorage.getItem('qcol_colab_url') || '';
-            if (url) sf.contentWindow.postMessage({ type: 'QCOL_SET_COMPILER_URL', url: url }, '*');
+            // Conectar el módulo de sincronización
+            if (window.quantumSync && window.quantumSync.isReady) {
+                window.quantumSync.connectStudio(sf);
+                // Enviar URL del compilador
+                const url = compilerUrl || localStorage.getItem('qcol_colab_url') || '';
+                if (url) {
+                    sf.contentWindow.postMessage({ type: 'QCOL_SET_COMPILER_URL', url: url }, '*');
+                }
+            }
         }
     }, 400);
 }
@@ -1095,8 +1120,9 @@ function openPendingManager() {
     document.getElementById('pendingModal').classList.add('open');
 }
 function closePendingModal() { document.getElementById('pendingModal').classList.remove('open'); }
-function renderPendingList() {
-    const pending = getPendingApps();
+
+async function renderPendingList() {
+    const pending = await getPendingApps();
     const container = document.getElementById('pendingListContainer');
     if(!container) return;
     if(pending.length === 0) { container.innerHTML = `<div style="padding:2rem; text-align:center; color:var(--mu);">📭 No apps pending approval.</div>`; return; }
@@ -1113,40 +1139,94 @@ function renderPendingList() {
     html += `</div>`;
     container.innerHTML = html;
 }
-function publishPendingApp(appId) {
-    const pending = getPendingApps();
+
+async function publishPendingApp(appId) {
+    if (!isFounder && !isAdmin) { showNotification("Solo fundadores/admins pueden publicar"); return; }
+    
+    // Usar sync si está disponible
+    if (window.quantumSync && window.quantumSync.isReady) {
+        try {
+            const published = await window.quantumSync.approveApp(appId, currentUser?.id);
+            showNotification(`✅ App "${published.title}" publicada en la nube`);
+            renderPendingList();
+            renderTagFilters();
+            renderPublishedApps();
+            return;
+        } catch (error) {
+            showNotification('❌ Error al publicar: ' + error.message);
+            return;
+        }
+    }
+    
+    // Fallback a localStorage
+    const pending = await getPendingApps();
     const index = pending.findIndex(p => p.id === appId);
     if(index === -1) return;
     const appToPublish = { ...pending[index] };
-    const published = getPublishedApps();
+    const published = await getPublishedApps();
     if(published.find(p => p.id === appToPublish.id)) { showNotification("⚠️ App already exists"); return; }
     published.push(appToPublish);
-    savePublishedApps(published);
+    await savePublishedApps(published);
     pending.splice(index,1);
-    savePendingApps(pending);
-    showNotification(`✅ App "${appToPublish.title}" published`);
+    await savePendingApps(pending);
+    showNotification(`✅ App "${appToPublish.title}" publicada`);
     renderPendingList();
     renderTagFilters();
     renderPublishedApps();
 }
-function rejectPendingApp(appId) {
-    if(!confirm("Delete this pending app?")) return;
-    let pending = getPendingApps();
+
+async function rejectPendingApp(appId) {
+    if (!isFounder && !isAdmin) return;
+    if (!confirm("Delete this pending app?")) return;
+    
+    // Usar sync si está disponible
+    if (window.quantumSync && window.quantumSync.isReady) {
+        try {
+            await window.quantumSync.rejectApp(appId);
+            showNotification("App rechazada en la nube");
+            renderPendingList();
+            return;
+        } catch (error) {
+            showNotification('❌ Error al rechazar: ' + error.message);
+            return;
+        }
+    }
+    
+    // Fallback a localStorage
+    let pending = await getPendingApps();
     pending = pending.filter(p => p.id !== appId);
-    savePendingApps(pending);
-    showNotification("App rejected");
+    await savePendingApps(pending);
+    showNotification("App rechazada");
     renderPendingList();
 }
-function deletePublishedApp(appId) {
+
+async function deletePublishedApp(appId) {
     if(!isFounder) { showNotification("Only founder can delete published apps"); return; }
     if(!confirm(`Delete app from repository?`)) return;
-    let published = getPublishedApps();
+    
+    // Usar sync si está disponible
+    if (window.quantumSync && window.quantumSync.isReady) {
+        try {
+            await window.quantumSync.deletePublishedApp(appId);
+            showNotification("App eliminada de la nube");
+            renderTagFilters();
+            renderPublishedApps();
+            return;
+        } catch (error) {
+            showNotification('❌ Error al eliminar: ' + error.message);
+            return;
+        }
+    }
+    
+    // Fallback a localStorage
+    let published = await getPublishedApps();
     published = published.filter(p => p.id !== appId);
-    savePublishedApps(published);
+    await savePublishedApps(published);
     showNotification("App deleted");
     renderTagFilters();
     renderPublishedApps();
 }
+
 function showNotification(msg, dur=2800) {
     const n = document.getElementById('notifMsg');
     n.textContent = msg;
@@ -1155,6 +1235,7 @@ function showNotification(msg, dur=2800) {
     n._timeout = setTimeout(() => n.classList.remove('show'), dur);
 }
 
+// Inicializar
 renderTagFilters();
 renderPublishedApps();
 
