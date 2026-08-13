@@ -537,72 +537,86 @@ body::before{
 <body>
 
 <!-- ============================================================
-     🔄 INICIALIZACIÓN GLOBAL - SUPABASE SYNC
+     🔄 INICIALIZACIÓN GLOBAL - SUPABASE SYNC (SIN MODULE)
      ============================================================ -->
-<script type="importmap">
-{
-    "imports": {
-        "./supabase-config.js": "./supabase-config.js",
-        "./quantum-sync.js": "./quantum-sync.js"
+<script>
+// Cargar configuración y módulo de forma dinámica
+(async function initQuantumSync() {
+    try {
+        // Importar configuración y módulo
+        const { SUPABASE_CONFIG } = await import('./supabase-config.js');
+        const { default: QuantumSync } = await import('./quantum-sync.js');
+        
+        console.log('📦 Módulos importados correctamente');
+        console.log('📌 SUPABASE_CONFIG:', SUPABASE_CONFIG);
+        
+        // Crear instancia global
+        window.quantumSync = new QuantumSync({
+            supabaseUrl: SUPABASE_CONFIG.supabaseUrl,
+            supabaseAnonKey: SUPABASE_CONFIG.supabaseAnonKey,
+            supabaseServiceKey: SUPABASE_CONFIG.supabaseServiceKey
+        });
+        
+        console.log('📌 quantumSync creado:', window.quantumSync);
+        
+        // Inicializar la conexión
+        await window.quantumSync.init();
+        
+        console.log('📌 quantumSync.isReady:', window.quantumSync.isReady);
+        
+        // Configurar usuario
+        window.quantumSync.setUser({
+            id: 'usuario-123',
+            name: 'Admin',
+            role: 'founder'
+        });
+        
+        // Callbacks para actualizar la UI automáticamente
+        window.quantumSync.onPendingUpdate = (apps) => {
+            console.log('📋 Apps pendientes actualizadas:', apps.length);
+            if (typeof window.renderPendingList === 'function') {
+                window.renderPendingList();
+            }
+        };
+        
+        window.quantumSync.onPublishedUpdate = (apps) => {
+            console.log('📦 Apps publicadas actualizadas:', apps.length);
+            if (typeof window.renderTagFilters === 'function') {
+                window.renderTagFilters();
+            }
+            if (typeof window.renderPublishedApps === 'function') {
+                window.renderPublishedApps();
+            }
+        };
+        
+        window.quantumSync.onAppPublished = (app) => {
+            window.showNotification(`✅ "${app.title}" publicado en la nube`);
+        };
+        
+        window.quantumSync.onAppRejected = (appId) => {
+            window.showNotification('🗑️ App rechazada en la nube');
+        };
+        
+        // Conectar el Puzzle para escuchar mensajes
+        window.quantumSync.connectPuzzle();
+        
+        console.log('✅ Quantum Sync inicializado correctamente');
+        console.log('✅ quantumSync.isReady:', window.quantumSync.isReady);
+        
+        // Disparar actualización de UI
+        if (typeof window.renderTagFilters === 'function') {
+            window.renderTagFilters();
+        }
+        if (typeof window.renderPublishedApps === 'function') {
+            window.renderPublishedApps();
+        }
+        
+    } catch (error) {
+        console.error('❌ Error inicializando Quantum Sync:', error);
+        console.error('Detalles:', error.message);
+        window.showNotification('❌ Error de conexión con Supabase. Modo offline.');
     }
-}
-</script>
-
-<script type="module">
-import QuantumSync from './quantum-sync.js';
-import { SUPABASE_CONFIG } from './supabase-config.js';
-
-// Crear instancia global con las credenciales de Supabase
-window.quantumSync = new QuantumSync({
-    supabaseUrl: SUPABASE_CONFIG.supabaseUrl,
-    supabaseAnonKey: SUPABASE_CONFIG.supabaseAnonKey,
-    supabaseServiceKey: SUPABASE_CONFIG.supabaseServiceKey
-});
-
-// Inicializar la conexión
-await window.quantumSync.init();
-
-// Configurar usuario (CAMBIA ESTO SEGÚN TU USUARIO)
-window.quantumSync.setUser({
-    id: 'usuario-123',
-    name: 'Admin',
-    role: 'founder' // 'founder', 'admin', 'user'
-});
-
-// Callbacks para actualizar la UI automáticamente
-window.quantumSync.onPendingUpdate = (apps) => {
-    console.log('📋 Apps pendientes actualizadas:', apps.length);
-    if (typeof window.renderPendingList === 'function') {
-        window.renderPendingList();
-    }
-};
-
-window.quantumSync.onPublishedUpdate = (apps) => {
-    console.log('📦 Apps publicadas actualizadas:', apps.length);
-    if (typeof window.renderTagFilters === 'function') {
-        window.renderTagFilters();
-    }
-    if (typeof window.renderPublishedApps === 'function') {
-        window.renderPublishedApps();
-    }
-};
-
-window.quantumSync.onAppPublished = (app) => {
-    window.showNotification(`✅ "${app.title}" publicado en la nube`);
-};
-
-window.quantumSync.onAppRejected = (appId) => {
-    window.showNotification('🗑️ App rechazada en la nube');
-};
-
-// Conectar el Puzzle para escuchar mensajes
-window.quantumSync.connectPuzzle();
-
-// Hacer que quantumSync esté disponible globalmente
-window.quantumSync = window.quantumSync;
-
-console.log('✅ Quantum Sync inicializado correctamente');
-console.log('✅ quantumSync.isReady:', window.quantumSync.isReady);
+})();
 </script>
 
 <div class="notif" id="notifMsg"></div>
@@ -1167,7 +1181,7 @@ function openQuantumAppStudio() {
 function closeStudioModal() { studioModal.classList.remove('open'); }
 
 // ============================================================
-// 🔥 MANEJADOR DE MENSAJES DEL STUDIO (FUERA DEL MODULE)
+// 🔥 MANEJADOR DE MENSAJES DEL STUDIO
 // ============================================================
 window.addEventListener('message', async function(e) {
     const data = e.data;
@@ -1417,7 +1431,7 @@ function showNotification(msg, dur=2800) {
 }
 
 // ============================================================
-// HACER FUNCIONES GLOBALES PARA EL MODULE
+// HACER FUNCIONES GLOBALES
 // ============================================================
 window.renderTagFilters = renderTagFilters;
 window.renderPublishedApps = renderPublishedApps;
@@ -1427,10 +1441,14 @@ window.publishPendingApp = publishPendingApp;
 window.rejectPendingApp = rejectPendingApp;
 window.deletePublishedApp = deletePublishedApp;
 window.openPendingManager = openPendingManager;
+window.openQuantumAppStudio = openQuantumAppStudio;
+window.closeStudioModal = closeStudioModal;
 
-// Inicializar
-renderTagFilters();
-renderPublishedApps();
+// Inicializar UI
+setTimeout(() => {
+    renderTagFilters();
+    renderPublishedApps();
+}, 500);
 
 document.getElementById('studioModalReal')?.addEventListener('click', (e) => { if(e.target === document.getElementById('studioModalReal')) closeStudioModal(); });
 document.getElementById('pendingModal')?.addEventListener('click', (e) => { if(e.target === document.getElementById('pendingModal')) closePendingModal(); });
