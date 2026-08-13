@@ -1,6 +1,6 @@
 // ============================================================
 //  QCOL Cloud Sync — Sincronización con GitHub
-//  Versión 7.0 — MERGE COMPLETO DE APPS (CON TODO EL CÓDIGO)
+//  Versión 8.0 — CON REFRESH FORZADO DE UI
 //  (c) 2026 QCOL Ecosystem
 // ============================================================
 (function() {
@@ -68,45 +68,35 @@
         }
     }
 
-    // ═══ FUNCIÓN DE MERGE (UNIÓN DE CONJUNTOS) - COMPARACIÓN PROFUNDA ═══
+    // ═══ FUNCIÓN DE MERGE PROFUNDO ═══
     function mergeArraysDeep(localArray, cloudArray) {
-        // Crear un mapa con los elementos locales (por id + contenido)
         const mergedMap = {};
         
         // Primero agregar todos los locales
         if (Array.isArray(localArray)) {
             localArray.forEach(item => {
                 if (item && item.id) {
-                    // Guardar el item completo, no solo el id
                     mergedMap[item.id] = item;
                 }
             });
         }
         
-        // Luego agregar los de la nube (sobrescriben si existe, agregan si no)
+        // Luego agregar los de la nube
         if (Array.isArray(cloudArray)) {
             cloudArray.forEach(item => {
                 if (item && item.id) {
-                    // Si ya existe en local, verificar si el contenido es diferente
                     if (mergedMap[item.id]) {
-                        // Si el contenido es diferente, fusionar (priorizar el más completo)
-                        const localItem = mergedMap[item.id];
-                        const cloudItem = item;
-                        
-                        // Fusionar objetos profundamente (mantener todas las propiedades)
-                        mergedMap[item.id] = deepMerge(localItem, cloudItem);
+                        // Si existe, fusionar profundamente (mantener TODAS las propiedades)
+                        mergedMap[item.id] = deepMerge(mergedMap[item.id], item);
                     } else {
-                        // Si no existe, agregar completo
                         mergedMap[item.id] = item;
                     }
                 }
             });
         }
         
-        // Convertir de vuelta a array y limpiar duplicados por contenido
+        // Convertir a array y eliminar duplicados exactos
         const result = Object.values(mergedMap);
-        
-        // Eliminar duplicados exactos (mismo contenido)
         const seen = new Set();
         return result.filter(item => {
             const key = JSON.stringify(item);
@@ -116,22 +106,17 @@
         });
     }
 
-    // ═══ FUSIÓN PROFUNDA DE OBJETOS ═══
     function deepMerge(obj1, obj2) {
         const result = { ...obj1 };
-        
         for (const key in obj2) {
             if (obj2.hasOwnProperty(key)) {
-                // Si ambos son objetos, fusionar recursivamente
                 if (obj2[key] && typeof obj2[key] === 'object' && !Array.isArray(obj2[key]) && obj1[key]) {
                     result[key] = deepMerge(obj1[key], obj2[key]);
                 } else {
-                    // Si es un valor simple o array, sobrescribir con el de la nube (más reciente)
                     result[key] = obj2[key];
                 }
             }
         }
-        
         return result;
     }
 
@@ -152,7 +137,7 @@
                 founder_pass: localStorage.getItem('qcol_fp') || ''
             },
             timestamp: new Date().toISOString(),
-            version: '7.0.0'
+            version: '8.0.0'
         };
     }
 
@@ -165,7 +150,40 @@
         }
     }
 
-    // ═══ MERGE ENTRE STUDIO, PENDIENTES Y PUBLICADAS (CON CONTENIDO COMPLETO) ═══
+    // ═══ REFRESH FORZADO DE LA UI ═══
+    function forceUIRefresh() {
+        // Notificar a todos los módulos que los datos han cambiado
+        const event = new CustomEvent('qcol-apps-updated', { 
+            detail: { 
+                timestamp: new Date().toISOString(),
+                source: 'cloud-sync'
+            } 
+        });
+        window.dispatchEvent(event);
+        
+        // También enviar mensaje a todos los iframes
+        const iframes = document.querySelectorAll('iframe');
+        iframes.forEach(iframe => {
+            try {
+                iframe.contentWindow.postMessage({
+                    type: 'QCOL_APPS_UPDATED',
+                    timestamp: new Date().toISOString()
+                }, '*');
+            } catch(e) {}
+        });
+        
+        // Disparar evento storage para actualizar otros módulos
+        const storageEvent = new StorageEvent('storage', {
+            key: 'qcol_published_quantum_apps',
+            newValue: localStorage.getItem('qcol_published_quantum_apps'),
+            oldValue: localStorage.getItem('qcol_published_quantum_apps')
+        });
+        window.dispatchEvent(storageEvent);
+        
+        console.log('[QCOL Cloud] 🔄 UI refresh forzado');
+    }
+
+    // ═══ MERGE ENTRE STUDIO, PENDIENTES Y PUBLICADAS ═══
     function syncAppsBetweenKeys() {
         try {
             // Leer todas las listas
@@ -173,31 +191,22 @@
             let publishedApps = safeParse('qcol_published_quantum_apps', []);
             let pendingApps = safeParse('qcol_pending_quantum_apps', []);
             
-            console.log('[QCOL Cloud] 📊 ANTES DEL MERGE:');
-            console.log('[QCOL Cloud]   Studio:', studioApps.length);
-            console.log('[QCOL Cloud]   Pendientes:', pendingApps.length);
-            console.log('[QCOL Cloud]   Publicadas:', publishedApps.length);
-            
-            // 🔄 MERGE PROFUNDO: Unir Studio con Pendientes (con todo el contenido)
+            // 🔄 MERGE PROFUNDO
             const mergedPending = mergeArraysDeep(pendingApps, studioApps);
-            
-            // 🔄 MERGE PROFUNDO: Unir Pendientes con Publicadas (con todo el contenido)
             const mergedPublished = mergeArraysDeep(publishedApps, mergedPending);
             
-            // Las apps que están en Studio pero no en Pendientes ni Publicadas
+            // Apps nuevas del Studio
             const studioIds = new Set(studioApps.map(a => a.id));
             const pendingIds = new Set(mergedPending.map(a => a.id));
             const publishedIds = new Set(mergedPublished.map(a => a.id));
             
-            // Apps que están en Studio pero no en ningún otro lado → agregar a pendientes
             const newApps = studioApps.filter(a => !pendingIds.has(a.id) && !publishedIds.has(a.id));
             
             if (newApps.length > 0) {
-                console.log('[QCOL Cloud] 📱 Nuevas apps del Studio encontradas:', newApps.length);
                 newApps.forEach(app => {
                     if (app.name && (app.pythonCode || app.htmlCode)) {
                         mergedPending.push({
-                            ...app, // TODO EL CONTENIDO COMPLETO
+                            ...app,
                             status: 'pending',
                             submittedBy: getCurrentUser()?.username || 'anonymous',
                             submittedAt: new Date().toISOString()
@@ -206,42 +215,46 @@
                 });
             }
             
-            // 🔄 MERGE FINAL: Unir todo de nuevo para asegurar que no se pierda nada
+            // MERGE final
             const finalPending = mergeArraysDeep(mergedPending, mergedPublished);
             const finalPublished = mergeArraysDeep(mergedPublished, mergedPending);
             
-            // Guardar solo si hay cambios
+            // Guardar y verificar cambios
             const currentPending = safeParse('qcol_pending_quantum_apps', []);
             const currentPublished = safeParse('qcol_published_quantum_apps', []);
             
+            let changed = false;
+            
             if (JSON.stringify(finalPending) !== JSON.stringify(currentPending)) {
                 localStorage.setItem('qcol_pending_quantum_apps', JSON.stringify(finalPending));
-                console.log('[QCOL Cloud] 📋 Pendientes actualizadas (MERGE):', finalPending.length);
+                changed = true;
+                console.log('[QCOL Cloud] 📋 Pendientes actualizadas:', finalPending.length);
             }
             
             if (JSON.stringify(finalPublished) !== JSON.stringify(currentPublished)) {
                 localStorage.setItem('qcol_published_quantum_apps', JSON.stringify(finalPublished));
-                console.log('[QCOL Cloud] 📋 Publicadas actualizadas (MERGE):', finalPublished.length);
+                changed = true;
+                console.log('[QCOL Cloud] 📋 Publicadas actualizadas:', finalPublished.length);
             }
             
-            console.log('[QCOL Cloud] 📊 DESPUÉS DEL MERGE:');
-            console.log('[QCOL Cloud]   Pendientes:', finalPending.length);
-            console.log('[QCOL Cloud]   Publicadas:', finalPublished.length);
+            // Si hubo cambios, forzar refresh de UI
+            if (changed) {
+                forceUIRefresh();
+            }
             
             return true;
         } catch(e) {
-            console.warn('[QCOL Cloud] ⚠️ Error en MERGE de apps:', e.message);
+            console.warn('[QCOL Cloud] ⚠️ Error en MERGE:', e.message);
             return false;
         }
     }
 
-    // ═══ MERGE CON DATOS DE LA NUBE (CON CONTENIDO COMPLETO) ═══
+    // ═══ APLICAR DATOS DE LA NUBE ═══
     function applyCloudData(cloudData) {
         if (!cloudData) return false;
 
         let updated = false;
 
-        // ═══ MERGE PROFUNDO: Unir datos locales con datos de la nube ═══
         const mergeMappings = {
             'qcol_projs': cloudData.projects,
             'qcol_library': cloudData.library,
@@ -253,24 +266,22 @@
         for (const [key, cloudValue] of Object.entries(mergeMappings)) {
             if (cloudValue !== undefined) {
                 const localValue = safeParse(key, []);
-                // 🔄 MERGE PROFUNDO: Unir local + nube (con todo el contenido)
                 const merged = mergeArraysDeep(localValue, cloudValue);
                 
                 if (JSON.stringify(merged) !== JSON.stringify(localValue)) {
                     localStorage.setItem(key, JSON.stringify(merged));
                     updated = true;
-                    console.log('[QCOL Cloud] 🔄 MERGE completado para:', key, '→', merged.length, 'elementos');
+                    console.log('[QCOL Cloud] 🔄 MERGE:', key, '→', merged.length);
                     
-                    // Mostrar los nombres de las apps para verificar
+                    // Mostrar nombres de apps
                     if (key === 'qcol_pending_quantum_apps' || key === 'qcol_published_quantum_apps') {
                         const names = merged.map(a => a.name || a.id).join(', ');
-                        console.log('[QCOL Cloud]   📱 Apps en', key, ':', names);
+                        console.log('[QCOL Cloud]   📱', key, ':', names);
                     }
                 }
             }
         }
 
-        // Configuración (siempre toma la más reciente)
         if (cloudData.config) {
             const cfg = cloudData.config;
             const configMappings = {
@@ -297,12 +308,13 @@
 
         if (updated) {
             console.log('[QCOL Cloud] ✅ MERGE completado con datos de la nube');
+            forceUIRefresh();
         }
 
         return updated;
     }
 
-    // ═══ PUBLICAR APP (Admin/Founder) ═══
+    // ═══ FUNCIONES DE PUBLICACIÓN ═══
     window.publishApp = function(appId) {
         let pendingApps = safeParse('qcol_pending_quantum_apps', []);
         let publishedApps = safeParse('qcol_published_quantum_apps', []);
@@ -315,7 +327,6 @@
         
         const app = pendingApps[idx];
         
-        // Verificar que no esté ya publicada
         if (publishedApps.find(p => p.id === appId)) {
             console.warn('[QCOL Cloud] ⚠️ App ya está publicada');
             return false;
@@ -323,32 +334,24 @@
         
         // Mover a publicadas (con todo el contenido)
         publishedApps.push({
-            ...app, // TODO EL CONTENIDO COMPLETO
+            ...app,
             status: 'published',
             publishedAt: new Date().toISOString(),
             publishedBy: getCurrentUser()?.username || 'admin'
         });
         
-        // Eliminar de pendientes
         pendingApps.splice(idx, 1);
         
         localStorage.setItem('qcol_published_quantum_apps', JSON.stringify(publishedApps));
         localStorage.setItem('qcol_pending_quantum_apps', JSON.stringify(pendingApps));
         
         console.log('[QCOL Cloud] ✅ App publicada:', app.name);
-        console.log('[QCOL Cloud]   📄 Contenido:', {
-            id: app.id,
-            name: app.name,
-            pythonCode: app.pythonCode ? '✅' : '❌',
-            htmlCode: app.htmlCode ? '✅' : '❌'
-        });
-        window.dispatchEvent(new CustomEvent('qcol-apps-updated'));
+        forceUIRefresh();
         scheduleSync();
         
         return true;
     };
 
-    // ═══ RECHAZAR APP (Admin/Founder) ═══
     window.rejectApp = function(appId) {
         let pendingApps = safeParse('qcol_pending_quantum_apps', []);
         
@@ -362,13 +365,12 @@
         localStorage.setItem('qcol_pending_quantum_apps', JSON.stringify(pendingApps));
         
         console.log('[QCOL Cloud] 🗑️ App rechazada:', appId);
-        window.dispatchEvent(new CustomEvent('qcol-apps-updated'));
+        forceUIRefresh();
         scheduleSync();
         
         return true;
     };
 
-    // ═══ SUBIR APP MANUALMENTE A PENDIENTES ═══
     window.submitAppToPending = function(appId) {
         const studioApps = safeParse('quantum_apps_repo_v2', []);
         let pendingApps = safeParse('qcol_pending_quantum_apps', []);
@@ -391,7 +393,7 @@
         }
         
         pendingApps.push({
-            ...app, // TODO EL CONTENIDO COMPLETO
+            ...app,
             status: 'pending',
             submittedBy: getCurrentUser()?.username || 'anonymous',
             submittedAt: new Date().toISOString()
@@ -400,13 +402,7 @@
         localStorage.setItem('qcol_pending_quantum_apps', JSON.stringify(pendingApps));
         
         console.log('[QCOL Cloud] 📤 App enviada a pendientes:', app.name);
-        console.log('[QCOL Cloud]   📄 Contenido:', {
-            id: app.id,
-            name: app.name,
-            pythonCode: app.pythonCode ? '✅' : '❌',
-            htmlCode: app.htmlCode ? '✅' : '❌'
-        });
-        window.dispatchEvent(new CustomEvent('qcol-apps-updated'));
+        forceUIRefresh();
         scheduleSync();
         
         return true;
@@ -483,7 +479,7 @@
             const response = await fetch(url, { headers });
 
             if (response.status === 404) {
-                console.log('[QCOL Cloud] ℹ️ Archivo no existe en GitHub. Se creará en la primera subida.');
+                console.log('[QCOL Cloud] ℹ️ Archivo no existe en GitHub');
                 return false;
             }
 
@@ -497,10 +493,9 @@
             const content = atob(result.content.replace(/\n/g, ''));
             const data = JSON.parse(content);
 
-            // 🔄 Aplicar MERGE con datos de la nube
             const updated = applyCloudData(data);
             if (updated) {
-                console.log('[QCOL Cloud] ✅ MERGE completado con datos de GitHub');
+                console.log('[QCOL Cloud] ✅ MERGE completado con GitHub');
             }
             return true;
         } catch (error) {
@@ -518,24 +513,21 @@
         isSyncing = true;
         
         try {
-            console.log('[QCOL Cloud] 🔄 Iniciando sincronización completa (MERGE)...');
+            console.log('[QCOL Cloud] 🔄 Iniciando sincronización...');
             
-            // 1. Sincronizar apps localmente (MERGE)
             syncAppsBetweenKeys();
-            
-            // 2. Descargar datos de GitHub y hacer MERGE
             await downloadFromGitHub();
-            
-            // 3. Sincronizar apps localmente (MERGE) después de descargar
             syncAppsBetweenKeys();
             
-            // 4. Subir datos fusionados a GitHub
             const data = extractPublicData();
             await uploadToGitHub(data);
             
-            console.log('[QCOL Cloud] ✅ Sincronización completa (MERGE)');
+            // FORZAR REFRESH FINAL
+            forceUIRefresh();
+            
+            console.log('[QCOL Cloud] ✅ Sincronización completa');
         } catch(e) {
-            console.warn('[QCOL Cloud] ⚠️ Error en sincronización:', e.message);
+            console.warn('[QCOL Cloud] ⚠️ Error:', e.message);
         } finally {
             isSyncing = false;
         }
@@ -557,7 +549,7 @@
         if (key === 'quantum_apps_repo_v2') {
             setTimeout(() => {
                 syncAppsBetweenKeys();
-                window.dispatchEvent(new CustomEvent('qcol-apps-updated'));
+                forceUIRefresh();
             }, 100);
         }
     };
@@ -583,6 +575,7 @@
             setTimeout(() => {
                 syncAppsBetweenKeys();
                 fullSync();
+                forceUIRefresh();
             }, 500);
         }
         
@@ -610,6 +603,7 @@
                 syncAppsBetweenKeys();
                 const data = extractPublicData();
                 uploadToGitHub(data);
+                forceUIRefresh();
             });
         }
     }, 30000);
@@ -619,7 +613,7 @@
     // ──────────────────────────────────────────────────────────
 
     async function init() {
-        console.log('[QCOL Cloud] 🚀 Inicializando sincronización con MERGE de apps completas...');
+        console.log('[QCOL Cloud] 🚀 Inicializando sincronización con MERGE + UI Refresh...');
         console.log('[QCOL Cloud] 📋 Claves sincronizadas:', PUBLIC_KEYS);
 
         const config = getGitHubConfig();
@@ -630,24 +624,21 @@
             console.log('[QCOL Cloud] ✅ GitHub configurado:', config.owner + '/' + config.repo);
         }
 
-        // 🔄 MERGE inicial
         syncAppsBetweenKeys();
-        
-        // 🔄 Descargar y hacer MERGE con GitHub
         await downloadFromGitHub();
-        
-        // 🔄 MERGE después de descargar
         syncAppsBetweenKeys();
 
-        // 🔄 Subir datos fusionados
         const data = extractPublicData();
         await uploadToGitHub(data);
+
+        // Forzar refresh de UI después de la inicialización
+        setTimeout(forceUIRefresh, 500);
 
         window.addEventListener('qcol-apps-updated', function() {
             scheduleSync();
         });
 
-        console.log('[QCOL Cloud] ✅ Sincronización con MERGE activa');
+        console.log('[QCOL Cloud] ✅ Sincronización activa');
         
         setTimeout(() => {
             const pending = safeParse('qcol_pending_quantum_apps', []);
@@ -657,18 +648,17 @@
             console.log('[QCOL Cloud] 📊 Pendientes:', pending.length);
             console.log('[QCOL Cloud] 📊 Publicadas:', published.length);
             
-            // Mostrar nombres de las apps
             if (pending.length > 0) {
-                console.log('[QCOL Cloud] 📱 Apps pendientes:', pending.map(a => a.name || a.id).join(', '));
+                console.log('[QCOL Cloud] 📱 Pendientes:', pending.map(a => a.name || a.id).join(', '));
             }
             if (published.length > 0) {
-                console.log('[QCOL Cloud] 📱 Apps publicadas:', published.map(a => a.name || a.id).join(', '));
+                console.log('[QCOL Cloud] 📱 Publicadas:', published.map(a => a.name || a.id).join(', '));
             }
             
             if (config.token) {
-                console.log('[QCOL Cloud] ✅ Sincronización multi-dispositivo ACTIVADA (MERGE completo)');
+                console.log('[QCOL Cloud] ✅ Multi-dispositivo ACTIVADO');
             } else {
-                console.log('[QCOL Cloud] ⚠️ Configura el token de GitHub para sincronización multi-dispositivo');
+                console.log('[QCOL Cloud] ⚠️ Configura token para multi-dispositivo');
             }
         }, 1000);
     }
@@ -688,7 +678,7 @@
         publishApp: window.publishApp,
         rejectApp: window.rejectApp,
         submitApp: window.submitAppToPending,
-        merge: mergeArraysDeep,
+        refreshUI: forceUIRefresh,
         status: () => {
             const config = getGitHubConfig();
             const pending = safeParse('qcol_pending_quantum_apps', []);
@@ -707,13 +697,15 @@
                     name: a.name, 
                     submittedBy: a.submittedBy,
                     hasPython: !!a.pythonCode,
-                    hasHTML: !!a.htmlCode
+                    hasHTML: !!a.htmlCode,
+                    fullApp: a  // ✅ APP COMPLETA
                 })),
                 published: published.map(a => ({ 
                     id: a.id, 
                     name: a.name,
                     hasPython: !!a.pythonCode,
-                    hasHTML: !!a.htmlCode
+                    hasHTML: !!a.htmlCode,
+                    fullApp: a  // ✅ APP COMPLETA
                 }))
             };
         },
