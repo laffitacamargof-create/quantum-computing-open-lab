@@ -6,9 +6,9 @@ export const SUPABASE_CONFIG = {
     // URL de tu proyecto
     supabaseUrl: 'https://mpejkdzuofwsbdjitonr.supabase.co',
     
-    // ✅ Clave pública (publishable)
+    // Clave pública (publishable)
     supabaseAnonKey: 'sb_publishable_aDCI79qJNnOcMXd9fSXBbg_rYAKYV9d',
     
-    // ✅ Clave secreta (secret)
+    // ✅ Clave secreta (secret) - CORREGIDA
     supabaseServiceKey: 'sb_secret_qiLytp2z27jWKjUxz0pMrg__U5ZdCAu'
 };

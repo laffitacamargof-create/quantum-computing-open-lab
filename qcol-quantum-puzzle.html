@@ -969,7 +969,8 @@ async function renderPublishedApps() {
     const apps = await getPublishedApps();
     const searchTerm = document.getElementById('searchInput')?.value.toLowerCase() || "";
     let filtered = apps.filter(app => {
-        const matchSearch = app.title.toLowerCase().includes(searchTerm) || (app.desc || "").toLowerCase().includes(searchTerm) || (app.tags || "").toLowerCase().includes(searchTerm);
+        // ✅ CORREGIDO: Verificar que app.title existe
+        const matchSearch = (app.title || "").toLowerCase().includes(searchTerm) || (app.desc || "").toLowerCase().includes(searchTerm) || (app.tags || "").toLowerCase().includes(searchTerm);
         let matchTag = true;
         if(activeTagFilter !== 'all') {
             const appTags = (app.tags || "").toLowerCase().split(',').map(t => t.trim());
@@ -996,7 +997,7 @@ async function renderPublishedApps() {
             <div class="card">
                 <div class="card-header"><span class="badge-app">⚛️ QUANTUM APP</span></div>
                 <div class="card-body">
-                    <div class="card-title">${escapeHtml(app.title)}</div>
+                    <div class="card-title">${escapeHtml(app.title || 'Untitled App')}</div>
                     <div class="card-desc">${escapeHtml(app.desc || 'No description')}</div>
                     <div class="card-meta"><span>⏱️ ${app.duration || 8} min</span></div>
                     <div class="tags">${tagsHtml}</div>
