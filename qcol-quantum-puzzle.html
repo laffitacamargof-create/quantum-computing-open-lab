@@ -599,88 +599,6 @@ window.quantumSync.onAppRejected = (appId) => {
 window.quantumSync.connectPuzzle();
 
 console.log('✅ Quantum Sync inicializado correctamente');
-
-// ============================================================
-// ESCUCHAR MENSAJES DEL STUDIO (iframe)
-// ============================================================
-window.addEventListener('message', async (event) => {
-    const data = event.data;
-    if (!data || typeof data !== 'object') return;
-    
-    // Mensaje del Studio: sincronizar app a la nube
-    if (data.type === 'QCOL_STUDIO_SYNC_APP') {
-        const { appId, appData } = data;
-        console.log('📥 Recibido sync desde Studio:', appId, appData);
-        
-        if (window.quantumSync && window.quantumSync.isReady) {
-            try {
-                const result = await window.quantumSync.submitApp({
-                    id: appData.id || appId,
-                    name: appData.name || appData.title || 'Untitled',
-                    title: appData.title || appData.name || 'Untitled',
-                    description: appData.description || '',
-                    tags: appData.tags || '',
-                    pythonCode: appData.pythonCode || '',
-                    htmlCode: appData.htmlCode || '',
-                    serverUrl: appData.serverUrl || '',
-                    duration: appData.duration || 8
-                });
-                showNotification(`☁️ App "${result.title}" sincronizada con la nube (pendiente)`);
-                
-                // Responder al Studio confirmando
-                if (event.source) {
-                    event.source.postMessage({
-                        type: 'QCOL_STUDIO_SYNC_CONFIRMED',
-                        appId: appId,
-                        success: true
-                    }, event.origin);
-                }
-            } catch (error) {
-                console.error('❌ Error sincronizando desde Studio:', error);
-                showNotification('❌ Error al sincronizar: ' + error.message);
-                
-                if (event.source) {
-                    event.source.postMessage({
-                        type: 'QCOL_STUDIO_SYNC_CONFIRMED',
-                        appId: appId,
-                        success: false,
-                        error: error.message
-                    }, event.origin);
-                }
-            }
-        } else {
-            console.warn('⚠️ Quantum Sync no disponible, guardando localmente');
-            // Fallback: guardar en localStorage
-            const pending = JSON.parse(localStorage.getItem('qcol_pending_quantum_apps') || '[]');
-            const existing = pending.find(p => p.id === appId);
-            if (existing) {
-                Object.assign(existing, appData);
-            } else {
-                pending.push(appData);
-            }
-            localStorage.setItem('qcol_pending_quantum_apps', JSON.stringify(pending));
-            showNotification(`📦 App "${appData.title}" guardada localmente`);
-            
-            if (event.source) {
-                event.source.postMessage({
-                    type: 'QCOL_STUDIO_SYNC_CONFIRMED',
-                    appId: appId,
-                    success: true,
-                    local: true
-                }, event.origin);
-            }
-        }
-    }
-    
-    // Confirmación de sincronización desde Puzzle al Studio
-    if (data.type === 'QCOL_STUDIO_SYNC_CONFIRMED') {
-        if (data.success) {
-            console.log('✅ Sync confirmado por Puzzle:', data.appId);
-        } else {
-            console.error('❌ Error en sync:', data.error);
-        }
-    }
-});
 </script>
 
 <div class="notif" id="notifMsg"></div>
@@ -1243,13 +1161,118 @@ function openQuantumAppStudio() {
 
 function closeStudioModal() { studioModal.classList.remove('open'); }
 
+// ============================================================
+// 🔥 MANEJADOR DE MENSAJES DEL STUDIO (FUERA DEL MODULE)
+// ============================================================
+window.addEventListener('message', async function(e) {
+    const data = e.data;
+    if (!data || typeof data !== 'object') return;
+    
+    console.log('📨 Mensaje recibido en Puzzle:', data.type, data);
+    
+    // Mensaje del Studio: sincronizar app a la nube
+    if (data.type === 'QCOL_STUDIO_SYNC_APP') {
+        const { appId, appData } = data;
+        console.log('📥 Recibido sync desde Studio:', appId, appData);
+        
+        if (window.quantumSync && window.quantumSync.isReady) {
+            try {
+                const result = await window.quantumSync.submitApp({
+                    id: appData.id || appId,
+                    name: appData.name || appData.title || 'Untitled',
+                    title: appData.title || appData.name || 'Untitled',
+                    description: appData.description || '',
+                    tags: appData.tags || '',
+                    pythonCode: appData.pythonCode || '',
+                    htmlCode: appData.htmlCode || '',
+                    serverUrl: appData.serverUrl || '',
+                    duration: appData.duration || 8
+                });
+                
+                // Mostrar notificación en Puzzle
+                showNotification(`☁️ App "${result.title}" sincronizada con la nube (pendiente)`);
+                
+                // Actualizar la UI (pendientes)
+                if (typeof renderPendingList === 'function') {
+                    await renderPendingList();
+                }
+                
+                // Responder al Studio confirmando
+                if (e.source) {
+                    e.source.postMessage({
+                        type: 'QCOL_STUDIO_SYNC_CONFIRMED',
+                        appId: appId,
+                        success: true,
+                        title: result.title
+                    }, e.origin);
+                }
+            } catch (error) {
+                console.error('❌ Error sincronizando desde Studio:', error);
+                showNotification('❌ Error al sincronizar: ' + error.message);
+                
+                if (e.source) {
+                    e.source.postMessage({
+                        type: 'QCOL_STUDIO_SYNC_CONFIRMED',
+                        appId: appId,
+                        success: false,
+                        error: error.message
+                    }, e.origin);
+                }
+            }
+        } else {
+            console.warn('⚠️ Quantum Sync no disponible, guardando localmente');
+            // Fallback: guardar en localStorage
+            const pending = JSON.parse(localStorage.getItem('qcol_pending_quantum_apps') || '[]');
+            const existing = pending.find(p => p.id === appId);
+            if (existing) {
+                Object.assign(existing, appData);
+            } else {
+                pending.push(appData);
+            }
+            localStorage.setItem('qcol_pending_quantum_apps', JSON.stringify(pending));
+            showNotification(`📦 App "${appData.title}" guardada localmente`);
+            
+            // Actualizar UI pendientes
+            if (typeof renderPendingList === 'function') {
+                await renderPendingList();
+            }
+            
+            if (e.source) {
+                e.source.postMessage({
+                    type: 'QCOL_STUDIO_SYNC_CONFIRMED',
+                    appId: appId,
+                    success: true,
+                    local: true
+                }, e.origin);
+            }
+        }
+    }
+});
+
+// ============================================================
+// OTROS MANEJADORES DE MENSAJES
+// ============================================================
 window.addEventListener('message', (e) => {
     const data = e.data;
     if (!data || typeof data !== 'object') return;
-    if (data.type === 'QCOL_COMPILER_URL' && data.url) { compilerUrl = data.url; showNotification('Quantum server configured', 1500); return; }
-    if (data.type === 'QCOL_STUDIO_OPENED') { studioIframeReady = true; showNotification('⚡ Quantum App Studio ready', 1500); return; }
-    if (data.type === 'QCOL_APP_SAVED') { renderTagFilters(); renderPublishedApps(); }
-    if (data.type === 'QCOL_APP_DELETED') { renderTagFilters(); renderPublishedApps(); }
+    if (data.type === 'QCOL_COMPILER_URL' && data.url) { 
+        compilerUrl = data.url; 
+        showNotification('Quantum server configured', 1500); 
+        return; 
+    }
+    if (data.type === 'QCOL_STUDIO_OPENED') { 
+        studioIframeReady = true; 
+        showNotification('⚡ Quantum App Studio ready', 1500); 
+        return; 
+    }
+    if (data.type === 'QCOL_APP_SAVED') { 
+        renderTagFilters(); 
+        renderPublishedApps(); 
+    }
+    if (data.type === 'QCOL_APP_DELETED') { 
+        renderTagFilters(); 
+        renderPublishedApps(); 
+    }
     if(data.type === 'QCOL_USER_UPDATE') {
         currentUser = data.user;
         isAdmin = (currentUser?.role === 'admin' || currentUser?.role === 'founder');
