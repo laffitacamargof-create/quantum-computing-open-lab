@@ -623,10 +623,13 @@
         }
         localStorage.setItem('qcol_pending_apps', JSON.stringify(pendingApps));
         
-        // 2. 🔥 SINCRONIZAR CON LA NUBE (Supabase) usando window.quantumSync
-        if (window.quantumSync && window.quantumSync.isReady) {
-            try {
-                window.quantumSync.submitApp({
+        // 2. 🔥 SINCRONIZAR CON LA NUBE - Enviar mensaje al Puzzle (padre)
+        if (window.parent !== window) {
+            // Estamos dentro del iframe, enviamos mensaje al Puzzle
+            const message = {
+                type: 'QCOL_STUDIO_SYNC_APP',
+                appId: proj.id,
+                appData: {
                     id: proj.id,
                     name: proj.name,
                     title: proj.name,
@@ -636,24 +639,49 @@
                     htmlCode: proj.htmlCode,
                     serverUrl: proj.serverUrl || localStorage.getItem('qcol_colab_url') || '',
                     duration: 8
-                }).then(() => {
-                    notify(`☁️ App "${proj.name}" enviada a la nube (pendiente)`);
-                }).catch((err) => {
-                    console.warn('⚠️ No se pudo sincronizar con la nube:', err);
-                    notify(`📦 App "${proj.name}" guardada localmente (sin conexión a la nube)`);
-                });
-            } catch (error) {
-                console.warn('⚠️ No se pudo sincronizar con la nube:', error);
-                notify(`📦 App "${proj.name}" guardada localmente (sin conexión a la nube)`);
+                }
+            };
+            
+            if (parentOrigin) {
+                window.parent.postMessage(message, parentOrigin);
+                notify(`☁️ Enviando "${proj.name}" a la nube...`);
+            } else {
+                // Fallback: si no hay parentOrigin, intentar con '*'
+                window.parent.postMessage(message, '*');
+                notify(`☁️ Enviando "${proj.name}" a la nube...`);
             }
         } else {
-            // Si no hay sync, notificar que está solo local
-            notify(`📦 App "${proj.name}" guardada localmente. Conecta con Founder Panel para sincronizar.`, 3000);
+            // Modo standalone: usar window.quantumSync directamente
+            if (window.quantumSync && window.quantumSync.isReady) {
+                try {
+                    window.quantumSync.submitApp({
+                        id: proj.id,
+                        name: proj.name,
+                        title: proj.name,
+                        description: '',
+                        tags: '',
+                        pythonCode: proj.pythonCode,
+                        htmlCode: proj.htmlCode,
+                        serverUrl: proj.serverUrl || localStorage.getItem('qcol_colab_url') || '',
+                        duration: 8
+                    }).then(() => {
+                        notify(`☁️ App "${proj.name}" enviada a la nube (pendiente)`);
+                    }).catch((err) => {
+                        console.warn('⚠️ No se pudo sincronizar con la nube:', err);
+                        notify(`📦 App "${proj.name}" guardada localmente (sin conexión a la nube)`);
+                    });
+                } catch (error) {
+                    console.warn('⚠️ No se pudo sincronizar con la nube:', error);
+                    notify(`📦 App "${proj.name}" guardada localmente (sin conexión a la nube)`);
+                }
+            } else {
+                notify(`📦 App "${proj.name}" guardada localmente.`, 3000);
+            }
         }
         
-        // 3. Si está embebido, enviar al padre también
+        // 3. También enviar el mensaje original QCOL_LAUNCH_QUANTUM_APP
         if (window.parent !== window && parentOrigin) {
-            const message = {
+            const launchMessage = {
                 type: 'QCOL_LAUNCH_QUANTUM_APP',
                 appId: proj.id,
                 appTitle: proj.name,
@@ -665,7 +693,7 @@
                     createdAt: proj.createdAt
                 }
             };
-            sendToParent(message);
+            sendToParent(launchMessage);
         }
     }
 
