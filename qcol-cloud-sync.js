@@ -218,7 +218,7 @@ class QuantumSync {
             id TEXT PRIMARY KEY,
             name TEXT NOT NULL,
             title TEXT NOT NULL,
-            desc TEXT,
+            description TEXT,
             tags TEXT,
             duration INTEGER DEFAULT 8,
             python_code TEXT,
@@ -236,7 +236,7 @@ class QuantumSync {
             id TEXT PRIMARY KEY,
             name TEXT NOT NULL,
             title TEXT NOT NULL,
-            desc TEXT,
+            description TEXT,
             tags TEXT,
             duration INTEGER DEFAULT 8,
             python_code TEXT,
@@ -325,11 +325,12 @@ class QuantumSync {
             appData.id = this._generateId();
         }
         
+        // CAMBIO: usar 'description' en lugar de 'desc'
         const pendingApp = {
             id: appData.id,
             name: appData.name || appData.title || 'Untitled App',
             title: appData.title || appData.name || 'Untitled App',
-            desc: appData.desc || appData.description || '',
+            description: appData.desc || appData.description || '',
             tags: appData.tags || '',
             duration: appData.duration || 8,
             python_code: appData.pythonCode || appData.python_code || '',
@@ -385,11 +386,12 @@ class QuantumSync {
             const pendingApp = pendingApps[0];
             
             // Crear app publicada
+            // CAMBIO: usar 'description' en lugar de 'desc'
             const publishedApp = {
                 id: pendingApp.id,
                 name: pendingApp.name,
                 title: pendingApp.title,
-                desc: pendingApp.desc,
+                description: pendingApp.description,
                 tags: pendingApp.tags,
                 duration: pendingApp.duration,
                 python_code: pendingApp.python_code,
@@ -512,7 +514,7 @@ class QuantumSync {
                             id: data.appId,
                             name: appData.name || appData.title,
                             title: appData.title || appData.name,
-                            desc: appData.desc || '',
+                            description: appData.desc || appData.description || '',
                             tags: appData.tags || '',
                             pythonCode: appData.pythonCode || '',
                             htmlCode: appData.htmlCode || '',
