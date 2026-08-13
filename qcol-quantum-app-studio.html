@@ -844,6 +844,9 @@
         }
     }
 
+    // ============================================================
+    // 🔄 INTEGRACIÓN CON SUPABASE SYNC
+    // ============================================================
     function saveCurrentEdit() {
         const nameVal  = document.getElementById('project-name-input').value.trim();
         const pyVal    = document.getElementById('python-editor').value;
@@ -881,6 +884,30 @@
             currentEditId = newId;
             saveProjects();
             notify(`Project "${nameVal}" created`);
+            
+            // ── Sincronizar con la nube (Supabase) ──
+            if (window.quantumSync) {
+                try {
+                    window.quantumSync.submitApp({
+                        id: newId,
+                        name: nameVal,
+                        title: nameVal,
+                        description: '',
+                        tags: '',
+                        pythonCode: pyVal,
+                        htmlCode: htmlVal,
+                        serverUrl: urlVal,
+                        duration: 8
+                    }).then(() => {
+                        notify('☁️ App sincronizada con la nube');
+                    }).catch((err) => {
+                        console.warn('⚠️ No se pudo sincronizar con la nube:', err);
+                    });
+                } catch (error) {
+                    console.warn('⚠️ No se pudo sincronizar con la nube:', error);
+                }
+            }
+            
             showScreen('repo');
             renderRepository();
             return;
@@ -901,6 +928,30 @@
         projects[idx].serverUrl  = urlVal;
         saveProjects();
         notify("Project saved");
+        
+        // ── Sincronizar con la nube (Supabase) ──
+        if (window.quantumSync) {
+            try {
+                window.quantumSync.submitApp({
+                    id: currentEditId,
+                    name: nameVal || projects[idx].name,
+                    title: nameVal || projects[idx].name,
+                    description: '',
+                    tags: '',
+                    pythonCode: pyVal,
+                    htmlCode: htmlVal,
+                    serverUrl: urlVal,
+                    duration: 8
+                }).then(() => {
+                    notify('☁️ App sincronizada con la nube');
+                }).catch((err) => {
+                    console.warn('⚠️ No se pudo sincronizar con la nube:', err);
+                });
+            } catch (error) {
+                console.warn('⚠️ No se pudo sincronizar con la nube:', error);
+            }
+        }
+        
         showScreen('repo');
         renderRepository();
     }
