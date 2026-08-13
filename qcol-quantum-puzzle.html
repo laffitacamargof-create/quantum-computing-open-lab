@@ -536,6 +536,71 @@ body::before{
 </head>
 <body>
 
+<!-- ============================================================
+     🔄 INICIALIZACIÓN GLOBAL - SUPABASE SYNC
+     ============================================================ -->
+<script type="importmap">
+{
+    "imports": {
+        "./supabase-config.js": "./supabase-config.js",
+        "./quantum-sync.js": "./quantum-sync.js"
+    }
+}
+</script>
+
+<script type="module">
+import QuantumSync from './quantum-sync.js';
+import { SUPABASE_CONFIG } from './supabase-config.js';
+
+// Crear instancia global con las credenciales de Supabase
+window.quantumSync = new QuantumSync({
+    supabaseUrl: SUPABASE_CONFIG.supabaseUrl,
+    supabaseAnonKey: SUPABASE_CONFIG.supabaseAnonKey,
+    supabaseServiceKey: SUPABASE_CONFIG.supabaseServiceKey
+});
+
+// Inicializar la conexión
+await window.quantumSync.init();
+
+// Configurar usuario (CAMBIA ESTO SEGÚN TU USUARIO)
+window.quantumSync.setUser({
+    id: 'usuario-123',
+    name: 'Admin',
+    role: 'founder' // 'founder', 'admin', 'user'
+});
+
+// Callbacks para actualizar la UI automáticamente
+window.quantumSync.onPendingUpdate = (apps) => {
+    console.log('📋 Apps pendientes actualizadas:', apps.length);
+    if (typeof renderPendingList === 'function') {
+        renderPendingList();
+    }
+};
+
+window.quantumSync.onPublishedUpdate = (apps) => {
+    console.log('📦 Apps publicadas actualizadas:', apps.length);
+    if (typeof renderTagFilters === 'function') {
+        renderTagFilters();
+    }
+    if (typeof renderPublishedApps === 'function') {
+        renderPublishedApps();
+    }
+};
+
+window.quantumSync.onAppPublished = (app) => {
+    showNotification(`✅ "${app.title}" publicado en la nube`);
+};
+
+window.quantumSync.onAppRejected = (appId) => {
+    showNotification('🗑️ App rechazada en la nube');
+};
+
+// Conectar el Puzzle para escuchar mensajes
+window.quantumSync.connectPuzzle();
+
+console.log('✅ Quantum Sync inicializado correctamente');
+</script>
+
 <div class="notif" id="notifMsg"></div>
 <div class="admin-bar" id="adminBar">
     ⚛️ FOUNDER/ADMIN MODE · APP MANAGEMENT
