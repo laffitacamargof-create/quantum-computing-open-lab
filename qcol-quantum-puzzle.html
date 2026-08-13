@@ -1303,7 +1303,6 @@ async function renderPendingList() {
     }
     let html = `<div class="pending-grid">`;
     pending.forEach(app => {
-        // Asegurar que tenemos un título
         const title = app.title || app.name || 'Untitled App';
         const appId = app.id;
         html += `<div style="background: #0a1222; border-radius: 16px; margin-bottom: 12px; padding: 12px;">
@@ -1319,7 +1318,7 @@ async function renderPendingList() {
 }
 
 // ============================================================
-// 🔥 PUBLISH PENDING APP - CORREGIDO
+// 🔥 PUBLISH PENDING APP - CORREGIDO (SIN FALLBACK A LOCALSTORAGE)
 // ============================================================
 async function publishPendingApp(appId) {
     console.log('📤 Publicando app:', appId);
@@ -1328,48 +1327,31 @@ async function publishPendingApp(appId) {
         return; 
     }
     
-    // SIEMPRE usar quantumSync si está disponible
-    if (window.quantumSync && window.quantumSync.isReady) {
-        try {
-            console.log('🔄 Usando quantumSync para publicar...');
-            const published = await window.quantumSync.approveApp(appId, currentUser?.id);
-            console.log('✅ App publicada:', published);
-            showNotification(`✅ App "${published.title}" publicada en la nube`);
-            
-            // Actualizar UI
-            await renderPendingList();
-            renderTagFilters();
-            renderPublishedApps();
-            return;
-        } catch (error) {
-            console.error('❌ Error al publicar:', error);
-            showNotification('❌ Error al publicar: ' + error.message);
-            return;
-        }
-    }
-    
-    // Fallback a localStorage
-    console.log('🔄 Fallback a localStorage...');
-    const pending = await getPendingApps();
-    const index = pending.findIndex(p => p.id === appId);
-    if(index === -1) {
-        showNotification("⚠️ App no encontrada");
+    // SOLO usar quantumSync
+    if (!window.quantumSync || !window.quantumSync.isReady) {
+        showNotification("❌ No hay conexión con la nube");
         return;
     }
-    const appToPublish = { ...pending[index] };
-    const published = await getPublishedApps();
-    if(published.find(p => p.id === appToPublish.id)) { 
-        showNotification("⚠️ App ya existe"); 
-        return; 
+    
+    try {
+        console.log('🔄 Usando quantumSync para publicar...');
+        const published = await window.quantumSync.approveApp(appId, currentUser?.id);
+        console.log('✅ App publicada:', published);
+        showNotification(`✅ App "${published.title}" publicada en la nube`);
+        
+        // FORZAR recarga desde Supabase
+        await window.quantumSync.syncPendingApps();
+        await window.quantumSync.syncPublishedApps();
+        
+        // Actualizar UI
+        await renderPendingList();
+        renderTagFilters();
+        await renderPublishedApps();
+        
+    } catch (error) {
+        console.error('❌ Error al publicar:', error);
+        showNotification('❌ Error al publicar: ' + error.message);
     }
-    published.push(appToPublish);
-    await savePublishedApps(published);
-    pending.splice(index,1);
-    await savePendingApps(pending);
-    showNotification(`✅ App "${appToPublish.title}" publicada`);
-    await renderPendingList();
-    renderTagFilters();
-    renderPublishedApps();
 }
 
 // ============================================================
@@ -1380,49 +1362,39 @@ async function rejectPendingApp(appId) {
     if (!isFounder && !isAdmin) return;
     if (!confirm("Delete this pending app?")) return;
     
-    if (window.quantumSync && window.quantumSync.isReady) {
-        try {
-            await window.quantumSync.rejectApp(appId);
-            showNotification("App rechazada en la nube");
-            await renderPendingList();
-            return;
-        } catch (error) {
-            showNotification('❌ Error al rechazar: ' + error.message);
-            return;
-        }
+    if (!window.quantumSync || !window.quantumSync.isReady) {
+        showNotification("❌ No hay conexión con la nube");
+        return;
     }
     
-    // Fallback a localStorage
-    let pending = await getPendingApps();
-    pending = pending.filter(p => p.id !== appId);
-    await savePendingApps(pending);
-    showNotification("App rechazada");
-    await renderPendingList();
+    try {
+        await window.quantumSync.rejectApp(appId);
+        showNotification("App rechazada en la nube");
+        await window.quantumSync.syncPendingApps();
+        await renderPendingList();
+    } catch (error) {
+        showNotification('❌ Error al rechazar: ' + error.message);
+    }
 }
 
 async function deletePublishedApp(appId) {
     if(!isFounder) { showNotification("Only founder can delete published apps"); return; }
     if(!confirm(`Delete app from repository?`)) return;
     
-    if (window.quantumSync && window.quantumSync.isReady) {
-        try {
-            await window.quantumSync.deletePublishedApp(appId);
-            showNotification("App eliminada de la nube");
-            renderTagFilters();
-            renderPublishedApps();
-            return;
-        } catch (error) {
-            showNotification('❌ Error al eliminar: ' + error.message);
-            return;
-        }
+    if (!window.quantumSync || !window.quantumSync.isReady) {
+        showNotification("❌ No hay conexión con la nube");
+        return;
     }
     
-    let published = await getPublishedApps();
-    published = published.filter(p => p.id !== appId);
-    await savePublishedApps(published);
-    showNotification("App deleted");
-    renderTagFilters();
-    renderPublishedApps();
+    try {
+        await window.quantumSync.deletePublishedApp(appId);
+        showNotification("App eliminada de la nube");
+        await window.quantumSync.syncPublishedApps();
+        renderTagFilters();
+        await renderPublishedApps();
+    } catch (error) {
+        showNotification('❌ Error al eliminar: ' + error.message);
+    }
 }
 
 function showNotification(msg, dur=2800) {
