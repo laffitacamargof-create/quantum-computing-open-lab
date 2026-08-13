@@ -45,10 +45,11 @@ class QuantumSync {
             console.log('📌 URL:', this.SUPABASE_URL);
             console.log('📌 ANON KEY:', this.SUPABASE_ANON_KEY ? '✅ Presente' : '❌ Faltante');
             
-            // Verificar conexión con Supabase - usar HEAD en lugar de ping
+            // Verificar conexión con Supabase
             const testResponse = await fetch(`${this.SUPABASE_URL}/rest/v1/`, {
                 method: 'HEAD',
                 headers: {
+                    'Content-Type': 'application/json',
                     'apikey': this.SUPABASE_ANON_KEY,
                     'Authorization': `Bearer ${this.SUPABASE_ANON_KEY}`
                 }

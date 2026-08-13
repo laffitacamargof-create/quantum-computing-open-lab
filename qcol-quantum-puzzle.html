@@ -543,9 +543,9 @@ body::before{
 // Cargar configuración y módulo de forma dinámica
 (async function initQuantumSync() {
     try {
-        // Importar configuración y módulo
-        const { SUPABASE_CONFIG } = await import('./supabase-config.js.js');
-        const { default: QuantumSync } = await import('./qcol-cloud-sync.js');
+        // ✅ CORREGIDO: Nombres de archivos correctos
+        const { SUPABASE_CONFIG } = await import('./supabase-config.js');
+        const { default: QuantumSync } = await import('./quantum-sync.js');
         
         console.log('📦 Módulos importados correctamente');
         console.log('📌 SUPABASE_CONFIG:', SUPABASE_CONFIG);
