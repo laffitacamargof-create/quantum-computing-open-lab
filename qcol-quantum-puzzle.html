@@ -572,33 +572,37 @@ window.quantumSync.setUser({
 // Callbacks para actualizar la UI automáticamente
 window.quantumSync.onPendingUpdate = (apps) => {
     console.log('📋 Apps pendientes actualizadas:', apps.length);
-    if (typeof renderPendingList === 'function') {
-        renderPendingList();
+    if (typeof window.renderPendingList === 'function') {
+        window.renderPendingList();
     }
 };
 
 window.quantumSync.onPublishedUpdate = (apps) => {
     console.log('📦 Apps publicadas actualizadas:', apps.length);
-    if (typeof renderTagFilters === 'function') {
-        renderTagFilters();
+    if (typeof window.renderTagFilters === 'function') {
+        window.renderTagFilters();
     }
-    if (typeof renderPublishedApps === 'function') {
-        renderPublishedApps();
+    if (typeof window.renderPublishedApps === 'function') {
+        window.renderPublishedApps();
     }
 };
 
 window.quantumSync.onAppPublished = (app) => {
-    showNotification(`✅ "${app.title}" publicado en la nube`);
+    window.showNotification(`✅ "${app.title}" publicado en la nube`);
 };
 
 window.quantumSync.onAppRejected = (appId) => {
-    showNotification('🗑️ App rechazada en la nube');
+    window.showNotification('🗑️ App rechazada en la nube');
 };
 
 // Conectar el Puzzle para escuchar mensajes
 window.quantumSync.connectPuzzle();
 
+// Hacer que quantumSync esté disponible globalmente
+window.quantumSync = window.quantumSync;
+
 console.log('✅ Quantum Sync inicializado correctamente');
+console.log('✅ quantumSync.isReady:', window.quantumSync.isReady);
 </script>
 
 <div class="notif" id="notifMsg"></div>
@@ -1289,10 +1293,13 @@ function openPendingManager() {
 function closePendingModal() { document.getElementById('pendingModal').classList.remove('open'); }
 
 // ============================================================
-// 🔥 RENDER PENDING LIST - CORREGIDO
+// 🔥 RENDER PENDING LIST
 // ============================================================
 async function renderPendingList() {
     console.log('🔄 Renderizando lista de pendientes...');
+    console.log('📌 window.quantumSync:', window.quantumSync);
+    console.log('📌 window.quantumSync.isReady:', window.quantumSync?.isReady);
+    
     const pending = await getPendingApps();
     console.log('📋 Apps pendientes:', pending);
     const container = document.getElementById('pendingListContainer');
@@ -1318,10 +1325,13 @@ async function renderPendingList() {
 }
 
 // ============================================================
-// 🔥 PUBLISH PENDING APP - CORREGIDO (SIN FALLBACK A LOCALSTORAGE)
+// 🔥 PUBLISH PENDING APP
 // ============================================================
 async function publishPendingApp(appId) {
     console.log('📤 Publicando app:', appId);
+    console.log('📌 window.quantumSync:', window.quantumSync);
+    console.log('📌 window.quantumSync.isReady:', window.quantumSync?.isReady);
+    
     if (!isFounder && !isAdmin) { 
         showNotification("Solo fundadores/admins pueden publicar"); 
         return; 
@@ -1329,7 +1339,8 @@ async function publishPendingApp(appId) {
     
     // SOLO usar quantumSync
     if (!window.quantumSync || !window.quantumSync.isReady) {
-        showNotification("❌ No hay conexión con la nube");
+        showNotification("❌ No hay conexión con la nube. Revisa la consola.");
+        console.error('❌ quantumSync no disponible o no inicializado');
         return;
     }
     
@@ -1355,7 +1366,7 @@ async function publishPendingApp(appId) {
 }
 
 // ============================================================
-// 🔥 REJECT PENDING APP - CORREGIDO
+// 🔥 REJECT PENDING APP
 // ============================================================
 async function rejectPendingApp(appId) {
     console.log('🗑️ Rechazando app:', appId);
@@ -1404,6 +1415,18 @@ function showNotification(msg, dur=2800) {
     if(n._timeout) clearTimeout(n._timeout);
     n._timeout = setTimeout(() => n.classList.remove('show'), dur);
 }
+
+// ============================================================
+// HACER FUNCIONES GLOBALES PARA EL MODULE
+// ============================================================
+window.renderTagFilters = renderTagFilters;
+window.renderPublishedApps = renderPublishedApps;
+window.renderPendingList = renderPendingList;
+window.showNotification = showNotification;
+window.publishPendingApp = publishPendingApp;
+window.rejectPendingApp = rejectPendingApp;
+window.deletePublishedApp = deletePublishedApp;
+window.openPendingManager = openPendingManager;
 
 // Inicializar
 renderTagFilters();
