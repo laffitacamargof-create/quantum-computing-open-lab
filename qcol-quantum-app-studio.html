@@ -551,7 +551,13 @@
         localStorage.setItem('quantum_apps_repo_v2', JSON.stringify(projects));
         if (isEmbedded && currentEditId && parentOrigin) {
             const proj = projects.find(p => p.id === currentEditId);
-            if (proj) notifyParentAboutChange('save', currentEditId, { name: proj.name, serverUrl: proj.serverUrl });
+            if (proj) notifyParentAboutChange('save', currentEditId, {
+                name: proj.name,
+                title: proj.name,
+                serverUrl: proj.serverUrl,
+                pythonCode: proj.pythonCode,
+                htmlCode: proj.htmlCode
+            });
         }
     }
 
