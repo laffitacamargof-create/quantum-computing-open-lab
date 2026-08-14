@@ -1,5 +1,5 @@
 // ============================================================
-// QUANTUM SYNC MODULE - CORREGIDO
+// QUANTUM SYNC MODULE - VERSIÓN FINAL CORREGIDA
 // ============================================================
 
 class QuantumSync {
@@ -82,7 +82,7 @@ class QuantumSync {
         }
     }
 
-    // ✅ CORREGIDO: Sin parámetro _ en URL
+    // ✅ CORREGIDO: SIN parámetro _ en URL
     async _supabaseFetch(table, options = {}) {
         let url = `${this.SUPABASE_URL}/rest/v1/${table}?select=*`;
         
