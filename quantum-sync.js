@@ -1,5 +1,5 @@
 // ============================================================
-// QUANTUM SYNC MODULE - CON REALTIME SYNC
+// QUANTUM SYNC MODULE - CORREGIDO (HTTP 400 FIX)
 // ============================================================
 
 class QuantumSync {
@@ -69,7 +69,6 @@ class QuantumSync {
             this.isReady = true;
             console.log('✅ Quantum Sync Module initialized');
             
-            // ✅ Sincronizar cada 10 segundos (más frecuente para múltiples dispositivos)
             this.syncInterval = setInterval(() => {
                 this.syncAll();
                 if (this.onSyncComplete) this.onSyncComplete();
@@ -83,32 +82,46 @@ class QuantumSync {
         }
     }
 
+    // ✅ CORREGIDO: _supabaseFetch con orden correcto
     async _supabaseFetch(table, options = {}) {
-        const url = new URL(`${this.SUPABASE_URL}/rest/v1/${table}`);
-        if (options.select) url.searchParams.append('select', options.select);
+        let url = `${this.SUPABASE_URL}/rest/v1/${table}?select=*`;
+        
+        // ✅ CORREGIDO: Construir URL manualmente para evitar errores
         if (options.eq) {
             Object.entries(options.eq).forEach(([key, value]) => {
-                url.searchParams.append(key, `eq.${value}`);
+                url += `&${key}=eq.${value}`;
             });
         }
+        
+        // ✅ CORREGIDO: order sin punto (created_at.desc es incorrecto)
         if (options.order) {
-            url.searchParams.append('order', `${options.order.column}.${options.order.direction || 'asc'}`);
+            // Supabase usa: order=column.direction (con punto)
+            // Pero hay que URL encode
+            url += `&order=${options.order.column}.${options.order.direction || 'asc'}`;
         }
-        if (options.limit) url.searchParams.append('limit', options.limit);
-        // ✅ Forzar no usar caché
-        url.searchParams.append('_t', Date.now());
+        
+        if (options.limit) {
+            url += `&limit=${options.limit}`;
+        }
+        
+        // ✅ Cache buster
+        url += `&_=${Date.now()}`;
+        
+        console.log('📡 Fetch:', url);
         
         const response = await fetch(url, {
             method: 'GET',
             headers: {
                 'apikey': this.SUPABASE_ANON_KEY,
                 'Authorization': `Bearer ${this.SUPABASE_ANON_KEY}`,
-                'Cache-Control': 'no-cache, no-store, must-revalidate',
-                'Pragma': 'no-cache'
+                'Cache-Control': 'no-cache'
             }
         });
         
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
         return await response.json();
     }
 
@@ -188,17 +201,10 @@ class QuantumSync {
     async syncPendingApps() {
         try {
             const data = await this._supabaseFetch(this.TABLES.PENDING_APPS, {
-                select: '*',
                 order: { column: 'created_at', direction: 'desc' }
             });
-            const oldCount = this.pendingApps.length;
             this.pendingApps = data || [];
-            if (this.onPendingUpdate && this.pendingApps.length !== oldCount) {
-                this.onPendingUpdate(this.pendingApps);
-            } else if (this.onPendingUpdate) {
-                // ✅ Aún así notificar para refrescar la UI
-                this.onPendingUpdate(this.pendingApps);
-            }
+            if (this.onPendingUpdate) this.onPendingUpdate(this.pendingApps);
             return this.pendingApps;
         } catch (error) {
             console.error('Error syncing pending:', error.message);
@@ -209,17 +215,10 @@ class QuantumSync {
     async syncPublishedApps() {
         try {
             const data = await this._supabaseFetch(this.TABLES.PUBLISHED_APPS, {
-                select: '*',
                 order: { column: 'created_at', direction: 'desc' }
             });
-            const oldCount = this.publishedApps.length;
             this.publishedApps = data || [];
-            if (this.onPublishedUpdate && this.publishedApps.length !== oldCount) {
-                this.onPublishedUpdate(this.publishedApps);
-            } else if (this.onPublishedUpdate) {
-                // ✅ Aún así notificar para refrescar la UI
-                this.onPublishedUpdate(this.publishedApps);
-            }
+            if (this.onPublishedUpdate) this.onPublishedUpdate(this.publishedApps);
             return this.publishedApps;
         } catch (error) {
             console.error('Error syncing published:', error.message);
@@ -264,7 +263,6 @@ class QuantumSync {
         
         try {
             const existing = await this._supabaseFetch(this.TABLES.PENDING_APPS, {
-                select: 'id',
                 eq: { id: pendingApp.id }
             });
             
@@ -288,7 +286,6 @@ class QuantumSync {
             console.log(`📤 Aprobando app: ${appId}`);
             
             const pendingApps = await this._supabaseFetch(this.TABLES.PENDING_APPS, {
-                select: '*',
                 eq: { id: appId }
             });
             
