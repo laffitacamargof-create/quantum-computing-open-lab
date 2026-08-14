@@ -1,22 +1,19 @@
 // ============================================================
-// QUANTUM SYNC MODULE · Supabase Cloud Synchronization (CORREGIDO)
+// QUANTUM SYNC MODULE · Supabase Cloud Synchronization
 // ============================================================
 
 class QuantumSync {
     constructor(config) {
-        // Configuración de Supabase
         this.SUPABASE_URL = config.supabaseUrl || 'https://tu-proyecto.supabase.co';
         this.SUPABASE_ANON_KEY = config.supabaseAnonKey || 'tu-anon-key';
         this.SUPABASE_SERVICE_KEY = config.supabaseServiceKey || 'tu-service-key';
         
-        // Tablas en Supabase
         this.TABLES = {
             PENDING_APPS: 'quantum_pending_apps',
             PUBLISHED_APPS: 'quantum_published_apps',
             APP_VERSIONS: 'quantum_app_versions'
         };
         
-        // Estado local
         this.isInitialized = false;
         this.isReady = false;
         this.currentUser = null;
@@ -27,13 +24,11 @@ class QuantumSync {
         this.studioConnected = false;
         this.puzzleConnected = false;
         
-        // Callbacks para notificar cambios
         this.onPendingUpdate = null;
         this.onPublishedUpdate = null;
         this.onAppPublished = null;
         this.onAppRejected = null;
         
-        // Cache de URLs de servidor
         this.compilerUrls = new Map();
     }
 
@@ -45,11 +40,10 @@ class QuantumSync {
             console.log('📌 URL:', this.SUPABASE_URL);
             console.log('📌 ANON KEY:', this.SUPABASE_ANON_KEY ? '✅ Presente' : '❌ Faltante');
             
-            // Verificar conexión con Supabase
+            // ✅ Verificar conexión con Supabase - HEAD request simple
             const testResponse = await fetch(`${this.SUPABASE_URL}/rest/v1/`, {
                 method: 'HEAD',
                 headers: {
-                    'Content-Type': 'application/json',
                     'apikey': this.SUPABASE_ANON_KEY,
                     'Authorization': `Bearer ${this.SUPABASE_ANON_KEY}`
                 }
@@ -72,7 +66,7 @@ class QuantumSync {
             this.isReady = true;
             console.log('✅ Quantum Sync Module initialized');
             
-            // Iniciar sincronización automática cada 30 segundos
+            // Sincronizar cada 30 segundos
             this.syncInterval = setInterval(() => this.syncAll(), 30000);
             
             return true;
@@ -226,10 +220,9 @@ class QuantumSync {
         }
     }
 
-    // ==================== OPERACIONES CON APPS PENDIENTES ====================
+    // ==================== OPERACIONES ====================
     
     async submitApp(appData) {
-        // Validar datos
         if (!appData.id) {
             appData.id = this._generateId();
         }
@@ -252,28 +245,23 @@ class QuantumSync {
         };
         
         try {
-            // Verificar si ya existe
             const existing = await this._supabaseFetch(this.TABLES.PENDING_APPS, {
                 select: 'id',
                 eq: { id: pendingApp.id }
             });
             
             if (existing && existing.length > 0) {
-                // Actualizar
                 await this._supabaseUpdate(this.TABLES.PENDING_APPS, pendingApp.id, pendingApp);
             } else {
-                // Insertar
                 await this._supabaseInsert(this.TABLES.PENDING_APPS, pendingApp);
             }
             
-            // Actualizar cache local
             await this.syncPendingApps();
             
             console.log(`📤 App "${pendingApp.title}" submitted for approval`);
             return pendingApp;
         } catch (error) {
             console.error('Error submitting app:', error.message);
-            // Fallback: guardar localmente
             this._saveLocalPending(pendingApp);
             throw error;
         }
@@ -281,7 +269,6 @@ class QuantumSync {
 
     async approveApp(appId, reviewerId = null) {
         try {
-            // Obtener la app pendiente
             const pendingApps = await this._supabaseFetch(this.TABLES.PENDING_APPS, {
                 select: '*',
                 eq: { id: appId }
@@ -293,7 +280,6 @@ class QuantumSync {
             
             const pendingApp = pendingApps[0];
             
-            // Crear app publicada
             const publishedApp = {
                 id: pendingApp.id,
                 name: pendingApp.name,
@@ -312,13 +298,8 @@ class QuantumSync {
                 is_active: true
             };
             
-            // Publicar
             await this._supabaseInsert(this.TABLES.PUBLISHED_APPS, publishedApp);
-            
-            // Eliminar de pendientes
             await this._supabaseDelete(this.TABLES.PENDING_APPS, appId);
-            
-            // Sincronizar
             await this.syncAll();
             
             if (this.onAppPublished) {
@@ -335,7 +316,6 @@ class QuantumSync {
 
     async rejectApp(appId) {
         try {
-            // Obtener la app pendiente para notificación
             const pendingApps = await this._supabaseFetch(this.TABLES.PENDING_APPS, {
                 select: '*',
                 eq: { id: appId }
@@ -345,10 +325,7 @@ class QuantumSync {
                 ? pendingApps[0].title 
                 : appId;
             
-            // Eliminar de pendientes
             await this._supabaseDelete(this.TABLES.PENDING_APPS, appId);
-            
-            // Sincronizar
             await this.syncPendingApps();
             
             if (this.onAppRejected) {
@@ -359,30 +336,6 @@ class QuantumSync {
             return true;
         } catch (error) {
             console.error('Error rejecting app:', error.message);
-            throw error;
-        }
-    }
-
-    // ==================== OPERACIONES CON APPS PUBLICADAS ====================
-    
-    async updatePublishedApp(appId, updates) {
-        try {
-            // Actualizar en Supabase
-            const updated = await this._supabaseUpdate(
-                this.TABLES.PUBLISHED_APPS,
-                appId,
-                {
-                    ...updates,
-                    updated_at: new Date().toISOString()
-                }
-            );
-            
-            // Sincronizar
-            await this.syncPublishedApps();
-            
-            return updated;
-        } catch (error) {
-            console.error('Error updating published app:', error.message);
             throw error;
         }
     }
@@ -398,20 +351,16 @@ class QuantumSync {
         }
     }
 
-    // ==================== INTEGRACIÓN CON QUANTUM APP STUDIO ====================
+    // ==================== INTEGRACIONES ====================
     
     connectStudio(iframe) {
         this.studioConnected = true;
         
-        // Escuchar mensajes del Studio
         window.addEventListener('message', async (event) => {
             const data = event.data;
             if (!data || typeof data !== 'object') return;
-            
-            // Solo procesar mensajes del Studio si está conectado
             if (!this.studioConnected) return;
             
-            // Mensajes de Quantum App Studio
             if (data.type === 'QCOL_APP_SAVED') {
                 if (data.appId && data.appData) {
                     const appData = data.appData;
@@ -447,15 +396,12 @@ class QuantumSync {
         });
     }
 
-    // ==================== INTEGRACIÓN CON QUANTUM PUZZLE ====================
-    
     connectPuzzle() {
         this.puzzleConnected = true;
         
         window.addEventListener('message', async (event) => {
             const data = event.data;
             if (!data || typeof data !== 'object') return;
-            
             if (!this.puzzleConnected) return;
             
             if (data.type === 'QCOL_REQUEST_PENDING_APPS') {
@@ -535,8 +481,6 @@ class QuantumSync {
         }
     }
 
-    // ==================== CONFIGURACIÓN DE USUARIO ====================
-    
     setUser(user) {
         this.currentUser = user;
         this.userRole = user?.role || 'user';
@@ -551,8 +495,6 @@ class QuantumSync {
         }, '*');
     }
 
-    // ==================== LIMPIEZA ====================
-    
     destroy() {
         if (this.syncInterval) {
             clearInterval(this.syncInterval);
