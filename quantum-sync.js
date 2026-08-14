@@ -10,8 +10,7 @@ class QuantumSync {
         
         this.TABLES = {
             PENDING_APPS: 'quantum_pending_apps',
-            PUBLISHED_APPS: 'quantum_published_apps',
-            APP_VERSIONS: 'quantum_app_versions'
+            PUBLISHED_APPS: 'quantum_published_apps'
         };
         
         this.isInitialized = false;
@@ -40,8 +39,8 @@ class QuantumSync {
             console.log('📌 URL:', this.SUPABASE_URL);
             console.log('📌 ANON KEY:', this.SUPABASE_ANON_KEY ? '✅ Presente' : '❌ Faltante');
             
-            // ✅ Usar GET en lugar de HEAD para evitar 401
-            let testResponse = await fetch(`${this.SUPABASE_URL}/rest/v1/`, {
+            // ✅ Intentar conexión directamente a la tabla
+            let testResponse = await fetch(`${this.SUPABASE_URL}/rest/v1/${this.TABLES.PENDING_APPS}?select=id&limit=1`, {
                 method: 'GET',
                 headers: {
                     'apikey': this.SUPABASE_ANON_KEY,
@@ -52,7 +51,7 @@ class QuantumSync {
             // Si falla con anon, intentar con service_role
             if (testResponse.status === 401 || testResponse.status === 403) {
                 console.log('🔄 Intentando con service_role...');
-                testResponse = await fetch(`${this.SUPABASE_URL}/rest/v1/`, {
+                testResponse = await fetch(`${this.SUPABASE_URL}/rest/v1/${this.TABLES.PENDING_APPS}?select=id&limit=1`, {
                     method: 'GET',
                     headers: {
                         'apikey': this.SUPABASE_SERVICE_KEY,
@@ -62,11 +61,27 @@ class QuantumSync {
             }
             
             if (!testResponse.ok) {
-                console.warn(`⚠️ Error de conexión: HTTP ${testResponse.status}`);
-                console.warn('⚠️ Modo offline/local activado.');
-                this.isInitialized = false;
-                this.isReady = false;
-                return false;
+                // Si la tabla no existe, crearla
+                if (testResponse.status === 404) {
+                    console.log('📋 Tablas no encontradas. Creando...');
+                    await this._createTables();
+                    // Reintentar
+                    testResponse = await fetch(`${this.SUPABASE_URL}/rest/v1/${this.TABLES.PENDING_APPS}?select=id&limit=1`, {
+                        method: 'GET',
+                        headers: {
+                            'apikey': this.SUPABASE_ANON_KEY,
+                            'Authorization': `Bearer ${this.SUPABASE_ANON_KEY}`
+                        }
+                    });
+                }
+                
+                if (!testResponse.ok) {
+                    console.warn(`⚠️ Error de conexión: HTTP ${testResponse.status}`);
+                    console.warn('⚠️ Modo offline/local activado.');
+                    this.isInitialized = false;
+                    this.isReady = false;
+                    return false;
+                }
             }
             
             console.log('✅ Conexión a Supabase establecida');
@@ -85,6 +100,79 @@ class QuantumSync {
             this.isInitialized = false;
             this.isReady = false;
             return false;
+        }
+    }
+
+    // ==================== CREAR TABLAS ====================
+    
+    async _createTables() {
+        // Intentar crear tablas usando SQL directo
+        const createSQL = `
+            CREATE TABLE IF NOT EXISTS quantum_pending_apps (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                title TEXT NOT NULL,
+                description TEXT,
+                tags TEXT,
+                duration INTEGER DEFAULT 8,
+                python_code TEXT,
+                html_code TEXT,
+                server_url TEXT,
+                created_by TEXT,
+                created_at TIMESTAMP DEFAULT NOW(),
+                updated_at TIMESTAMP DEFAULT NOW(),
+                status TEXT DEFAULT 'pending',
+                submitted_by TEXT,
+                submitted_at TIMESTAMP DEFAULT NOW()
+            );
+            
+            CREATE TABLE IF NOT EXISTS quantum_published_apps (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                title TEXT NOT NULL,
+                description TEXT,
+                tags TEXT,
+                duration INTEGER DEFAULT 8,
+                python_code TEXT,
+                html_code TEXT,
+                server_url TEXT,
+                created_by TEXT,
+                created_at TIMESTAMP DEFAULT NOW(),
+                updated_at TIMESTAMP DEFAULT NOW(),
+                published_by TEXT,
+                published_at TIMESTAMP DEFAULT NOW(),
+                version INTEGER DEFAULT 1,
+                is_active BOOLEAN DEFAULT true
+            );
+            
+            ALTER TABLE quantum_pending_apps ENABLE ROW LEVEL SECURITY;
+            ALTER TABLE quantum_published_apps ENABLE ROW LEVEL SECURITY;
+            
+            DROP POLICY IF EXISTS "Allow all" ON quantum_pending_apps;
+            CREATE POLICY "Allow all" ON quantum_pending_apps FOR ALL USING (true) WITH CHECK (true);
+            
+            DROP POLICY IF EXISTS "Allow all" ON quantum_published_apps;
+            CREATE POLICY "Allow all" ON quantum_published_apps FOR ALL USING (true) WITH CHECK (true);
+        `;
+        
+        try {
+            const response = await fetch(`${this.SUPABASE_URL}/rest/v1/rpc/pgadmin_exec`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'apikey': this.SUPABASE_SERVICE_KEY,
+                    'Authorization': `Bearer ${this.SUPABASE_SERVICE_KEY}`
+                },
+                body: JSON.stringify({ query: createSQL })
+            });
+            
+            if (!response.ok) {
+                console.warn('⚠️ No se pudieron crear las tablas automáticamente.');
+                console.warn('⚠️ Por favor, crea las tablas manualmente en SQL Editor.');
+            }
+        } catch (error) {
+            console.warn('⚠️ Error creando tablas:', error.message);
+            console.warn('⚠️ Por favor, crea las tablas manualmente en SQL Editor.');
         }
     }
 
