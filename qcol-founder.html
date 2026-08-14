@@ -357,7 +357,6 @@ window.addEventListener('message', (e) => {
   if (d.type === 'QCOL_USER_UPDATE') {
     currentUser = d.user;
   }
-  // Respuesta a solicitud de configuración desde iframes hijos
   if (d.type === 'QCOL_GET_CONFIG') {
     sendFullConfigTo(e.source);
   }
@@ -409,12 +408,10 @@ function sendFullConfigTo(targetWindow) {
 
 // ========== FUNCIÓN PARA ASEGURAR VALORES PREDETERMINADOS EN LOCALSTORAGE ==========
 function ensureDefaultConfig() {
-  // 1. URL del compilador
   if (!localStorage.getItem('qcol_colab_url')) {
     localStorage.setItem('qcol_colab_url', 'https://francilaffita1027-qcol-motor.hf.space');
     addSysLog('✅ URL del compilador predeterminada guardada', 'ok');
   }
-  // 2. Configuración de IA
   let aiConfig = getAI();
   if (!aiConfig.provider || aiConfig.provider === 'none') {
     aiConfig = {
@@ -433,7 +430,6 @@ function ensureDefaultConfig() {
     localStorage.setItem('qcol_ai', JSON.stringify(aiConfig));
     addSysLog('✅ API key de IA añadida automáticamente', 'ok');
   }
-  // 3. Configuración de DeepSeek (IA Resolver)
   if (!localStorage.getItem('qcol_mistral_key')) {
     localStorage.setItem('qcol_mistral_key', 'sk-0270ed332a5544038b51acf653296f89');
     addSysLog('✅ API key de DeepSeek predeterminada guardada', 'ok');
@@ -447,12 +443,10 @@ function ensureDefaultConfig() {
   if (!localStorage.getItem('qcol_mistral_timeout')) {
     localStorage.setItem('qcol_mistral_timeout', '10');
   }
-  // 4. Forzar que el core también reciba los valores
   postToCore('QCOL_SAVE_CONFIG', { key: 'colab_url', value: localStorage.getItem('qcol_colab_url') });
   postToCore('QCOL_SAVE', { key: 'qcol_ai', val: JSON.parse(localStorage.getItem('qcol_ai')) });
 }
 
-// ========== FUNCIÓN PARA DIFUNDIR CONFIGURACIÓN A TODOS LOS IFRAMES HIJOS ==========
 function broadcastConfigToAllIframes() {
   const allIframes = document.querySelectorAll('iframe');
   allIframes.forEach(iframe => {
@@ -460,7 +454,6 @@ function broadcastConfigToAllIframes() {
       sendFullConfigTo(iframe.contentWindow);
     } catch(e) {}
   });
-  // También al core padre
   if (window.parent !== window) {
     sendFullConfigTo(window.parent);
   }
@@ -577,11 +570,14 @@ async function testColab() {
 function saveColab() {
   const url = document.getElementById('colab-url').value.trim();
   localStorage.setItem('qcol_colab_url', url);
+  if (window.configSync && window.configSync.isReady) {
+    window.configSync.setConfig('colab_url', url);
+  }
   postToCore('QCOL_SAVE_CONFIG', { key: 'colab_url', value: url });
-  notify('✅ URL del compilador guardada');
-  addSysLog('Compilador HuggingFace URL guardada', 'ok');
+  notify('✅ URL del compilador guardada y sincronizada');
+  addSysLog('Compilador HuggingFace URL guardada y sincronizada', 'ok');
   setTimeout(() => checkEngine(), 500);
-  broadcastConfigToAllIframes();   // difundir a iframes
+  broadcastConfigToAllIframes();
 }
 
 // ══ CARGAR CONFIGURACIÓN DE MISTRAL (DEEPSEEK) ══
@@ -607,15 +603,22 @@ function saveMistralSettings() {
   const model = document.getElementById('mistral-model').value;
   const timeout = document.getElementById('mistral-timeout').value;
   let prompt = document.getElementById('mistral-prompt').value;
+  
+  const config = { key: cleanKey, model, timeout, enabled, prompt };
   localStorage.setItem('qcol_mistral_enabled', enabled);
   localStorage.setItem('qcol_mistral_key', cleanKey);
   localStorage.setItem('qcol_mistral_model', model);
   localStorage.setItem('qcol_mistral_timeout', timeout);
   localStorage.setItem('qcol_mistral_prompt', prompt);
+  
+  if (window.configSync && window.configSync.isReady) {
+    window.configSync.setConfig('deepseek_config', config);
+  }
+  
   updateMistralUI();
   const keyPreview = cleanKey.slice(0, 8) + (cleanKey.length > 8 ? '...' : '');
-  notify(`✅ Configuración de DeepSeek guardada — clave: ${keyPreview}`);
-  addSysLog('DeepSeek: configuración actualizada', 'ok');
+  notify(`✅ DeepSeek guardado y sincronizado — clave: ${keyPreview}`);
+  addSysLog('DeepSeek: configuración guardada y sincronizada', 'ok');
 }
 
 async function testMistralConnection() {
@@ -738,6 +741,10 @@ function syncIgnoredAttrsWithCloud() {
 }
 
 function loadSaved() {
+  if (window.configSync && window.configSync.isReady) {
+    // La configuración se sincroniza automáticamente
+  }
+  
   const gh = getGH();
   const el = document.getElementById('gh-user');
   if (el) el.value = gh.user;
@@ -770,7 +777,6 @@ function loadSaved() {
     document.getElementById('plt-version').value = cfg.version || '2.0.0';
   }
   loadMistralSettings();
-  // Conectar automáticamente si hay URL guardada o la predeterminada
   const savedUrl = localStorage.getItem('qcol_colab_url') || 'https://francilaffita1027-qcol-motor.hf.space';
   if (savedUrl) {
     document.getElementById('colab-url').value = savedUrl;
@@ -855,11 +861,20 @@ function delProj(id){
 // ══ PLATFORM CONFIG ══
 function savePlatform() {
   const cfg={name:document.getElementById('plt-name').value,author:document.getElementById('plt-author').value,authorTitle:document.getElementById('plt-title').value,version:document.getElementById('plt-version').value};
-  localStorage.setItem('qcol_cfg',JSON.stringify(cfg));notify('✅ Plataforma guardada');addSysLog('Config plataforma guardada','ok');
+  localStorage.setItem('qcol_cfg',JSON.stringify(cfg));
+  if (window.configSync && window.configSync.isReady) {
+    window.configSync.setConfig('platform_config', cfg);
+  }
+  notify('✅ Plataforma guardada y sincronizada');
+  addSysLog('Config plataforma guardada y sincronizada','ok');
 }
 function saveSystem() {
   const cfg = { reg: document.getElementById('tog-reg')?.checked, splash: document.getElementById('tog-splash')?.checked, maint: document.getElementById('tog-maint')?.checked };
-  localStorage.setItem('qcol_sys', JSON.stringify(cfg)); postToCore('QCOL_SAVE', {key:'qcol_sys', val:cfg}); notify('✅ Sistema guardado'); addSysLog('Sistema actualizado','ok');
+  localStorage.setItem('qcol_sys', JSON.stringify(cfg));
+  if (window.configSync && window.configSync.isReady) {
+    window.configSync.setConfig('system_config', cfg);
+  }
+  postToCore('QCOL_SAVE', {key:'qcol_sys', val:cfg}); notify('✅ Sistema guardado y sincronizado'); addSysLog('Sistema actualizado y sincronizado','ok');
 }
 
 // ══ MONITOR ══
@@ -867,7 +882,11 @@ function getMonitorConfig(){ return JSON.parse(localStorage.getItem('qcol_monito
 function getMonitorData(){ return JSON.parse(localStorage.getItem('qcol_monitor_data')||'{"runs":[],"total":0}'); }
 function saveMonitorConfig(){
   const cfg = { maxRuns: parseInt(document.getElementById('mon-max-runs')?.value||'50'), maxQubits: parseInt(document.getElementById('mon-max-qubits')?.value||'20'), maxTime: parseInt(document.getElementById('mon-max-time')?.value||'60'), mode: document.getElementById('mon-mode')?.value||'open', updated: new Date().toISOString() };
-  localStorage.setItem('qcol_monitor_cfg', JSON.stringify(cfg)); postToCore('QCOL_SAVE', {key:'qcol_monitor_cfg', val:cfg}); notify('✅ Límites del compilador guardados'); addSysLog('Monitor: límites actualizados','ok'); syncMonitorToGitHub();
+  localStorage.setItem('qcol_monitor_cfg', JSON.stringify(cfg));
+  if (window.configSync && window.configSync.isReady) {
+    window.configSync.setConfig('monitor_config', cfg);
+  }
+  postToCore('QCOL_SAVE', {key:'qcol_monitor_cfg', val:cfg}); notify('✅ Límites del compilador guardados y sincronizados'); addSysLog('Monitor: límites actualizados y sincronizados','ok'); syncMonitorToGitHub();
 }
 function loadMonitorConfig(){
   const cfg = getMonitorConfig(); const mr = document.getElementById('mon-max-runs'); const mq = document.getElementById('mon-max-qubits'); const mt = document.getElementById('mon-max-time'); const mm = document.getElementById('mon-mode'); const eu = document.getElementById('mon-engine-url');
@@ -953,7 +972,7 @@ function renderCustomModules(){
 function deleteModule(i){ if(!confirm('¿Eliminar este módulo del menú?'))return; const mods=getCustomModules(); mods.splice(i,1); saveCustomModules(mods); renderCustomModules(); notify('Módulo eliminado del menú'); addSysLog('Módulo eliminado','warn'); }
 
 // ══ FUNCIONES GITHUB ══
-function saveGH(){ const user=document.getElementById('gh-user').value.trim(); const repo=document.getElementById('gh-repo').value.trim(); const branch=document.getElementById('gh-branch').value.trim(); const token=document.getElementById('gh-token').value.trim(); localStorage.setItem('qcol_gh',JSON.stringify({user,repo,branch,token})); notify('✅ GitHub guardado'); addSysLog('Config GitHub guardada','ok'); }
+function saveGH(){ const user=document.getElementById('gh-user').value.trim(); const repo=document.getElementById('gh-repo').value.trim(); const branch=document.getElementById('gh-branch').value.trim(); const token=document.getElementById('gh-token').value.trim(); localStorage.setItem('qcol_gh',JSON.stringify({user,repo,branch,token})); if (window.configSync && window.configSync.isReady) { window.configSync.setConfig('github_config', {user,repo,branch,token}); } notify('✅ GitHub guardado y sincronizado'); addSysLog('Config GitHub guardada y sincronizada','ok'); }
 function openGH(){const gh=getGH();if(gh.user&&gh.repo)window.open(`https://github.com/${gh.user}/${gh.repo}`,'_blank');}
 async function testGH(){
   const gh=getGH(); if(!gh.user||!gh.repo){notify('Usuario o repo vacío');return;} const dot=document.getElementById('gh-dot');const st=document.getElementById('gh-status'); dot.className='sdot warn';st.textContent='Verificando...';
@@ -971,7 +990,7 @@ async function uploadToGitHub(){
 }
 
 // ========== INICIALIZACIÓN PRINCIPAL ==========
-ensureDefaultConfig();   // fuerza todas las claves predeterminadas
+ensureDefaultConfig();
 loadSaved();
 addSysLog('Configuración del ecosistema iniciada','info');
 addSysLog('QCOL v3.0.0 — Sistema modular','info');
@@ -994,7 +1013,7 @@ function broadcastCompilerUrlToModules() {
         try { iframe.contentWindow?.postMessage({ type: 'QCOL_COMPILER_URL', url: compilerUrl }, '*'); } catch(e) {}
     });
     if (window.parent !== window) { window.parent.postMessage({ type: 'QCOL_COMPILER_URL', url: compilerUrl }, '*'); }
-    broadcastConfigToAllIframes();  // también envía la configuración completa
+    broadcastConfigToAllIframes();
 }
 
 const observer = new MutationObserver((mutations) => {
@@ -1102,7 +1121,7 @@ async function sendChatMessage() {
 async function callAIChat(message, aiConfig) {
     chatHistory.push({ role: 'user', content: message });
     const temp = aiConfig.temp || 0.7; const tokens = aiConfig.tokens || 600;
-    const lang = 'en'; // FORCE ENGLISH ALWAYS
+    const lang = 'en';
     const langNote = lang === 'es' ? ' Always respond in Spanish.' : lang === 'en' ? ' Always respond in English.' : ' Respond in both Spanish and English.';
     const sysPrompt = (aiConfig.prompt || 'Eres el asistente de QCOL, ecosistema de computación cuántica. Responde de forma concisa y técnica. Puedes usar formato Markdown para mejorar la legibilidad (negritas, listas, bloques de código, tablas si es necesario).') + langNote;
     const msgs = [{ role: 'system', content: sysPrompt }, ...chatHistory.slice(-10)];
@@ -1140,10 +1159,44 @@ function clearChat() { const container = document.getElementById('chat-messages'
 function aiProviderChange() { const p = document.getElementById('ai-prov').value; const models = { mistral: 'mistral-large-latest', groq: 'llama3-70b-8192', huggingface: 'mistralai/Mistral-7B-Instruct-v0.3', openai: 'gpt-4o-mini', gemini: 'gemini-pro', none: '' }; const sel = document.getElementById('ai-model-sel'); const inp = document.getElementById('ai-model'); const hint = document.getElementById('ai-key-hint'); const hints = { mistral: 'Mistral: <a onclick="window.open(\'https://console.mistral.ai\',\'_blank\')" style="color:var(--gr);cursor:pointer;">console.mistral.ai</a> → API Keys → Create', groq: 'Groq: <a onclick="window.open(\'https://console.groq.com\',\'_blank\')" style="color:var(--gr);cursor:pointer;">console.groq.com</a> → API Keys → Create Key', huggingface: 'HuggingFace: <a onclick="window.open(\'https://huggingface.co/settings/tokens\',\'_blank\')" style="color:var(--gr);cursor:pointer;">hf.co/settings/tokens</a> → New token', openai: 'OpenAI: <a onclick="window.open(\'https://platform.openai.com/api-keys\',\'_blank\')" style="color:var(--gr);cursor:pointer;">platform.openai.com/api-keys</a>', gemini: 'Google: <a onclick="window.open(\'https://aistudio.google.com/app/apikey\',\'_blank\')" style="color:var(--gr);cursor:pointer;">aistudio.google.com</a> (necesita VPN)', none: '' }; if (inp) inp.value = models[p] || ''; if (sel) sel.value = models[p] || sel.options[0]?.value; if (hint) hint.innerHTML = hints[p] || ''; }
 const PROMPTS = { quantum: 'Eres el asistente de QCOL (Quantum Computing Open Lab), creado por Franci Laffita Camargo, estudiante de Física Nuclear. Ayudas con Qiskit, Cirq, PennyLane, QuTiP, circuitos cuánticos y física cuántica. Responde en español, de forma concisa y técnicamente precisa. Puedes usar formato Markdown.', teacher: 'Eres un profesor experto en computación cuántica del ecosistema QCOL. Explicas conceptos de forma clara y pedagógica, con ejemplos prácticos. Usas analogías para hacer accesibles los conceptos difíciles. Responde siempre en español. Usa Markdown para mejorar la legibilidad.', concise: 'Eres el asistente cuántico de QCOL. Responde siempre en español, de forma muy concisa. Máximo 3-4 líneas por respuesta. Solo lo esencial. Para código Qiskit, muestra directamente el código.', bilingual: 'You are the QCOL quantum computing assistant. Respond in both Spanish and English. First answer in Spanish, then provide the English translation. Be concise and technically precise. Use Markdown formatting.', code: 'Eres el asistente de código cuántico de QCOL. Tu especialidad es generar código Qiskit y Cirq. Cuando te pidan un circuito o algoritmo, responde directamente con el código Python funcional, con comentarios breves. Usa siempre sintaxis moderna de Qiskit 1.x. Muestra el código en bloques de Markdown con triple backticks y el lenguaje especificado.' };
 function setPrompt(type) { const el = document.getElementById('ai-prompt'); if (el && PROMPTS[type]) { el.value = PROMPTS[type]; notify('Prompt: ' + type); } }
-function saveAI() { const ai = { provider: document.getElementById('ai-prov').value, key: document.getElementById('ai-key').value.trim(), model: document.getElementById('ai-model').value.trim(), prompt: document.getElementById('ai-prompt').value.trim(), temp: parseFloat(document.getElementById('ai-temp')?.value || '0.7'), tokens: parseInt(document.getElementById('ai-tokens')?.value || '600'), lang: document.getElementById('ai-lang')?.value || 'es' }; localStorage.setItem('qcol_ai', JSON.stringify(ai)); postToCore('QCOL_SAVE', { key: 'qcol_ai', val: ai }); notify('✅ IA guardada — ' + ai.provider + ' · ' + ai.model); addSysLog('IA configurada: ' + ai.provider + ' · ' + ai.model, 'ok'); document.getElementById('ai-dot').className = ai.provider !== 'none' ? 'sdot ok' : 'sdot off'; document.getElementById('ai-status').textContent = ai.provider !== 'none' ? '✅ ' + ai.provider + ' — ' + ai.model : 'Sin configurar'; }
+function saveAI() { const ai = { provider: document.getElementById('ai-prov').value, key: document.getElementById('ai-key').value.trim(), model: document.getElementById('ai-model').value.trim(), prompt: document.getElementById('ai-prompt').value.trim(), temp: parseFloat(document.getElementById('ai-temp')?.value || '0.7'), tokens: parseInt(document.getElementById('ai-tokens')?.value || '600'), lang: document.getElementById('ai-lang')?.value || 'es' }; localStorage.setItem('qcol_ai', JSON.stringify(ai)); if (window.configSync && window.configSync.isReady) { window.configSync.setConfig('ai_config', ai); } postToCore('QCOL_SAVE', { key: 'qcol_ai', val: ai }); notify('✅ IA guardada y sincronizada — ' + ai.provider + ' · ' + ai.model); addSysLog('IA configurada y sincronizada: ' + ai.provider + ' · ' + ai.model, 'ok'); document.getElementById('ai-dot').className = ai.provider !== 'none' ? 'sdot ok' : 'sdot off'; document.getElementById('ai-status').textContent = ai.provider !== 'none' ? '✅ ' + ai.provider + ' — ' + ai.model : 'Sin configurar'; }
 async function testAI() { const ai = getAI(); if (ai.provider === 'none' || !ai.key) { notify('Configura la IA primero'); return; } notify('🔄 Probando IA...'); const temp = ai.temp || 0.7; const tokens = ai.tokens || 600; try { let url, body, headers; headers = { 'Content-Type': 'application/json' }; if (ai.provider === 'mistral') { url = 'https://api.mistral.ai/v1/chat/completions'; headers['Authorization'] = 'Bearer ' + ai.key; body = { model: ai.model || 'mistral-large-latest', messages: [{ role: 'user', content: 'Responde solo "QCOL OK" (sin comillas) en español' }], max_tokens: 10, temperature: temp }; } else if (ai.provider === 'groq') { url = 'https://api.groq.com/openai/v1/chat/completions'; headers['Authorization'] = 'Bearer ' + ai.key; body = { model: ai.model || 'llama3-70b-8192', messages: [{ role: 'user', content: 'Responde "QCOL OK"' }], max_tokens: 10, temperature: temp }; } else if (ai.provider === 'huggingface') { url = `https://api-inference.huggingface.co/models/${ai.model || 'mistralai/Mistral-7B-Instruct-v0.3'}`; headers['Authorization'] = 'Bearer ' + ai.key; body = { inputs: 'Responde "QCOL OK"', parameters: { max_new_tokens: 10 } }; } else if (ai.provider === 'openai') { url = 'https://api.openai.com/v1/chat/completions'; headers['Authorization'] = 'Bearer ' + ai.key; body = { model: ai.model || 'gpt-4o-mini', messages: [{ role: 'user', content: 'Responde "QCOL OK"' }], max_tokens: 10, temperature: temp }; } else { notify('Prueba manual para este proveedor'); return; } const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body), signal: AbortSignal.timeout(15000) }); const d = await res.json(); if (res.ok) { const resp = d.choices?.[0]?.message?.content?.trim() || d.generated_text || '✅ OK'; notify('✅ IA conectada: ' + resp); document.getElementById('ai-dot').className = 'sdot ok'; document.getElementById('ai-status').textContent = '✅ Conectada — ' + ai.provider + ' · ' + ai.model; addSysLog('IA probada: ' + ai.provider + ' · ' + ai.model, 'ok'); } else throw new Error(d.error?.message || d.message || 'Error ' + res.status); } catch(e) { notify('❌ ' + e.message); addSysLog('Error IA: ' + e.message, 'err'); } }
 
 function escapeHtml(str) { if (!str) return ''; return str.replace(/[&<>]/g, function(m) { if (m === '&') return '&amp;'; if (m === '<') return '&lt;'; if (m === '>') return '&gt;'; return m; }); }
+
+// ========== IMPORTAR CONFIG SYNC ==========
+(async function initConfigSync() {
+    try {
+        const { default: QcolConfigSync } = await import('./qcol-config-sync.js');
+        const { SUPABASE_CONFIG } = await import('./supabase-config.js');
+        
+        window.configSync = new QcolConfigSync({
+            supabaseUrl: SUPABASE_CONFIG.supabaseUrl,
+            supabaseAnonKey: SUPABASE_CONFIG.supabaseAnonKey,
+            supabaseServiceKey: SUPABASE_CONFIG.supabaseServiceKey
+        });
+        
+        await window.configSync.init();
+        
+        window.configSync.onConfigUpdate = (key, value) => {
+            console.log(`📥 Config actualizada: ${key}`, value);
+            loadSaved();
+        };
+        
+        window.configSync.onSyncComplete = () => {
+            console.log('✅ Configuración sincronizada');
+            loadSaved();
+        };
+        
+        const user = JSON.parse(localStorage.getItem('qcol_user') || '{}');
+        window.configSync.setUser(user);
+        
+        console.log('✅ Config Sync global iniciado');
+        window.configSync = window.configSync;
+    } catch (error) {
+        console.warn('⚠️ Config Sync no disponible:', error.message);
+    }
+})();
 </script>
 </body>
 </html>
