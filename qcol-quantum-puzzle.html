@@ -709,6 +709,7 @@ let pendingCompileRequest = null;
 // ============================================================
 
 async function getPublishedApps() {
+    // ✅ Siempre sincronizar desde la nube
     if (window.quantumSync && window.quantumSync.isReady) {
         await window.quantumSync.syncPublishedApps();
         return window.quantumSync.publishedApps;
@@ -724,7 +725,7 @@ async function savePublishedApps(apps) {
 }
 
 async function getPendingApps() {
-    // SIEMPRE usar quantumSync si está disponible
+    // ✅ Siempre sincronizar desde la nube
     if (window.quantumSync && window.quantumSync.isReady) {
         await window.quantumSync.syncPendingApps();
         return window.quantumSync.pendingApps;
@@ -969,7 +970,7 @@ async function renderPublishedApps() {
     const apps = await getPublishedApps();
     const searchTerm = document.getElementById('searchInput')?.value.toLowerCase() || "";
     let filtered = apps.filter(app => {
-        // ✅ CORREGIDO: Verificar que app.title existe
+        // ✅ Verificar que app.title existe
         const matchSearch = (app.title || "").toLowerCase().includes(searchTerm) || (app.desc || "").toLowerCase().includes(searchTerm) || (app.tags || "").toLowerCase().includes(searchTerm);
         let matchTag = true;
         if(activeTagFilter !== 'all') {
@@ -1182,7 +1183,7 @@ function openQuantumAppStudio() {
 function closeStudioModal() { studioModal.classList.remove('open'); }
 
 // ============================================================
-// 🔥 MANEJADOR DE MENSAJES DEL STUDIO
+// 🔥 MANEJADOR DE MENSAJES DEL STUDIO (CORREGIDO)
 // ============================================================
 window.addEventListener('message', async function(e) {
     const data = e.data;
@@ -1211,9 +1212,15 @@ window.addEventListener('message', async function(e) {
                 
                 showNotification(`☁️ App "${result.title}" sincronizada con la nube (pendiente)`);
                 
-                // Actualizar la UI (pendientes)
-                if (typeof renderPendingList === 'function') {
-                    await renderPendingList();
+                // ✅ Actualizar la UI (pendientes)
+                if (typeof window.renderPendingList === 'function') {
+                    await window.renderPendingList();
+                }
+                if (typeof window.renderTagFilters === 'function') {
+                    await window.renderTagFilters();
+                }
+                if (typeof window.renderPublishedApps === 'function') {
+                    await window.renderPublishedApps();
                 }
                 
                 if (e.source) {
@@ -1249,8 +1256,8 @@ window.addEventListener('message', async function(e) {
             localStorage.setItem('qcol_pending_quantum_apps', JSON.stringify(pending));
             showNotification(`📦 App "${appData.title}" guardada localmente`);
             
-            if (typeof renderPendingList === 'function') {
-                await renderPendingList();
+            if (typeof window.renderPendingList === 'function') {
+                await window.renderPendingList();
             }
             
             if (e.source) {
@@ -1308,7 +1315,7 @@ function openPendingManager() {
 function closePendingModal() { document.getElementById('pendingModal').classList.remove('open'); }
 
 // ============================================================
-// 🔥 RENDER PENDING LIST
+// 🔥 RENDER PENDING LIST (CORREGIDO)
 // ============================================================
 async function renderPendingList() {
     console.log('🔄 Renderizando lista de pendientes...');
@@ -1330,8 +1337,8 @@ async function renderPendingList() {
         html += `<div style="background: #0a1222; border-radius: 16px; margin-bottom: 12px; padding: 12px;">
                     <strong>${escapeHtml(title)}</strong>
                     <div style="margin-top:8px; display:flex; gap:8px;">
-                        <button class="btn" style="background: #00aa66;" onclick="publishPendingApp('${appId}')">✅ PUBLISH</button>
-                        <button class="btn" style="background: #aa3355;" onclick="rejectPendingApp('${appId}')">🗑️ REJECT</button>
+                        <button class="btn" style="background: #00aa66;" onclick="window.publishPendingApp('${appId}')">✅ PUBLISH</button>
+                        <button class="btn" style="background: #aa3355;" onclick="window.rejectPendingApp('${appId}')">🗑️ REJECT</button>
                     </div>
                 </div>`;
     });
@@ -1340,19 +1347,16 @@ async function renderPendingList() {
 }
 
 // ============================================================
-// 🔥 PUBLISH PENDING APP
+// 🔥 PUBLISH PENDING APP (CORREGIDO)
 // ============================================================
 async function publishPendingApp(appId) {
     console.log('📤 Publicando app:', appId);
-    console.log('📌 window.quantumSync:', window.quantumSync);
-    console.log('📌 window.quantumSync.isReady:', window.quantumSync?.isReady);
     
     if (!isFounder && !isAdmin) { 
         showNotification("Solo fundadores/admins pueden publicar"); 
         return; 
     }
     
-    // SOLO usar quantumSync
     if (!window.quantumSync || !window.quantumSync.isReady) {
         showNotification("❌ No hay conexión con la nube. Revisa la consola.");
         console.error('❌ quantumSync no disponible o no inicializado');
@@ -1365,11 +1369,11 @@ async function publishPendingApp(appId) {
         console.log('✅ App publicada:', published);
         showNotification(`✅ App "${published.title}" publicada en la nube`);
         
-        // FORZAR recarga desde Supabase
+        // ✅ FORZAR recarga desde Supabase
         await window.quantumSync.syncPendingApps();
         await window.quantumSync.syncPublishedApps();
         
-        // Actualizar UI
+        // ✅ Actualizar UI
         await renderPendingList();
         renderTagFilters();
         await renderPublishedApps();
@@ -1381,7 +1385,7 @@ async function publishPendingApp(appId) {
 }
 
 // ============================================================
-// 🔥 REJECT PENDING APP
+// 🔥 REJECT PENDING APP (CORREGIDO)
 // ============================================================
 async function rejectPendingApp(appId) {
     console.log('🗑️ Rechazando app:', appId);
@@ -1396,13 +1400,21 @@ async function rejectPendingApp(appId) {
     try {
         await window.quantumSync.rejectApp(appId);
         showNotification("App rechazada en la nube");
+        
+        // ✅ FORZAR recarga desde Supabase
         await window.quantumSync.syncPendingApps();
         await renderPendingList();
+        renderTagFilters();
+        await renderPublishedApps();
+        
     } catch (error) {
         showNotification('❌ Error al rechazar: ' + error.message);
     }
 }
 
+// ============================================================
+// 🔥 DELETE PUBLISHED APP (CORREGIDO)
+// ============================================================
 async function deletePublishedApp(appId) {
     if(!isFounder) { showNotification("Only founder can delete published apps"); return; }
     if(!confirm(`Delete app from repository?`)) return;
@@ -1415,9 +1427,12 @@ async function deletePublishedApp(appId) {
     try {
         await window.quantumSync.deletePublishedApp(appId);
         showNotification("App eliminada de la nube");
+        
+        // ✅ FORZAR recarga desde Supabase
         await window.quantumSync.syncPublishedApps();
         renderTagFilters();
         await renderPublishedApps();
+        
     } catch (error) {
         showNotification('❌ Error al eliminar: ' + error.message);
     }
@@ -1432,7 +1447,7 @@ function showNotification(msg, dur=2800) {
 }
 
 // ============================================================
-// HACER FUNCIONES GLOBALES
+// ✅ HACER FUNCIONES GLOBALES (CORREGIDO)
 // ============================================================
 window.renderTagFilters = renderTagFilters;
 window.renderPublishedApps = renderPublishedApps;
@@ -1444,12 +1459,17 @@ window.deletePublishedApp = deletePublishedApp;
 window.openPendingManager = openPendingManager;
 window.openQuantumAppStudio = openQuantumAppStudio;
 window.closeStudioModal = closeStudioModal;
+window.executeQuantumApp = executeQuantumApp;
 
-// Inicializar UI
-setTimeout(() => {
-    renderTagFilters();
-    renderPublishedApps();
-}, 500);
+// ✅ FORZAR sincronización inicial
+setTimeout(async () => {
+    if (window.quantumSync && window.quantumSync.isReady) {
+        await window.quantumSync.syncAll();
+        renderTagFilters();
+        renderPublishedApps();
+        renderPendingList();
+    }
+}, 1000);
 
 document.getElementById('studioModalReal')?.addEventListener('click', (e) => { if(e.target === document.getElementById('studioModalReal')) closeStudioModal(); });
 document.getElementById('pendingModal')?.addEventListener('click', (e) => { if(e.target === document.getElementById('pendingModal')) closePendingModal(); });
