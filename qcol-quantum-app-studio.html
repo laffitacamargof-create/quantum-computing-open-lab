@@ -551,13 +551,7 @@
         localStorage.setItem('quantum_apps_repo_v2', JSON.stringify(projects));
         if (isEmbedded && currentEditId && parentOrigin) {
             const proj = projects.find(p => p.id === currentEditId);
-            if (proj) notifyParentAboutChange('save', currentEditId, {
-                name: proj.name,
-                title: proj.name,
-                serverUrl: proj.serverUrl,
-                pythonCode: proj.pythonCode,
-                htmlCode: proj.htmlCode
-            });
+            if (proj) notifyParentAboutChange('save', currentEditId, { name: proj.name, serverUrl: proj.serverUrl });
         }
     }
 
@@ -641,8 +635,8 @@
                     title: proj.name,
                     description: '',
                     tags: '',
-                    pythonCode: proj.pythonCode,
-                    htmlCode: proj.htmlCode,
+                    pythonCode: proj.pythonCode || '',
+                    htmlCode: proj.htmlCode || '',
                     serverUrl: proj.serverUrl || localStorage.getItem('qcol_colab_url') || '',
                     duration: 8
                 }
@@ -666,8 +660,8 @@
                         title: proj.name,
                         description: '',
                         tags: '',
-                        pythonCode: proj.pythonCode,
-                        htmlCode: proj.htmlCode,
+                        pythonCode: proj.pythonCode || '',
+                        htmlCode: proj.htmlCode || '',
                         serverUrl: proj.serverUrl || localStorage.getItem('qcol_colab_url') || '',
                         duration: 8
                     }).then(() => {
