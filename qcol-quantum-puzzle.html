@@ -603,13 +603,15 @@ body::before{
         console.log('✅ Quantum Sync inicializado correctamente');
         console.log('✅ quantumSync.isReady:', window.quantumSync.isReady);
         
-        // Disparar actualización de UI
-        if (typeof window.renderTagFilters === 'function') {
-            window.renderTagFilters();
-        }
-        if (typeof window.renderPublishedApps === 'function') {
-            window.renderPublishedApps();
-        }
+        // ✅ Disparar actualización de UI - SOLO UNA VEZ
+        setTimeout(async () => {
+            if (window.quantumSync && window.quantumSync.isReady) {
+                await window.quantumSync.syncAll();
+                renderTagFilters();
+                renderPublishedApps();
+                renderPendingList();
+            }
+        }, 300);
         
     } catch (error) {
         console.error('❌ Error inicializando Quantum Sync:', error);
@@ -1461,15 +1463,16 @@ window.openQuantumAppStudio = openQuantumAppStudio;
 window.closeStudioModal = closeStudioModal;
 window.executeQuantumApp = executeQuantumApp;
 
-// ✅ FORZAR sincronización inicial
+// ✅ FORZAR sincronización inicial - SOLO UNA VEZ
 setTimeout(async () => {
     if (window.quantumSync && window.quantumSync.isReady) {
         await window.quantumSync.syncAll();
+        // ✅ Solo renderizar una vez
         renderTagFilters();
         renderPublishedApps();
         renderPendingList();
     }
-}, 1000);
+}, 500);
 
 document.getElementById('studioModalReal')?.addEventListener('click', (e) => { if(e.target === document.getElementById('studioModalReal')) closeStudioModal(); });
 document.getElementById('pendingModal')?.addEventListener('click', (e) => { if(e.target === document.getElementById('pendingModal')) closePendingModal(); });
