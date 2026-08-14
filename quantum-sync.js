@@ -1,5 +1,5 @@
 // ============================================================
-// QUANTUM SYNC MODULE · Supabase Cloud Synchronization
+// QUANTUM SYNC MODULE · Supabase Cloud Synchronization (CORREGIDO)
 // ============================================================
 
 class QuantumSync {
@@ -40,7 +40,7 @@ class QuantumSync {
             console.log('📌 URL:', this.SUPABASE_URL);
             console.log('📌 ANON KEY:', this.SUPABASE_ANON_KEY ? '✅ Presente' : '❌ Faltante');
             
-            // ✅ Verificar conexión con GET en lugar de HEAD
+            // ✅ Usar GET en lugar de HEAD para evitar 401
             let testResponse = await fetch(`${this.SUPABASE_URL}/rest/v1/`, {
                 method: 'GET',
                 headers: {
