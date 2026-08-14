@@ -144,6 +144,14 @@ body::before{
     transform:translateY(-1px);
     box-shadow:0 6px 14px rgba(0,136,255,0.5);
 }
+.btn-refresh{
+    background:linear-gradient(125deg, #00aa66, #00cc88);
+    color:white;
+}
+.btn-refresh:hover{
+    transform:translateY(-1px);
+    box-shadow:0 6px 14px rgba(0,204,136,0.5);
+}
 .grid{
     display:grid;
     grid-template-columns:repeat(auto-fill, minmax(280px, 1fr));
@@ -602,6 +610,17 @@ body::before{
             window.showNotification('🗑️ App rechazada en la nube');
         };
         
+        // ✅ Sincronización automática cuando la página se vuelve visible
+        document.addEventListener('visibilitychange', async () => {
+            if (!document.hidden && window.quantumSync && window.quantumSync.isReady) {
+                console.log('🔄 Página visible, sincronizando...');
+                await window.quantumSync.syncAll(true);
+                renderTagFilters();
+                renderPublishedApps();
+                renderPendingList();
+            }
+        });
+        
         window.quantumSync.connectPuzzle();
         
         console.log('✅ Quantum Sync inicializado correctamente');
@@ -612,7 +631,7 @@ body::before{
         setTimeout(async () => {
             if (!initialSyncDone && window.quantumSync && window.quantumSync.isReady) {
                 initialSyncDone = true;
-                await window.quantumSync.syncAll();
+                await window.quantumSync.syncAll(true);
                 renderTagFilters();
                 renderPublishedApps();
                 renderPendingList();
@@ -641,7 +660,8 @@ body::before{
         <input id="searchInput" placeholder="Search quantum app..." oninput="renderPublishedApps()">
     </div>
     <div class="filter-tag" id="filterTagsContainer"></div>
-    <div>
+    <div style="display:flex; gap:0.5rem;">
+        <button class="btn btn-refresh" onclick="refreshApps()" title="Sincronizar con la nube">🔄</button>
         <button class="btn btn-pri" onclick="openQuantumAppStudio()" style="background: #6d28d9;">🎛️ QUANTUM APP STUDIO</button>
     </div>
 </div>
@@ -719,7 +739,7 @@ let pendingCompileRequest = null;
 
 async function getPublishedApps() {
     if (window.quantumSync && window.quantumSync.isReady) {
-        await window.quantumSync.syncPublishedApps();
+        await window.quantumSync.syncAll(true);
         return window.quantumSync.publishedApps;
     }
     const stored = localStorage.getItem('qcol_published_quantum_apps');
@@ -733,7 +753,7 @@ async function savePublishedApps(apps) {
 
 async function getPendingApps() {
     if (window.quantumSync && window.quantumSync.isReady) {
-        await window.quantumSync.syncPendingApps();
+        await window.quantumSync.syncAll(true);
         return window.quantumSync.pendingApps;
     }
     const stored = localStorage.getItem('qcol_pending_quantum_apps');
@@ -963,6 +983,22 @@ let cachedTags = null;
 let renderTimer = null;
 
 // ============================================================
+// 🔥 FUNCIÓN DE REFRESCO MANUAL
+// ============================================================
+async function refreshApps() {
+    showNotification('🔄 Sincronizando con la nube...');
+    if (window.quantumSync && window.quantumSync.isReady) {
+        await window.quantumSync.syncAll(true);
+        renderTagFilters();
+        renderPublishedApps();
+        renderPendingList();
+        showNotification('✅ Sincronización completada');
+    } else {
+        showNotification('❌ No hay conexión con la nube');
+    }
+}
+
+// ============================================================
 // 🔥 RENDER TAG FILTERS CON CACHÉ
 // ============================================================
 function renderTagFilters() {
@@ -1113,7 +1149,7 @@ function executeQuantumApp(appId) {
         }
         
         // ✅ Verificar que la app tiene código
-        if (!app.htmlCode || !app.pythonCode || app.htmlCode.trim() === '' || app.pythonCode.trim() === '') {
+        if (!app.python_code || !app.html_code || app.python_code.trim() === '' || app.html_code.trim() === '') {
             showNotification('⚠️ This app has no code. Edit it in Quantum App Studio first.');
             return;
         }
@@ -1221,10 +1257,10 @@ function executeWithStudio(app) {
 
     loadingDiv.style.display = 'flex';
 
-    const serverUrl = app.serverUrl || compilerUrl || localStorage.getItem('qcol_colab_url') || '';
+    const serverUrl = app.server_url || app.serverUrl || compilerUrl || localStorage.getItem('qcol_colab_url') || '';
 
     // ✅ Verificación mejorada
-    if (!app.htmlCode || !app.pythonCode || app.htmlCode.trim() === '' || app.pythonCode.trim() === '') {
+    if (!app.python_code && !app.html_code && !app.pythonCode && !app.htmlCode) {
         loadingDiv.style.display = 'none';
         showNotification('⚠️ This app has no HTML or Python code. Edit it in Studio first.');
         return;
@@ -1233,7 +1269,9 @@ function executeWithStudio(app) {
     if (window._execBlobUrl) { URL.revokeObjectURL(window._execBlobUrl); }
 
     try {
-        window._execBlobUrl = _buildAppBlob(app.pythonCode, app.htmlCode, serverUrl);
+        const pythonCode = app.python_code || app.pythonCode || '';
+        const htmlCode = app.html_code || app.htmlCode || '';
+        window._execBlobUrl = _buildAppBlob(pythonCode, htmlCode, serverUrl);
         iframe.src = window._execBlobUrl;
         iframe.onload = function() { loadingDiv.style.display = 'none'; };
         setTimeout(function() { if (loadingDiv.style.display !== 'none') loadingDiv.style.display = 'none'; }, 5000);
@@ -1501,6 +1539,18 @@ window.openPendingManager = openPendingManager;
 window.openQuantumAppStudio = openQuantumAppStudio;
 window.closeStudioModal = closeStudioModal;
 window.executeQuantumApp = executeQuantumApp;
+window.refreshApps = refreshApps;
+
+// ✅ Sincronizar al recargar la página
+window.addEventListener('load', async () => {
+    if (window.quantumSync && window.quantumSync.isReady) {
+        console.log('🔄 Página cargada, sincronizando...');
+        await window.quantumSync.syncAll(true);
+        renderTagFilters();
+        renderPublishedApps();
+        renderPendingList();
+    }
+});
 
 document.getElementById('studioModalReal')?.addEventListener('click', (e) => { if(e.target === document.getElementById('studioModalReal')) closeStudioModal(); });
 document.getElementById('pendingModal')?.addEventListener('click', (e) => { if(e.target === document.getElementById('pendingModal')) closePendingModal(); });
