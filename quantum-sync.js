@@ -1,5 +1,5 @@
 // ============================================================
-// QUANTUM SYNC MODULE - VERSIÓN SIMPLIFICADA
+// QUANTUM SYNC MODULE - CORREGIDO
 // ============================================================
 
 class QuantumSync {
@@ -20,6 +20,7 @@ class QuantumSync {
         this.syncInterval = null;
         this.pendingApps = [];
         this.publishedApps = [];
+        this._syncInProgress = false;
         
         this.onPendingUpdate = null;
         this.onPublishedUpdate = null;
@@ -32,7 +33,6 @@ class QuantumSync {
             console.log('🔌 Probando conexión a Supabase...');
             console.log('📌 URL:', this.SUPABASE_URL);
             
-            // Probar conexión directamente a la tabla
             const testResponse = await fetch(`${this.SUPABASE_URL}/rest/v1/${this.TABLES.PENDING_APPS}?select=id&limit=1`, {
                 method: 'GET',
                 headers: {
@@ -42,7 +42,6 @@ class QuantumSync {
             });
             
             if (testResponse.status === 401) {
-                console.log('🔄 Intentando con service_role...');
                 const testResponse2 = await fetch(`${this.SUPABASE_URL}/rest/v1/${this.TABLES.PENDING_APPS}?select=id&limit=1`, {
                     method: 'GET',
                     headers: {
@@ -50,7 +49,6 @@ class QuantumSync {
                         'Authorization': `Bearer ${this.SUPABASE_SERVICE_KEY}`
                     }
                 });
-                
                 if (!testResponse2.ok) {
                     console.warn(`⚠️ Error de conexión: HTTP ${testResponse2.status}`);
                     this.isReady = false;
@@ -89,6 +87,7 @@ class QuantumSync {
         if (options.order) {
             url.searchParams.append('order', `${options.order.column}.${options.order.direction || 'asc'}`);
         }
+        if (options.limit) url.searchParams.append('limit', options.limit);
         
         const response = await fetch(url, {
             method: 'GET',
@@ -106,6 +105,7 @@ class QuantumSync {
         const response = await fetch(`${this.SUPABASE_URL}/rest/v1/${table}`, {
             method: 'POST',
             headers: {
+                'Content-Type': 'application/json',
                 'apikey': this.SUPABASE_ANON_KEY,
                 'Authorization': `Bearer ${this.SUPABASE_ANON_KEY}`,
                 'Prefer': 'return=representation'
@@ -113,7 +113,10 @@ class QuantumSync {
             body: JSON.stringify(data)
         });
         
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
         return await response.json();
     }
 
@@ -131,8 +134,16 @@ class QuantumSync {
     }
 
     async syncAll() {
-        await this.syncPendingApps();
-        await this.syncPublishedApps();
+        if (this._syncInProgress) return;
+        this._syncInProgress = true;
+        try {
+            await this.syncPendingApps();
+            await this.syncPublishedApps();
+        } catch (error) {
+            console.error('Sync error:', error.message);
+        } finally {
+            this._syncInProgress = false;
+        }
     }
 
     async syncPendingApps() {
@@ -166,16 +177,27 @@ class QuantumSync {
     }
 
     async submitApp(appData) {
+        // ✅ Validar y limpiar datos
+        const id = appData.id || this._generateId();
+        const name = (appData.name || appData.title || 'Untitled').substring(0, 100);
+        const title = (appData.title || appData.name || 'Untitled').substring(0, 100);
+        const description = (appData.description || '').substring(0, 500);
+        const tags = (appData.tags || '');
+        const duration = parseInt(appData.duration) || 8;
+        const pythonCode = appData.pythonCode || '';
+        const htmlCode = appData.htmlCode || '';
+        const serverUrl = appData.serverUrl || '';
+        
         const pendingApp = {
-            id: appData.id || this._generateId(),
-            name: appData.name || appData.title || 'Untitled',
-            title: appData.title || appData.name || 'Untitled',
-            description: appData.description || '',
-            tags: appData.tags || '',
-            duration: appData.duration || 8,
-            python_code: appData.pythonCode || '',
-            html_code: appData.htmlCode || '',
-            server_url: appData.serverUrl || '',
+            id: id,
+            name: name,
+            title: title,
+            description: description,
+            tags: tags,
+            duration: duration,
+            python_code: pythonCode,
+            html_code: htmlCode,
+            server_url: serverUrl,
             created_by: this.currentUser?.id || 'anonymous',
             created_at: new Date().toISOString(),
             submitted_by: this.currentUser?.id || 'anonymous',
@@ -190,16 +212,21 @@ class QuantumSync {
             });
             
             if (existing && existing.length > 0) {
+                // ✅ Actualizar - usar PATCH
                 const response = await fetch(`${this.SUPABASE_URL}/rest/v1/${this.TABLES.PENDING_APPS}?id=eq.${pendingApp.id}`, {
                     method: 'PATCH',
                     headers: {
                         'Content-Type': 'application/json',
                         'apikey': this.SUPABASE_ANON_KEY,
-                        'Authorization': `Bearer ${this.SUPABASE_ANON_KEY}`
+                        'Authorization': `Bearer ${this.SUPABASE_ANON_KEY}`,
+                        'Prefer': 'return=representation'
                     },
                     body: JSON.stringify(pendingApp)
                 });
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`HTTP ${response.status}: ${errorText}`);
+                }
             } else {
                 await this._supabaseInsert(this.TABLES.PENDING_APPS, pendingApp);
             }
