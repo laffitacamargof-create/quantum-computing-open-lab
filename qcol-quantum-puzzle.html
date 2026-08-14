@@ -578,7 +578,7 @@ body::before{
                 if (typeof window.renderPendingList === 'function') {
                     window.renderPendingList();
                 }
-            }, 250);
+            }, 300);
         };
         
         window.quantumSync.onPublishedUpdate = (apps) => {
@@ -591,7 +591,7 @@ body::before{
                 if (typeof window.renderPublishedApps === 'function') {
                     window.renderPublishedApps();
                 }
-            }, 250);
+            }, 300);
         };
         
         window.quantumSync.onAppPublished = (app) => {
@@ -608,8 +608,10 @@ body::before{
         console.log('✅ quantumSync.isReady:', window.quantumSync.isReady);
         
         // ✅ Sincronización inicial - SOLO UNA VEZ
+        let initialSyncDone = false;
         setTimeout(async () => {
-            if (window.quantumSync && window.quantumSync.isReady) {
+            if (!initialSyncDone && window.quantumSync && window.quantumSync.isReady) {
+                initialSyncDone = true;
                 await window.quantumSync.syncAll();
                 renderTagFilters();
                 renderPublishedApps();
@@ -950,11 +952,31 @@ function extractUniqueTags(apps) {
     return Array.from(tagsSet);
 }
 
+// ============================================================
+// 🔥 CACHÉ PARA EVITAR RENDERS INNECESARIOS
+// ============================================================
+let cachedPendingApps = null;
+let cachedPendingHTML = null;
+let cachedPublishedApps = null;
+let cachedPublishedHTML = null;
+let cachedTags = null;
+let renderTimer = null;
+
+// ============================================================
+// 🔥 RENDER TAG FILTERS CON CACHÉ
+// ============================================================
 function renderTagFilters() {
     getPublishedApps().then(apps => {
         const allTags = extractUniqueTags(apps);
         const container = document.getElementById('filterTagsContainer');
         if(!container) return;
+        
+        const tagsString = JSON.stringify(allTags);
+        if (cachedTags === tagsString) {
+            return;
+        }
+        cachedTags = tagsString;
+        
         let html = `<span class="tag-chip ${activeTagFilter === 'all' ? 'active' : ''}" data-tag="all" onclick="setTagFilter('all')">🎲 ALL</span>`;
         allTags.forEach(tag => {
             html += `<span class="tag-chip ${activeTagFilter === tag ? 'active' : ''}" data-tag="${tag}" onclick="setTagFilter('${tag}')">#${tag}</span>`;
@@ -969,11 +991,23 @@ function setTagFilter(tag) {
     renderPublishedApps();
 }
 
+// ============================================================
+// 🔥 RENDER PUBLISHED APPS CON CACHÉ
+// ============================================================
 async function renderPublishedApps() {
     const apps = await getPublishedApps();
     const searchTerm = document.getElementById('searchInput')?.value.toLowerCase() || "";
+    
+    const appsString = JSON.stringify(apps);
+    if (cachedPublishedApps === appsString && searchTerm === "") {
+        return;
+    }
+    cachedPublishedApps = appsString;
+    
     let filtered = apps.filter(app => {
-        const matchSearch = (app.title || "").toLowerCase().includes(searchTerm) || (app.desc || "").toLowerCase().includes(searchTerm) || (app.tags || "").toLowerCase().includes(searchTerm);
+        const matchSearch = (app.title || "").toLowerCase().includes(searchTerm) || 
+                           (app.desc || "").toLowerCase().includes(searchTerm) || 
+                           (app.tags || "").toLowerCase().includes(searchTerm);
         let matchTag = true;
         if(activeTagFilter !== 'all') {
             const appTags = (app.tags || "").toLowerCase().split(',').map(t => t.trim());
@@ -983,10 +1017,16 @@ async function renderPublishedApps() {
     });
     
     const container = document.getElementById('puzzleGrid');
+    if(!container) return;
+    
     if(!filtered.length){
-        container.innerHTML = `<div class="empty-state"><div class="empty-icon">⚛️📦</div>
+        const emptyHTML = `<div class="empty-state"><div class="empty-icon">⚛️📦</div>
         <div class="empty-title">Empty quantum repository</div>
         <p style="font-size:0.7rem;color:#4a7a9b;margin-top:0.5rem;">Use "QUANTUM APP STUDIO" to create new applications.</p></div>`;
+        if (cachedPublishedHTML !== emptyHTML) {
+            container.innerHTML = emptyHTML;
+            cachedPublishedHTML = emptyHTML;
+        }
         return;
     }
     
@@ -1013,7 +1053,54 @@ async function renderPublishedApps() {
         `;
     });
     gridHtml += `</div>`;
-    container.innerHTML = gridHtml;
+    
+    if (cachedPublishedHTML !== gridHtml) {
+        container.innerHTML = gridHtml;
+        cachedPublishedHTML = gridHtml;
+    }
+}
+
+// ============================================================
+// 🔥 RENDER PENDING LIST CON CACHÉ
+// ============================================================
+async function renderPendingList() {
+    const pending = await getPendingApps();
+    const container = document.getElementById('pendingListContainer');
+    if(!container) return;
+    
+    const pendingString = JSON.stringify(pending);
+    if (cachedPendingApps === pendingString) {
+        return;
+    }
+    cachedPendingApps = pendingString;
+    
+    if(pending.length === 0) { 
+        const emptyHTML = `<div style="padding:2rem; text-align:center; color:var(--mu);">📭 No apps pending approval.</div>`;
+        if (cachedPendingHTML !== emptyHTML) {
+            container.innerHTML = emptyHTML;
+            cachedPendingHTML = emptyHTML;
+        }
+        return; 
+    }
+    
+    let html = `<div class="pending-grid">`;
+    pending.forEach(app => {
+        const title = app.title || app.name || 'Untitled App';
+        const appId = app.id;
+        html += `<div style="background: #0a1222; border-radius: 16px; margin-bottom: 12px; padding: 12px;">
+                    <strong>${escapeHtml(title)}</strong>
+                    <div style="margin-top:8px; display:flex; gap:8px;">
+                        <button class="btn" style="background: #00aa66;" onclick="window.publishPendingApp('${appId}')">✅ PUBLISH</button>
+                        <button class="btn" style="background: #aa3355;" onclick="window.rejectPendingApp('${appId}')">🗑️ REJECT</button>
+                    </div>
+                </div>`;
+    });
+    html += `</div>`;
+    
+    if (cachedPendingHTML !== html) {
+        container.innerHTML = html;
+        cachedPendingHTML = html;
+    }
 }
 
 // ========== EXECUTE APP USING QUANTUM APP STUDIO ==========
@@ -1186,11 +1273,8 @@ window.addEventListener('message', async function(e) {
     const data = e.data;
     if (!data || typeof data !== 'object') return;
     
-    console.log('📨 Mensaje recibido en Puzzle:', data.type, data);
-    
     if (data.type === 'QCOL_STUDIO_SYNC_APP') {
         const { appId, appData } = data;
-        console.log('📥 Recibido sync desde Studio:', appId, appData);
         
         if (window.quantumSync && window.quantumSync.isReady) {
             try {
@@ -1208,15 +1292,9 @@ window.addEventListener('message', async function(e) {
                 
                 showNotification(`☁️ App "${result.title}" sincronizada con la nube (pendiente)`);
                 
-                if (typeof window.renderPendingList === 'function') {
-                    await window.renderPendingList();
-                }
-                if (typeof window.renderTagFilters === 'function') {
-                    await window.renderTagFilters();
-                }
-                if (typeof window.renderPublishedApps === 'function') {
-                    await window.renderPublishedApps();
-                }
+                await window.renderPendingList();
+                window.renderTagFilters();
+                await window.renderPublishedApps();
                 
                 if (e.source) {
                     e.source.postMessage({
@@ -1251,9 +1329,7 @@ window.addEventListener('message', async function(e) {
             localStorage.setItem('qcol_pending_quantum_apps', JSON.stringify(pending));
             showNotification(`📦 App "${appData.title}" guardada localmente`);
             
-            if (typeof window.renderPendingList === 'function') {
-                await window.renderPendingList();
-            }
+            await window.renderPendingList();
             
             if (e.source) {
                 e.source.postMessage({
@@ -1310,40 +1386,9 @@ function openPendingManager() {
 function closePendingModal() { document.getElementById('pendingModal').classList.remove('open'); }
 
 // ============================================================
-// 🔥 RENDER PENDING LIST
-// ============================================================
-async function renderPendingList() {
-    console.log('🔄 Renderizando lista de pendientes...');
-    const pending = await getPendingApps();
-    console.log('📋 Apps pendientes:', pending);
-    const container = document.getElementById('pendingListContainer');
-    if(!container) return;
-    if(pending.length === 0) { 
-        container.innerHTML = `<div style="padding:2rem; text-align:center; color:var(--mu);">📭 No apps pending approval.</div>`; 
-        return; 
-    }
-    let html = `<div class="pending-grid">`;
-    pending.forEach(app => {
-        const title = app.title || app.name || 'Untitled App';
-        const appId = app.id;
-        html += `<div style="background: #0a1222; border-radius: 16px; margin-bottom: 12px; padding: 12px;">
-                    <strong>${escapeHtml(title)}</strong>
-                    <div style="margin-top:8px; display:flex; gap:8px;">
-                        <button class="btn" style="background: #00aa66;" onclick="window.publishPendingApp('${appId}')">✅ PUBLISH</button>
-                        <button class="btn" style="background: #aa3355;" onclick="window.rejectPendingApp('${appId}')">🗑️ REJECT</button>
-                    </div>
-                </div>`;
-    });
-    html += `</div>`;
-    container.innerHTML = html;
-}
-
-// ============================================================
 // 🔥 PUBLISH PENDING APP
 // ============================================================
 async function publishPendingApp(appId) {
-    console.log('📤 Publicando app:', appId);
-    
     if (!isFounder && !isAdmin) { 
         showNotification("Solo fundadores/admins pueden publicar"); 
         return; 
@@ -1356,9 +1401,7 @@ async function publishPendingApp(appId) {
     }
     
     try {
-        console.log('🔄 Usando quantumSync para publicar...');
         const published = await window.quantumSync.approveApp(appId, currentUser?.id);
-        console.log('✅ App publicada:', published);
         showNotification(`✅ App "${published.title}" publicada en la nube`);
         
         await window.quantumSync.syncPendingApps();
@@ -1378,7 +1421,6 @@ async function publishPendingApp(appId) {
 // 🔥 REJECT PENDING APP
 // ============================================================
 async function rejectPendingApp(appId) {
-    console.log('🗑️ Rechazando app:', appId);
     if (!isFounder && !isAdmin) return;
     if (!confirm("Delete this pending app?")) return;
     
