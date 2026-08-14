@@ -9,6 +9,6 @@ export const SUPABASE_CONFIG = {
     // Clave pública (publishable)
     supabaseAnonKey: 'sb_publishable_aDCI79qJNnOcMXd9fSXBbg_rYAKYV9d',
     
-    // Clave de servicio (secret)
-    supabaseServiceKey: 'sb_secret_WYQd0S0Whu_1UGlRTbe6mA_HqSpk3Yc'
+    // ✅ CLAVE CORRECTA (la que te dio Supabase)
+    supabaseServiceKey: 'sb_secret_qiLytp2z27jWKjUxz0pMrg__U5ZdCAu'
 };
