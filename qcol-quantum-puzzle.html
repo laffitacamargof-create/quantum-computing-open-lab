@@ -1107,7 +1107,17 @@ async function renderPendingList() {
 function executeQuantumApp(appId) {
     getPublishedApps().then(apps => {
         const app = apps.find(a => a.id === appId);
-        if(!app) { showNotification('⚠️ App not found'); return; }
+        if(!app) { 
+            showNotification('⚠️ App not found'); 
+            return; 
+        }
+        
+        // ✅ Verificar que la app tiene código
+        if (!app.htmlCode || !app.pythonCode || app.htmlCode.trim() === '' || app.pythonCode.trim() === '') {
+            showNotification('⚠️ This app has no code. Edit it in Quantum App Studio first.');
+            return;
+        }
+        
         currentExecutingApp = app;
         const modal = document.getElementById('execAppModal');
         const titleSpan = document.getElementById('execAppTitle');
@@ -1213,9 +1223,10 @@ function executeWithStudio(app) {
 
     const serverUrl = app.serverUrl || compilerUrl || localStorage.getItem('qcol_colab_url') || '';
 
-    if (!app.htmlCode && !app.pythonCode) {
+    // ✅ Verificación mejorada
+    if (!app.htmlCode || !app.pythonCode || app.htmlCode.trim() === '' || app.pythonCode.trim() === '') {
         loadingDiv.style.display = 'none';
-        showNotification('The app has no HTML or Python code.');
+        showNotification('⚠️ This app has no HTML or Python code. Edit it in Studio first.');
         return;
     }
 
