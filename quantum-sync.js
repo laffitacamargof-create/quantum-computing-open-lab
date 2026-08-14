@@ -1,5 +1,5 @@
 // ============================================================
-// QUANTUM SYNC MODULE - CORREGIDO (HTTP 400 FIX)
+// QUANTUM SYNC MODULE - CORREGIDO
 // ============================================================
 
 class QuantumSync {
@@ -82,30 +82,23 @@ class QuantumSync {
         }
     }
 
-    // ✅ CORREGIDO: _supabaseFetch con orden correcto
+    // ✅ CORREGIDO: Sin parámetro _ en URL
     async _supabaseFetch(table, options = {}) {
         let url = `${this.SUPABASE_URL}/rest/v1/${table}?select=*`;
         
-        // ✅ CORREGIDO: Construir URL manualmente para evitar errores
         if (options.eq) {
             Object.entries(options.eq).forEach(([key, value]) => {
                 url += `&${key}=eq.${value}`;
             });
         }
         
-        // ✅ CORREGIDO: order sin punto (created_at.desc es incorrecto)
         if (options.order) {
-            // Supabase usa: order=column.direction (con punto)
-            // Pero hay que URL encode
             url += `&order=${options.order.column}.${options.order.direction || 'asc'}`;
         }
         
         if (options.limit) {
             url += `&limit=${options.limit}`;
         }
-        
-        // ✅ Cache buster
-        url += `&_=${Date.now()}`;
         
         console.log('📡 Fetch:', url);
         
@@ -114,7 +107,8 @@ class QuantumSync {
             headers: {
                 'apikey': this.SUPABASE_ANON_KEY,
                 'Authorization': `Bearer ${this.SUPABASE_ANON_KEY}`,
-                'Cache-Control': 'no-cache'
+                'Cache-Control': 'no-cache, no-store, must-revalidate',
+                'Pragma': 'no-cache'
             }
         });
         
