@@ -125,70 +125,75 @@ textarea.fi{resize:vertical;min-height:70px;line-height:1.6;}
 <div class="notif" id="notif"></div>
 
 <!-- ============================================================
-     🔄 CONFIG SYNC - INICIALIZACIÓN DIRECTA (SIN MÓDULOS)
+     🔄 CONFIG SYNC - CONEXIÓN DIRECTA A SUPABASE (SOLO NUBE)
      ============================================================ -->
 <script>
 // ============================================================
-// QCOL CONFIG SYNC - VERSIÓN EMBEBIDA Y CORREGIDA
+// QCOL CONFIG SYNC - VERSIÓN SOLO NUBE
+// TODAS LAS OPERACIONES VAN DIRECTAMENTE A SUPABASE
 // ============================================================
 
-class QcolConfigSync {
-    constructor(config) {
-        this.SUPABASE_URL = config.supabaseUrl;
-        this.SUPABASE_ANON_KEY = config.supabaseAnonKey;
-        this.SUPABASE_SERVICE_KEY = config.supabaseServiceKey;
-        
+const SUPABASE_URL = 'https://rtkcfbnoqbivylejhspv.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_Uw4ViBXo3UvvlSHzOiAcDA_9Jn6eMcf';
+
+class QcolConfigSyncCloud {
+    constructor() {
         this.isReady = false;
-        this.currentUser = null;
-        this.configCache = {};
-        this.syncInterval = null;
+        this._cache = {};
+        this._initialized = false;
         this._syncInProgress = false;
-        this._syncingKeys = new Set();
-        
         this.onConfigUpdate = null;
         this.onSyncComplete = null;
+        this._listeners = [];
     }
 
+    // ==================== INICIALIZACIÓN ====================
+    
     async init() {
+        if (this._initialized) return this;
         try {
-            console.log('🔌 Config Sync: Probando conexión...');
+            console.log('🔌 Config Sync Cloud: Conectando a Supabase...');
             
-            const testResponse = await fetch(`${this.SUPABASE_URL}/rest/v1/quantum_ecosystem_config?select=key&limit=1`, {
+            const testResponse = await fetch(`${SUPABASE_URL}/rest/v1/quantum_ecosystem_config?select=key&limit=1`, {
                 method: 'GET',
                 headers: {
-                    'apikey': this.SUPABASE_ANON_KEY,
-                    'Authorization': `Bearer ${this.SUPABASE_ANON_KEY}`
+                    'apikey': SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
                 }
             });
             
             if (!testResponse.ok && testResponse.status !== 404) {
-                console.warn('⚠️ Config Sync: Error de conexión');
+                console.warn('⚠️ Config Sync Cloud: Error de conexión');
                 this.isReady = false;
-                return false;
+                return this;
             }
             
-            console.log('✅ Config Sync: Conexión establecida');
-            await this.syncAll();
+            console.log('✅ Config Sync Cloud: Conexión establecida');
+            
+            // Cargar TODAS las configuraciones desde la nube
+            await this.loadAllFromCloud();
             
             this.isReady = true;
-            console.log('✅ Config Sync inicializado');
+            this._initialized = true;
+            console.log('✅ Config Sync Cloud inicializado (MODO NUBE)');
             
-            // ✅ Sincronizar cada 10 segundos
-            this.syncInterval = setInterval(() => {
-                this.syncAll();
-                if (this.onSyncComplete) this.onSyncComplete();
+            // Sincronizar automáticamente cada 10 segundos
+            setInterval(() => {
+                this.loadAllFromCloud().catch(e => console.warn('⚠️ Sync error:', e.message));
             }, 10000);
             
-            return true;
+            return this;
         } catch (error) {
-            console.error('❌ Config Sync error:', error.message);
+            console.error('❌ Config Sync Cloud error:', error.message);
             this.isReady = false;
-            return false;
+            return this;
         }
     }
 
+    // ==================== FUNCIONES BASE ====================
+    
     async _fetch(table, options = {}) {
-        let url = `${this.SUPABASE_URL}/rest/v1/${table}?select=*`;
+        let url = `${SUPABASE_URL}/rest/v1/${table}?select=*`;
         if (options.eq) {
             Object.entries(options.eq).forEach(([key, value]) => {
                 url += `&${key}=eq.${value}`;
@@ -197,8 +202,8 @@ class QcolConfigSync {
         const response = await fetch(url, {
             method: 'GET',
             headers: {
-                'apikey': this.SUPABASE_ANON_KEY,
-                'Authorization': `Bearer ${this.SUPABASE_ANON_KEY}`
+                'apikey': SUPABASE_ANON_KEY,
+                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
             }
         });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -206,12 +211,12 @@ class QcolConfigSync {
     }
 
     async _insert(table, data) {
-        const response = await fetch(`${this.SUPABASE_URL}/rest/v1/${table}`, {
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'apikey': this.SUPABASE_ANON_KEY,
-                'Authorization': `Bearer ${this.SUPABASE_ANON_KEY}`,
+                'apikey': SUPABASE_ANON_KEY,
+                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
                 'Prefer': 'return=representation'
             },
             body: JSON.stringify(data)
@@ -221,11 +226,12 @@ class QcolConfigSync {
     }
 
     async _update(table, key, data) {
-        const response = await fetch(`${this.SUPABASE_URL}/rest/v1/${table}?key=eq.${key}`, {
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/${table}?key=eq.${key}`, {
             method: 'PATCH',
             headers: {
-                'apikey': this.SUPABASE_ANON_KEY,
-                'Authorization': `Bearer ${this.SUPABASE_ANON_KEY}`,
+                'Content-Type': 'application/json',
+                'apikey': SUPABASE_ANON_KEY,
+                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
                 'Prefer': 'return=representation'
             },
             body: JSON.stringify(data)
@@ -234,174 +240,161 @@ class QcolConfigSync {
         return await response.json();
     }
 
-    // ==================== SINCRONIZACIÓN CORREGIDA ====================
+    // ==================== CARGAR DESDE LA NUBE ====================
     
-    async syncAll() {
+    async loadAllFromCloud() {
         if (this._syncInProgress) return;
         this._syncInProgress = true;
+        
         try {
-            await this._syncConfig('colab_url', 'qcol_colab_url');
-            await this._syncConfig('ai_config', 'qcol_ai');
-            await this._syncConfig('github_config', 'qcol_gh');
-            await this._syncConfig('deepseek_config', 'qcol_mistral');
-            await this._syncConfig('system_config', 'qcol_sys');
-            await this._syncConfig('platform_config', 'qcol_cfg');
-            await this._syncConfig('monitor_config', 'qcol_monitor_cfg');
-            // ✅ Sincronizar contraseña del fundador
-            await this._syncConfig('founder_password', 'qcol_fp');
-            if (this.onSyncComplete) this.onSyncComplete();
+            const allConfigs = await this._fetch('quantum_ecosystem_config');
+            
+            if (allConfigs && allConfigs.length > 0) {
+                const configMap = {};
+                allConfigs.forEach(item => {
+                    if (item.key) {
+                        let value = item.value;
+                        try { value = JSON.parse(value); } catch(e) {}
+                        
+                        // 🔧 FORZAR founder_password como CADENA
+                        if (item.key === 'founder_password' && value !== null && value !== undefined) {
+                            value = String(value);
+                        }
+                        
+                        configMap[item.key] = value;
+                        this._cache[item.key] = value;
+                        
+                        // Actualizar localStorage como CACHÉ (no como fuente principal)
+                        const localKey = this._getLocalKey(item.key);
+                        if (localKey) {
+                            const storeValue = typeof value === 'string' ? value : JSON.stringify(value);
+                            localStorage.setItem(localKey, storeValue);
+                            localStorage.setItem(localKey + '_timestamp', new Date().toISOString());
+                        }
+                    }
+                });
+                
+                console.log('📥 Configuraciones cargadas desde la nube:', Object.keys(configMap));
+                
+                if (this.onConfigUpdate) {
+                    this.onConfigUpdate(configMap);
+                }
+                if (this.onSyncComplete) {
+                    this.onSyncComplete();
+                }
+                
+                // Notificar a los listeners
+                this._listeners.forEach(fn => fn(configMap));
+            }
+            
+            return this._cache;
         } catch (error) {
-            console.error('Config Sync error:', error.message);
+            console.warn('⚠️ Error cargando configuraciones desde la nube:', error.message);
+            return this._cache;
         } finally {
             this._syncInProgress = false;
         }
     }
 
-    async _syncConfig(cloudKey, localKey) {
-        // ✅ Evitar sincronización en bucle
-        if (this._syncingKeys.has(cloudKey)) {
-            console.log(`⏭️ ${cloudKey} ya está sincronizando, skip`);
-            return;
-        }
-        this._syncingKeys.add(cloudKey);
-        
+    // ==================== GUARDAR EN LA NUBE ====================
+    
+    async saveToCloud(key, value) {
         try {
-            const cloudData = await this._fetch('quantum_ecosystem_config', {
-                eq: { key: cloudKey }
-            });
-            
-            let cloudValue = null;
-            let cloudTimestamp = null;
-            if (cloudData && cloudData.length > 0) {
-                cloudValue = cloudData[0].value;
-                cloudTimestamp = new Date(cloudData[0].updated_at);
-                try { cloudValue = JSON.parse(cloudValue); } catch(e) {}
-                
-                // 🔧 FORZAR founder_password como cadena SIEMPRE
-                if (cloudKey === 'founder_password' && cloudValue !== null && cloudValue !== undefined) {
-                    cloudValue = String(cloudValue);
-                }
+            // 🔧 FORZAR founder_password como CADENA
+            if (key === 'founder_password') {
+                value = String(value);
             }
             
-            let localValue = localStorage.getItem(localKey);
-            try { localValue = JSON.parse(localValue); } catch(e) {}
-            const localTimestamp = localStorage.getItem(localKey + '_timestamp');
-            const localTime = localTimestamp ? new Date(localTimestamp) : null;
+            // Actualizar caché
+            this._cache[key] = value;
             
-            // 🔧 FORZAR que localValue sea string para founder_password
-            if (cloudKey === 'founder_password') {
-                localValue = String(localValue || '');
+            // Actualizar localStorage como CACHÉ
+            const localKey = this._getLocalKey(key);
+            if (localKey) {
+                const storeValue = typeof value === 'string' ? value : JSON.stringify(value);
+                localStorage.setItem(localKey, storeValue);
+                localStorage.setItem(localKey + '_timestamp', new Date().toISOString());
             }
             
-            // ✅ Si los valores son iguales, no hacer nada
-            const localString = JSON.stringify(localValue);
-            const cloudString = JSON.stringify(cloudValue);
-            if (localString === cloudString && cloudValue !== null) {
-                this._syncingKeys.delete(cloudKey);
-                return;
-            }
+            // Guardar en Supabase
+            const stringValue = typeof value === 'string' ? value : JSON.stringify(value);
+            const data = {
+                id: 'cfg-' + key,
+                key: key,
+                value: stringValue,
+                updated_by: 'founder_panel',
+                updated_at: new Date().toISOString()
+            };
             
-            // ✅ Si la nube tiene datos más recientes
-            if (cloudValue !== null && cloudValue !== undefined) {
-                if (!localValue || (cloudTimestamp && localTime && cloudTimestamp > localTime)) {
-                    // 🔧 FORZAR como cadena para founder_password
-                    const valueToStore = cloudKey === 'founder_password' ? String(cloudValue) : cloudValue;
-                    localStorage.setItem(localKey, typeof valueToStore === 'string' ? valueToStore : JSON.stringify(valueToStore));
-                    localStorage.setItem(localKey + '_timestamp', new Date().toISOString());
-                    console.log(`📥 Config ${cloudKey} ACTUALIZADA desde la nube`);
-                    if (this.onConfigUpdate) {
-                        this.onConfigUpdate(cloudKey, cloudValue);
-                    }
-                    // ✅ Forzar recarga de UI
-                    if (typeof loadSaved === 'function') {
-                        setTimeout(loadSaved, 100);
-                    }
-                } else if (localValue && (!cloudTimestamp || !localTime || localTime > cloudTimestamp)) {
-                    // 🔧 FORZAR como cadena para founder_password al subir
-                    const valueToUpload = cloudKey === 'founder_password' ? String(localValue) : localValue;
-                    await this._updateOrInsert(cloudKey, valueToUpload);
-                    console.log(`📤 Config ${cloudKey} subida a la nube`);
-                }
-            } else if (localValue !== null && localValue !== undefined) {
-                // 🔧 FORZAR como cadena para founder_password
-                const valueToUpload = cloudKey === 'founder_password' ? String(localValue) : localValue;
-                await this._updateOrInsert(cloudKey, valueToUpload);
-                console.log(`📤 Config ${cloudKey} subida a la nube (nueva)`);
-            }
-        } catch (error) {
-            console.warn(`⚠️ Error sincronizando ${cloudKey}:`, error.message);
-        } finally {
-            this._syncingKeys.delete(cloudKey);
-        }
-    }
-
-    async _updateOrInsert(key, value) {
-        // 🔧 FORZAR founder_password como cadena JSON con comillas
-        let stringValue;
-        if (key === 'founder_password') {
-            // Guardar como JSON string con comillas: '"1027"'
-            stringValue = JSON.stringify(String(value));
-        } else {
-            stringValue = typeof value === 'string' ? value : JSON.stringify(value);
-        }
-        const data = {
-            id: 'cfg-' + key,
-            key: key,
-            value: stringValue,
-            updated_by: this.currentUser?.id || 'anonymous',
-            updated_at: new Date().toISOString()
-        };
-        try {
             const existing = await this._fetch('quantum_ecosystem_config', {
                 eq: { key: key }
             });
+            
             if (existing && existing.length > 0) {
                 await this._update('quantum_ecosystem_config', key, data);
             } else {
                 data.created_at = new Date().toISOString();
                 await this._insert('quantum_ecosystem_config', data);
             }
+            
+            console.log(`📤 Config ${key} guardada en la nube`);
+            
+            // Notificar cambios
+            if (this.onConfigUpdate) {
+                this.onConfigUpdate({ [key]: value });
+            }
+            
+            return true;
         } catch (error) {
-            console.error('Error updating config:', error);
-            throw error;
+            console.error(`❌ Error guardando ${key} en la nube:`, error.message);
+            return false;
         }
     }
 
+    async saveMultipleToCloud(configs) {
+        let success = true;
+        for (const [key, value] of Object.entries(configs)) {
+            const result = await this.saveToCloud(key, value);
+            if (!result) success = false;
+        }
+        return success;
+    }
+
+    // ==================== OBTENER CONFIGURACIÓN ====================
+    
     getConfig(key) {
+        // 🔧 Si es founder_password, forzar como cadena
+        if (key === 'founder_password') {
+            const cached = this._cache[key];
+            if (cached !== undefined) {
+                return String(cached);
+            }
+            // Intentar desde localStorage como respaldo
+            const localValue = localStorage.getItem('qcol_fp');
+            if (localValue !== null) {
+                try { return String(JSON.parse(localValue)); } catch(e) { return String(localValue); }
+            }
+            return null;
+        }
+        
+        if (this._cache[key] !== undefined) {
+            return this._cache[key];
+        }
+        
+        // Intentar desde localStorage como respaldo
         const localKey = this._getLocalKey(key);
-        const value = localStorage.getItem(localKey);
-        if (value) {
-            try { 
-                const parsed = JSON.parse(value);
-                // 🔧 Si es founder_password, asegurar que sea string
-                if (key === 'founder_password') {
-                    return String(parsed);
-                }
-                return parsed; 
-            } catch(e) { 
-                // 🔧 Si es founder_password, asegurar que sea string
-                if (key === 'founder_password') {
-                    return String(value);
-                }
-                return value; 
+        if (localKey) {
+            const value = localStorage.getItem(localKey);
+            if (value) {
+                try { return JSON.parse(value); } catch(e) { return value; }
             }
         }
         return null;
     }
 
-    setConfig(key, value) {
-        const localKey = this._getLocalKey(key);
-        // 🔧 FORZAR founder_password como string
-        if (key === 'founder_password') {
-            value = String(value);
-            localStorage.setItem(localKey, value);
-        } else {
-            localStorage.setItem(localKey, typeof value === 'string' ? value : JSON.stringify(value));
-        }
-        localStorage.setItem(localKey + '_timestamp', new Date().toISOString());
-        if (this.isReady) {
-            setTimeout(() => this._syncConfig(key, localKey), 500);
-        }
+    async refresh() {
+        await this.loadAllFromCloud();
+        return this._cache;
     }
 
     _getLocalKey(cloudKey) {
@@ -413,64 +406,56 @@ class QcolConfigSync {
             'system_config': 'qcol_sys',
             'platform_config': 'qcol_cfg',
             'monitor_config': 'qcol_monitor_cfg',
-            'founder_password': 'qcol_fp'
+            'founder_password': 'qcol_fp',
+            'users_config': 'qcol_users'
         };
         return map[cloudKey] || cloudKey;
     }
 
-    setUser(user) {
-        this.currentUser = user;
+    onUpdate(callback) {
+        this._listeners.push(callback);
     }
 
     destroy() {
-        if (this.syncInterval) {
-            clearInterval(this.syncInterval);
-            this.syncInterval = null;
-        }
+        this._listeners = [];
     }
 }
 
 // ============================================================
-// INICIALIZAR CONFIG SYNC DIRECTAMENTE
+// INICIALIZAR CONFIG SYNC - MODO NUBE
 // ============================================================
-(async function initConfigSync() {
+let configSync = null;
+
+async function initConfigSync() {
     try {
-        const SUPABASE_CONFIG = {
-            supabaseUrl: 'https://rtkcfbnoqbivylejhspv.supabase.co',
-            supabaseAnonKey: 'sb_publishable_Uw4ViBXo3UvvlSHzOiAcDA_9Jn6eMcf',
-            supabaseServiceKey: 'sb_secret_qiLytp2z27jWKjUxz0pMrg__U5ZdCAu'
-        };
+        configSync = new QcolConfigSyncCloud();
+        await configSync.init();
         
-        window.configSync = new QcolConfigSync({
-            supabaseUrl: SUPABASE_CONFIG.supabaseUrl,
-            supabaseAnonKey: SUPABASE_CONFIG.supabaseAnonKey,
-            supabaseServiceKey: SUPABASE_CONFIG.supabaseServiceKey
-        });
-        
-        await window.configSync.init();
-        
-        window.configSync.onConfigUpdate = (key, value) => {
-            console.log(`📥 Config actualizada: ${key}`, value);
+        configSync.onConfigUpdate = (configMap) => {
+            console.log('📥 Config actualizada desde la nube:', Object.keys(configMap));
             if (typeof loadSaved === 'function') {
                 setTimeout(loadSaved, 200);
             }
-        };
-        
-        window.configSync.onSyncComplete = () => {
-            console.log('✅ Configuración sincronizada');
-            if (typeof loadSaved === 'function') {
-                setTimeout(loadSaved, 200);
+            // Actualizar UI
+            if (typeof renderUsers === 'function') {
+                setTimeout(renderUsers, 300);
             }
         };
         
-        const user = JSON.parse(localStorage.getItem('qcol_user') || '{}');
-        window.configSync.setUser(user);
+        configSync.onSyncComplete = () => {
+            console.log('✅ Configuración sincronizada desde la nube');
+        };
         
-        console.log('✅ Config Sync global iniciado');
+        window.configSync = configSync;
+        console.log('✅ Config Sync Cloud global iniciado (MODO NUBE)');
     } catch (error) {
-        console.warn('⚠️ Config Sync no disponible:', error.message);
+        console.warn('⚠️ Config Sync Cloud no disponible:', error.message);
+        window.configSync = null;
     }
-})();
+}
+
+// Iniciar inmediatamente
+initConfigSync();
 </script>
 
 <div class="tabs">
@@ -494,14 +479,14 @@ class QcolConfigSync {
     <table class="tbl">
       <thead><tr><th>MÓDULO</th><th>ARCHIVO</th><th>FUNCIÓN</th><th>ESTADO</th><th>ACCIONES</th> </thead>
       <tbody>
-        <tr><td style="font-family:var(--mono);font-size:.6rem;color:var(--gr);">index.html</a></td><td style="font-size:.62rem;color:var(--mu);">Núcleo — une todo el ecosistema</a><td><span class="rb rba">ACTIVO</span></td><td><button class="bsm" onclick="downloadModule('core')">📥 Core</button></td> </tr>
-        <tr><td style="font-family:var(--mono);font-size:.6rem;color:var(--gr);">qcol-projects.html</a></td><td style="font-size:.62rem;color:var(--mu);">Notebooks desde GitHub</a><td><span class="rb" id="st-projects" style="background:rgba(255,184,0,.12);color:#ffb800;border:1px solid rgba(255,184,0,.3);">PENDIENTE</span></td><td><button class="bsm" onclick="downloadModule('projects')">📥</button></td> </tr>
-        <tr><td style="font-family:var(--mono);font-size:.6rem;color:var(--gr);">qcol-architect.html</a></td><td style="font-size:.62rem;color:var(--mu);">Editor Qiskit · Cirq · QuTiP + GPU HuggingFace</a><td><span class="rb" id="st-architect" style="background:rgba(255,184,0,.12);color:#ffb800;border:1px solid rgba(255,184,0,.3);">PENDIENTE</span></td><td><button class="bsm" onclick="downloadModule('architect')">📥</button></td> </tr>
-        <tr><td style="font-family:var(--mono);font-size:.6rem;color:var(--gr);">qcol-architect-pro.html</a></td><td style="font-size:.62rem;color:var(--mu);">Notebooks completos — Admin+</a><td><span class="rb" id="st-archpro" style="background:rgba(255,184,0,.12);color:#ffb800;border:1px solid rgba(255,184,0,.3);">PENDIENTE</span></td><td><button class="bsm" onclick="downloadModule('architect-pro')">📥</button></td> </tr>
-        <tr><td style="font-family:var(--mono);font-size:.6rem;color:var(--gr);">qcol-library.html</a></td><td style="font-size:.62rem;color:var(--mu);">Recursos educativos desde GitHub</a><td><span class="rb" id="st-library" style="background:rgba(255,184,0,.12);color:#ffb800;border:1px solid rgba(255,184,0,.3);">PENDIENTE</span></td><td><button class="bsm" onclick="downloadModule('library')">📥</button></td> </tr>
-        <tr><td style="font-family:var(--mono);font-size:.6rem;color:var(--gr);">qcol-account.html</a></td><td style="font-size:.62rem;color:var(--mu);">Perfil y circuitos guardados</a><td><span class="rb" id="st-account" style="background:rgba(255,184,0,.12);color:#ffb800;border:1px solid rgba(255,184,0,.3);">PENDIENTE</span></td><td><button class="bsm" onclick="downloadModule('account')">📥</button></td> </tr>
-        <tr><td style="font-family:var(--mono);font-size:.6rem;color:var(--gr);">qcol-help.html</a></td><td style="font-size:.62rem;color:var(--mu);">Documentación del ecosistema</a><td><span class="rb" id="st-help" style="background:rgba(255,184,0,.12);color:#ffb800;border:1px solid rgba(255,184,0,.3);">PENDIENTE</span></td><td><button class="bsm" onclick="downloadModule('help')">📥</button></td> </tr>
-        <tr><td style="font-family:var(--mono);font-size:.6rem;color:var(--cy);">quantum-app-studio.html</a></td><td style="font-size:.62rem;color:var(--mu);">Editor visual de aplicaciones cuánticas con backend remoto</a><td><span class="rb" id="st-quantumapp" style="background:rgba(255,184,0,.12);color:#ffb800;border:1px solid rgba(255,184,0,.3);">PENDIENTE</span></td><td><button class="bsm" onclick="downloadModule('quantumapp')">📥</button></td> </tr>
+        <tr><td style="font-family:var(--mono);font-size:.6rem;color:var(--gr);">index.html</td><td style="font-size:.62rem;color:var(--mu);">Núcleo — une todo el ecosistema</td><td><span class="rb rba">ACTIVO</span></td><td><button class="bsm" onclick="downloadModule('core')">📥 Core</button></td> </tr>
+        <tr><td style="font-family:var(--mono);font-size:.6rem;color:var(--gr);">qcol-projects.html</td><td style="font-size:.62rem;color:var(--mu);">Notebooks desde GitHub</td><td><span class="rb" id="st-projects" style="background:rgba(255,184,0,.12);color:#ffb800;border:1px solid rgba(255,184,0,.3);">PENDIENTE</span></td><td><button class="bsm" onclick="downloadModule('projects')">📥</button></td> </tr>
+        <tr><td style="font-family:var(--mono);font-size:.6rem;color:var(--gr);">qcol-architect.html</td><td style="font-size:.62rem;color:var(--mu);">Editor Qiskit · Cirq · QuTiP + GPU HuggingFace</td><td><span class="rb" id="st-architect" style="background:rgba(255,184,0,.12);color:#ffb800;border:1px solid rgba(255,184,0,.3);">PENDIENTE</span></td><td><button class="bsm" onclick="downloadModule('architect')">📥</button></td> </tr>
+        <tr><td style="font-family:var(--mono);font-size:.6rem;color:var(--gr);">qcol-architect-pro.html</td><td style="font-size:.62rem;color:var(--mu);">Notebooks completos — Admin+</td><td><span class="rb" id="st-archpro" style="background:rgba(255,184,0,.12);color:#ffb800;border:1px solid rgba(255,184,0,.3);">PENDIENTE</span></td><td><button class="bsm" onclick="downloadModule('architect-pro')">📥</button></td> </tr>
+        <tr><td style="font-family:var(--mono);font-size:.6rem;color:var(--gr);">qcol-library.html</td><td style="font-size:.62rem;color:var(--mu);">Recursos educativos desde GitHub</td><td><span class="rb" id="st-library" style="background:rgba(255,184,0,.12);color:#ffb800;border:1px solid rgba(255,184,0,.3);">PENDIENTE</span></td><td><button class="bsm" onclick="downloadModule('library')">📥</button></td> </tr>
+        <tr><td style="font-family:var(--mono);font-size:.6rem;color:var(--gr);">qcol-account.html</td><td style="font-size:.62rem;color:var(--mu);">Perfil y circuitos guardados</td><td><span class="rb" id="st-account" style="background:rgba(255,184,0,.12);color:#ffb800;border:1px solid rgba(255,184,0,.3);">PENDIENTE</span></td><td><button class="bsm" onclick="downloadModule('account')">📥</button></td> </tr>
+        <tr><td style="font-family:var(--mono);font-size:.6rem;color:var(--gr);">qcol-help.html</td><td style="font-size:.62rem;color:var(--mu);">Documentación del ecosistema</td><td><span class="rb" id="st-help" style="background:rgba(255,184,0,.12);color:#ffb800;border:1px solid rgba(255,184,0,.3);">PENDIENTE</span></td><td><button class="bsm" onclick="downloadModule('help')">📥</button></td> </tr>
+        <tr><td style="font-family:var(--mono);font-size:.6rem;color:var(--cy);">quantum-app-studio.html</td><td style="font-size:.62rem;color:var(--mu);">Editor visual de aplicaciones cuánticas con backend remoto</td><td><span class="rb" id="st-quantumapp" style="background:rgba(255,184,0,.12);color:#ffb800;border:1px solid rgba(255,184,0,.3);">PENDIENTE</span></td><td><button class="bsm" onclick="downloadModule('quantumapp')">📥</button></td> </tr>
       </tbody>
     </table>
     <div class="btn-row" style="margin-top:.8rem;"><button class="btn btn-ok" onclick="checkModules()">🔍 Verificar módulos</button></div>
@@ -522,11 +507,11 @@ class QcolConfigSync {
 <div class="panel" id="tab-colab">
   <div class="sec">
     <div class="sec-title">🤗 Compilador Cuántico — HuggingFace GPU</div>
-    <div class="alert alert-info">El Arquitecto usa <strong>HuggingFace Spaces</strong> como compilador permanente con GPU. Qiskit, Cirq, QuTiP y PennyLane disponibles. Configura la URL una sola vez.</div>
+    <div class="alert alert-info">El Arquitecto usa <strong>HuggingFace Spaces</strong> como compilador permanente con GPU. Qiskit, Cirq, QuTiP y PennyLane disponibles. Configura la URL una sola vez y se sincroniza en la nube.</div>
     <div class="status-row"><div class="sdot off" id="colab-dot"></div><div class="stxt" id="colab-status">Sin conectar</div><div class="ssub" id="colab-sub">—</div></div>
-    <div class="fg"><label class="fl">URL DEL COMPILADOR EN HUGGINGFACE</label><div style="display:flex;gap:.4rem;"><input class="fi" id="colab-url" placeholder="https://[usuario]-qcol-compilador.hf.space" value="https://francilaffita1027-qcol-motor.hf.space"><button class="btn btn-ok" onclick="testColab()" style="white-space:nowrap;">🧪 PROBAR</button><button class="btn btn-ok" onclick="checkEngine()" style="white-space:nowrap;">🔄 RECONECTAR</button></div><div style="font-size:.58rem;color:var(--mu);margin-top:.28rem;">Ejemplo: <code style="color:var(--gr);">https://laffitacamargo-qcol-compilador.hf.space</code></div></div>
+    <div class="fg"><label class="fl">URL DEL COMPILADOR EN HUGGINGFACE</label><div style="display:flex;gap:.4rem;"><input class="fi" id="colab-url" placeholder="https://[usuario]-qcol-compilador.hf.space"><button class="btn btn-ok" onclick="testColab()" style="white-space:nowrap;">🧪 PROBAR</button><button class="btn btn-ok" onclick="checkEngine()" style="white-space:nowrap;">🔄 RECONECTAR</button></div><div style="font-size:.58rem;color:var(--mu);margin-top:.28rem;">Ejemplo: <code style="color:var(--gr);">https://laffitacamargo-qcol-compilador.hf.space</code></div></div>
     <div class="logbox" id="colab-log">— Log de conexión —</div>
-    <div class="btn-row"><button class="btn btn-pri" onclick="saveColab()">💾 Guardar URL</button><button class="btn btn-sec" onclick="window.open('https://huggingface.co/spaces','_blank')">🤗 Abrir HuggingFace ↗</button></div>
+    <div class="btn-row"><button class="btn btn-pri" onclick="saveColab()">💾 Guardar en la nube</button><button class="btn btn-sec" onclick="window.open('https://huggingface.co/spaces','_blank')">🤗 Abrir HuggingFace ↗</button></div>
   </div>
   <div class="sec">
     <div class="sec-title">🚀 Cómo montar el compilador en HuggingFace — paso a paso</div>
@@ -557,7 +542,7 @@ class QcolConfigSync {
     <div class="fg"><label class="fl">REPOSITORIO</label><input class="fi" id="gh-repo" value="quantum-computing-open-lab"></div>
     <div class="fg"><label class="fl">RAMA</label><input class="fi" id="gh-branch" value="main" style="width:120px;display:inline-block;"></div>
     <div class="fg"><label class="fl">TOKEN GITHUB (para subir archivos desde el ecosistema)</label><input class="fi" id="gh-token" type="password" placeholder="ghp_xxxxxxxxxxxx"><div style="font-size:.58rem;color:var(--mu);margin-top:.25rem;">Genera en: GitHub → Settings → Developer Settings → Personal Access Tokens → Fine-grained tokens → repo scope</div></div>
-    <div class="btn-row"><button class="btn btn-pri" onclick="saveGH()">💾 Guardar</button><button class="btn btn-ok" onclick="testGH()">🧪 Verificar repositorio</button><button class="btn btn-sec" onclick="openGH()">⬡ Ver repositorio ↗</button></div>
+    <div class="btn-row"><button class="btn btn-pri" onclick="saveGH()">💾 Guardar en la nube</button><button class="btn btn-ok" onclick="testGH()">🧪 Verificar repositorio</button><button class="btn btn-sec" onclick="openGH()">⬡ Ver repositorio ↗</button></div>
     <div class="status-row" style="margin-top:.7rem;"><div class="sdot off" id="gh-dot"></div><div class="stxt" id="gh-status">Sin verificar</div></div>
   </div>
   <div class="sec">
@@ -580,11 +565,11 @@ class QcolConfigSync {
       <div>
         <div class="fg"><label class="fl">PROVEEDOR DE IA</label><select class="fi" id="ai-prov" onchange="aiProviderChange()"><option value="none">Sin IA (modo demo)</option><option value="mistral" selected>⭐ Mistral AI — Recomendado, sin VPN Cuba</option><option value="groq">Groq — LLaMA 3, gratis, sin VPN Cuba</option><option value="huggingface">Hugging Face Inference — gratis, sin VPN</option><option value="openai">OpenAI GPT — pago</option><option value="gemini">Google Gemini — necesita VPN</option></select></div>
         <div class="fg"><label class="fl">MODELO</label><select class="fi" id="ai-model-sel" onchange="document.getElementById('ai-model').value=this.value"><option value="mistral-large-latest" selected>mistral-large-latest — Mistral 3 Large ⭐</option><option value="mistral-small-latest">mistral-small-latest — Mistral 3 Small</option><option value="mistral-medium-latest">mistral-medium-latest — Mistral Medium</option><option value="open-mistral-nemo">open-mistral-nemo — Nemo (más rápido)</option><option value="open-mixtral-8x22b">open-mixtral-8x22b — Mixtral 8x22B</option><option value="llama3-70b-8192">llama3-70b-8192 — Groq LLaMA 3 70B</option><option value="llama3-8b-8192">llama3-8b-8192 — Groq LLaMA 3 8B</option><option value="gemma2-9b-it">gemma2-9b-it — Groq Gemma 2</option><option value="gpt-4o-mini">gpt-4o-mini — OpenAI GPT-4o Mini</option><option value="gpt-4o">gpt-4o — OpenAI GPT-4o</option></select><input class="fi" id="ai-model" value="mistral-large-latest" style="margin-top:.3rem;" placeholder="O escribe el modelo manualmente"></div>
-        <div class="fg"><label class="fl">API KEY</label><input class="fi" id="ai-key" type="password" placeholder="API key del proveedor" value="sk-0270ed332a5544038b51acf653296f89"><div id="ai-key-hint" style="font-size:.58rem;color:var(--mu);margin-top:.22rem;line-height:1.6;">Mistral: <a onclick="window.open('https://console.mistral.ai','_blank')" style="color:var(--gr);cursor:pointer;">console.mistral.ai</a> → API Keys → Create</div></div>
+        <div class="fg"><label class="fl">API KEY</label><input class="fi" id="ai-key" type="password" placeholder="API key del proveedor"><div id="ai-key-hint" style="font-size:.58rem;color:var(--mu);margin-top:.22rem;line-height:1.6;">Mistral: <a onclick="window.open('https://console.mistral.ai','_blank')" style="color:var(--gr);cursor:pointer;">console.mistral.ai</a> → API Keys → Create</div></div>
         <div class="fg"><label class="fl">TEMPERATURA (0.0 preciso · 1.0 creativo)</label><input class="fi" id="ai-temp" type="number" min="0" max="1" step="0.1" value="0.7" style="width:90px;display:inline-block;"><span style="font-size:.58rem;color:var(--mu);margin-left:.5rem;">Recomendado: 0.7</span></div>
         <div class="fg"><label class="fl">TOKENS MÁXIMOS POR RESPUESTA</label><select class="fi" id="ai-tokens" style="width:170px;"><option value="400">400 — Respuestas cortas</option><option value="600" selected>600 — Estándar</option><option value="1000">1000 — Respuestas largas</option><option value="2000">2000 — Muy detalladas</option></select></div>
         <div class="fg"><label class="fl">IDIOMA DE RESPUESTA</label><select class="fi" id="ai-lang" style="width:170px;"><option value="es" selected>Español</option><option value="en">English</option><option value="both">Español e Inglés</option></select></div>
-        <div class="btn-row"><button class="btn btn-pri" onclick="saveAI()">💾 Guardar</button><button class="btn btn-ok" onclick="testAI()">🧪 Probar IA</button></div>
+        <div class="btn-row"><button class="btn btn-pri" onclick="saveAI()">💾 Guardar en la nube</button><button class="btn btn-ok" onclick="testAI()">🧪 Probar IA</button></div>
         <div class="status-row" style="margin-top:.7rem;"><div class="sdot off" id="ai-dot"></div><div class="stxt" id="ai-status">Sin configurar</div></div>
       </div>
       <div>
@@ -616,10 +601,10 @@ class QcolConfigSync {
     <div class="alert alert-info">El editor <strong>Arquitecto Cuántico</strong> puede consultar a <strong>DeepSeek</strong> para clasificar atributos no reconocidos durante la sincronización. Los atributos considerados <strong>innecesarios</strong> para dibujar el circuito se ignorarán permanentemente, evitando futuras consultas.</div>
     <div class="grid2">
       <div>
-        <div class="fg"><label class="fl">🔑 API Key de DeepSeek</label><input class="fi" id="mistral-key" type="password" placeholder="Ingresa tu API key de DeepSeek" value="sk-0270ed332a5544038b51acf653296f89"><div style="font-size:.58rem;color:var(--mu);margin-top:.25rem;">Obtén tu clave gratis en <a onclick="window.open('https://platform.deepseek.com/api_keys','_blank')" style="color:var(--gr);cursor:pointer;">platform.deepseek.com/api_keys</a></div></div>
+        <div class="fg"><label class="fl">🔑 API Key de DeepSeek</label><input class="fi" id="mistral-key" type="password" placeholder="Ingresa tu API key de DeepSeek"><div style="font-size:.58rem;color:var(--mu);margin-top:.25rem;">Obtén tu clave gratis en <a onclick="window.open('https://platform.deepseek.com/api_keys','_blank')" style="color:var(--gr);cursor:pointer;">platform.deepseek.com/api_keys</a></div></div>
         <div class="fg"><label class="fl">🤖 Modelo de IA</label><select class="fi" id="mistral-model"><option value="deepseek-chat" selected>DeepSeek Chat (recomendado)</option><option value="deepseek-coder">DeepSeek Coder</option></select></div>
         <div class="fg"><label class="fl">⏱️ Timeout (segundos)</label><input class="fi" id="mistral-timeout" type="number" min="5" max="30" value="10" style="width:100px;"></div>
-        <div class="btn-row"><button class="btn btn-pri" onclick="saveMistralSettings()">💾 Guardar configuración</button><button class="btn btn-ok" onclick="testMistralConnection()">🧪 Probar conexión</button></div>
+        <div class="btn-row"><button class="btn btn-pri" onclick="saveMistralSettings()">💾 Guardar en la nube</button><button class="btn btn-ok" onclick="testMistralConnection()">🧪 Probar conexión</button></div>
       </div>
       <div>
         <div class="tog-row"><div><div class="tog-name">🧠 Clasificación automática de errores</div><div class="tog-desc">Permite a DeepSeek clasificar errores y silenciar los innecesarios</div></div><label class="tog"><input type="checkbox" id="mistral-toggle" checked><span class="tog-sl"></span></label></div>
@@ -636,10 +621,10 @@ class QcolConfigSync {
 <!-- ════════════ USUARIOS ════════════ -->
 <div class="panel" id="tab-users">
   <div class="grid2">
-    <div class="sec"><div class="sec-title" style="justify-content:space-between;"><span>👥 Usuarios registrados</span><button class="btn btn-ok" style="padding:.2rem .6rem; font-size:.5rem;" onclick="syncUsersFromCloud()">🔄 Sincronizar desde nube</button></div><div style="overflow-x:auto;"><table class="tbl" id="users-tbl"><thead><tr><th>USUARIO</th><th>ROL</th><th>UPLOAD</th><th>ACCIONES</th> </thead><tbody id="users-tbody"><tr><td style="font-size:.62rem;">franci_laffita — Franci Laffita</a></td><td><span class="rb rbf">FUNDADOR</span></td><td style="color:var(--gr)">✅</a><td>—</a></tr></tbody> </table></div></div>
+    <div class="sec"><div class="sec-title" style="justify-content:space-between;"><span>👥 Usuarios registrados</span><button class="btn btn-ok" style="padding:.2rem .6rem; font-size:.5rem;" onclick="syncUsersFromCloud()">🔄 Sincronizar desde nube</button></div><div style="overflow-x:auto;"><table class="tbl" id="users-tbl"><thead><tr><th>USUARIO</th><th>ROL</th><th>UPLOAD</th><th>ACCIONES</th> </thead><tbody id="users-tbody"></tbody> </table></div></div>
     <div class="sec"><div class="sec-title">➕ Crear usuario</div><div class="fg"><label class="fl">NOMBRE</label><input class="fi" id="nu-name" placeholder="Nombre completo"></div><div class="fg"><label class="fl">USUARIO</label><input class="fi" id="nu-user" placeholder="usuario_unico"></div><div class="fg"><label class="fl">CONTRASEÑA</label><input class="fi" id="nu-pass" type="password"></div><div class="fg"><label class="fl">ROL</label><select class="fi" id="nu-role"><option value="user">Usuario</option><option value="admin">Administrador</option></select></div><div class="btn-row"><button class="btn btn-pri" onclick="createUser()">➕ Crear</button></div></div>
   </div>
-  <div class="sec"><div class="sec-title">⚙️ Contraseña del Fundador</div><div class="grid2"><div class="fg"><label class="fl">CONTRASEÑA ACTUAL</label><input class="fi" id="fp-cur" type="password"></div><div class="fg"><label class="fl">NUEVA CONTRASEÑA</label><input class="fi" id="fp-new" type="password"></div></div><div class="btn-row"><button class="btn btn-warn" onclick="changeFounderPass()">🔑 Cambiar contraseña fundador</button></div></div>
+  <div class="sec"><div class="sec-title">⚙️ Contraseña del Fundador</div><div class="grid2"><div class="fg"><label class="fl">CONTRASEÑA ACTUAL</label><input class="fi" id="fp-cur" type="password"></div><div class="fg"><label class="fl">NUEVA CONTRASEÑA</label><input class="fi" id="fp-new" type="password"></div></div><div class="btn-row"><button class="btn btn-warn" onclick="changeFounderPass()">🔑 Cambiar contraseña fundador (nube)</button></div></div>
 </div>
 
 <!-- ════════════ CONTENIDO ════════════ -->
@@ -654,8 +639,8 @@ class QcolConfigSync {
 <!-- ════════════ SISTEMA ════════════ -->
 <div class="panel" id="tab-config">
   <div class="grid2">
-    <div class="sec"><div class="sec-title">🏷️ Identidad de la plataforma</div><div class="fg"><label class="fl">NOMBRE</label><input class="fi" id="plt-name" value="Quantum Computing Open Lab"></div><div class="fg"><label class="fl">AUTOR</label><input class="fi" id="plt-author" value="Franci Laffita Camargo"></div><div class="fg"><label class="fl">TÍTULO DEL AUTOR</label><input class="fi" id="plt-title" value="Estudiante de Física Nuclear"></div><div class="fg"><label class="fl">VERSIÓN</label><input class="fi" id="plt-version" value="2.0.0" style="width:100px;display:inline-block;"></div><div class="btn-row"><button class="btn btn-pri" onclick="savePlatform()">💾 Guardar</button></div></div>
-    <div class="sec"><div class="sec-title">⚙️ Funciones del sistema</div><div class="tog-row"><div><div class="tog-name">Registro público</div><div class="tog-desc">Usuarios pueden registrarse</div></div><label class="tog"><input type="checkbox" id="tog-reg" checked><span class="tog-sl"></span></label></div><div class="tog-row"><div><div class="tog-name">Pantalla splash</div><div class="tog-desc">Mostrar intro al cargar</div></div><label class="tog"><input type="checkbox" id="tog-splash" checked><span class="tog-sl"></span></label></div><div class="tog-row"><div><div class="tog-name">Modo mantenimiento</div><div class="tog-desc">Bloquear acceso público</div></div><label class="tog"><input type="checkbox" id="tog-maint"><span class="tog-sl"></span></label></div><div class="btn-row"><button class="btn btn-pri" onclick="saveSystem()">💾 Guardar</button></div></div>
+    <div class="sec"><div class="sec-title">🏷️ Identidad de la plataforma</div><div class="fg"><label class="fl">NOMBRE</label><input class="fi" id="plt-name" value="Quantum Computing Open Lab"></div><div class="fg"><label class="fl">AUTOR</label><input class="fi" id="plt-author" value="Franci Laffita Camargo"></div><div class="fg"><label class="fl">TÍTULO DEL AUTOR</label><input class="fi" id="plt-title" value="Estudiante de Física Nuclear"></div><div class="fg"><label class="fl">VERSIÓN</label><input class="fi" id="plt-version" value="2.0.0" style="width:100px;display:inline-block;"></div><div class="btn-row"><button class="btn btn-pri" onclick="savePlatform()">💾 Guardar en la nube</button></div></div>
+    <div class="sec"><div class="sec-title">⚙️ Funciones del sistema</div><div class="tog-row"><div><div class="tog-name">Registro público</div><div class="tog-desc">Usuarios pueden registrarse</div></div><label class="tog"><input type="checkbox" id="tog-reg" checked><span class="tog-sl"></span></label></div><div class="tog-row"><div><div class="tog-name">Pantalla splash</div><div class="tog-desc">Mostrar intro al cargar</div></div><label class="tog"><input type="checkbox" id="tog-splash" checked><span class="tog-sl"></span></label></div><div class="tog-row"><div><div class="tog-name">Modo mantenimiento</div><div class="tog-desc">Bloquear acceso público</div></div><label class="tog"><input type="checkbox" id="tog-maint"><span class="tog-sl"></span></label></div><div class="btn-row"><button class="btn btn-pri" onclick="saveSystem()">💾 Guardar en la nube</button></div></div>
   </div>
   <div class="sec"><div class="sec-title">💾 Backup y Restore</div><div class="grid2"><div><div style="font-size:.66rem;color:var(--mu);margin-bottom:.7rem;">Exporta toda la configuración: compilador, GitHub, IA, usuarios y proyectos en un archivo JSON.</div><div class="btn-row"><button class="btn btn-pri" onclick="exportAll()">📤 Exportar todo</button><button class="btn btn-sec" onclick="document.getElementById('import-file').click()">📥 Importar backup</button><input type="file" id="import-file" style="display:none" accept=".json" onchange="importBackup(event)"></div></div><div><div class="logbox" id="sys-log">— Actividad del sistema —</div></div></div></div>
 </div>
@@ -682,12 +667,16 @@ class QcolConfigSync {
 
 <!-- ════════════ MONITOR ════════════ -->
 <div class="panel" id="tab-monitor">
-  <div class="sec"><div class="sec-title">⚙️ Regulación de Servidores</div><div class="alert alert-info">Controla el uso de los compiladores HuggingFace. Los límites se guardan en GitHub.</div><div class="grid2"><div><div class="fg"><label class="fl">MÁXIMO EJECUCIONES POR USUARIO/DÍA</label><input class="fi" id="mon-max-runs" type="number" min="1" max="500" value="50" style="width:100px;"><span style="font-size:.58rem;color:var(--mu);margin-left:.5rem;">ejecuciones/día</span></div><div class="fg"><label class="fl">MÁXIMO QUBITS POR EJECUCIÓN</label><select class="fi" id="mon-max-qubits" style="width:140px;"><option value="10">10 qubits</option><option value="15">15 qubits</option><option value="20" selected>20 qubits</option></select></div><div class="fg"><label class="fl">TIEMPO MÁXIMO POR EJECUCIÓN (segundos)</label><input class="fi" id="mon-max-time" type="number" min="10" max="120" value="60" style="width:100px;"></div><div class="fg"><label class="fl">MODO DEL COMPILADOR</label><select class="fi" id="mon-mode" style="width:180px;"><option value="open">Abierto — todos los usuarios</option><option value="users">Solo usuarios registrados</option><option value="admin">Solo administradores</option><option value="off">Desactivado</option></select></div><div class="btn-row"><button class="btn btn-pri" onclick="saveMonitorConfig()">💾 Guardar límites</button></div><div class="status-row" style="margin-top:.5rem;"><div class="sdot off" id="mon-dot"></div><div class="stxt" id="mon-status">Sin guardar</div></div></div><div><div class="sec-title" style="font-size:.62rem;margin-bottom:.5rem;">ESTADO ACTUAL DEL COMPILADOR</div><div style="background:rgba(0,0,0,.2);border:1px solid var(--b);border-radius:8px;padding:.85rem;"><div style="display:flex;justify-content:space-between;margin-bottom:.5rem;"><span style="font-size:.62rem;color:var(--mu);">Compilador:</span><span style="font-size:.62rem;color:var(--gr);" id="mon-engine-url">—</span></div><div style="display:flex;justify-content:space-between;margin-bottom:.5rem;"><span style="font-size:.62rem;color:var(--mu);">Ejecuciones hoy:</span><span style="font-size:.62rem;color:var(--bl2);" id="mon-runs-today">—</span></div><div style="display:flex;justify-content:space-between;margin-bottom:.5rem;"><span style="font-size:.62rem;color:var(--mu);">Usuarios activos hoy:</span><span style="font-size:.62rem;color:var(--bl2);" id="mon-users-today">—</span></div><div style="display:flex;justify-content:space-between;"><span style="font-size:.62rem;color:var(--mu);">Total ejecuciones:</span><span style="font-size:.62rem;color:var(--cy);" id="mon-total-runs">—</span></div></div><button class="btn btn-ok" style="margin-top:.6rem;width:100%;" onclick="refreshMonitor()">🔄 Actualizar stats</button></div></div></div>
+  <div class="sec"><div class="sec-title">⚙️ Regulación de Servidores</div><div class="alert alert-info">Controla el uso de los compiladores HuggingFace. Los límites se guardan en la nube.</div><div class="grid2"><div><div class="fg"><label class="fl">MÁXIMO EJECUCIONES POR USUARIO/DÍA</label><input class="fi" id="mon-max-runs" type="number" min="1" max="500" value="50" style="width:100px;"><span style="font-size:.58rem;color:var(--mu);margin-left:.5rem;">ejecuciones/día</span></div><div class="fg"><label class="fl">MÁXIMO QUBITS POR EJECUCIÓN</label><select class="fi" id="mon-max-qubits" style="width:140px;"><option value="10">10 qubits</option><option value="15">15 qubits</option><option value="20" selected>20 qubits</option></select></div><div class="fg"><label class="fl">TIEMPO MÁXIMO POR EJECUCIÓN (segundos)</label><input class="fi" id="mon-max-time" type="number" min="10" max="120" value="60" style="width:100px;"></div><div class="fg"><label class="fl">MODO DEL COMPILADOR</label><select class="fi" id="mon-mode" style="width:180px;"><option value="open">Abierto — todos los usuarios</option><option value="users">Solo usuarios registrados</option><option value="admin">Solo administradores</option><option value="off">Desactivado</option></select></div><div class="btn-row"><button class="btn btn-pri" onclick="saveMonitorConfig()">💾 Guardar en la nube</button></div><div class="status-row" style="margin-top:.5rem;"><div class="sdot off" id="mon-dot"></div><div class="stxt" id="mon-status">Sin guardar</div></div></div><div><div class="sec-title" style="font-size:.62rem;margin-bottom:.5rem;">ESTADO ACTUAL DEL COMPILADOR</div><div style="background:rgba(0,0,0,.2);border:1px solid var(--b);border-radius:8px;padding:.85rem;"><div style="display:flex;justify-content:space-between;margin-bottom:.5rem;"><span style="font-size:.62rem;color:var(--mu);">Compilador:</span><span style="font-size:.62rem;color:var(--gr);" id="mon-engine-url">—</span></div><div style="display:flex;justify-content:space-between;margin-bottom:.5rem;"><span style="font-size:.62rem;color:var(--mu);">Ejecuciones hoy:</span><span style="font-size:.62rem;color:var(--bl2);" id="mon-runs-today">—</span></div><div style="display:flex;justify-content:space-between;margin-bottom:.5rem;"><span style="font-size:.62rem;color:var(--mu);">Usuarios activos hoy:</span><span style="font-size:.62rem;color:var(--bl2);" id="mon-users-today">—</span></div><div style="display:flex;justify-content:space-between;"><span style="font-size:.62rem;color:var(--mu);">Total ejecuciones:</span><span style="font-size:.62rem;color:var(--cy);" id="mon-total-runs">—</span></div></div><button class="btn btn-ok" style="margin-top:.6rem;width:100%;" onclick="refreshMonitor()">🔄 Actualizar stats</button></div></div></div>
   <div class="sec"><div class="sec-title">👥 Uso por usuario</div><div style="display:flex;gap:.4rem;margin-bottom:.6rem;flex-wrap:wrap;"><button class="bsm" onclick="loadUserStats()">🔄 Cargar</button><button class="bsm" onclick="exportMonitorData()">📥 Exportar CSV</button><button class="bsm" onclick="syncMonitorToGitHub()">⬡ Sincronizar GitHub</button><button class="bsm danger" onclick="clearMonitorData()">🗑 Limpiar historial</button></div><div id="user-stats-table" style="font-size:.6rem;color:var(--mu);">Clic en "Cargar" para ver el uso por usuario.</div></div>
   <div class="sec"><div class="sec-title">📋 Historial de ejecuciones</div><div style="display:flex;gap:.4rem;margin-bottom:.5rem;align-items:center;flex-wrap:wrap;"><input class="fi" id="mon-filter-user" placeholder="Filtrar por usuario..." style="width:180px;"><select class="fi" id="mon-filter-lib" style="width:120px;"><option value="">Todas las libs</option><option value="qiskit">Qiskit</option><option value="cirq">Cirq</option><option value="qutip">QuTiP</option></select><button class="bsm" onclick="loadHistorial()">🔍 Buscar</button></div><div class="logbox" id="mon-historial" style="max-height:200px;">— Sin historial cargado —</div><div style="font-size:.58rem;color:var(--mu);margin-top:.3rem;">El historial se guarda en tu repositorio GitHub: <code style="color:var(--cy);">data/monitor.json</code></div></div>
 </div>
 
 <script>
+// ============================================================
+// FUNCIONES DEL PANEL FUNDADOR - TODAS CON NUBE
+// ============================================================
+
 // ══ COMUNICACIÓN CON EL CORE ══
 function postToCore(type, data = {}) {
   window.parent.postMessage({ type, ...data }, '*');
@@ -715,23 +704,12 @@ window.addEventListener('message', (e) => {
       e.source.postMessage({ type: 'QCOL_COMPILER_URL', url: compilerUrl }, '*');
     }
   }
-  if (d.type === 'QCOL_DB_RESPONSE' && d.section === 'users' && d.data) {
-    try {
-      const usersFromCloud = JSON.parse(d.data);
-      if (Array.isArray(usersFromCloud)) {
-        localStorage.setItem('qcol_users', JSON.stringify(usersFromCloud));
-        renderUsers();
-        notify('✅ Usuarios sincronizados desde GitHub');
-        addSysLog('Usuarios sincronizados desde la nube', 'ok');
-      }
-    } catch(e) { console.error(e); }
-  }
 });
 
 let currentUser = null;
 let chatHistory = [];
 
-// ========== NUEVA FUNCIÓN: enviar configuración completa a un iframe ==========
+// ========== FUNCIÓN PARA ENVIAR CONFIGURACIÓN COMPLETA ==========
 function sendFullConfigTo(targetWindow) {
   if (!targetWindow) return;
   const gh = getGH();
@@ -753,47 +731,6 @@ function sendFullConfigTo(targetWindow) {
     aiTokens: ai.tokens,
     aiLang: ai.lang
   }, '*');
-}
-
-// ========== FUNCIÓN PARA ASEGURAR VALORES PREDETERMINADOS EN LOCALSTORAGE ==========
-function ensureDefaultConfig() {
-  if (!localStorage.getItem('qcol_colab_url')) {
-    localStorage.setItem('qcol_colab_url', 'https://francilaffita1027-qcol-motor.hf.space');
-    addSysLog('✅ URL del compilador predeterminada guardada', 'ok');
-  }
-  let aiConfig = getAI();
-  if (!aiConfig.provider || aiConfig.provider === 'none') {
-    aiConfig = {
-      provider: 'mistral',
-      key: 'sk-0270ed332a5544038b51acf653296f89',
-      model: 'mistral-large-latest',
-      prompt: 'You are the QCOL (Quantum Computing Open Lab) assistant, created by Franci Laffita Camargo, a Nuclear Physics student. You help with Qiskit, Cirq, PennyLane, QuTiP, quantum circuits and quantum physics. Always respond in English only. Be concise and technically precise.',
-      temp: 0.7,
-      tokens: 600,
-      lang: 'es'
-    };
-    localStorage.setItem('qcol_ai', JSON.stringify(aiConfig));
-    addSysLog('✅ Configuración de IA predeterminada guardada', 'ok');
-  } else if (!aiConfig.key || aiConfig.key === '') {
-    aiConfig.key = 'sk-0270ed332a5544038b51acf653296f89';
-    localStorage.setItem('qcol_ai', JSON.stringify(aiConfig));
-    addSysLog('✅ API key de IA añadida automáticamente', 'ok');
-  }
-  if (!localStorage.getItem('qcol_mistral_key')) {
-    localStorage.setItem('qcol_mistral_key', 'sk-0270ed332a5544038b51acf653296f89');
-    addSysLog('✅ API key de DeepSeek predeterminada guardada', 'ok');
-  }
-  if (localStorage.getItem('qcol_mistral_enabled') === null) {
-    localStorage.setItem('qcol_mistral_enabled', 'true');
-  }
-  if (!localStorage.getItem('qcol_mistral_model')) {
-    localStorage.setItem('qcol_mistral_model', 'deepseek-chat');
-  }
-  if (!localStorage.getItem('qcol_mistral_timeout')) {
-    localStorage.setItem('qcol_mistral_timeout', '10');
-  }
-  postToCore('QCOL_SAVE_CONFIG', { key: 'colab_url', value: localStorage.getItem('qcol_colab_url') });
-  postToCore('QCOL_SAVE', { key: 'qcol_ai', val: JSON.parse(localStorage.getItem('qcol_ai')) });
 }
 
 function broadcastConfigToAllIframes() {
@@ -916,19 +853,25 @@ async function testColab() {
   else notify('❌ No se pudo conectar al compilador después de 3 intentos');
 }
 
-// ========== GUARDAR CON SINCRONIZACIÓN EN LA NUBE ==========
+// ========== GUARDAR EN LA NUBE ==========
 
-function saveColab() {
+async function saveColab() {
   const url = document.getElementById('colab-url').value.trim();
-  localStorage.setItem('qcol_colab_url', url);
-  if (window.configSync && window.configSync.isReady) {
-    window.configSync.setConfig('colab_url', url);
+  if (!url) { notify('⚠️ Ingresa una URL'); return; }
+  
+  if (window.configSync) {
+    const success = await window.configSync.saveToCloud('colab_url', url);
+    if (success) {
+      notify('✅ URL del compilador guardada en la nube');
+      addSysLog('Compilador HuggingFace URL guardada en la nube', 'ok');
+      setTimeout(() => checkEngine(), 500);
+      broadcastConfigToAllIframes();
+    } else {
+      notify('❌ Error guardando en la nube');
+    }
+  } else {
+    notify('⚠️ Config Sync no disponible');
   }
-  postToCore('QCOL_SAVE_CONFIG', { key: 'colab_url', value: url });
-  notify('✅ URL del compilador guardada y sincronizada');
-  addSysLog('Compilador HuggingFace URL guardada y sincronizada', 'ok');
-  setTimeout(() => checkEngine(), 500);
-  broadcastConfigToAllIframes();
 }
 
 // ══ CARGAR CONFIGURACIÓN DE MISTRAL (DEEPSEEK) ══
@@ -946,7 +889,7 @@ function loadMistralSettings() {
   updateMistralUI();
 }
 
-function saveMistralSettings() {
+async function saveMistralSettings() {
   let rawKey = document.getElementById('mistral-key').value;
   let cleanKey = rawKey.replace(/[\s"'\n\r\t]/g, '').trim();
   document.getElementById('mistral-key').value = cleanKey;
@@ -956,20 +899,28 @@ function saveMistralSettings() {
   let prompt = document.getElementById('mistral-prompt').value;
   
   const config = { key: cleanKey, model, timeout, enabled, prompt };
+  
+  // Guardar localmente como caché
   localStorage.setItem('qcol_mistral_enabled', enabled);
   localStorage.setItem('qcol_mistral_key', cleanKey);
   localStorage.setItem('qcol_mistral_model', model);
   localStorage.setItem('qcol_mistral_timeout', timeout);
   localStorage.setItem('qcol_mistral_prompt', prompt);
   
-  if (window.configSync && window.configSync.isReady) {
-    window.configSync.setConfig('deepseek_config', config);
+  // Guardar en la nube
+  if (window.configSync) {
+    const success = await window.configSync.saveToCloud('deepseek_config', config);
+    if (success) {
+      notify('✅ DeepSeek guardado en la nube');
+      addSysLog('DeepSeek: configuración guardada en la nube', 'ok');
+    } else {
+      notify('❌ Error guardando en la nube');
+    }
+  } else {
+    notify('⚠️ Config Sync no disponible');
   }
   
   updateMistralUI();
-  const keyPreview = cleanKey.slice(0, 8) + (cleanKey.length > 8 ? '...' : '');
-  notify(`✅ DeepSeek guardado y sincronizado — clave: ${keyPreview}`);
-  addSysLog('DeepSeek: configuración guardada y sincronizada', 'ok');
 }
 
 async function testMistralConnection() {
@@ -978,7 +929,7 @@ async function testMistralConnection() {
   apiKey = apiKey.replace(/[\s"'\n\r\t]/g, '').trim();
   const url = 'https://api.deepseek.com/v1/chat/completions';
   const model = 'deepseek-chat';
-  notify(`🔄 Probando conexión con DeepSeek (clave: ${apiKey.slice(0,8)}...)`);
+  notify(`🔄 Probando conexión con DeepSeek...`);
   try {
     const res = await fetch(url, {
       method: 'POST',
@@ -1037,7 +988,7 @@ function loadIgnoredAttrsTable() {
   for (let attr of attrs) {
     const reason = reasons[attr] || 'Clasificado por DeepSeek';
     const date = new Date().toLocaleDateString();
-    html += `<tr><td style="font-family:var(--mono);font-size:.65rem;">${escapeHtml(attr)}</a></td><td style="font-size:.6rem;color:var(--mu);">${escapeHtml(reason)}</a></td><td style="font-size:.6rem;">${date}</a><td><button class="bsm red" onclick="removeIgnoredAttr('${escapeHtml(attr)}')">✕ Revertir</button></a></tr>`;
+    html += `<tr><td style="font-family:var(--mono);font-size:.65rem;">${escapeHtml(attr)}</td><td style="font-size:.6rem;color:var(--mu);">${escapeHtml(reason)}</td><td style="font-size:.6rem;">${date}</td><td><button class="bsm red" onclick="removeIgnoredAttr('${escapeHtml(attr)}')">✕ Revertir</button></td></tr>`;
   }
   html += `</tbody></table>`;
   container.innerHTML = html;
@@ -1091,21 +1042,22 @@ function syncIgnoredAttrsWithCloud() {
   .catch(e => notify('❌ Error sincronizando: ' + e.message));
 }
 
-// ========== LOAD SAVED CORREGIDO ==========
-function loadSaved() {
-  console.log('🔄 Recargando UI desde localStorage...');
+// ========== LOAD SAVED - CARGAR DESDE LA NUBE ==========
+async function loadSaved() {
+  console.log('🔄 Cargando configuraciones desde la nube...');
   
+  // Recargar desde la nube
   if (window.configSync && window.configSync.isReady) {
-    setTimeout(() => {
-      window.configSync.syncAll();
-    }, 500);
+    await window.configSync.loadAllFromCloud();
   }
   
+  // Cargar en UI
   const gh = getGH();
   const el = document.getElementById('gh-user');
   if (el) el.value = gh.user;
   const er = document.getElementById('gh-repo');
   if (er) er.value = gh.repo;
+  
   const ai = getAI();
   const sp = document.getElementById('ai-prov');
   if (sp) sp.value = ai.provider || 'mistral';
@@ -1123,8 +1075,13 @@ function loadSaved() {
   if (stok) stok.value = ai.tokens || '600';
   const slang = document.getElementById('ai-lang');
   if (slang) slang.value = ai.lang || 'es';
+  
   const cu = document.getElementById('colab-url');
-  if (cu && !cu.value) cu.value = localStorage.getItem('qcol_colab_url') || 'https://francilaffita1027-qcol-motor.hf.space';
+  if (cu) {
+    const colabUrl = localStorage.getItem('qcol_colab_url') || '';
+    if (colabUrl) cu.value = colabUrl;
+  }
+  
   const cfg = getConfig();
   if (cfg.name && document.getElementById('plt-name')) {
     document.getElementById('plt-name').value = cfg.name;
@@ -1132,8 +1089,9 @@ function loadSaved() {
     document.getElementById('plt-title').value = cfg.authorTitle || '';
     document.getElementById('plt-version').value = cfg.version || '2.0.0';
   }
+  
   loadMistralSettings();
-  const savedUrl = localStorage.getItem('qcol_colab_url') || 'https://francilaffita1027-qcol-motor.hf.space';
+  const savedUrl = localStorage.getItem('qcol_colab_url') || '';
   if (savedUrl) {
     document.getElementById('colab-url').value = savedUrl;
     setTimeout(() => checkEngine(), 1000);
@@ -1141,6 +1099,7 @@ function loadSaved() {
   
   loadMonitorConfig();
   refreshMonitor();
+  renderUsers();
 }
 
 // ══ HELPERS ══
@@ -1148,71 +1107,115 @@ function getGH() {
   const s = JSON.parse(localStorage.getItem('qcol_gh') || '{}');
   return { user: s.user || 'laffitacamargof-create', repo: s.repo || 'quantum-computing-open-lab', branch: s.branch || 'main', token: s.token || '' };
 }
-function getAI() { return JSON.parse(localStorage.getItem('qcol_ai') || '{"provider":"mistral","key":"sk-0270ed332a5544038b51acf653296f89","model":"mistral-large-latest"}'); }
+
+function getAI() {
+  const ai = JSON.parse(localStorage.getItem('qcol_ai') || '{"provider":"mistral","model":"mistral-large-latest"}');
+  return ai;
+}
+
 function getConfig() { return JSON.parse(localStorage.getItem('qcol_cfg') || '{}'); }
 
 // ══ USUARIOS ══
 function getUsers() { const dbRaw = localStorage.getItem('qcol_users'); return dbRaw ? JSON.parse(dbRaw) : []; }
-function saveUsersFn(u) {
+
+async function saveUsersFn(u) {
   localStorage.setItem('qcol_users', JSON.stringify(u));
+  // Guardar en la nube
+  if (window.configSync && window.configSync.isReady) {
+    await window.configSync.saveToCloud('users_config', u);
+  }
   window.parent.postMessage({ type: 'QCOL_SAVE', key: 'qcol_users', val: JSON.stringify(u) }, '*');
 }
-function syncUsersFromCloud() { window.parent.postMessage({ type: 'QCOL_GET_DB', section: 'users' }, '*'); notify('🔄 Sincronizando usuarios desde GitHub...'); }
+
+function syncUsersFromCloud() {
+  if (window.configSync && window.configSync.isReady) {
+    window.configSync.loadAllFromCloud().then(() => {
+      renderUsers();
+      notify('✅ Usuarios sincronizados desde la nube');
+    });
+  } else {
+    notify('⚠️ Config Sync no disponible');
+  }
+}
+
 function renderUsers() {
   const tbody = document.getElementById('users-tbody');
   if (!tbody) return;
   const all = getUsers();
-  let r = `<tr><td style="font-size:.62rem;">franci_laffita — Franci Laffita</a></td><td><span class="rb rbf">FUNDADOR</span></a></td><td style="color:var(--gr)">✅</a><td>—</a></tr>`;
+  let r = `<tr><td style="font-size:.62rem;">franci_laffita — Franci Laffita</td><td><span class="rb rbf">FUNDADOR</span></td><td style="color:var(--gr)">✅</td><td>—</td></tr>`;
   all.forEach(u => {
     const upb = u.canUpload ? `<button class="bsm" onclick="toggleUp('${u.username}',false)">✕Up</button>` : `<button class="bsm" onclick="toggleUp('${u.username}',true)">+Up</button>`;
     const rb = u.role !== 'admin' ? `<button class="bsm" onclick="promUser('${u.username}')">→ADM</button>` : `<button class="bsm" onclick="demUser('${u.username}')">→USR</button>`;
-    r += `<tr><td style="font-size:.62rem;">${u.username}<br><span style="color:var(--mu);font-size:.58rem;">${u.name}</span></a></td><td><span class="rb ${u.role==='admin'?'rba':'rbu'}">${u.role.toUpperCase()}</span></a></td><td style="color:${u.canUpload?'var(--gr)':'var(--mu)'}">${u.canUpload?'✅':'❌'}</a><td>${rb}${upb}<button class="bsm red" onclick="delUser('${u.username}')">✕</button></a></tr>`;
+    r += `<tr><td style="font-size:.62rem;">${u.username}<br><span style="color:var(--mu);font-size:.58rem;">${u.name}</span></td><td><span class="rb ${u.role==='admin'?'rba':'rbu'}">${u.role.toUpperCase()}</span></td><td style="color:${u.canUpload?'var(--gr)':'var(--mu)'}">${u.canUpload?'✅':'❌'}</td><td>${rb}${upb}<button class="bsm red" onclick="delUser('${u.username}')">✕</button></td></tr>`;
   });
   tbody.innerHTML = r;
 }
-function createUser() {
+
+async function createUser() {
   const name=document.getElementById('nu-name').value.trim(),u=document.getElementById('nu-user').value.trim(),p=document.getElementById('nu-pass').value,role=document.getElementById('nu-role').value;
   if(!name||!u||!p){notify('Completa todos los campos');return;}
   const all=getUsers();
   if(all.find(x=>x.username===u)){notify('Usuario ya existe');return;}
   all.push({name,username:u,password:p,role,canUpload:role==='admin',joined:new Date().toLocaleDateString()});
-  saveUsersFn(all);renderUsers();notify('✅ Usuario creado: '+u);addSysLog('Usuario creado: '+u,'ok');
+  await saveUsersFn(all);
+  renderUsers();
+  notify('✅ Usuario creado: '+u);
+  addSysLog('Usuario creado: '+u,'ok');
   ['nu-name','nu-user','nu-pass'].forEach(id=>{document.getElementById(id).value='';});
 }
-function toggleUp(un,v){const all=getUsers();const u=all.find(x=>x.username===un);if(u){u.canUpload=v;saveUsersFn(all);renderUsers();notify(un+(v?' puede subir':' sin permiso de subida'));}}
-function promUser(un){const all=getUsers();const u=all.find(x=>x.username===un);if(u){u.role='admin';u.canUpload=true;saveUsersFn(all);renderUsers();notify(un+' → Administrador');}}
-function demUser(un){const all=getUsers();const u=all.find(x=>x.username===un);if(u){u.role='user';saveUsersFn(all);renderUsers();notify(un+' → Usuario');}}
-function delUser(un){if(confirm('¿Eliminar '+un+'?')){const all=getUsers().filter(x=>x.username!==un);saveUsersFn(all);renderUsers();notify('Usuario eliminado');}}
 
-// ✅ FUNCIÓN changeFounderPass CORREGIDA - Guarda como cadena (string)
-function changeFounderPass() {
+async function toggleUp(un,v){const all=getUsers();const u=all.find(x=>x.username===un);if(u){u.canUpload=v;await saveUsersFn(all);renderUsers();notify(un+(v?' puede subir':' sin permiso de subida'));}}
+async function promUser(un){const all=getUsers();const u=all.find(x=>x.username===un);if(u){u.role='admin';u.canUpload=true;await saveUsersFn(all);renderUsers();notify(un+' → Administrador');}}
+async function demUser(un){const all=getUsers();const u=all.find(x=>x.username===un);if(u){u.role='user';await saveUsersFn(all);renderUsers();notify(un+' → Usuario');}}
+async function delUser(un){if(confirm('¿Eliminar '+un+'?')){const all=getUsers().filter(x=>x.username!==un);await saveUsersFn(all);renderUsers();notify('Usuario eliminado');}}
+
+// ✅ changeFounderPass - GUARDA DIRECTAMENTE EN LA NUBE
+async function changeFounderPass() {
   const cur = document.getElementById('fp-cur').value;
   const nw = document.getElementById('fp-new').value;
-  const stored = localStorage.getItem('qcol_fp') || '1027';
   
-  // 🔧 Comparar como strings
+  // Obtener contraseña actual desde la nube
+  let stored = '1027';
+  if (window.configSync && window.configSync.isReady) {
+    const cloudFp = window.configSync.getConfig('founder_password');
+    if (cloudFp) stored = String(cloudFp);
+  } else {
+    stored = localStorage.getItem('qcol_fp') || '1027';
+  }
+  
   if (String(cur) !== String(stored)) { 
-    notify('Contraseña actual incorrecta'); 
+    notify('❌ Contraseña actual incorrecta'); 
     return; 
   }
   if (!nw) { 
-    notify('Ingresa la nueva contraseña'); 
+    notify('⚠️ Ingresa la nueva contraseña'); 
     return; 
   }
   
-  // ✅ Guardar como CADENA (string) - NO como número
   const newPassword = String(nw);
+  
+  // Guardar localmente como caché
   localStorage.setItem('qcol_fp', newPassword);
   localStorage.setItem('qcol_fp_timestamp', new Date().toISOString());
   
-  // ✅ Sincronizar con la nube como CADENA
+  // Guardar en la nube
   if (window.configSync && window.configSync.isReady) {
-    window.configSync.setConfig('founder_password', newPassword);
-    notify('✅ Contraseña del fundador actualizada y sincronizada en la nube');
-    addSysLog('Contraseña fundador cambiada y sincronizada en la nube', 'ok');
+    const success = await window.configSync.saveToCloud('founder_password', newPassword);
+    if (success) {
+      notify('✅ Contraseña del fundador actualizada en la nube');
+      addSysLog('Contraseña fundador cambiada en la nube', 'ok');
+      
+      // Notificar a otros módulos
+      window.parent.postMessage({ 
+        type: 'QCOL_SAVE', 
+        key: 'qcol_fp', 
+        val: newPassword 
+      }, '*');
+    } else {
+      notify('❌ Error guardando en la nube');
+    }
   } else {
-    postToCore('QCOL_SAVE_CONFIG', { key: 'founder_pass', value: newPassword });
-    notify('✅ Contraseña del fundador actualizada (solo local)');
+    notify('⚠️ Config Sync no disponible, guardado solo local');
     addSysLog('Contraseña fundador cambiada (solo local)', 'warn');
   }
   
@@ -1224,8 +1227,8 @@ function getProjs() { return JSON.parse(localStorage.getItem('qcol_projs')||'[]'
 function renderProjs() {
   const tbody=document.getElementById('projs-tbody');if(!tbody)return;
   const all=getProjs();
-  if(all.length===0){ tbody.innerHTML=`<tr><td colspan="4" style="text-align:center;color:var(--mu);font-size:.66rem;padding:1.2rem;">Sin proyectos aún. Agrega el primero abajo ↓</a></tr>`; return; }
-  tbody.innerHTML=all.map(p=>`<tr><td style="font-family:var(--mono);font-size:.62rem;">${p.title}</a><td><span class="rb ${p.type==='nb'?'rba':'rbu'}">${p.type==='nb'?'NB':'PDF'}</span></a><td>${p.id}</a><td><button class="bsm red" onclick="delProj('${p.id}')">✕ Eliminar</button></a></tr>`).join('');
+  if(all.length===0){ tbody.innerHTML=`<tr><td colspan="4" style="text-align:center;color:var(--mu);font-size:.66rem;padding:1.2rem;">Sin proyectos aún. Agrega el primero abajo ↓</td></tr>`; return; }
+  tbody.innerHTML=all.map(p=>`<tr><td style="font-family:var(--mono);font-size:.62rem;">${p.title}</td><td><span class="rb ${p.type==='nb'?'rba':'rbu'}">${p.type==='nb'?'NB':'PDF'}</span></td><td>${p.id}</td><td><button class="bsm red" onclick="delProj('${p.id}')">✕ Eliminar</button></td></tr>`).join('');
 }
 function addProj() {
   const t=document.getElementById('pj-t').value.trim(),id=document.getElementById('pj-id').value.trim().replace(/\s/g,'_').toLowerCase(),type=document.getElementById('pj-type').value,tags=document.getElementById('pj-tags').value.trim(),desc=document.getElementById('pj-desc').value.trim();
@@ -1243,79 +1246,133 @@ function delProj(id){
 }
 
 // ══ PLATFORM CONFIG ══
-function savePlatform() {
+async function savePlatform() {
   const cfg={name:document.getElementById('plt-name').value,author:document.getElementById('plt-author').value,authorTitle:document.getElementById('plt-title').value,version:document.getElementById('plt-version').value};
   localStorage.setItem('qcol_cfg',JSON.stringify(cfg));
+  
   if (window.configSync && window.configSync.isReady) {
-    window.configSync.setConfig('platform_config', cfg);
+    const success = await window.configSync.saveToCloud('platform_config', cfg);
+    if (success) {
+      notify('✅ Plataforma guardada en la nube');
+      addSysLog('Config plataforma guardada en la nube','ok');
+    } else {
+      notify('❌ Error guardando en la nube');
+    }
+  } else {
+    notify('⚠️ Config Sync no disponible');
   }
-  notify('✅ Plataforma guardada y sincronizada');
-  addSysLog('Config plataforma guardada y sincronizada','ok');
 }
-function saveSystem() {
+
+async function saveSystem() {
   const cfg = { reg: document.getElementById('tog-reg')?.checked, splash: document.getElementById('tog-splash')?.checked, maint: document.getElementById('tog-maint')?.checked };
   localStorage.setItem('qcol_sys', JSON.stringify(cfg));
+  
   if (window.configSync && window.configSync.isReady) {
-    window.configSync.setConfig('system_config', cfg);
+    const success = await window.configSync.saveToCloud('system_config', cfg);
+    if (success) {
+      notify('✅ Sistema guardado en la nube');
+      addSysLog('Sistema actualizado en la nube','ok');
+    } else {
+      notify('❌ Error guardando en la nube');
+    }
+  } else {
+    notify('⚠️ Config Sync no disponible');
   }
-  postToCore('QCOL_SAVE', {key:'qcol_sys', val:cfg}); notify('✅ Sistema guardado y sincronizado'); addSysLog('Sistema actualizado y sincronizado','ok');
+  postToCore('QCOL_SAVE', {key:'qcol_sys', val:cfg});
 }
 
 // ══ MONITOR ══
 function getMonitorConfig(){ return JSON.parse(localStorage.getItem('qcol_monitor_cfg')||'{"maxRuns":50,"maxQubits":20,"maxTime":60,"mode":"open"}'); }
 function getMonitorData(){ return JSON.parse(localStorage.getItem('qcol_monitor_data')||'{"runs":[],"total":0}'); }
-function saveMonitorConfig(){
+
+async function saveMonitorConfig(){
   const cfg = { maxRuns: parseInt(document.getElementById('mon-max-runs')?.value||'50'), maxQubits: parseInt(document.getElementById('mon-max-qubits')?.value||'20'), maxTime: parseInt(document.getElementById('mon-max-time')?.value||'60'), mode: document.getElementById('mon-mode')?.value||'open', updated: new Date().toISOString() };
   localStorage.setItem('qcol_monitor_cfg', JSON.stringify(cfg));
+  
   if (window.configSync && window.configSync.isReady) {
-    window.configSync.setConfig('monitor_config', cfg);
+    const success = await window.configSync.saveToCloud('monitor_config', cfg);
+    if (success) {
+      notify('✅ Límites guardados en la nube');
+      addSysLog('Monitor: límites actualizados en la nube','ok');
+    } else {
+      notify('❌ Error guardando en la nube');
+    }
+  } else {
+    notify('⚠️ Config Sync no disponible');
   }
-  postToCore('QCOL_SAVE', {key:'qcol_monitor_cfg', val:cfg}); notify('✅ Límites del compilador guardados y sincronizados'); addSysLog('Monitor: límites actualizados y sincronizados','ok'); syncMonitorToGitHub();
+  postToCore('QCOL_SAVE', {key:'qcol_monitor_cfg', val:cfg});
+  syncMonitorToGitHub();
 }
+
 function loadMonitorConfig(){
-  const cfg = getMonitorConfig(); const mr = document.getElementById('mon-max-runs'); const mq = document.getElementById('mon-max-qubits'); const mt = document.getElementById('mon-max-time'); const mm = document.getElementById('mon-mode'); const eu = document.getElementById('mon-engine-url');
-  if(mr) mr.value = cfg.maxRuns||50; if(mq) mq.value = cfg.maxQubits||20; if(mt) mt.value = cfg.maxTime||60; if(mm) mm.value = cfg.mode||'open'; if(eu) eu.textContent = (localStorage.getItem('qcol_colab_url')||'https://francilaffita1027-qcol-motor.hf.space').substring(0,35)+'...';
+  const cfg = getMonitorConfig(); 
+  const mr = document.getElementById('mon-max-runs'); 
+  const mq = document.getElementById('mon-max-qubits'); 
+  const mt = document.getElementById('mon-max-time'); 
+  const mm = document.getElementById('mon-mode'); 
+  const eu = document.getElementById('mon-engine-url');
+  if(mr) mr.value = cfg.maxRuns||50; 
+  if(mq) mq.value = cfg.maxQubits||20; 
+  if(mt) mt.value = cfg.maxTime||60; 
+  if(mm) mm.value = cfg.mode||'open'; 
+  if(eu) eu.textContent = (localStorage.getItem('qcol_colab_url')||'').substring(0,35)+'...';
 }
+
 function refreshMonitor(){
-  const data = getMonitorData(); const today = new Date().toDateString(); const todayRuns = (data.runs||[]).filter(r=>new Date(r.ts).toDateString()===today); const todayUsers = [...new Set(todayRuns.map(r=>r.user))].length;
-  const rt = document.getElementById('mon-runs-today'); const ut = document.getElementById('mon-users-today'); const tot = document.getElementById('mon-total-runs');
-  if(rt) rt.textContent = todayRuns.length; if(ut) ut.textContent = todayUsers; if(tot) tot.textContent = data.total||0; loadMonitorConfig();
+  const data = getMonitorData(); 
+  const today = new Date().toDateString(); 
+  const todayRuns = (data.runs||[]).filter(r=>new Date(r.ts).toDateString()===today); 
+  const todayUsers = [...new Set(todayRuns.map(r=>r.user))].length;
+  const rt = document.getElementById('mon-runs-today'); 
+  const ut = document.getElementById('mon-users-today'); 
+  const tot = document.getElementById('mon-total-runs');
+  if(rt) rt.textContent = todayRuns.length; 
+  if(ut) ut.textContent = todayUsers; 
+  if(tot) tot.textContent = data.total||0; 
+  loadMonitorConfig();
 }
+
 function loadUserStats(){
   const data = getMonitorData(); const runs = data.runs||[];
   if(runs.length===0){ document.getElementById('user-stats-table').innerHTML='<div style="color:var(--mu);padding:.5rem;">Sin datos de uso aún.</div>'; return; }
   const byUser = {};
   runs.forEach(r=>{ if(!byUser[r.user]) byUser[r.user]={runs:0,libs:{},lastRun:r.ts,qubits:0}; byUser[r.user].runs++; byUser[r.user].libs[r.lib]=(byUser[r.user].libs[r.lib]||0)+1; if(r.ts>byUser[r.user].lastRun) byUser[r.user].lastRun=r.ts; if(r.qubits>byUser[r.user].qubits) byUser[r.user].qubits=r.qubits; });
-  const rows = Object.entries(byUser).sort((a,b)=>b[1].runs-a[1].runs).map(([user,s])=>`<tr><td style="padding:.3rem .5rem;color:var(--tx);">${user}</a></td><td style="padding:.3rem .5rem;color:var(--bl2);text-align:center;">${s.runs}</a><td>${Object.entries(s.libs).map(([l,n])=>l+':'+n).join(', ')}</a><td>${s.qubits} max</a><td>${new Date(s.lastRun).toLocaleDateString()}</a></tr>`).join('');
+  const rows = Object.entries(byUser).sort((a,b)=>b[1].runs-a[1].runs).map(([user,s])=>`<tr><td style="padding:.3rem .5rem;color:var(--tx);">${user}</td><td style="padding:.3rem .5rem;color:var(--bl2);text-align:center;">${s.runs}</td><td>${Object.entries(s.libs).map(([l,n])=>l+':'+n).join(', ')}</td><td>${s.qubits} max</td><td>${new Date(s.lastRun).toLocaleDateString()}</td></tr>`).join('');
   document.getElementById('user-stats-table').innerHTML=`<table style="width:100%;border-collapse:collapse;font-size:.6rem;"><thead><tr style="background:rgba(0,0,0,.3);"><th style="padding:.3rem .5rem;text-align:left;color:var(--bl2);">Usuario</th><th style="padding:.3rem .5rem;color:var(--bl2);">Ejecuciones</th><th style="padding:.3rem .5rem;text-align:left;color:var(--bl2);">Libs usadas</th><th style="padding:.3rem .5rem;color:var(--bl2);">Qubits</th><th style="padding:.3rem .5rem;color:var(--bl2);">Último uso</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
+
 function loadHistorial(){
   const data = getMonitorData(); let runs = data.runs||[]; const filterUser = document.getElementById('mon-filter-user')?.value.trim().toLowerCase(); const filterLib = document.getElementById('mon-filter-lib')?.value;
   if(filterUser) runs = runs.filter(r=>r.user.toLowerCase().includes(filterUser)); if(filterLib) runs = runs.filter(r=>r.lib===filterLib); const log = document.getElementById('mon-historial'); if(!log) return; if(runs.length===0){ log.innerHTML='Sin resultados.'; return; }
   log.innerHTML = runs.slice(-100).reverse().map(r=>{ const d=new Date(r.ts).toLocaleString(); const ok=r.success?'<span style="color:var(--gr);">✅</span>':'<span style="color:var(--rd);">❌</span>'; return `[${d}] ${ok} <span style="color:var(--bl2);">${r.user}</span> · ${r.lib} · ${r.qubits}q · ${r.time}s`; }).join('\n');
 }
+
 function exportMonitorData(){
   const data = getMonitorData(); const runs = data.runs||[]; if(runs.length===0){ notify('Sin datos para exportar'); return; }
   const header='Fecha,Usuario,Librería,Qubits,Tiempo(s),Éxito\n'; const rows=runs.map(r=>`${new Date(r.ts).toLocaleString()},${r.user},${r.lib},${r.qubits},${r.time},${r.success}`).join('\n');
   const blob=new Blob([header+rows],{type:'text/csv'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='qcol_monitor_'+new Date().toISOString().split('T')[0]+'.csv'; a.click(); notify('📥 CSV exportado');
 }
+
 async function syncMonitorToGitHub(){
   const gh=getGH(); if(!gh.token||!gh.user||!gh.repo){ notify('Configura el token GitHub primero'); return; }
   const data=getMonitorData(); const cfg=getMonitorConfig(); const payload=JSON.stringify({config:cfg,data,synced:new Date().toISOString()},null,2); const content=btoa(unescape(encodeURIComponent(payload))); const path='data/monitor.json'; const apiURL=`https://api.github.com/repos/${gh.user}/${gh.repo}/contents/${path}`;
   try{ let sha; try{ const chk=await fetch(apiURL,{headers:{'Authorization':'token '+gh.token,'Accept':'application/vnd.github.v3+json'}}); if(chk.ok){const d=await chk.json();sha=d.sha;} }catch(e){} const body={message:'QCOL: sincronizar monitor',content}; if(sha) body.sha=sha; const res=await fetch(apiURL,{method:'PUT',headers:{'Authorization':'token '+gh.token,'Accept':'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify(body)}); if(res.ok){notify('✅ Monitor sincronizado con GitHub');addSysLog('Monitor sincronizado con GitHub','ok');} else{const e=await res.json();notify('❌ '+e.message);} }catch(e){notify('❌ '+e.message);}
 }
+
 async function loadMonitorFromGitHub(){
   const gh=getGH(); if(!gh.user||!gh.repo) return; try{ const res=await fetch(`https://api.github.com/repos/${gh.user}/${gh.repo}/contents/data/monitor.json`,{headers:{'Accept':'application/vnd.github.v3+json'}}); if(res.ok){ const d=await res.json(); const payload=JSON.parse(atob(d.content.replace(/\n/g,''))); if(payload.data) localStorage.setItem('qcol_monitor_data',JSON.stringify(payload.data)); if(payload.config) localStorage.setItem('qcol_monitor_cfg',JSON.stringify(payload.config)); loadMonitorConfig(); refreshMonitor(); addSysLog('Monitor cargado desde GitHub','ok'); } }catch(e){}
 }
+
 function clearMonitorData(){
   if(!confirm('¿Limpiar todo el historial de ejecuciones?')) return; localStorage.setItem('qcol_monitor_data',JSON.stringify({runs:[],total:0})); refreshMonitor(); document.getElementById('mon-historial').innerHTML='— Historial limpiado —'; document.getElementById('user-stats-table').innerHTML=''; notify('Historial limpiado'); addSysLog('Historial de monitor limpiado','warn');
 }
 
 // ══ BACKUP ══
 function exportAll() {
-  const data={config:getConfig(),github:getGH(),ai:{...getAI(),key:'***'},users:getUsers(),projects:getProjs(),exported:new Date().toISOString(),version:'2.0.0'};
+  const data={config:getConfig(),github:getGH(),ai:getAI(),users:getUsers(),projects:getProjs(),exported:new Date().toISOString(),version:'2.0.0'};
   const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='qcol-backup-'+Date.now()+'.json'; a.click(); notify('📤 Backup exportado'); addSysLog('Backup exportado','ok');
 }
+
 function importBackup(e) {
   const file=e.target.files[0]; if(!file)return; const reader=new FileReader();
   reader.onload=ev=>{ try{ const d=JSON.parse(ev.target.result); if(d.config)localStorage.setItem('qcol_cfg',JSON.stringify(d.config)); if(d.github)localStorage.setItem('qcol_gh',JSON.stringify(d.github)); if(d.users)saveUsersFn(d.users); if(d.projects)localStorage.setItem('qcol_projs',JSON.stringify(d.projects)); loadSaved(); notify('✅ Backup importado'); addSysLog('Backup importado: '+file.name,'ok'); }catch(err){notify('❌ Error: '+err.message);} };
@@ -1337,10 +1394,9 @@ function downloadModule(mod) {
   notify('Módulo ' + mod + ' — pendiente de desarrollo.');
 }
 
-function downloadAll() { notify('Los módulos se descargan individualmente.'); }
-
 function getCustomModules(){return JSON.parse(localStorage.getItem('qcol_custom_modules')||'[]');}
 function saveCustomModules(m){localStorage.setItem('qcol_custom_modules',JSON.stringify(m));}
+
 function createModule(){
   const name=document.getElementById('nm-name').value.trim(); const id=document.getElementById('nm-id').value.trim().replace(/\s/g,'-').toLowerCase(); const file=document.getElementById('nm-file').value.trim(); const icon=document.getElementById('nm-icon').value.trim()||'🔬'; const desc=document.getElementById('nm-desc').value.trim(); const role=document.getElementById('nm-role').value;
   if(!name||!id||!file){notify('Nombre, ID y archivo son obligatorios');return;}
@@ -1348,21 +1404,46 @@ function createModule(){
   mods.push({name,id,file,icon,desc,role,created:new Date().toLocaleDateString()}); saveCustomModules(mods); renderCustomModules(); notify('✅ Módulo "'+name+'" creado. Sube '+file+' a GitHub.'); addSysLog('Módulo creado: '+name+' → '+file,'ok');
   ['nm-name','nm-id','nm-file','nm-icon','nm-desc'].forEach(k=>document.getElementById(k).value='');
 }
+
 function renderCustomModules(){
   const div=document.getElementById('custom-modules-list'); if(!div)return; const mods=getCustomModules();
   if(mods.length===0){div.innerHTML='<div style="font-size:.65rem;color:var(--mu);padding:.5rem 0;">Sin módulos personalizados.</div>';return;}
   div.innerHTML=mods.map((m,i)=>`<div style="display:flex;align-items:center;gap:.6rem;padding:.45rem .75rem;background:rgba(0,0,0,.2);border:1px solid var(--b);border-radius:7px;margin-bottom:.35rem;"><span style="font-size:1rem;">${m.icon}</span><div style="flex:1;"><div style="font-family:var(--orb);font-size:.62rem;color:var(--bl2);">${m.name}</div><div style="font-family:var(--mono);font-size:.55rem;color:var(--mu);">${m.file} · acceso: ${m.role}</div></div><button class="bsm red" onclick="deleteModule(${i})">✕ Eliminar</button></div>`).join('');
 }
+
 function deleteModule(i){ if(!confirm('¿Eliminar este módulo del menú?'))return; const mods=getCustomModules(); mods.splice(i,1); saveCustomModules(mods); renderCustomModules(); notify('Módulo eliminado del menú'); addSysLog('Módulo eliminado','warn'); }
 
 // ══ FUNCIONES GITHUB ══
-function saveGH(){ const user=document.getElementById('gh-user').value.trim(); const repo=document.getElementById('gh-repo').value.trim(); const branch=document.getElementById('gh-branch').value.trim(); const token=document.getElementById('gh-token').value.trim(); localStorage.setItem('qcol_gh',JSON.stringify({user,repo,branch,token})); if (window.configSync && window.configSync.isReady) { window.configSync.setConfig('github_config', {user,repo,branch,token}); } notify('✅ GitHub guardado y sincronizado'); addSysLog('Config GitHub guardada y sincronizada','ok'); }
+async function saveGH(){ 
+  const user=document.getElementById('gh-user').value.trim(); 
+  const repo=document.getElementById('gh-repo').value.trim(); 
+  const branch=document.getElementById('gh-branch').value.trim(); 
+  const token=document.getElementById('gh-token').value.trim(); 
+  const ghConfig = {user,repo,branch,token};
+  localStorage.setItem('qcol_gh',JSON.stringify(ghConfig));
+  
+  if (window.configSync && window.configSync.isReady) {
+    const success = await window.configSync.saveToCloud('github_config', ghConfig);
+    if (success) {
+      notify('✅ GitHub guardado en la nube');
+      addSysLog('Config GitHub guardada en la nube','ok');
+    } else {
+      notify('❌ Error guardando en la nube');
+    }
+  } else {
+    notify('⚠️ Config Sync no disponible');
+  }
+}
+
 function openGH(){const gh=getGH();if(gh.user&&gh.repo)window.open(`https://github.com/${gh.user}/${gh.repo}`,'_blank');}
+
 async function testGH(){
   const gh=getGH(); if(!gh.user||!gh.repo){notify('Usuario o repo vacío');return;} const dot=document.getElementById('gh-dot');const st=document.getElementById('gh-status'); dot.className='sdot warn';st.textContent='Verificando...';
   try{ const res=await fetch(`https://api.github.com/repos/${gh.user}/${gh.repo}`,{headers:gh.token?{'Authorization':'token '+gh.token}:{}}); if(res.ok){dot.className='sdot ok';st.textContent='✅ Repositorio accesible';notify('✅ Repositorio acceso OK');} else if(res.status===401){dot.className='sdot err';st.textContent='❌ Token inválido';notify('Token inválido');} else{dot.className='sdot err';st.textContent='❌ Repo no encontrado';notify('Repo no encontrado');} }catch(e){dot.className='sdot err';st.textContent='❌ Error';notify(e.message);}
 }
+
 function previewUpload(input){const p=document.getElementById('gh-file-preview');if(input.files.length){p.innerHTML='📄 '+input.files[0].name+' ('+(input.files[0].size/1024).toFixed(1)+' KB)';}else{p.innerHTML='';}}
+
 async function uploadToGitHub(){
   const gh=getGH(); const fileInput=document.getElementById('gh-file-input'); const folder=document.getElementById('gh-folder').value.trim(); const commitMsg=document.getElementById('gh-commit-msg').value.trim();
   if(!gh.token){notify('Token requerido');return;} if(!fileInput.files.length){notify('Selecciona archivo');return;}
@@ -1374,10 +1455,9 @@ async function uploadToGitHub(){
 }
 
 // ========== INICIALIZACIÓN PRINCIPAL ==========
-ensureDefaultConfig();
 loadSaved();
-addSysLog('Configuración del ecosistema iniciada','info');
-addSysLog('QCOL v3.0.0 — Sistema modular','info');
+addSysLog('Configuración del ecosistema iniciada (MODO NUBE)','info');
+addSysLog('QCOL v3.0.0 — Sistema modular con sincronización en nube','info');
 renderCustomModules();
 loadMonitorConfig();
 refreshMonitor();
@@ -1388,7 +1468,7 @@ const toggle = document.getElementById('mistral-toggle');
 if (toggle) toggle.addEventListener('change', saveMistralSettings);
 updateMistralUI();
 
-// ========== DIFUSIÓN PERIÓDICA Y EN CADA NUEVO IFRAME ==========
+// ========== DIFUSIÓN PERIÓDICA ==========
 function broadcastCompilerUrlToModules() {
     const compilerUrl = localStorage.getItem('qcol_colab_url');
     if (!compilerUrl) return;
@@ -1502,6 +1582,7 @@ async function sendChatMessage() {
         addChatMessage(`❌ Error: ${error.message}`, 'assistant');
     }
 }
+
 async function callAIChat(message, aiConfig) {
     chatHistory.push({ role: 'user', content: message });
     const temp = aiConfig.temp || 0.7; const tokens = aiConfig.tokens || 600;
@@ -1530,6 +1611,7 @@ async function callAIChat(message, aiConfig) {
     chatHistory.push({ role: 'assistant', content: response });
     return response;
 }
+
 function addChatMessage(content, role) {
     const container = document.getElementById('chat-messages');
     const messageDiv = document.createElement('div');
@@ -1538,13 +1620,86 @@ function addChatMessage(content, role) {
     else messageDiv.textContent = content;
     container.appendChild(messageDiv); container.scrollTop = container.scrollHeight;
 }
+
 function clearChat() { const container = document.getElementById('chat-messages'); if (container) { container.innerHTML = '<div class="chat-message assistant-message"><p>👋 ¡Hola! Soy el asistente de QCOL. Puedes preguntarme sobre computación cuántica, Qiskit, Cirq, QuTiP o cualquier duda técnica. Escribe tu mensaje.</p></div>'; } chatHistory = []; }
 
 function aiProviderChange() { const p = document.getElementById('ai-prov').value; const models = { mistral: 'mistral-large-latest', groq: 'llama3-70b-8192', huggingface: 'mistralai/Mistral-7B-Instruct-v0.3', openai: 'gpt-4o-mini', gemini: 'gemini-pro', none: '' }; const sel = document.getElementById('ai-model-sel'); const inp = document.getElementById('ai-model'); const hint = document.getElementById('ai-key-hint'); const hints = { mistral: 'Mistral: <a onclick="window.open(\'https://console.mistral.ai\',\'_blank\')" style="color:var(--gr);cursor:pointer;">console.mistral.ai</a> → API Keys → Create', groq: 'Groq: <a onclick="window.open(\'https://console.groq.com\',\'_blank\')" style="color:var(--gr);cursor:pointer;">console.groq.com</a> → API Keys → Create Key', huggingface: 'HuggingFace: <a onclick="window.open(\'https://huggingface.co/settings/tokens\',\'_blank\')" style="color:var(--gr);cursor:pointer;">hf.co/settings/tokens</a> → New token', openai: 'OpenAI: <a onclick="window.open(\'https://platform.openai.com/api-keys\',\'_blank\')" style="color:var(--gr);cursor:pointer;">platform.openai.com/api-keys</a>', gemini: 'Google: <a onclick="window.open(\'https://aistudio.google.com/app/apikey\',\'_blank\')" style="color:var(--gr);cursor:pointer;">aistudio.google.com</a> (necesita VPN)', none: '' }; if (inp) inp.value = models[p] || ''; if (sel) sel.value = models[p] || sel.options[0]?.value; if (hint) hint.innerHTML = hints[p] || ''; }
-const PROMPTS = { quantum: 'Eres el asistente de QCOL (Quantum Computing Open Lab), creado por Franci Laffita Camargo, estudiante de Física Nuclear. Ayudas con Qiskit, Cirq, PennyLane, QuTiP, circuitos cuánticos y física cuántica. Responde en español, de forma concisa y técnicamente precisa. Puedes usar formato Markdown.', teacher: 'Eres un profesor experto en computación cuántica del ecosistema QCOL. Explicas conceptos de forma clara y pedagógica, con ejemplos prácticos. Usas analogías para hacer accesibles los conceptos difíciles. Responde siempre en español. Usa Markdown para mejorar la legibilidad.', concise: 'Eres el asistente cuántico de QCOL. Responde siempre en español, de forma muy concisa. Máximo 3-4 líneas por respuesta. Solo lo esencial. Para código Qiskit, muestra directamente el código.', bilingual: 'You are the QCOL quantum computing assistant. Respond in both Spanish and English. First answer in Spanish, then provide the English translation. Be concise and technically precise. Use Markdown formatting.', code: 'Eres el asistente de código cuántico de QCOL. Tu especialidad es generar código Qiskit y Cirq. Cuando te pidan un circuito o algoritmo, responde directamente con el código Python funcional, con comentarios breves. Usa siempre sintaxis moderna de Qiskit 1.x. Muestra el código en bloques de Markdown con triple backticks y el lenguaje especificado.' };
+
+const PROMPTS = { 
+  quantum: 'Eres el asistente de QCOL (Quantum Computing Open Lab), creado por Franci Laffita Camargo, estudiante de Física Nuclear. Ayudas con Qiskit, Cirq, PennyLane, QuTiP, circuitos cuánticos y física cuántica. Responde en español, de forma concisa y técnicamente precisa. Puedes usar formato Markdown.', 
+  teacher: 'Eres un profesor experto en computación cuántica del ecosistema QCOL. Explicas conceptos de forma clara y pedagógica, con ejemplos prácticos. Usas analogías para hacer accesibles los conceptos difíciles. Responde siempre en español. Usa Markdown para mejorar la legibilidad.', 
+  concise: 'Eres el asistente cuántico de QCOL. Responde siempre en español, de forma muy concisa. Máximo 3-4 líneas por respuesta. Solo lo esencial. Para código Qiskit, muestra directamente el código.', 
+  bilingual: 'You are the QCOL quantum computing assistant. Respond in both Spanish and English. First answer in Spanish, then provide the English translation. Be concise and technically precise. Use Markdown formatting.', 
+  code: 'Eres el asistente de código cuántico de QCOL. Tu especialidad es generar código Qiskit y Cirq. Cuando te pidan un circuito o algoritmo, responde directamente con el código Python funcional, con comentarios breves. Usa siempre sintaxis moderna de Qiskit 1.x. Muestra el código en bloques de Markdown con triple backticks y el lenguaje especificado.' 
+};
+
 function setPrompt(type) { const el = document.getElementById('ai-prompt'); if (el && PROMPTS[type]) { el.value = PROMPTS[type]; notify('Prompt: ' + type); } }
-function saveAI() { const ai = { provider: document.getElementById('ai-prov').value, key: document.getElementById('ai-key').value.trim(), model: document.getElementById('ai-model').value.trim(), prompt: document.getElementById('ai-prompt').value.trim(), temp: parseFloat(document.getElementById('ai-temp')?.value || '0.7'), tokens: parseInt(document.getElementById('ai-tokens')?.value || '600'), lang: document.getElementById('ai-lang')?.value || 'es' }; localStorage.setItem('qcol_ai', JSON.stringify(ai)); if (window.configSync && window.configSync.isReady) { window.configSync.setConfig('ai_config', ai); } postToCore('QCOL_SAVE', { key: 'qcol_ai', val: ai }); notify('✅ IA guardada y sincronizada — ' + ai.provider + ' · ' + ai.model); addSysLog('IA configurada y sincronizada: ' + ai.provider + ' · ' + ai.model, 'ok'); document.getElementById('ai-dot').className = ai.provider !== 'none' ? 'sdot ok' : 'sdot off'; document.getElementById('ai-status').textContent = ai.provider !== 'none' ? '✅ ' + ai.provider + ' — ' + ai.model : 'Sin configurar'; }
-async function testAI() { const ai = getAI(); if (ai.provider === 'none' || !ai.key) { notify('Configura la IA primero'); return; } notify('🔄 Probando IA...'); const temp = ai.temp || 0.7; const tokens = ai.tokens || 600; try { let url, body, headers; headers = { 'Content-Type': 'application/json' }; if (ai.provider === 'mistral') { url = 'https://api.mistral.ai/v1/chat/completions'; headers['Authorization'] = 'Bearer ' + ai.key; body = { model: ai.model || 'mistral-large-latest', messages: [{ role: 'user', content: 'Responde solo "QCOL OK" (sin comillas) en español' }], max_tokens: 10, temperature: temp }; } else if (ai.provider === 'groq') { url = 'https://api.groq.com/openai/v1/chat/completions'; headers['Authorization'] = 'Bearer ' + ai.key; body = { model: ai.model || 'llama3-70b-8192', messages: [{ role: 'user', content: 'Responde "QCOL OK"' }], max_tokens: 10, temperature: temp }; } else if (ai.provider === 'huggingface') { url = `https://api-inference.huggingface.co/models/${ai.model || 'mistralai/Mistral-7B-Instruct-v0.3'}`; headers['Authorization'] = 'Bearer ' + ai.key; body = { inputs: 'Responde "QCOL OK"', parameters: { max_new_tokens: 10 } }; } else if (ai.provider === 'openai') { url = 'https://api.openai.com/v1/chat/completions'; headers['Authorization'] = 'Bearer ' + ai.key; body = { model: ai.model || 'gpt-4o-mini', messages: [{ role: 'user', content: 'Responde "QCOL OK"' }], max_tokens: 10, temperature: temp }; } else { notify('Prueba manual para este proveedor'); return; } const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body), signal: AbortSignal.timeout(15000) }); const d = await res.json(); if (res.ok) { const resp = d.choices?.[0]?.message?.content?.trim() || d.generated_text || '✅ OK'; notify('✅ IA conectada: ' + resp); document.getElementById('ai-dot').className = 'sdot ok'; document.getElementById('ai-status').textContent = '✅ Conectada — ' + ai.provider + ' · ' + ai.model; addSysLog('IA probada: ' + ai.provider + ' · ' + ai.model, 'ok'); } else throw new Error(d.error?.message || d.message || 'Error ' + res.status); } catch(e) { notify('❌ ' + e.message); addSysLog('Error IA: ' + e.message, 'err'); } }
+
+async function saveAI() { 
+  const ai = { 
+    provider: document.getElementById('ai-prov').value, 
+    key: document.getElementById('ai-key').value.trim(), 
+    model: document.getElementById('ai-model').value.trim(), 
+    prompt: document.getElementById('ai-prompt').value.trim(), 
+    temp: parseFloat(document.getElementById('ai-temp')?.value || '0.7'), 
+    tokens: parseInt(document.getElementById('ai-tokens')?.value || '600'), 
+    lang: document.getElementById('ai-lang')?.value || 'es' 
+  }; 
+  localStorage.setItem('qcol_ai', JSON.stringify(ai));
+  
+  if (window.configSync && window.configSync.isReady) {
+    const success = await window.configSync.saveToCloud('ai_config', ai);
+    if (success) {
+      notify('✅ IA guardada en la nube — ' + ai.provider + ' · ' + ai.model);
+      addSysLog('IA configurada en la nube: ' + ai.provider + ' · ' + ai.model, 'ok');
+    } else {
+      notify('❌ Error guardando en la nube');
+    }
+  } else {
+    notify('⚠️ Config Sync no disponible');
+  }
+  postToCore('QCOL_SAVE', { key: 'qcol_ai', val: ai });
+  document.getElementById('ai-dot').className = ai.provider !== 'none' ? 'sdot ok' : 'sdot off'; 
+  document.getElementById('ai-status').textContent = ai.provider !== 'none' ? '✅ ' + ai.provider + ' — ' + ai.model : 'Sin configurar'; 
+}
+
+async function testAI() { 
+  const ai = getAI(); 
+  if (ai.provider === 'none' || !ai.key) { notify('Configura la IA primero'); return; } 
+  notify('🔄 Probando IA...'); 
+  const temp = ai.temp || 0.7; 
+  const tokens = ai.tokens || 600; 
+  try { 
+    let url, body, headers; 
+    headers = { 'Content-Type': 'application/json' }; 
+    if (ai.provider === 'mistral') { 
+      url = 'https://api.mistral.ai/v1/chat/completions'; 
+      headers['Authorization'] = 'Bearer ' + ai.key; 
+      body = { model: ai.model || 'mistral-large-latest', messages: [{ role: 'user', content: 'Responde solo "QCOL OK" (sin comillas) en español' }], max_tokens: 10, temperature: temp }; 
+    } else if (ai.provider === 'groq') { 
+      url = 'https://api.groq.com/openai/v1/chat/completions'; 
+      headers['Authorization'] = 'Bearer ' + ai.key; 
+      body = { model: ai.model || 'llama3-70b-8192', messages: [{ role: 'user', content: 'Responde "QCOL OK"' }], max_tokens: 10, temperature: temp }; 
+    } else if (ai.provider === 'huggingface') { 
+      url = `https://api-inference.huggingface.co/models/${ai.model || 'mistralai/Mistral-7B-Instruct-v0.3'}`; 
+      headers['Authorization'] = 'Bearer ' + ai.key; 
+      body = { inputs: 'Responde "QCOL OK"', parameters: { max_new_tokens: 10 } }; 
+    } else if (ai.provider === 'openai') { 
+      url = 'https://api.openai.com/v1/chat/completions'; 
+      headers['Authorization'] = 'Bearer ' + ai.key; 
+      body = { model: ai.model || 'gpt-4o-mini', messages: [{ role: 'user', content: 'Responde "QCOL OK"' }], max_tokens: 10, temperature: temp }; 
+    } else { notify('Prueba manual para este proveedor'); return; } 
+    const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body), signal: AbortSignal.timeout(15000) }); 
+    const d = await res.json(); 
+    if (res.ok) { 
+      const resp = d.choices?.[0]?.message?.content?.trim() || d.generated_text || '✅ OK'; 
+      notify('✅ IA conectada: ' + resp); 
+      document.getElementById('ai-dot').className = 'sdot ok'; 
+      document.getElementById('ai-status').textContent = '✅ Conectada — ' + ai.provider + ' · ' + ai.model; 
+      addSysLog('IA probada: ' + ai.provider + ' · ' + ai.model, 'ok'); 
+    } else throw new Error(d.error?.message || d.message || 'Error ' + res.status); 
+  } catch(e) { notify('❌ ' + e.message); addSysLog('Error IA: ' + e.message, 'err'); } 
+}
 
 function escapeHtml(str) { if (!str) return ''; return str.replace(/[&<>]/g, function(m) { if (m === '&') return '&amp;'; if (m === '<') return '&lt;'; if (m === '>') return '&gt;'; return m; }); }
 </script>
