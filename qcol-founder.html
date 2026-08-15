@@ -8,23 +8,19 @@
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.5/dist/purify.min.js"></script>
 <style>
-/* === TODOS LOS ESTILOS ORIGINALES SE MANTIENEN ÍNTEGROS === */
 :root{--bg:#010608;--s:#071220;--s2:#0c1c30;--b:#0d2a4a;--b2:#1a3a5c;--bl:#0088ff;--bl2:#00ccff;--cy:#00ffdd;--gr:#00ff88;--gd:#ffd700;--rd:#ff4466;--pu:#bd93f9;--tx:#ddeeff;--mu:#4a7a9b;--orb:'Orbitron',monospace;--mono:'JetBrains Mono',monospace;--exo:'Exo 2',sans-serif;}
 *{margin:0;padding:0;box-sizing:border-box;}
 body{background:var(--bg);color:var(--tx);font-family:var(--exo);padding:1rem;min-height:100vh;}
 body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,136,255,.03)1px,transparent 1px),linear-gradient(90deg,rgba(0,136,255,.03)1px,transparent 1px);background-size:40px 40px;pointer-events:none;}
 .notif{position:fixed;top:.8rem;right:.8rem;z-index:999;padding:.55rem 1rem;background:rgba(4,14,28,.97);border:1px solid var(--bl2);border-radius:8px;font-family:var(--orb);font-size:.6rem;color:var(--bl2);transform:translateX(130%);transition:transform .3s;backdrop-filter:blur(20px);}
 .notif.show{transform:translateX(0);}
-/* TABS */
 .tabs{display:flex;gap:0;border-bottom:1px solid var(--b);margin-bottom:1.2rem;overflow-x:auto;}
 .tab{padding:.55rem 1rem;background:transparent;border:none;color:var(--mu);font-family:var(--orb);font-size:.6rem;cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;transition:all .2s;}
 .tab.active{color:var(--bl2);border-bottom-color:var(--bl2);background:rgba(0,136,255,.06);}
 .panel{display:none;}.panel.active{display:block;}
-/* SECTION */
 .sec{background:var(--s);border:1px solid var(--b);border-radius:12px;padding:1.2rem;margin-bottom:1rem;}
 .sec-title{font-family:var(--orb);font-size:.7rem;color:var(--bl2);margin-bottom:.9rem;display:flex;align-items:center;gap:.4rem;padding-bottom:.5rem;border-bottom:1px solid var(--b);}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:1rem;}
-/* FORM */
 .fg{margin-bottom:.8rem;}.fl{font-family:var(--orb);font-size:.52rem;color:var(--mu);letter-spacing:.1em;display:block;margin-bottom:.25rem;}
 .fi{width:100%;background:rgba(0,0,0,.4);border:1px solid var(--b2);border-radius:7px;padding:.5rem .8rem;color:var(--tx);font-family:var(--mono);font-size:.75rem;outline:none;transition:border-color .2s;}
 .fi:focus{border-color:rgba(0,136,255,.7);}
@@ -40,7 +36,6 @@ textarea.fi{resize:vertical;min-height:70px;line-height:1.6;}
 .btn-ok:hover{background:rgba(0,255,136,.2);}
 .btn-warn{background:rgba(255,68,102,.1);border:1px solid rgba(255,68,102,.3);color:#ff8899;}
 .btn-row{display:flex;gap:.45rem;flex-wrap:wrap;margin-top:.5rem;}
-/* STATUS */
 .status-row{display:flex;align-items:center;gap:.6rem;padding:.55rem .85rem;background:rgba(0,0,0,.2);border-radius:6px;margin-bottom:.5rem;border:1px solid var(--b);}
 .sdot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
 .sdot.ok{background:var(--gr);box-shadow:0 0 6px var(--gr);animation:p 2s infinite;}
@@ -50,7 +45,6 @@ textarea.fi{resize:vertical;min-height:70px;line-height:1.6;}
 @keyframes p{0%,100%{opacity:1;}50%{opacity:.5;}}
 .stxt{font-family:var(--mono);font-size:.64rem;color:var(--tx);}
 .ssub{font-size:.56rem;color:var(--mu);margin-left:auto;font-family:var(--mono);}
-/* TOGGLE */
 .tog-row{display:flex;align-items:center;justify-content:space-between;padding:.5rem .85rem;background:rgba(0,0,0,.2);border:1px solid var(--b);border-radius:6px;margin-bottom:.45rem;}
 .tog-name{font-family:var(--orb);font-size:.62rem;color:var(--tx);}
 .tog-desc{font-size:.56rem;color:var(--mu);}
@@ -60,7 +54,6 @@ textarea.fi{resize:vertical;min-height:70px;line-height:1.6;}
 .tog-sl::before{content:'';position:absolute;height:12px;width:12px;left:3px;bottom:3px;background:var(--mu);border-radius:50%;transition:.3s;}
 .tog input:checked+.tog-sl{background:rgba(0,136,255,.4);border:1px solid var(--bl);}
 .tog input:checked+.tog-sl::before{transform:translateX(16px);background:var(--bl2);}
-/* TABLE */
 .tbl{width:100%;border-collapse:collapse;font-size:.68rem;}
 .tbl th{padding:.45rem .85rem;text-align:left;font-family:var(--orb);font-size:.5rem;color:var(--mu);letter-spacing:.08em;border-bottom:1px solid var(--b);background:rgba(0,0,0,.2);}
 .tbl td{padding:.52rem .85rem;border-bottom:1px solid rgba(13,42,74,.4);}
@@ -71,21 +64,17 @@ textarea.fi{resize:vertical;min-height:70px;line-height:1.6;}
 .rbu{background:rgba(74,122,155,.1);color:var(--mu);border:1px solid rgba(74,122,155,.3);}
 .bsm{padding:.1rem .38rem;background:transparent;border:1px solid rgba(0,136,255,.3);border-radius:4px;color:var(--bl2);font-family:var(--orb);font-size:.44rem;cursor:pointer;margin-right:.15rem;}
 .bsm.red{border-color:rgba(255,68,102,.3);color:#ff8899;}
-/* LOG */
 .logbox{background:#010810;border:1px solid var(--b);border-radius:7px;padding:.65rem .85rem;font-family:var(--mono);font-size:.6rem;line-height:1.7;max-height:180px;overflow-y:auto;color:var(--mu);}
 .logbox::-webkit-scrollbar{width:3px;}
 .logbox::-webkit-scrollbar-thumb{background:var(--b2);}
 .log-ok{color:var(--gr);} .log-err{color:var(--rd);} .log-info{color:var(--bl2);} .log-warn{color:#ffb800;}
-/* CODEBOX */
 .codebox{background:#010810;border:1px solid var(--b);border-radius:7px;padding:.75rem .9rem;font-family:var(--mono);font-size:.65rem;line-height:1.75;color:#c8d3f5;overflow-x:auto;white-space:pre;margin-bottom:.75rem;}
-/* ALERT */
 .alert{padding:.65rem .9rem;border-radius:6px;font-size:.66rem;line-height:1.6;margin-bottom:.8rem;display:flex;align-items:flex-start;gap:.45rem;}
 .alert-warn{background:rgba(255,184,0,.08);border:1px solid rgba(255,184,0,.25);color:#ffb800;}
 .alert-ok{background:rgba(0,255,136,.06);border:1px solid rgba(0,255,136,.2);color:var(--gr);}
 .alert-info{background:rgba(0,136,255,.08);border:1px solid rgba(0,136,255,.25);color:var(--bl2);}
 .upload-zone{border:2px dashed var(--b2);border-radius:10px;padding:1.5rem;text-align:center;cursor:pointer;transition:all .3s;margin:.75rem 0;}
 .upload-zone:hover{border-color:rgba(0,136,255,.55);background:rgba(0,136,255,.03);}
-/* MARKDOWN CHAT STYLES */
 .chat-container{background:rgba(0,0,0,.2);border-radius:10px;border:1px solid var(--b);overflow:hidden;margin-top:.5rem;}
 .chat-messages{height:320px;overflow-y:auto;padding:1rem;display:flex;flex-direction:column;gap:.8rem;}
 .chat-message{max-width:85%;padding:.6rem .9rem;border-radius:12px;font-size:.7rem;line-height:1.5;}
@@ -125,14 +114,9 @@ textarea.fi{resize:vertical;min-height:70px;line-height:1.6;}
 <div class="notif" id="notif"></div>
 
 <!-- ============================================================
-     🔄 CONFIG SYNC - CONEXIÓN DIRECTA A SUPABASE (SOLO NUBE)
+     🔄 CONFIG SYNC - VERSIÓN CORREGIDA PARA SUPABASE
      ============================================================ -->
 <script>
-// ============================================================
-// QCOL CONFIG SYNC - VERSIÓN SOLO NUBE
-// TODAS LAS OPERACIONES VAN DIRECTAMENTE A SUPABASE
-// ============================================================
-
 const SUPABASE_URL = 'https://rtkcfbnoqbivylejhspv.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_Uw4ViBXo3UvvlSHzOiAcDA_9Jn6eMcf';
 
@@ -147,8 +131,6 @@ class QcolConfigSyncCloud {
         this._listeners = [];
     }
 
-    // ==================== INICIALIZACIÓN ====================
-    
     async init() {
         if (this._initialized) return this;
         try {
@@ -169,18 +151,15 @@ class QcolConfigSyncCloud {
             }
             
             console.log('✅ Config Sync Cloud: Conexión establecida');
-            
-            // Cargar TODAS las configuraciones desde la nube
             await this.loadAllFromCloud();
             
             this.isReady = true;
             this._initialized = true;
-            console.log('✅ Config Sync Cloud inicializado (MODO NUBE)');
+            console.log('✅ Config Sync Cloud inicializado');
             
-            // Sincronizar automáticamente cada 10 segundos
             setInterval(() => {
                 this.loadAllFromCloud().catch(e => console.warn('⚠️ Sync error:', e.message));
-            }, 10000);
+            }, 15000);
             
             return this;
         } catch (error) {
@@ -190,8 +169,6 @@ class QcolConfigSyncCloud {
         }
     }
 
-    // ==================== FUNCIONES BASE ====================
-    
     async _fetch(table, options = {}) {
         let url = `${SUPABASE_URL}/rest/v1/${table}?select=*`;
         if (options.eq) {
@@ -211,6 +188,9 @@ class QcolConfigSyncCloud {
     }
 
     async _insert(table, data) {
+        const cleanData = { ...data };
+        delete cleanData.key;
+        
         const response = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
             method: 'POST',
             headers: {
@@ -219,13 +199,19 @@ class QcolConfigSyncCloud {
                 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
                 'Prefer': 'return=representation'
             },
-            body: JSON.stringify(data)
+            body: JSON.stringify(cleanData)
         });
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
         return await response.json();
     }
 
     async _update(table, key, data) {
+        const cleanData = { ...data };
+        delete cleanData.key;
+        
         const response = await fetch(`${SUPABASE_URL}/rest/v1/${table}?key=eq.${key}`, {
             method: 'PATCH',
             headers: {
@@ -234,14 +220,15 @@ class QcolConfigSyncCloud {
                 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
                 'Prefer': 'return=representation'
             },
-            body: JSON.stringify(data)
+            body: JSON.stringify(cleanData)
         });
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
         return await response.json();
     }
 
-    // ==================== CARGAR DESDE LA NUBE ====================
-    
     async loadAllFromCloud() {
         if (this._syncInProgress) return;
         this._syncInProgress = true;
@@ -256,7 +243,6 @@ class QcolConfigSyncCloud {
                         let value = item.value;
                         try { value = JSON.parse(value); } catch(e) {}
                         
-                        // 🔧 FORZAR founder_password como CADENA
                         if (item.key === 'founder_password' && value !== null && value !== undefined) {
                             value = String(value);
                         }
@@ -264,7 +250,6 @@ class QcolConfigSyncCloud {
                         configMap[item.key] = value;
                         this._cache[item.key] = value;
                         
-                        // Actualizar localStorage como CACHÉ (no como fuente principal)
                         const localKey = this._getLocalKey(item.key);
                         if (localKey) {
                             const storeValue = typeof value === 'string' ? value : JSON.stringify(value);
@@ -283,32 +268,26 @@ class QcolConfigSyncCloud {
                     this.onSyncComplete();
                 }
                 
-                // Notificar a los listeners
                 this._listeners.forEach(fn => fn(configMap));
             }
             
             return this._cache;
         } catch (error) {
-            console.warn('⚠️ Error cargando configuraciones desde la nube:', error.message);
+            console.warn('⚠️ Error cargando configuraciones:', error.message);
             return this._cache;
         } finally {
             this._syncInProgress = false;
         }
     }
 
-    // ==================== GUARDAR EN LA NUBE ====================
-    
     async saveToCloud(key, value) {
         try {
-            // 🔧 FORZAR founder_password como CADENA
             if (key === 'founder_password') {
                 value = String(value);
             }
             
-            // Actualizar caché
             this._cache[key] = value;
             
-            // Actualizar localStorage como CACHÉ
             const localKey = this._getLocalKey(key);
             if (localKey) {
                 const storeValue = typeof value === 'string' ? value : JSON.stringify(value);
@@ -316,11 +295,9 @@ class QcolConfigSyncCloud {
                 localStorage.setItem(localKey + '_timestamp', new Date().toISOString());
             }
             
-            // Guardar en Supabase
             const stringValue = typeof value === 'string' ? value : JSON.stringify(value);
             const data = {
                 id: 'cfg-' + key,
-                key: key,
                 value: stringValue,
                 updated_by: 'founder_panel',
                 updated_at: new Date().toISOString()
@@ -339,14 +316,19 @@ class QcolConfigSyncCloud {
             
             console.log(`📤 Config ${key} guardada en la nube`);
             
-            // Notificar cambios
             if (this.onConfigUpdate) {
                 this.onConfigUpdate({ [key]: value });
             }
             
+            window.parent.postMessage({ 
+                type: 'QCOL_SAVE', 
+                key: localKey || key, 
+                val: value 
+            }, '*');
+            
             return true;
         } catch (error) {
-            console.error(`❌ Error guardando ${key} en la nube:`, error.message);
+            console.error(`❌ Error guardando ${key}:`, error.message);
             return false;
         }
     }
@@ -360,16 +342,12 @@ class QcolConfigSyncCloud {
         return success;
     }
 
-    // ==================== OBTENER CONFIGURACIÓN ====================
-    
     getConfig(key) {
-        // 🔧 Si es founder_password, forzar como cadena
         if (key === 'founder_password') {
             const cached = this._cache[key];
             if (cached !== undefined) {
                 return String(cached);
             }
-            // Intentar desde localStorage como respaldo
             const localValue = localStorage.getItem('qcol_fp');
             if (localValue !== null) {
                 try { return String(JSON.parse(localValue)); } catch(e) { return String(localValue); }
@@ -381,7 +359,6 @@ class QcolConfigSyncCloud {
             return this._cache[key];
         }
         
-        // Intentar desde localStorage como respaldo
         const localKey = this._getLocalKey(key);
         if (localKey) {
             const value = localStorage.getItem(localKey);
@@ -421,9 +398,6 @@ class QcolConfigSyncCloud {
     }
 }
 
-// ============================================================
-// INICIALIZAR CONFIG SYNC - MODO NUBE
-// ============================================================
 let configSync = null;
 
 async function initConfigSync() {
@@ -432,29 +406,27 @@ async function initConfigSync() {
         await configSync.init();
         
         configSync.onConfigUpdate = (configMap) => {
-            console.log('📥 Config actualizada desde la nube:', Object.keys(configMap));
+            console.log('📥 Config actualizada:', Object.keys(configMap));
             if (typeof loadSaved === 'function') {
                 setTimeout(loadSaved, 200);
             }
-            // Actualizar UI
             if (typeof renderUsers === 'function') {
                 setTimeout(renderUsers, 300);
             }
         };
         
         configSync.onSyncComplete = () => {
-            console.log('✅ Configuración sincronizada desde la nube');
+            console.log('✅ Configuración sincronizada');
         };
         
         window.configSync = configSync;
-        console.log('✅ Config Sync Cloud global iniciado (MODO NUBE)');
+        console.log('✅ Config Sync Cloud global iniciado');
     } catch (error) {
         console.warn('⚠️ Config Sync Cloud no disponible:', error.message);
         window.configSync = null;
     }
 }
 
-// Iniciar inmediatamente
 initConfigSync();
 </script>
 
@@ -673,11 +645,6 @@ initConfigSync();
 </div>
 
 <script>
-// ============================================================
-// FUNCIONES DEL PANEL FUNDADOR - TODAS CON NUBE
-// ============================================================
-
-// ══ COMUNICACIÓN CON EL CORE ══
 function postToCore(type, data = {}) {
   window.parent.postMessage({ type, ...data }, '*');
 }
@@ -709,7 +676,6 @@ window.addEventListener('message', (e) => {
 let currentUser = null;
 let chatHistory = [];
 
-// ========== FUNCIÓN PARA ENVIAR CONFIGURACIÓN COMPLETA ==========
 function sendFullConfigTo(targetWindow) {
   if (!targetWindow) return;
   const gh = getGH();
@@ -745,7 +711,6 @@ function broadcastConfigToAllIframes() {
   }
 }
 
-// ========== FUNCIONES AUXILIARES ==========
 function notify(msg) {
   const n = document.getElementById('notif');
   n.textContent = msg; n.classList.add('show');
@@ -769,7 +734,6 @@ function addColabLog(msg) {
   log.scrollTop = log.scrollHeight;
 }
 
-// ══ TABS ══
 function showTab(id) {
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -784,7 +748,6 @@ function showTab(id) {
   loadSaved();
 }
 
-// ══ FETCH CON REINTENTOS ══
 async function fetchWithRetry(url, options, retries = 3, delay = 4000, timeout = 30000) {
   let lastError;
   for (let attempt = 1; attempt <= retries; attempt++) {
@@ -853,8 +816,6 @@ async function testColab() {
   else notify('❌ No se pudo conectar al compilador después de 3 intentos');
 }
 
-// ========== GUARDAR EN LA NUBE ==========
-
 async function saveColab() {
   const url = document.getElementById('colab-url').value.trim();
   if (!url) { notify('⚠️ Ingresa una URL'); return; }
@@ -874,7 +835,6 @@ async function saveColab() {
   }
 }
 
-// ══ CARGAR CONFIGURACIÓN DE MISTRAL (DEEPSEEK) ══
 function loadMistralSettings() {
   const enabled = localStorage.getItem('qcol_mistral_enabled') === 'true';
   const key = localStorage.getItem('qcol_mistral_key') || '';
@@ -900,14 +860,12 @@ async function saveMistralSettings() {
   
   const config = { key: cleanKey, model, timeout, enabled, prompt };
   
-  // Guardar localmente como caché
   localStorage.setItem('qcol_mistral_enabled', enabled);
   localStorage.setItem('qcol_mistral_key', cleanKey);
   localStorage.setItem('qcol_mistral_model', model);
   localStorage.setItem('qcol_mistral_timeout', timeout);
   localStorage.setItem('qcol_mistral_prompt', prompt);
   
-  // Guardar en la nube
   if (window.configSync) {
     const success = await window.configSync.saveToCloud('deepseek_config', config);
     if (success) {
@@ -1042,16 +1000,13 @@ function syncIgnoredAttrsWithCloud() {
   .catch(e => notify('❌ Error sincronizando: ' + e.message));
 }
 
-// ========== LOAD SAVED - CARGAR DESDE LA NUBE ==========
 async function loadSaved() {
   console.log('🔄 Cargando configuraciones desde la nube...');
   
-  // Recargar desde la nube
   if (window.configSync && window.configSync.isReady) {
     await window.configSync.loadAllFromCloud();
   }
   
-  // Cargar en UI
   const gh = getGH();
   const el = document.getElementById('gh-user');
   if (el) el.value = gh.user;
@@ -1102,7 +1057,6 @@ async function loadSaved() {
   renderUsers();
 }
 
-// ══ HELPERS ══
 function getGH() {
   const s = JSON.parse(localStorage.getItem('qcol_gh') || '{}');
   return { user: s.user || 'laffitacamargof-create', repo: s.repo || 'quantum-computing-open-lab', branch: s.branch || 'main', token: s.token || '' };
@@ -1115,12 +1069,10 @@ function getAI() {
 
 function getConfig() { return JSON.parse(localStorage.getItem('qcol_cfg') || '{}'); }
 
-// ══ USUARIOS ══
 function getUsers() { const dbRaw = localStorage.getItem('qcol_users'); return dbRaw ? JSON.parse(dbRaw) : []; }
 
 async function saveUsersFn(u) {
   localStorage.setItem('qcol_users', JSON.stringify(u));
-  // Guardar en la nube
   if (window.configSync && window.configSync.isReady) {
     await window.configSync.saveToCloud('users_config', u);
   }
@@ -1169,12 +1121,10 @@ async function promUser(un){const all=getUsers();const u=all.find(x=>x.username=
 async function demUser(un){const all=getUsers();const u=all.find(x=>x.username===un);if(u){u.role='user';await saveUsersFn(all);renderUsers();notify(un+' → Usuario');}}
 async function delUser(un){if(confirm('¿Eliminar '+un+'?')){const all=getUsers().filter(x=>x.username!==un);await saveUsersFn(all);renderUsers();notify('Usuario eliminado');}}
 
-// ✅ changeFounderPass - GUARDA DIRECTAMENTE EN LA NUBE
 async function changeFounderPass() {
   const cur = document.getElementById('fp-cur').value;
   const nw = document.getElementById('fp-new').value;
   
-  // Obtener contraseña actual desde la nube
   let stored = '1027';
   if (window.configSync && window.configSync.isReady) {
     const cloudFp = window.configSync.getConfig('founder_password');
@@ -1194,18 +1144,14 @@ async function changeFounderPass() {
   
   const newPassword = String(nw);
   
-  // Guardar localmente como caché
   localStorage.setItem('qcol_fp', newPassword);
   localStorage.setItem('qcol_fp_timestamp', new Date().toISOString());
   
-  // Guardar en la nube
   if (window.configSync && window.configSync.isReady) {
     const success = await window.configSync.saveToCloud('founder_password', newPassword);
     if (success) {
       notify('✅ Contraseña del fundador actualizada en la nube');
       addSysLog('Contraseña fundador cambiada en la nube', 'ok');
-      
-      // Notificar a otros módulos
       window.parent.postMessage({ 
         type: 'QCOL_SAVE', 
         key: 'qcol_fp', 
@@ -1222,7 +1168,6 @@ async function changeFounderPass() {
   ['fp-cur', 'fp-new'].forEach(id => document.getElementById(id).value = '');
 }
 
-// ══ PROJECTS ══
 function getProjs() { return JSON.parse(localStorage.getItem('qcol_projs')||'[]'); }
 function renderProjs() {
   const tbody=document.getElementById('projs-tbody');if(!tbody)return;
@@ -1245,7 +1190,6 @@ function delProj(id){
   localStorage.setItem('qcol_projs',JSON.stringify(all));renderProjs();notify('Proyecto eliminado');
 }
 
-// ══ PLATFORM CONFIG ══
 async function savePlatform() {
   const cfg={name:document.getElementById('plt-name').value,author:document.getElementById('plt-author').value,authorTitle:document.getElementById('plt-title').value,version:document.getElementById('plt-version').value};
   localStorage.setItem('qcol_cfg',JSON.stringify(cfg));
@@ -1281,7 +1225,6 @@ async function saveSystem() {
   postToCore('QCOL_SAVE', {key:'qcol_sys', val:cfg});
 }
 
-// ══ MONITOR ══
 function getMonitorConfig(){ return JSON.parse(localStorage.getItem('qcol_monitor_cfg')||'{"maxRuns":50,"maxQubits":20,"maxTime":60,"mode":"open"}'); }
 function getMonitorData(){ return JSON.parse(localStorage.getItem('qcol_monitor_data')||'{"runs":[],"total":0}'); }
 
@@ -1367,7 +1310,6 @@ function clearMonitorData(){
   if(!confirm('¿Limpiar todo el historial de ejecuciones?')) return; localStorage.setItem('qcol_monitor_data',JSON.stringify({runs:[],total:0})); refreshMonitor(); document.getElementById('mon-historial').innerHTML='— Historial limpiado —'; document.getElementById('user-stats-table').innerHTML=''; notify('Historial limpiado'); addSysLog('Historial de monitor limpiado','warn');
 }
 
-// ══ BACKUP ══
 function exportAll() {
   const data={config:getConfig(),github:getGH(),ai:getAI(),users:getUsers(),projects:getProjs(),exported:new Date().toISOString(),version:'2.0.0'};
   const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='qcol-backup-'+Date.now()+'.json'; a.click(); notify('📤 Backup exportado'); addSysLog('Backup exportado','ok');
@@ -1379,7 +1321,6 @@ function importBackup(e) {
   reader.readAsText(file); e.target.value='';
 }
 
-// ══ MODULES ══
 function checkModules() {
   const mods = ['projects','architect','architect-pro','library','account','help','quantumapp'];
   mods.forEach(async (m) => {
@@ -1413,7 +1354,6 @@ function renderCustomModules(){
 
 function deleteModule(i){ if(!confirm('¿Eliminar este módulo del menú?'))return; const mods=getCustomModules(); mods.splice(i,1); saveCustomModules(mods); renderCustomModules(); notify('Módulo eliminado del menú'); addSysLog('Módulo eliminado','warn'); }
 
-// ══ FUNCIONES GITHUB ══
 async function saveGH(){ 
   const user=document.getElementById('gh-user').value.trim(); 
   const repo=document.getElementById('gh-repo').value.trim(); 
@@ -1454,7 +1394,6 @@ async function uploadToGitHub(){
   reader.readAsText(file);
 }
 
-// ========== INICIALIZACIÓN PRINCIPAL ==========
 loadSaved();
 addSysLog('Configuración del ecosistema iniciada (MODO NUBE)','info');
 addSysLog('QCOL v3.0.0 — Sistema modular con sincronización en nube','info');
@@ -1468,7 +1407,6 @@ const toggle = document.getElementById('mistral-toggle');
 if (toggle) toggle.addEventListener('change', saveMistralSettings);
 updateMistralUI();
 
-// ========== DIFUSIÓN PERIÓDICA ==========
 function broadcastCompilerUrlToModules() {
     const compilerUrl = localStorage.getItem('qcol_colab_url');
     if (!compilerUrl) return;
@@ -1492,7 +1430,6 @@ observer.observe(document.body, { childList: true, subtree: true });
 setInterval(() => { broadcastConfigToAllIframes(); broadcastCompilerUrlToModules(); }, 5000);
 setTimeout(() => broadcastConfigToAllIframes(), 1000);
 
-// ========== HANDLER PARA PYTHON REMOTE (pyCall) ==========
 async function executePythonRemoteFull(codeToExec, serverUrl) {
     if (!serverUrl) throw new Error("No hay URL de servidor configurada");
     const base = serverUrl.replace(/\/+$/, '');
@@ -1528,7 +1465,6 @@ window.addEventListener('message', async (event) => {
     }
 });
 
-// ========== LISTENER PARA APPS CUÁNTICAS ==========
 async function buildAppBlobForApp(pythonCode, htmlCode, serverUrl) {
     const bridge = `<script> window.__serverUrl = ${JSON.stringify(serverUrl)}; window.__pyCode = ${JSON.stringify(pythonCode)}; window.pyCall = async (funcName, ...args) => { return new Promise((resolve, reject) => { const msgId = Date.now() + '-' + Math.random(); const handler = (event) => { if (event.data.type === 'pyResult' && event.data.id === msgId) { window.removeEventListener('message', handler); if (event.data.error) reject(new Error(event.data.error)); else resolve(event.data.result); } }; window.addEventListener('message', handler); window.parent.postMessage({ type: 'pyCall', id: msgId, func: funcName, args: args, serverUrl: window.__serverUrl, pythonCode: window.__pyCode }, '*'); }); }; console.log("App bridge listo, servidor:", window.__serverUrl); <\/script>`;
     let finalHtml = htmlCode;
@@ -1564,7 +1500,6 @@ window.addEventListener('message', function(e) {
     } else { notify(`❌ La app "${appTitle}" no contiene código Python o HTML. No se puede ejecutar.`); }
 });
 
-// Funciones de chat (IA)
 async function sendChatMessage() {
     const input = document.getElementById('chat-input'); const message = input.value.trim();
     if (!message) return;
