@@ -113,12 +113,15 @@ textarea.fi{resize:vertical;min-height:70px;line-height:1.6;}
 <body>
 <div class="notif" id="notif"></div>
 
-<!-- ============================================================
-     🔄 CONFIG SYNC - VERSIÓN CORREGIDA PARA SUPABASE
-     ============================================================ -->
 <script>
+// ============================================================
+// 🔄 CONFIG SYNC - VERSIÓN CORREGIDA PARA SUPABASE
+// ============================================================
 const SUPABASE_URL = 'https://rtkcfbnoqbivylejhspv.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_Uw4ViBXo3UvvlSHzOiAcDA_9Jn6eMcf';
+
+let _configHash = '';  // 🔧 Hash para detectar cambios reales
+let _isLoadingFromCloud = false;
 
 class QcolConfigSyncCloud {
     constructor() {
@@ -157,6 +160,7 @@ class QcolConfigSyncCloud {
             this._initialized = true;
             console.log('✅ Config Sync Cloud inicializado');
             
+            // 🔧 Sincronizar cada 15 segundos pero solo si hay cambios reales
             setInterval(() => {
                 this.loadAllFromCloud().catch(e => console.warn('⚠️ Sync error:', e.message));
             }, 15000);
@@ -229,6 +233,18 @@ class QcolConfigSyncCloud {
         return await response.json();
     }
 
+    // 🔧 Generar hash de los datos para detectar cambios
+    _generateHash(data) {
+        const str = JSON.stringify(data);
+        let hash = 0;
+        for (let i = 0; i < str.length; i++) {
+            const char = str.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash = hash & hash;
+        }
+        return hash.toString(36);
+    }
+
     async loadAllFromCloud() {
         if (this._syncInProgress) return;
         this._syncInProgress = true;
@@ -249,26 +265,36 @@ class QcolConfigSyncCloud {
                         
                         configMap[item.key] = value;
                         this._cache[item.key] = value;
-                        
-                        const localKey = this._getLocalKey(item.key);
+                    }
+                });
+                
+                // 🔧 Calcular hash y solo actualizar si hay cambios
+                const newHash = this._generateHash(configMap);
+                if (newHash !== _configHash) {
+                    _configHash = newHash;
+                    console.log('📥 Configuraciones cambiaron, actualizando UI...');
+                    
+                    // Aplicar cambios solo si hay diferencia
+                    Object.keys(configMap).forEach(key => {
+                        const localKey = this._getLocalKey(key);
                         if (localKey) {
+                            const value = configMap[key];
                             const storeValue = typeof value === 'string' ? value : JSON.stringify(value);
                             localStorage.setItem(localKey, storeValue);
                             localStorage.setItem(localKey + '_timestamp', new Date().toISOString());
                         }
+                    });
+                    
+                    if (this.onConfigUpdate) {
+                        this.onConfigUpdate(configMap);
                     }
-                });
-                
-                console.log('📥 Configuraciones cargadas desde la nube:', Object.keys(configMap));
-                
-                if (this.onConfigUpdate) {
-                    this.onConfigUpdate(configMap);
+                    if (this.onSyncComplete) {
+                        this.onSyncComplete();
+                    }
+                    this._listeners.forEach(fn => fn(configMap));
+                } else {
+                    console.log('📥 No hay cambios en la configuración, UI no se recarga');
                 }
-                if (this.onSyncComplete) {
-                    this.onSyncComplete();
-                }
-                
-                this._listeners.forEach(fn => fn(configMap));
             }
             
             return this._cache;
@@ -312,6 +338,23 @@ class QcolConfigSyncCloud {
             } else {
                 data.created_at = new Date().toISOString();
                 await this._insert('quantum_ecosystem_config', data);
+            }
+            
+            // 🔧 Actualizar hash después de guardar
+            const allConfigs = await this._fetch('quantum_ecosystem_config');
+            if (allConfigs && allConfigs.length > 0) {
+                const configMap = {};
+                allConfigs.forEach(item => {
+                    if (item.key) {
+                        let val = item.value;
+                        try { val = JSON.parse(val); } catch(e) {}
+                        if (item.key === 'founder_password' && val !== null && val !== undefined) {
+                            val = String(val);
+                        }
+                        configMap[item.key] = val;
+                    }
+                });
+                _configHash = this._generateHash(configMap);
             }
             
             console.log(`📤 Config ${key} guardada en la nube`);
@@ -406,12 +449,13 @@ async function initConfigSync() {
         await configSync.init();
         
         configSync.onConfigUpdate = (configMap) => {
-            console.log('📥 Config actualizada:', Object.keys(configMap));
+            console.log('📥 Config actualizada con cambios:', Object.keys(configMap));
+            // 🔧 Solo actualizar UI si hay cambios reales (ya verificado por hash)
             if (typeof loadSaved === 'function') {
-                setTimeout(loadSaved, 200);
+                loadSaved();
             }
             if (typeof renderUsers === 'function') {
-                setTimeout(renderUsers, 300);
+                renderUsers();
             }
         };
         
@@ -645,6 +689,7 @@ initConfigSync();
 </div>
 
 <script>
+// ══ TODAS LAS FUNCIONES ORIGINALES SE MANTIENEN ══
 function postToCore(type, data = {}) {
   window.parent.postMessage({ type, ...data }, '*');
 }
@@ -745,7 +790,12 @@ function showTab(id) {
     loadIgnoredAttrsTable();
     updateMistralUI();
   }
-  loadSaved();
+  // 🔧 Cargar solo cuando se cambia de tab, no forzar recarga innecesaria
+  if (id !== 'modules') {
+    loadSaved(false);
+  } else {
+    loadSaved(false);
+  }
 }
 
 async function fetchWithRetry(url, options, retries = 3, delay = 4000, timeout = 30000) {
@@ -1000,11 +1050,15 @@ function syncIgnoredAttrsWithCloud() {
   .catch(e => notify('❌ Error sincronizando: ' + e.message));
 }
 
-async function loadSaved() {
+// 🔧 loadSaved con parámetro para evitar recarga innecesaria
+async function loadSaved(forceReload = false) {
   console.log('🔄 Cargando configuraciones desde la nube...');
   
-  if (window.configSync && window.configSync.isReady) {
-    await window.configSync.loadAllFromCloud();
+  // Solo cargar desde la nube si es forzado o si no hay hash
+  if (forceReload || !_configHash) {
+    if (window.configSync && window.configSync.isReady) {
+      await window.configSync.loadAllFromCloud();
+    }
   }
   
   const gh = getGH();
@@ -1317,7 +1371,7 @@ function exportAll() {
 
 function importBackup(e) {
   const file=e.target.files[0]; if(!file)return; const reader=new FileReader();
-  reader.onload=ev=>{ try{ const d=JSON.parse(ev.target.result); if(d.config)localStorage.setItem('qcol_cfg',JSON.stringify(d.config)); if(d.github)localStorage.setItem('qcol_gh',JSON.stringify(d.github)); if(d.users)saveUsersFn(d.users); if(d.projects)localStorage.setItem('qcol_projs',JSON.stringify(d.projects)); loadSaved(); notify('✅ Backup importado'); addSysLog('Backup importado: '+file.name,'ok'); }catch(err){notify('❌ Error: '+err.message);} };
+  reader.onload=ev=>{ try{ const d=JSON.parse(ev.target.result); if(d.config)localStorage.setItem('qcol_cfg',JSON.stringify(d.config)); if(d.github)localStorage.setItem('qcol_gh',JSON.stringify(d.github)); if(d.users)saveUsersFn(d.users); if(d.projects)localStorage.setItem('qcol_projs',JSON.stringify(d.projects)); loadSaved(true); notify('✅ Backup importado'); addSysLog('Backup importado: '+file.name,'ok'); }catch(err){notify('❌ Error: '+err.message);} };
   reader.readAsText(file); e.target.value='';
 }
 
@@ -1394,7 +1448,8 @@ async function uploadToGitHub(){
   reader.readAsText(file);
 }
 
-loadSaved();
+// 🔧 Inicialización: cargar una sola vez al inicio
+loadSaved(true);
 addSysLog('Configuración del ecosistema iniciada (MODO NUBE)','info');
 addSysLog('QCOL v3.0.0 — Sistema modular con sincronización en nube','info');
 renderCustomModules();
