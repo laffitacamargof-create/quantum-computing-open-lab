@@ -22,6 +22,9 @@
   }
 </script>
 <style>
+/* ============================================================
+   ESTILOS COMPLETOS (IDÉNTICOS AL ORIGINAL)
+   ============================================================ */
 :root {
   --bg:#010608;--s:#071220;--s2:#0c1c30;--s3:#112240;
   --b:#0d2a4a;--b2:#1a3a5c;
@@ -399,7 +402,7 @@ body::before{content:'';position:fixed;inset:0;
   <div class="screen active" id="screen-home">
     <div class="menu-hero">
       <h1>⚛ QUANTUM COMPUTING OPEN LAB</h1>
-      <p>It’s not just an open ecosystem — it’s a board where every piece fits, contributes a unique function, and combines with the others to create larger architectures and pieces. The board is an infinite puzzle where everyone can contribute, integrating frameworks, libraries, algorithms, and quantum hardware into a single universal layer accessible to all.</p>
+      <p>It's not just an open ecosystem — it's a board where every piece fits, contributes a unique function, and combines with the others to create larger architectures and pieces. The board is an infinite puzzle where everyone can contribute, integrating frameworks, libraries, algorithms, and quantum hardware into a single universal layer accessible to all.</p>
     </div>
     <div id="logout-bar" style="display:none;position:absolute;top:.6rem;right:.7rem;z-index:20;">
       <button onclick="QCOL.doLogout()" style="
@@ -632,6 +635,221 @@ body::before{content:'';position:fixed;inset:0;
 
 </div>
 
+<script>
+// ============================================================
+// 🔄 CONFIG SYNC - INTEGRADO DIRECTAMENTE EN INDEX.HTML
+//    SOLO LECTURA - NO ESCRIBE EN LA NUBE
+// ============================================================
+
+class QcolConfigSyncReader {
+    constructor(config) {
+        this.SUPABASE_URL = config.supabaseUrl;
+        this.SUPABASE_ANON_KEY = config.supabaseAnonKey;
+        this.isReady = false;
+        this.configCache = {};
+        this._syncInProgress = false;
+        this.onConfigUpdate = null;
+        this.onSyncComplete = null;
+        this.syncInterval = null;
+        this._syncingKeys = new Set();
+    }
+
+    async init() {
+        try {
+            console.log('🔌 Config Sync Reader: Probando conexión...');
+            
+            const testResponse = await fetch(`${this.SUPABASE_URL}/rest/v1/quantum_ecosystem_config?select=key&limit=1`, {
+                method: 'GET',
+                headers: {
+                    'apikey': this.SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${this.SUPABASE_ANON_KEY}`
+                }
+            });
+            
+            if (!testResponse.ok && testResponse.status !== 404) {
+                console.warn('⚠️ Config Sync Reader: Error de conexión');
+                this.isReady = false;
+                return false;
+            }
+            
+            console.log('✅ Config Sync Reader: Conexión establecida');
+            await this.syncAll();
+            
+            this.isReady = true;
+            console.log('✅ Config Sync Reader inicializado (SOLO LECTURA)');
+            
+            // Sincronizar cada 15 segundos (menos frecuente para solo lectura)
+            this.syncInterval = setInterval(() => {
+                this.syncAll();
+                if (this.onSyncComplete) this.onSyncComplete();
+            }, 15000);
+            
+            return true;
+        } catch (error) {
+            console.error('❌ Config Sync Reader error:', error.message);
+            this.isReady = false;
+            return false;
+        }
+    }
+
+    async _fetch(table, options = {}) {
+        let url = `${this.SUPABASE_URL}/rest/v1/${table}?select=*`;
+        if (options.eq) {
+            Object.entries(options.eq).forEach(([key, value]) => {
+                url += `&${key}=eq.${value}`;
+            });
+        }
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+                'apikey': this.SUPABASE_ANON_KEY,
+                'Authorization': `Bearer ${this.SUPABASE_ANON_KEY}`
+            }
+        });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return await response.json();
+    }
+
+    async syncAll() {
+        if (this._syncInProgress) return;
+        this._syncInProgress = true;
+        try {
+            // SOLO LECTURA: obtener todas las configuraciones
+            const allConfigs = await this._fetch('quantum_ecosystem_config');
+            
+            if (allConfigs && allConfigs.length > 0) {
+                const configMap = {};
+                allConfigs.forEach(item => {
+                    if (item.key) {
+                        let value = item.value;
+                        try { value = JSON.parse(value); } catch(e) { /* mantener como string */ }
+                        configMap[item.key] = value;
+                        this.configCache[item.key] = value;
+                    }
+                });
+                
+                // Aplicar configuraciones localmente (SOLO LECTURA)
+                this._applyConfigToLocal('colab_url', 'qcol_colab_url', configMap);
+                this._applyConfigToLocal('ai_config', 'qcol_ai', configMap);
+                this._applyConfigToLocal('github_config', 'qcol_gh', configMap);
+                this._applyConfigToLocal('deepseek_config', 'qcol_mistral', configMap);
+                this._applyConfigToLocal('system_config', 'qcol_sys', configMap);
+                this._applyConfigToLocal('platform_config', 'qcol_cfg', configMap);
+                this._applyConfigToLocal('monitor_config', 'qcol_monitor_cfg', configMap);
+                this._applyConfigToLocal('founder_password', 'qcol_fp', configMap);
+                this._applyConfigToLocal('users_config', 'qcol_users', configMap);
+                
+                if (this.onConfigUpdate) {
+                    this.onConfigUpdate(configMap);
+                }
+            }
+            
+            if (this.onSyncComplete) this.onSyncComplete();
+        } catch (error) {
+            console.warn('Config Sync Reader error:', error.message);
+        } finally {
+            this._syncInProgress = false;
+        }
+    }
+
+    _applyConfigToLocal(cloudKey, localKey, configMap) {
+        const value = configMap[cloudKey];
+        if (value !== undefined && value !== null) {
+            try {
+                const stringValue = typeof value === 'string' ? value : JSON.stringify(value);
+                localStorage.setItem(localKey, stringValue);
+                localStorage.setItem(localKey + '_timestamp', new Date().toISOString());
+                console.log(`📥 Config ${cloudKey} → ${localKey}: aplicada desde la nube`);
+                
+                // Disparar eventos para que la UI se actualice
+                if (this.onConfigUpdate) {
+                    this.onConfigUpdate(cloudKey, value);
+                }
+            } catch(e) {
+                console.warn(`Error aplicando ${cloudKey}:`, e);
+            }
+        }
+    }
+
+    getConfig(key) {
+        // Primero buscar en caché (más reciente)
+        if (this.configCache[key] !== undefined) {
+            return this.configCache[key];
+        }
+        
+        // Si no está en caché, buscar en localStorage
+        const localKeyMap = {
+            'colab_url': 'qcol_colab_url',
+            'ai_config': 'qcol_ai',
+            'github_config': 'qcol_gh',
+            'deepseek_config': 'qcol_mistral',
+            'system_config': 'qcol_sys',
+            'platform_config': 'qcol_cfg',
+            'monitor_config': 'qcol_monitor_cfg',
+            'founder_password': 'qcol_fp',
+            'users_config': 'qcol_users'
+        };
+        const localKey = localKeyMap[key] || key;
+        const value = localStorage.getItem(localKey);
+        if (value) {
+            try { return JSON.parse(value); } catch(e) { return value; }
+        }
+        return null;
+    }
+
+    getRawConfig(key) {
+        // Obtener directamente de la caché sin procesar
+        return this.configCache[key] || null;
+    }
+
+    destroy() {
+        if (this.syncInterval) {
+            clearInterval(this.syncInterval);
+            this.syncInterval = null;
+        }
+    }
+}
+
+// ============================================================
+// INICIALIZAR CONFIG SYNC READER - SOLO LECTURA
+// ============================================================
+(async function initConfigSyncReader() {
+    try {
+        const SUPABASE_CONFIG = {
+            supabaseUrl: 'https://rtkcfbnoqbivylejhspv.supabase.co',
+            supabaseAnonKey: 'sb_publishable_Uw4ViBXo3UvvlSHzOiAcDA_9Jn6eMcf'
+        };
+        
+        window.configSync = new QcolConfigSyncReader({
+            supabaseUrl: SUPABASE_CONFIG.supabaseUrl,
+            supabaseAnonKey: SUPABASE_CONFIG.supabaseAnonKey
+        });
+        
+        window.configSync.onConfigUpdate = (key, value) => {
+            console.log(`📥 Config actualizada desde la nube: ${key}`, value);
+            // Recargar UI si es necesario
+            if (typeof QCOL !== 'undefined' && QCOL._refreshUI) {
+                setTimeout(QCOL._refreshUI, 200);
+            }
+        };
+        
+        window.configSync.onSyncComplete = () => {
+            console.log('✅ Configuración sincronizada desde la nube (solo lectura)');
+            // Notificar a los módulos que la configuración ha cambiado
+            if (typeof QCOL !== 'undefined' && QCOL._broadcastConfig) {
+                setTimeout(QCOL._broadcastConfig, 300);
+            }
+        };
+        
+        await window.configSync.init();
+        
+        console.log('✅ Config Sync Reader global iniciado (SOLO LECTURA)');
+    } catch (error) {
+        console.warn('⚠️ Config Sync Reader no disponible:', error.message);
+    }
+})();
+</script>
+
 <script type="module">
   import { EditorView, basicSetup } from 'codemirror';
   import { markdown } from '@codemirror/lang-markdown';
@@ -659,6 +877,48 @@ body::before{content:'';position:fixed;inset:0;
   let aiHistory = [];
 
   let cmEditor = null;
+
+  // ── FUNCIÓN PARA REFRESCAR UI DESDE CONFIG SYNC ──
+  function refreshUIFromConfig() {
+    // Recargar configuración de IA
+    const savedAI = localStorage.getItem('qcol_ai');
+    if (savedAI) {
+      try {
+        aiCfg = JSON.parse(savedAI);
+        setupAI();
+      } catch(e) {}
+    }
+    
+    // Recargar URL del compilador
+    const colabUrl = localStorage.getItem('qcol_colab_url');
+    if (colabUrl) {
+      checkEngine();
+    }
+    
+    // Recargar configuración de GitHub
+    const ghConfig = localStorage.getItem('qcol_gh');
+    if (ghConfig) {
+      try {
+        const gh = JSON.parse(ghConfig);
+        // Actualizar badges o UI si es necesario
+      } catch(e) {}
+    }
+  }
+
+  function broadcastConfigToModules() {
+    Object.values(iframes).forEach(f => {
+      try {
+        f.contentWindow.postMessage({
+          type: 'QCOL_CONFIG',
+          user: curUser,
+          version: VERSION,
+          engineReady: !!localStorage.getItem('qcol_colab_url'),
+          ghUser: (JSON.parse(localStorage.getItem('qcol_gh')||'{}').user)||'laffitacamargof-create',
+          ghRepo: (JSON.parse(localStorage.getItem('qcol_gh')||'{}').repo)||'quantum-computing-open-lab',
+        }, '*');
+      } catch(e){}
+    });
+  }
 
   function dbLoad() {
       const stored = localStorage.getItem('qcol_db');
@@ -731,10 +991,7 @@ body::before{content:'';position:fixed;inset:0;
     const d = e.data; if (!d?.type) return;
 
     if (d.type === 'QCOL_OPEN_NB_EXPOSITION') {
-      // 1. Navigate to Quantum Notebook screen FIRST
       nav('architect-pro');
-
-      // 2. Send message to iframe — with robust retry same as QCOL_OPEN_ARCHITECT_EDIT
       const sendExpo = () => {
         const nbFrame = iframes['architect-pro'];
         if (nbFrame && nbFrame.contentWindow) {
@@ -745,7 +1002,6 @@ body::before{content:'';position:fixed;inset:0;
       };
 
       if (!sendExpo()) {
-        // Iframe still loading — retry every 200ms up to 5s
         let attempts = 0;
         const retry = setInterval(() => {
           attempts++;
@@ -911,7 +1167,6 @@ body::before{content:'';position:fixed;inset:0;
     } catch(e) {}
   }
 
-  // --- Helper to completely clean an iframe ---
   function clearModuleIframe(screen) {
       const iframe = iframes[screen];
       if (iframe) {
@@ -927,8 +1182,6 @@ body::before{content:'';position:fixed;inset:0;
     const currentActive = document.querySelector('.screen.active');
     const currentId = currentActive ? currentActive.id : null;
 
-    // When exiting from Quantum Open Lab or Quantum Notebook to the main menu,
-    // both modules are reset to deactivate any exposition mode.
     if (currentId && (currentId === 'screen-architect' || currentId === 'screen-architect-pro') && s === 'home') {
         clearModuleIframe('architect');
         clearModuleIframe('architect-pro');
@@ -990,7 +1243,7 @@ body::before{content:'';position:fixed;inset:0;
     </div>`;
   }
 
-  // ── MENU ACCORDING TO ROLE (modified descriptions) ──
+  // ── MENU ──
   function renderMenu() {
     const role  = curUser?.role || 'guest';
     const isAdm = role === 'admin' || role === 'founder';
@@ -1164,11 +1417,12 @@ body::before{content:'';position:fixed;inset:0;
     broadcast({ type:'QCOL_USER_UPDATE', user:curUser });
   }
 
-  // ✅ Updated doFounder to read password from Config Sync or localStorage
+  // ✅ doFounder con Config Sync Reader (solo lectura)
   function doFounder() {
     const p = document.getElementById('f-pass').value;
     let fp = '1027'; // default
 
+    // Intentar obtener desde Config Sync Reader primero
     if (window.configSync && window.configSync.isReady) {
       const syncFp = window.configSync.getConfig('founder_password');
       if (syncFp) {
@@ -1393,13 +1647,12 @@ body::before{content:'';position:fixed;inset:0;
   }
 
   async function init() {
-    // ── Force English default: overwrite any old Spanish setting ──
+    // ── Force English default ──
     const storedAI = JSON.parse(localStorage.getItem('qcol_ai') || '{}');
     if (!storedAI.lang || storedAI.lang === 'es') {
       storedAI.lang = 'en';
       localStorage.setItem('qcol_ai', JSON.stringify(storedAI));
     }
-    // ────────────────────────────────────────────────────────────────
 
     const editorContainer = document.getElementById('ai-editor');
     cmEditor = new EditorView({
@@ -1437,10 +1690,48 @@ body::before{content:'';position:fixed;inset:0;
     document.getElementById('auth-modal').addEventListener('click', e => {
       if (e.target === document.getElementById('auth-modal')) closeAuth();
     });
+
+    // ── Configurar listener para cuando Config Sync se complete ──
+    if (window.configSync) {
+      window.configSync.onConfigUpdate = (key, value) => {
+        console.log(`📥 Index recibió actualización: ${key}`, value);
+        if (key === 'colab_url') {
+          checkEngine();
+        }
+        if (key === 'ai_config' || key === 'deepseek_config') {
+          setupAI();
+        }
+        if (key === 'founder_password') {
+          // Solo notificar, no almacenar ni reescribir
+          console.log('🔑 Founder password actualizada en la nube');
+        }
+      };
+      
+      // Esperar a que Config Sync esté listo
+      const checkConfigSyncReady = setInterval(() => {
+        if (window.configSync && window.configSync.isReady) {
+          clearInterval(checkConfigSyncReady);
+          // Aplicar configuraciones iniciales
+          refreshUIFromConfig();
+          // Forzar sincronización una vez
+          setTimeout(() => {
+            if (window.configSync) window.configSync.syncAll();
+          }, 1000);
+        }
+      }, 500);
+      
+      // Timeout para no esperar indefinidamente
+      setTimeout(() => clearInterval(checkConfigSyncReady), 15000);
+    }
   }
 
-  return { nav, openAuth, closeAuth, doLogin, doRegister, doFounder, doLogout,
-    toggleAI, sendAI, notify, init, getUser:()=>curUser };
+  // ── EXPONER MÉTODOS PARA CONFIG SYNC ──
+  return { 
+    nav, openAuth, closeAuth, doLogin, doRegister, doFounder, doLogout,
+    toggleAI, sendAI, notify, init, getUser:()=>curUser,
+    _refreshUI: refreshUIFromConfig,
+    _broadcastConfig: broadcastConfigToModules
+  };
 
 })();
 
