@@ -528,6 +528,7 @@ let curView='notebook',cells=[],curCellId=null,execCounter=0;
 let _initialized=false,lastSaveTime=Date.now(),debounceTimer=null,dragSrcId=null;
 let _expositionMode=false,_originalCells=null;
 let md=null;
+let _configHash = ''; // Para detectar cambios reales en la nube
 
 function postCore(type,data={}){try{window.parent.postMessage({type,...data},'*');}catch(e){}}
 function notify(msg,ms=2800){const el=document.getElementById('notif');el.textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),ms);}
@@ -550,22 +551,16 @@ function activateExpositionMode(){
   _expositionMode=true;
   _originalCells=JSON.parse(JSON.stringify(cells));
   document.body.classList.add('expo-mode');
-  // Hide expo-badge since the entire secbar is hidden
   document.getElementById('expo-badge').style.display='inline-flex';
-  // Hide complete secbar — in expo only the ← BACK button in topbar is used
   const secbar=document.getElementById('secbar');
   if(secbar)secbar.style.display='none';
-  // Hide editing buttons in expo — keep only circuit ones
   ['btn-add-md','btn-import','btn-download','btn-save','btn-publish','stab-2'].forEach(id=>{
     const el=document.getElementById(id);if(el)el.style.display='none';
   });
-  // btn-add-circ stays visible: circuit cells are editable in expo
   const rst=document.getElementById('btn-restore-all');if(rst)rst.style.display='';
   const ni=document.getElementById('nb-name-inp');if(ni){ni.readOnly=true;ni.style.opacity='.6';}
-  // Change back button text to indicate it goes to Projects
   const btnBack=document.getElementById('btn-back');
   if(btnBack){btnBack.textContent='← PROJECTS';btnBack.title='Back to Projects';}
-  // Render with _expositionMode=true so buildCellEl generates correct HTML
   renderCells();
   notify('👁 Exposition mode — read the material and experiment with the code');
 }
@@ -573,17 +568,14 @@ function deactivateExpositionMode(){
   _expositionMode=false;_originalCells=null;
   document.body.classList.remove('expo-mode');
   document.getElementById('expo-badge').style.display='none';
-  // Restore secbar
   const secbar=document.getElementById('secbar');
   if(secbar)secbar.style.display='flex';
-  // Restore buttons
   ['btn-add-md','btn-add-circ','btn-import',
    'btn-download','btn-save','btn-publish','stab-2'].forEach(id=>{
     const el=document.getElementById(id);if(el)el.style.display='';
   });
   const rst=document.getElementById('btn-restore-all');if(rst)rst.style.display='none';
   const ni=document.getElementById('nb-name-inp');if(ni){ni.readOnly=false;ni.style.opacity='';}
-  // Restore back button text
   const btnBack=document.getElementById('btn-back');
   if(btnBack){btnBack.textContent='← BACK';btnBack.title='';}
   renderCells();
@@ -603,6 +595,39 @@ function restoreCell(id){
 }
 
 // ── ENGINE ─────────────────────────────────────────────────────
+
+// ── CARGAR URL DEL COMPILADOR DIRECTAMENTE DESDE LA NUBE ──
+async function loadCompilerUrlFromCloud() {
+    try {
+        const SUPABASE_URL = 'https://rtkcfbnoqbivylejhspv.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_Uw4ViBXo3UvvlSHzOiAcDA_9Jn6eMcf';
+        
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/quantum_ecosystem_config?key=eq.colab_url&select=value`, {
+            method: 'GET',
+            headers: {
+                'apikey': SUPABASE_ANON_KEY,
+                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+            }
+        });
+        
+        if (!response.ok) {
+            console.warn('⚠️ Could not fetch colab_url from cloud:', response.status);
+            return null;
+        }
+        
+        const data = await response.json();
+        if (data && data.length > 0 && data[0].value) {
+            let value = data[0].value;
+            try { value = JSON.parse(value); } catch(e) {}
+            return value;
+        }
+        return null;
+    } catch (error) {
+        console.warn('⚠️ Error loading colab_url from cloud:', error.message);
+        return null;
+    }
+}
+
 async function checkEngine(){
   if(!engineURL)return;
   const badge=document.getElementById('eng-badge');
@@ -636,7 +661,6 @@ import io, base64
 
 // ── PARSE SERVER RESPONSE ────────────────────────────────────
 function parseServerResponse(raw){
-  // raw.data[0] can be a JSON string or already parsed dict
   let d=null;
   try{
     const item=raw?.data?.[0];
@@ -652,34 +676,25 @@ function renderOutput(outArea, d, elapsed, cellId){
   const t0=elapsed?`${elapsed}s`:null;
   let html='';
 
-  // Determine if the cell is of type 'circuit' (already has visual diagram — don't repeat)
   const cell = cellId ? cells.find(c=>c.id===cellId) : null;
   const isCellCircuit = cell && cell.type === 'circuit';
 
-  // Extract REAL shots from cell code (not assuming 1024)
-  // Looks for: shots=N in the source code (works for circuit, qiskit and code)
   function extractShots(sourceCode){
     if(!sourceCode) return null;
-    // Patterns: shots=512, shots = 512, shots=1_024, shots=2048
     const m = sourceCode.match(/shots\s*=\s*([\d_]+)/);
     if(m) return parseInt(m[1].replace(/_/g,''));
     return null;
   }
-  // Relevant source code (hiddenCode for circuit, code for others)
   const srcCode = cell ? (cell.hiddenCode || cell.code || '') : '';
-  // Also search in output text in case server reports shots
   const shotsFromServer = d.bloch?.shots || d.shots || null;
   const shotsFromCode   = extractShots(srcCode);
-  // Priority: server > code > 1024
   const realShots = shotsFromServer || shotsFromCode || 1024;
 
-  // Header
   const isOk=d.success!==false;
   const hdrCls=isOk?'out-header-ok':'out-header-err';
   const hdrIcon=isOk?'✅':'❌';
   html+=`<div class="out-header ${hdrCls}">${hdrIcon} ${isOk?'Executed':'Error'}${t0?' · '+t0:''}</div>`;
 
-  // ── Full STDOUT ──
   if(d.output&&d.output.trim()){
     const lines=d.output.split('\n');
     let circuitBlock=[];
@@ -693,8 +708,6 @@ function renderOutput(outArea, d, elapsed, cellId){
         circuitBlock.push(line);
       } else {
         if(inCircuit){
-          // For circuit cells: do NOT show the ASCII circuit in output
-          // (there's already a visual diagram in the cell)
           if(!isCellCircuit) html+=buildCircuitOut(circuitBlock.join('\n'));
           circuitBlock=[];inCircuit=false;
         }
@@ -705,12 +718,10 @@ function renderOutput(outArea, d, elapsed, cellId){
     if(textBlock.length&&textBlock.join('').trim()) html+=buildTextOut(textBlock.join('\n'));
   }
 
-  // ── STDERR ──
   if(d.stderr&&d.stderr.trim()){
     html+=`<div class="out-stderr">${escH(d.stderr)}</div>`;
   }
 
-  // ── PROBABILITIES / COUNTS — with real shots ──
   if(d.bloch&&d.bloch.probabilities){
     html+=buildProbsOut(d.bloch.probabilities, realShots, d.bloch.simulator||'AerSimulator');
     html+=buildHistogramOut(d.bloch.probabilities, realShots);
@@ -719,12 +730,10 @@ function renderOutput(outArea, d, elapsed, cellId){
     html+=buildHistogramOut(d.counts, realShots);
   }
 
-  // ── BLOCH SPHERE ──
   if(d.bloch&&d.bloch.probabilities){
     html+=buildBlochOut(d.bloch.probabilities);
   }
 
-  // ── Matplotlib image ──
   if(d.plot_png){
     html+=`<div style="padding:.3rem .5rem;background:#04080e;border-top:1px solid rgba(0,136,255,.08);">
       <div style="font-family:var(--orb);font-size:.4rem;color:var(--mu);padding:.2rem 0 .3rem;letter-spacing:.05em;">MATPLOTLIB PLOT</div>
@@ -732,7 +741,6 @@ function renderOutput(outArea, d, elapsed, cellId){
     </div>`;
   }
 
-  // ── Extra image (plot_svg as fallback) ──
   if(d.plot_svg){
     html+=`<div style="padding:.3rem .5rem;background:#04080e;border-top:1px solid rgba(0,136,255,.08);">
       <div style="font-family:var(--orb);font-size:.4rem;color:var(--mu);padding:.2rem 0 .3rem;">SVG DIAGRAM</div>
@@ -740,10 +748,8 @@ function renderOutput(outArea, d, elapsed, cellId){
     </div>`;
   }
 
-  // ── Detailed ERROR ──
   if(!isOk&&d.output){
-    // Extract error line
-    const lineMatch = d.output.match(/[Ll]ine\s+(\d+)|línea\s+(\d+)/i);
+    const lineMatch = d.output.match(/[Ll]ine\s+(\d+)|l\u00EDnea\s+(\d+)/i);
     const errLine = lineMatch ? parseInt(lineMatch[1] || lineMatch[2]) : null;
     if (errLine && cellId) {
       const cell = cells.find(c => c.id === cellId);
@@ -757,7 +763,6 @@ function renderOutput(outArea, d, elapsed, cellId){
 
 function buildTextOut(text){
   if(!text.trim())return'';
-  // Detect if dict of results like {'00': 512, '11': 512}
   if(/^\{['"0-9a-zA-Z_,:\s]+\}$/.test(text.trim())){
     return`<div class="out-dict">${escH(text)}</div>`;
   }
@@ -765,15 +770,11 @@ function buildTextOut(text){
 }
 
 
-// ── RENDER CIRCUIT FROM ARCHITECT INTERNAL STRUCTURE ──────────
-// cell.circuitData = { qubits: N, gates: [{id, q, q2?, q3?, def:{bg,sym,code}}, ...] }
-// Replicates EXACTLY the Quantum Architect render system
 function buildCircuitFromData(data){
   if(!data || !data.gates) return '';
   const {qubits: nQ, gates} = data;
   const ROW_HEIGHT=56, step=52;
 
-  // Calculate depth (identical to architect)
   const depth = new Array(nQ).fill(0);
   const placed = gates.map(g => {
     let col;
@@ -789,7 +790,6 @@ function buildCircuitFromData(data){
 
   let html=`<div style="position:relative;min-width:${W}px;height:${H}px;">`;
 
-  // Wires + labels
   for(let q=0;q<nQ;q++){
     html+=`<div style="position:absolute;top:${q*ROW_HEIGHT}px;left:0;right:0;height:${ROW_HEIGHT}px;">
       <div style="position:absolute;left:0;top:50%;transform:translateY(-50%);
@@ -800,7 +800,6 @@ function buildCircuitFromData(data){
     </div>`;
   }
 
-  // Gates — SVG identical to architect
   placed.forEach(g=>{
     const left=g.col*step+56;
     const clr=g.def?.bg||'#1a4a8a';
@@ -872,7 +871,6 @@ function buildCircuitFromData(data){
       html+=`<div style="position:absolute;left:${left}px;top:${topY}px;">${svg}</div>`;
 
     } else {
-      // 1 qubit
       const yPos=g.q*ROW_HEIGHT;
       const display=sym.length>4?sym.slice(0,3):sym;
       const fs=display.length<=2?13:display.length===3?11:9;
@@ -907,15 +905,12 @@ function buildCircuitFromData(data){
   return html;
 }
 
-// ── OPEN ARCHITECT TO EDIT CIRCUIT CELL ─────────────────
-let _editingCellId = null; // ID of the cell being edited
+let _editingCellId = null;
 
 function openCircuitEditor(cellId){
   const cell = cells.find(c => c.id === cellId);
   if(!cell) return;
   _editingCellId = cellId;
-  // Send to core to navigate to Quantum Architect
-  // passing the current cell code (if any)
   postCore('QCOL_OPEN_ARCHITECT_EDIT', {
     cellId,
     code:        cell.hiddenCode || '',
@@ -930,9 +925,8 @@ function buildCircuitOut(text){
   const allLines = text.split('\n');
   const wirePat = /^\s*(q_?\d+|q\[\d+\]|qr\[\d+\])\s*:/;
 
-  // ── STEP 1: Separate wire-lines and inter-wire lines ─────────────
-  const wireInfo  = [];   // [{qi,idx,label,offset,line}]
-  const interInfo = [];   // [{afterQi,idx,line}]
+  const wireInfo  = [];
+  const interInfo = [];
   let curQi = -1;
   allLines.forEach((line, idx) => {
     const m = line.match(wirePat);
@@ -946,7 +940,6 @@ function buildCircuitOut(text){
   const nQ = curQi + 1;
 
   if(nQ === 0){
-    // Fallback colored ASCII
     let col = escH(text);
     col = col.replace(/(q_?\d+|q\[\d+\]|qr\[\d+\])\s*:/g,
       '<s style="color:#bd93f9;font-weight:700;font-style:normal">$1</s>:');
@@ -962,8 +955,6 @@ function buildCircuitOut(text){
 
   const wireLabels = wireInfo.map(wi => wi.label);
 
-  // ── STEP 2: Columns with │ (confirmed vertical connection) ─────
-  // Qiskit draws │ between connected qubits, in the same absolute column
   const vertCols = new Set();
   interInfo.forEach(il => {
     [...il.line].forEach((c, col) => {
@@ -971,14 +962,11 @@ function buildCircuitOut(text){
     });
   });
 
-  // ── STEP 3: Tokenize with ABSOLUTE position ───────────────────
-  // (column in the complete line, including the "q_0: " label)
   function tokenizeWire(wi){
     const {line, offset} = wi;
     const content = line.slice(offset);
     const toks = [];
 
-    // Boxes ┤NAME├ — absolute center position
     const BOX = /┤\s*((?:[^┤├\n])*?)\s*(?:├|┤)/g;
     let m;
     while((m = BOX.exec(content)) !== null){
@@ -988,19 +976,15 @@ function buildCircuitOut(text){
         absStart:offset+m.index, absEnd:offset+m.index+m[0].length});
     }
 
-    // 1-character symbols
     const SYM = /(■|█|●)|(⊕)|(╳|×)/g;
     while((m = SYM.exec(content)) !== null){
       const absCol = offset + m.index;
-      // Don't add if inside a box
       if(toks.some(t => t.type==='box' && absCol>=t.absStart && absCol<t.absEnd)) continue;
       if(m[1])      toks.push({type:'ctrl', name:'■', col:absCol});
       else if(m[2]) toks.push({type:'tgt',  name:'⊕', col:absCol});
       else if(m[3]) toks.push({type:'swap', name:'╳', col:absCol});
     }
 
-    // BAREX (bare X) — CX target in modern Qiskit
-    // ONLY if that column has │ in any inter-wire line (= is connected)
     const BAREX = /(?:─)(X)(?:─)/g;
     while((m = BAREX.exec(content)) !== null){
       const absCol = offset + m.index + 1;
@@ -1009,7 +993,6 @@ function buildCircuitOut(text){
       }
     }
 
-    // M isolated measurer (─M─)
     const MEAS = /(?:─)(M)(?:─)/g;
     while((m = MEAS.exec(content)) !== null){
       const absCol = offset + m.index + 1;
@@ -1021,21 +1004,16 @@ function buildCircuitOut(text){
     return toks.sort((a,b) => a.col - b.col);
   }
 
-  // Collect all tokens
   const allToks = [];
   wireInfo.forEach(wi => {
     tokenizeWire(wi).forEach(tok => allToks.push({qi:wi.qi, ...tok}));
   });
   allToks.sort((a,b) => a.col - b.col || a.qi - b.qi);
 
-  // ── STEP 4: GROUP by exact absolute column ───────────────
-  // 1-char tokens (■⊕╳X): group by EXACT position
-  // Boxes ┤NAME├: group with ±3 tolerance (variable name width)
   const colMap = new Map();
   allToks.forEach(tok => {
     let key = tok.col;
     if(tok.type === 'box'){
-      // Find existing key within ±3
       let best = null, bestDist = 4;
       for(const k of colMap.keys()){
         const d = Math.abs(k - key);
@@ -1051,7 +1029,6 @@ function buildCircuitOut(text){
   const columns = [...colMap.keys()].sort((a,b)=>a-b)
     .map(k => colMap.get(k).slice().sort((a,b)=>a.qi-b.qi));
 
-  // ── STEP 5: IDENTIFY GATES ─────────────────────────────────
   const COLORS = {
     H:'#1a5fb4', X:'#c01c28', Y:'#7a3e99', Z:'#1c71d8',
     S:'#c64600', T:'#26a269', SX:'#c01c28', '√X':'#c01c28',
@@ -1076,7 +1053,7 @@ function buildCircuitOut(text){
     const ctrl  = col.filter(s=>s.type==='ctrl');
     const tgt   = col.filter(s=>s.type==='tgt');
     const swap  = col.filter(s=>s.type==='swap');
-    const xtgt  = col.filter(s=>s.type==='xtgt');  // bare X target
+    const xtgt  = col.filter(s=>s.type==='xtgt');
     const box   = col.filter(s=>s.type==='box');
     const meas  = col.filter(s=>s.type==='meas');
 
@@ -1089,10 +1066,8 @@ function buildCircuitOut(text){
     const zbqs= box.filter(s=>s.name.toUpperCase()==='Z').map(s=>s.qi);
     const mbqs= box.filter(s=>['M','MEAS'].includes(s.name.toUpperCase())).map(s=>s.qi);
 
-    // ── 1 token → 1-qubit gate ──────────────────────────
     if(col.length === 1){ push1q(col[0], ci); return; }
 
-    // ── Multiple measurers → individual ───────────────────
     if((meas.length > 0 || mbqs.length > 0) && cqs.length === 0){
       [...meas, ...box.filter(s=>['M','MEAS'].includes(s.name.toUpperCase()))]
         .forEach(s => gates.push({id:'M',sym:'M',bg:'#6d4c41',glow:'#6d4c41',
@@ -1102,26 +1077,21 @@ function buildCircuitOut(text){
       return;
     }
 
-    // ══ COMPLETE RULES TABLE (all Qiskit variants) ═
-    // CX: ■+⊕  (classic)
     if(cqs.length===1 && tqs.length===1 && !sqs.length){
       const [cq,tq]=[cqs[0],tqs[0]];
       gates.push({id:'CX',sym:'CX',bg:'#007070',glow:'#007070',
         q:Math.min(cq,tq),q2:Math.max(cq,tq),ctrlQ:cq,tgtQ:tq,col:ci,type:'2q'}); return;
     }
-    // CX: ■+bare X  (modern Qiskit with │)
     if(cqs.length===1 && xqs.length===1 && !sqs.length && !xbqs.length){
       const [cq,tq]=[cqs[0],xqs[0]];
       gates.push({id:'CX',sym:'CX',bg:'#007070',glow:'#007070',
         q:Math.min(cq,tq),q2:Math.max(cq,tq),ctrlQ:cq,tgtQ:tq,col:ci,type:'2q'}); return;
     }
-    // CX: ■+┤X├  (Qiskit with box)
     if(cqs.length===1 && xbqs.length===1 && !sqs.length){
       const [cq,tq]=[cqs[0],xbqs[0]];
       gates.push({id:'CX',sym:'CX',bg:'#007070',glow:'#007070',
         q:Math.min(cq,tq),q2:Math.max(cq,tq),ctrlQ:cq,tgtQ:tq,col:ci,type:'2q'}); return;
     }
-    // CCX: ■+■+⊕  or  ■+■+X  or  ■+■+┤X├
     const allTgtQs = [...new Set([...tqs,...xqs,...xbqs])];
     if(cqs.length===2 && allTgtQs.length>=1){
       const qs=[...cqs,...allTgtQs].sort((a,b)=>a-b);
@@ -1130,25 +1100,21 @@ function buildCircuitOut(text){
         q:qs[0],q2:qs[1],q3:qs[2],
         ctrlQ1:cqs[0],ctrlQ2:cqs[1],tgtQ:tq,col:ci,type:'3q'}); return;
     }
-    // CZ: ■+■  (two exact controls)
     if(cqs.length===2 && !tqs.length && !sqs.length && !bqs.length && !xqs.length){
       const [cq,tq]=cqs.slice().sort((a,b)=>a-b);
       gates.push({id:'CZ',sym:'CZ',bg:'#00695c',glow:'#00695c',
         q:cq,q2:tq,ctrlQ:cq,tgtQ:tq,col:ci,type:'2q'}); return;
     }
-    // CZ: ■+┤Z├
     if(cqs.length===1 && zbqs.length>=1){
       const [cq,tq]=[cqs[0],zbqs[0]];
       gates.push({id:'CZ',sym:'CZ',bg:'#00695c',glow:'#00695c',
         q:Math.min(cq,tq),q2:Math.max(cq,tq),ctrlQ:cq,tgtQ:tq,col:ci,type:'2q'}); return;
     }
-    // SWAP: ╳+╳
     if(sqs.length>=2 && !cqs.length){
       const [q1,q2]=sqs.slice().sort((a,b)=>a-b);
       gates.push({id:'SWAP',sym:'SW',bg:'#1565c0',glow:'#1565c0',
         q:q1,q2,ctrlQ:q1,tgtQ:q2,col:ci,type:'2q'}); return;
     }
-    // CSWAP: ■+╳+╳
     if(cqs.length===1 && sqs.length>=2){
       const qs=[...cqs,...sqs].sort((a,b)=>a-b);
       const [sw1,sw2]=sqs.slice().sort((a,b)=>a-b);
@@ -1156,13 +1122,11 @@ function buildCircuitOut(text){
         q:qs[0],q2:qs[1],q3:qs[2],
         ctrlQ1:cqs[0],swapQ1:sw1,swapQ2:sw2,col:ci,type:'3q'}); return;
     }
-    // Modern SWAP: ┤X├+┤X├ without control
     if(xbqs.length>=2 && !cqs.length){
       const [q1,q2]=xbqs.slice().sort((a,b)=>a-b);
       gates.push({id:'SWAP',sym:'SW',bg:'#1565c0',glow:'#1565c0',
         q:q1,q2,ctrlQ:q1,tgtQ:q2,col:ci,type:'2q'}); return;
     }
-    // Modern CSW: ■+┤X├+┤X├
     if(cqs.length===1 && xbqs.length>=2){
       const qs=[...cqs,...xbqs].sort((a,b)=>a-b);
       const [sw1,sw2]=xbqs.slice().sort((a,b)=>a-b);
@@ -1170,7 +1134,6 @@ function buildCircuitOut(text){
         q:qs[0],q2:qs[1],q3:qs[2],
         ctrlQ1:cqs[0],swapQ1:sw1,swapQ2:sw2,col:ci,type:'3q'}); return;
     }
-    // Generic controlled: ■ + box with name
     if(cqs.length===1 && bqs.length>=1){
       const nonX=box.filter(s=>s.name.toUpperCase()!=='X');
       if(nonX.length>=1){
@@ -1183,11 +1146,9 @@ function buildCircuitOut(text){
           col:ci,type:'2q',isCZ:isZ}); return;
       }
     }
-    // Rest → individual gates
     col.forEach(s => push1q(s, ci));
   });
 
-  // ── STEP 6: DEPTH — identical to quantum architect ──────────
   const depth = new Array(nQ).fill(0);
   const placed = gates.map(g => {
     let col;
@@ -1203,7 +1164,6 @@ function buildCircuitOut(text){
     return {...g, col};
   });
 
-  // ── STEP 7: RENDER — HTML+SVG identical to architect ─────────
   const ROW_HEIGHT=56, step=52;
   const totalCols=Math.max(...depth, 1);
   const wireWidth=totalCols*step+90;
@@ -1212,7 +1172,6 @@ function buildCircuitOut(text){
 
   let html=`<div style="position:relative;min-width:${wireWidth}px;height:${totalH}px;">`;
 
-  // Wires + labels
   for(let q=0; q<nQ; q++){
     html+=`<div style="position:absolute;top:${q*ROW_HEIGHT}px;left:0;right:0;height:${ROW_HEIGHT}px;">
       <div style="position:absolute;left:0;top:50%;transform:translateY(-50%);
@@ -1228,7 +1187,6 @@ function buildCircuitOut(text){
   placed.forEach(g => {
     const left=g.col*step+56;
 
-    // ── 3 QUBITS ──────────────────────────────────────────────
     if(g.q3!==undefined){
       const qs=[g.q,g.q2,g.q3].sort((a,b)=>a-b);
       const topQ=qs[0], topY=topQ*ROW_HEIGHT;
@@ -1255,7 +1213,6 @@ function buildCircuitOut(text){
             stroke="${clr}" stroke-width="2"/>
         </svg>`;
       } else {
-        // CSWAP Fredkin: ■ ctrl + ╳ sw1 + ╳ sw2
         const ctrl=g.ctrlQ1!==undefined?g.ctrlQ1:qs[0];
         const sw1 =g.swapQ1!==undefined?g.swapQ1:(qs.find(q=>q!==ctrl)||qs[1]);
         const sw2 =g.swapQ2!==undefined?g.swapQ2:(qs.filter(q=>q!==ctrl).pop()||qs[2]);
@@ -1276,7 +1233,6 @@ function buildCircuitOut(text){
       }
       html+=`<div style="position:absolute;left:${left}px;top:${topY}px;">${svg}</div>`;
 
-    // ── 2 QUBITS ──────────────────────────────────────────────
     } else if(g.q2!==undefined){
       const topQ=Math.min(g.q,g.q2), botQ=Math.max(g.q,g.q2);
       const topY=topQ*ROW_HEIGHT;
@@ -1341,7 +1297,6 @@ function buildCircuitOut(text){
       }
       html+=`<div style="position:absolute;left:${left}px;top:${topY}px;">${svg}</div>`;
 
-    // ── 1 QUBIT ────────────────────────────────────────────────
     } else {
       const yPos=g.q*ROW_HEIGHT, clr=g.bg||'#1a4a8a';
       const sym=g.sym||g.id||'?';
@@ -1395,13 +1350,9 @@ function buildProbsOut(probs,shots,sim){
   if(!entries.length)return'';
   const total=entries.reduce((s,[,v])=>s+v,0);
 
-  // Detect if values are direct counts or probabilities
-  // If total sum ≈ shots → direct counts
-  // If total sum ≈ 1.0  → probabilities
   const sumV = entries.reduce((s,[,v])=>s+v,0);
-  const areCounts = sumV > 1.5; // direct counts if sum > 1.5
+  const areCounts = sumV > 1.5;
 
-  // Calculate real shot total from data (more accurate than parameter)
   const totalCounts = areCounts ? sumV : shots;
   const displayShots = areCounts ? Math.round(sumV) : shots;
 
@@ -1424,15 +1375,12 @@ function buildProbsOut(probs,shots,sim){
 }
 
 function buildHistogramOut(probs, shots){
-  // Sort states from lowest to highest (natural binary order)
   const entries=Object.entries(probs).sort((a,b)=>a[0].localeCompare(b[0]));
   if(!entries.length) return '';
 
-  // Detect if they are direct counts or probabilities
   const sumV = entries.reduce((s,[,v])=>s+v,0);
   const areCounts = sumV > 1.5;
 
-  // Calculate real counts and real shot total
   const totalReal  = areCounts ? Math.round(sumV) : shots;
   const countsData = entries.map(([st,v])=>({
     state: st,
@@ -1446,7 +1394,6 @@ function buildHistogramOut(probs, shots){
     const canvas=document.getElementById(canvasId);
     if(!canvas)return;
     const ctx=canvas.getContext('2d');
-    // Adaptive width: more bars → wider canvas
     const nBars = countsData.length;
     const barW  = Math.max(18, Math.min(44, Math.floor(520/nBars)-10));
     const barGap = Math.max(4, Math.min(10, Math.floor(80/nBars)));
@@ -1458,16 +1405,12 @@ function buildHistogramOut(probs, shots){
     canvas.width=W; canvas.height=H;
 
     ctx.clearRect(0,0,W,H);
-    // Background
     ctx.fillStyle='#050810'; ctx.fillRect(0,0,W,H);
 
-    // Calculate Y-axis ticks in real counts (not probabilities)
-    // Choose a "nice" number of ticks
     const nTicks=5;
     const tickStep = Math.ceil(maxCount/nTicks/10)*10 || 1;
     const yMax = tickStep*nTicks;
 
-    // Horizontal grid + Y-axis labels (counts)
     ctx.font='9px JetBrains Mono,monospace';
     ctx.textAlign='right';
     for(let i=0;i<=nTicks;i++){
@@ -1480,12 +1423,10 @@ function buildHistogramOut(probs, shots){
       ctx.fillText(val>999?(val/1000).toFixed(1)+'k':val, padL-4, y+3);
     }
 
-    // Bars with blue-cyan gradient (same aesthetic as the ecosystem)
     countsData.forEach((d,i)=>{
       const x    = padL+barGap+i*(barW+barGap);
       const bH   = Math.max(2,(d.count/yMax)*chartH);
       const y    = padT+chartH-bH;
-      // Gradient
       const grad = ctx.createLinearGradient(x,y+bH,x,y);
       grad.addColorStop(0,'rgba(0,100,220,.85)');
       grad.addColorStop(0.5,'rgba(0,160,255,.92)');
@@ -1493,19 +1434,15 @@ function buildHistogramOut(probs, shots){
       ctx.fillStyle=grad;
       if(ctx.roundRect) ctx.roundRect(x,y,barW,bH,3); else ctx.rect(x,y,barW,bH);
       ctx.fill();
-      // Top shine
       ctx.fillStyle='rgba(0,255,255,0.45)';
       ctx.fillRect(x,y,barW,2);
-      // Count above bar
       ctx.fillStyle='#e2ecff';
       ctx.font='bold 8px JetBrains Mono,monospace';
       ctx.textAlign='center';
       const label = d.count>0?String(d.count):'0';
       ctx.fillText(label, x+barW/2, y-4);
-      // State below
       ctx.fillStyle='rgba(140,190,255,0.8)';
       ctx.font='9px JetBrains Mono,monospace';
-      // Rotate label if there are many bars
       if(nBars>8){
         ctx.save();
         ctx.translate(x+barW/2, padT+chartH+8);
@@ -1516,21 +1453,18 @@ function buildHistogramOut(probs, shots){
       } else {
         ctx.textAlign='center';
         ctx.fillText('|'+d.state+'⟩', x+barW/2, padT+chartH+14);
-        // Percentage
         ctx.fillStyle='rgba(100,150,200,0.6)';
         ctx.font='8px JetBrains Mono,monospace';
         ctx.fillText((d.prob*100).toFixed(1)+'%', x+barW/2, padT+chartH+25);
       }
     });
 
-    // Axes
     ctx.strokeStyle='rgba(0,136,255,0.35)';
     ctx.lineWidth=1.2;
     ctx.beginPath();
     ctx.moveTo(padL,padT); ctx.lineTo(padL,padT+chartH); ctx.lineTo(W-padR,padT+chartH);
     ctx.stroke();
 
-    // Y-axis label
     ctx.save();
     ctx.translate(12, padT+chartH/2);
     ctx.rotate(-Math.PI/2);
@@ -1551,7 +1485,6 @@ function buildHistogramOut(probs, shots){
 }
 
 function buildBlochOut(probs){
-  // Calculate Bloch states per qubit from counts/probs
   const qubits=Object.keys(probs)[0]?.length||0;
   if(qubits===0)return'';
   const total=Object.values(probs).reduce((s,v)=>s+v,0);
@@ -1590,20 +1523,16 @@ function drawBlochSphere(canvasId,theta,qi){
   const r=Math.min(w,h)*0.40;
   ctx.clearRect(0,0,w,h);
 
-  // Background with radial gradient
   const bg=ctx.createRadialGradient(cx-r*.15,cy-r*.15,r*.05,cx,cy,r*1.15);
   bg.addColorStop(0,'#0d1e36');bg.addColorStop(.7,'#061020');bg.addColorStop(1,'#030810');
   ctx.beginPath();ctx.arc(cx,cy,r*1.05,0,Math.PI*2);ctx.fillStyle=bg;ctx.fill();
 
-  // Outer circle (sphere)
   ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);
   ctx.strokeStyle='rgba(0,170,255,.5)';ctx.lineWidth=1.8;ctx.stroke();
 
-  // Equator meridian (horizontal ellipse)
   ctx.beginPath();ctx.ellipse(cx,cy,r,r*.3,0,0,Math.PI*2);
   ctx.strokeStyle='rgba(0,170,255,.3)';ctx.lineWidth=1.2;ctx.stroke();
 
-  // Parallels (latitudes)
   [-0.7,-0.35,0.35,0.7].forEach(f=>{
     const ry=r*Math.sqrt(1-f*f);
     const py=cy+r*f*0.95;
@@ -1611,11 +1540,9 @@ function drawBlochSphere(canvasId,theta,qi){
     ctx.strokeStyle=`rgba(0,136,255,${f===0?0.25:0.1})`;ctx.lineWidth=.7;ctx.stroke();
   });
 
-  // Vertical meridian (vertical ellipse)
   ctx.beginPath();ctx.ellipse(cx,cy,r*.25,r,0,0,Math.PI*2);
   ctx.strokeStyle='rgba(0,170,255,.15)';ctx.lineWidth=.7;ctx.stroke();
 
-  // Axes with arrows
   function drawAxis(x1,y1,x2,y2,col,dashed=false){
     ctx.beginPath();
     if(dashed)ctx.setLineDash([3,4]);
@@ -1628,24 +1555,20 @@ function drawBlochSphere(canvasId,theta,qi){
   drawAxis(cx,cy,cx+r*1.05,cy,'rgba(0,200,255,.2)');
   drawAxis(cx,cy,cx-r*0.9,cy,'rgba(0,200,255,.12)',true);
 
-  // State vector
   const phi=0;
   const vx=r*Math.sin(theta)*Math.cos(phi);
   const vy=-r*Math.cos(theta);
 
-  // Shadow projection (on equator)
   ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+vx,cy);
   ctx.strokeStyle='rgba(0,255,221,.15)';ctx.lineWidth=1;ctx.setLineDash([2,3]);ctx.stroke();ctx.setLineDash([]);
   ctx.beginPath();ctx.moveTo(cx+vx,cy);ctx.lineTo(cx+vx,cy+vy);
   ctx.strokeStyle='rgba(0,255,221,.12)';ctx.lineWidth=1;ctx.setLineDash([2,4]);ctx.stroke();ctx.setLineDash([]);
 
-  // Main vector with luminous gradient
   const vg=ctx.createLinearGradient(cx,cy,cx+vx,cy+vy);
   vg.addColorStop(0,'rgba(0,255,221,.4)');vg.addColorStop(.6,'rgba(0,255,221,.9)');vg.addColorStop(1,'#ffffff');
   ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+vx,cy+vy);
   ctx.strokeStyle=vg;ctx.lineWidth=2.8;ctx.stroke();
 
-  // Arrow tip
   const ang=Math.atan2(vy,vx);const al=9;
   ctx.beginPath();
   ctx.moveTo(cx+vx,cy+vy);
@@ -1653,12 +1576,10 @@ function drawBlochSphere(canvasId,theta,qi){
   ctx.lineTo(cx+vx-al*Math.cos(ang+0.42),cy+vy-al*Math.sin(ang+0.42));
   ctx.closePath();ctx.fillStyle='#00ffdd';ctx.fill();
 
-  // Bright point at tip
   const pdg=ctx.createRadialGradient(cx+vx,cy+vy,0,cx+vx,cy+vy,6);
   pdg.addColorStop(0,'#ffffff');pdg.addColorStop(.4,'#00ffdd');pdg.addColorStop(1,'rgba(0,255,221,0)');
   ctx.beginPath();ctx.arc(cx+vx,cy+vy,6,0,Math.PI*2);ctx.fillStyle=pdg;ctx.fill();
 
-  // Labels
   const fs=w>130?12:10;
   ctx.font=`bold ${fs}px JetBrains Mono,monospace`;
   ctx.fillStyle='rgba(180,220,255,.95)';ctx.textAlign='center';
@@ -1671,7 +1592,7 @@ function drawBlochSphere(canvasId,theta,qi){
 
 function buildErrorOut(errText){
   if(!errText)return'';
-  const lineMatch=errText.match(/[Ll]ine\s+(\d+)|línea\s+(\d+)/i);
+  const lineMatch=errText.match(/[Ll]ine\s+(\d+)|l\u00EDnea\s+(\d+)/i);
   const lineNum=lineMatch?(lineMatch[1]||lineMatch[2]):'';
   const typeMatch=errText.match(/(SyntaxError|NameError|TypeError|ValueError|ImportError|AttributeError|IndentationError|KeyError|IndexError|ZeroDivisionError|ModuleNotFoundError)[:\s]/);
   const errType=typeMatch?typeMatch[1]:'Error';
@@ -1703,7 +1624,6 @@ async function runCell(id){
   syncCellCode(id);
   const isCircuit=cell.type==='circuit';
   const isQk=cell.type==='qiskit';
-  // For circuit cells: execute hiddenCode (code generated by architect)
   const rawCode = isCircuit ? (cell.hiddenCode||'') : (isQk?(QISKIT_PREAMBLE+'\n'+cell.code.trim()):cell.code.trim());
   const code = isCircuit ? (QISKIT_PREAMBLE+'\n'+rawCode) : rawCode;
   if(!rawCode.trim()){notify('⚛ Cell without code — edit the circuit first');return;}
@@ -1740,7 +1660,6 @@ async function runCell(id){
   running=false;
   if(rbtn)rbtn.classList.remove('spinning');
   renderCellNum(id);
-  // Force re-render to show errorLine if it exists
   if(cell.errorLine) renderCells();
 }
 function renderCellNum(id){const cell=cells.find(c=>c.id===id);if(!cell)return;const el=document.querySelector(`[data-id="${id}"] .cell-num`);if(el)el.textContent=cell.exec_count!==null?`[${cell.exec_count}]`:'[ ]';}
@@ -1758,7 +1677,6 @@ function saveCurrentNb(showNotify=true){
     const mta=document.getElementById('mta-'+c.id);
     if(ta)c.code=ta.value;
     if(mta)c.code=mta.value;
-    // hiddenCode and circuitData are already in cell object — no DOM sync needed
   });
   const name=document.getElementById('nb-name-inp').value||'Untitled';
   const key='qcol_nbs_'+(curUser.username||'dev');
@@ -1781,7 +1699,6 @@ function downloadNb(){
     const mta=document.getElementById('mta-'+c.id);
     if(ta)c.code=ta.value;
     if(mta)c.code=mta.value;
-    // hiddenCode and circuitData are already in cell object — no DOM sync needed
   });
   const nb={nbformat:4,nbformat_minor:5,
     metadata:{name,kernelspec:{display_name:'Python 3',language:'python',name:'python3'}},
@@ -1819,7 +1736,7 @@ function handleImport(e){
         const src=Array.isArray(c.source)?c.source.join(''):c.source||'';
         const tags=c.metadata?.tags||[];
         const type=c.cell_type==='markdown'?'markdown':
-          (tags.includes('circuit-cell')?'circuit':'markdown');  // only markdown and circuit
+          (tags.includes('circuit-cell')?'circuit':'markdown');
         const hiddenCode = c.metadata?.hidden_code || '';
         const circuitData = c.metadata?.circuit_data || null;
         cells.push({id:genId(),type,code:src,output:'',exec_count:null,
@@ -1869,7 +1786,6 @@ function setView(v){
 
 // ── CELLS ────────────────────────────────────────────────────
 function addCellAt(afterIdx,type='markdown'){
-  // Only markdown and circuit cells are allowed
   if(type==='code'||type==='qiskit') type='markdown';
   if(_expositionMode)return;
   const defaultQk=`# Qiskit Cell — automatic imports: qc, AerSimulator, np, pi, plt
@@ -1899,7 +1815,6 @@ function syncCellCode(id){const cell=cells.find(c=>c.id===id);if(!cell)return;co
 function focusCell(id){curCellId=id;document.querySelectorAll('.nb-cell').forEach(el=>{el.classList.toggle('active',el.dataset.id===id);});const ta=document.getElementById('ta-'+id)||document.getElementById('mta-'+id);if(ta)ta.focus();}
 function changeCellType(id){if(_expositionMode)return;const cell=cells.find(c=>c.id===id);if(!cell)return;cell.type=cell.type==='code'||cell.type==='qiskit'?'markdown':'code';cell.mdEdit=true;renderCells();focusCell(id);}
 
-// ── CLEAR CELL BUTTON ───────────────────────────────────────
 function clearCellContent(id) {
   const cell = cells.find(c => c.id === id);
   if (!cell) return;
@@ -1917,7 +1832,6 @@ function clearCellContent(id) {
   notify('🧹 Cell cleared');
 }
 
-// ── MARKDOWN ──────────────────────────────────────────────────
 function initMarkdown(){
   if(!window.markdownit)return;
   md=window.markdownit({html:true,linkify:true,highlight:(str,lang)=>{
@@ -1940,7 +1854,6 @@ function renderMdFull(text){
 }
 function editMd(id){if(_expositionMode)return;const cell=cells.find(c=>c.id===id);if(cell){cell.mdEdit=true;renderCells();focusCell(id);}}
 
-// ── RENDER CELLS ─────────────────────────────────────────────
 function renderCells(){
   const scroll=document.getElementById('nb-scroll');
   const bottom=scroll.querySelector('.nb-bottom');
@@ -1959,12 +1872,7 @@ function buildAddRow(idx){
   return row;
 }
 
-// highlight and buildLinenos defined below
-
-// ── HIGHLIGHT — safe tokenizer, never injects class= into textarea ──
 function highlight(code, isQk=false){
-  // Works on RAW text, never on already processed HTML
-  // Each token is processed only once, with no risk of double-wrapping
   const KW=new Set(['import','from','as','def','class','return','if','else','elif',
     'for','while','in','not','and','or','True','False','None','with','try','except',
     'finally','lambda','pass','break','continue','yield','raise','del','global',
@@ -1978,13 +1886,11 @@ function highlight(code, isQk=false){
     'transpile','plot_histogram','plot_bloch_multivector','plot_state_city',
     'UnitaryGate','SparsePauliOp','Parameter','ParameterVector']);
 
-  // Tokenization regex — mutually exclusive groups
   const RE=/(#[^\n]*)|("""[\s\S]*?"""|'''[\s\S]*?''')|("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')|\b(\d+(?:\.\d+)?(?:[eEjJ][+-]?\d+)?)\b|(@[A-Za-z_][A-Za-z0-9_.]*)|([A-Za-z_]\w*)/g;
 
   let out='', last=0, m;
   RE.lastIndex=0;
   while((m=RE.exec(code))!==null){
-    // plain text between tokens → escape and add
     if(m.index>last) out+=esc(code.slice(last,m.index));
     const [tok,cmt,strT,strS,num,dec,word]=m;
     if     (cmt !==undefined) out+=`<s class="cmt">${esc(cmt)}</s>`;
@@ -2004,7 +1910,6 @@ function highlight(code, isQk=false){
   }
   if(last<code.length) out+=esc(code.slice(last));
   return out;
-  // Inline helper — doesn't use escH to avoid circular dependency
   function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 }
 
@@ -2034,7 +1939,6 @@ function buildCellEl(cell,i){
 
   const execLbl=cell.exec_count!==null?`[${cell.exec_count}]`:'[ ]';
 
-  // Toolbar
   const toolbar=_expositionMode
     ?`<div class="cell-toolbar">${isCode?`<button class="ct-btn ct-run" onclick="event.stopPropagation();runCell('${cell.id}')" title="Run">▶</button>`:''}
       </div>`
@@ -2088,21 +1992,14 @@ function buildCellEl(cell,i){
         ${restoreBtn}
       </div>`;
   } else if(cell.type === 'circuit'){
-    // ── VISUAL CIRCUIT CELL ────────────────────────────────
-    // Shows the circuit diagram (generated by Quantum Architect)
-    // Qiskit code is stored HIDDEN in cell.hiddenCode
-    // cell.circuitData = {qubits, gates} — internal architect structure
     const hasCircuit = cell.circuitData && cell.circuitData.gates && cell.circuitData.gates.length > 0;
     const hasCode    = (cell.hiddenCode || '').trim().length > 0;
-    // In EXPO mode: circuit is EDITABLE (same toolbar as normal)
-    // Only Markdown is locked in expo
     const circuitToolbar = `<div class="cell-toolbar">
         <button class="ct-btn" onclick="event.stopPropagation();moveCellUp('${cell.id}')" title="Move up">↑</button>
         <button class="ct-btn" onclick="event.stopPropagation();moveCellDown('${cell.id}')" title="Move down">↓</button>
         ${_expositionMode ? '' : `<button class="ct-btn danger" onclick="event.stopPropagation();deleteCell('${cell.id}')" title="Delete">✕</button>`}
       </div>`;
-    const restoreBtn = '';  // No restore in circuit (always editable)
-    // Render circuit diagram from circuitData
+    const restoreBtn = '';
     const circuitSVG = hasCircuit ? buildCircuitFromData(cell.circuitData) : '';
     const outContent = cell.output ? `<div class="cell-output-area" id="out-${cell.id}">${'<!-- output -->'}</div>` : '';
     el.className='nb-cell circ-cell'+(curCellId===cell.id?' active':'');
@@ -2137,7 +2034,6 @@ function buildCellEl(cell,i){
         <div class="cell-output-area" id="out-${cell.id}">${cell.output?`<div class="out-stdout">${escH(cell.output)}</div>`:''}</div>
         ${restoreBtn}
       </div>`;
-    // Render output if it exists
     if(cell._outputData){
       setTimeout(()=>{
         const outArea=document.getElementById('out-'+cell.id);
@@ -2145,7 +2041,6 @@ function buildCellEl(cell,i){
       },50);
     }
   } else {
-    // Markdown
     if(cell.mdEdit&&!_expositionMode){
       el.innerHTML=`${toolbar}
         <div class="cell-gutter"><div class="cell-num" style="color:var(--gr)">Md</div></div>
@@ -2181,7 +2076,6 @@ function buildCellEl(cell,i){
   return el;
 }
 
-// ── EDITOR HANDLERS ────────────────────────────────────────────
 function syncScroll(id){
   const ta=document.getElementById('ta-'+id);
   const syn=document.getElementById('syn-'+id);
@@ -2197,7 +2091,7 @@ function onCellInput(id){
     const cell=cells.find(c=>c.id===id);
     if(cell){
       cell.code=ta.value;
-      cell.errorLine=null; // clear error on edit
+      cell.errorLine=null;
     }
     const isQk=cell?.type==='qiskit';
     syn.innerHTML=highlight(ta.value,isQk)+'\n';
@@ -2225,7 +2119,6 @@ function onCellKeydown(e,id){
   if(e.key==='Tab'){e.preventDefault();const s=ta.selectionStart,en=ta.selectionEnd;ta.value=ta.value.substring(0,s)+'    '+ta.value.substring(en);ta.selectionStart=ta.selectionEnd=s+4;onCellInput(id);return;}
   if(e.shiftKey&&e.key==='Enter'){e.preventDefault();runCell(id);const idx=cells.findIndex(c=>c.id===id);if(idx<cells.length-1)focusCell(cells[idx+1].id);else if(!_expositionMode)addCellAt(-1,'code');return;}
   if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();runCell(id);}
-  // Navigate between cells
   if(e.ctrlKey&&e.key==='ArrowUp'){
     e.preventDefault();
     const idx=cells.findIndex(c=>c.id===id);
@@ -2250,7 +2143,6 @@ function onMdKeydown(e,id){
   if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();syncCellCode(id);const cell=cells.find(c=>c.id===id);if(cell){cell.mdEdit=false;renderCells();}const idx=cells.findIndex(c=>c.id===id);if(idx<cells.length-1)focusCell(cells[idx+1].id);}
 }
 
-// Global navigation with arrows when not editing
 window.addEventListener('keydown', e => {
   if (!curCellId) return;
   if (document.activeElement.tagName === 'TEXTAREA') return;
@@ -2269,13 +2161,11 @@ window.addEventListener('keydown', e => {
   }
 });
 
-// ── SHOW UI ────────────────────────────────────────────────────
 function showUI(user){
   const role=user?.role||'guest';
   const sameUser=_initialized&&curUser?.username===user?.username;
   if(sameUser)return;
   _initialized=true;curUser=user;
-  // Quantum Notebook open to all roles
   document.getElementById('access-denied').classList.remove('show');
   ['topbar','secbar','main-area','statusbar'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='flex';});
   if(user){
@@ -2285,35 +2175,46 @@ function showUI(user){
     const ap=document.getElementById('admin-pill');
     if(ap)ap.style.display=(role==='admin'||role==='founder')?'':'none';
   }
-  const stored=localStorage.getItem('qcol_colab_url')||'';
-  if(stored){engineURL=stored;checkEngine();}
+  // Load compiler URL from cloud (not localStorage)
+  loadCompilerUrlFromCloud().then(url => {
+    if(url) {
+      engineURL = url;
+      localStorage.setItem('qcol_colab_url', url);
+      checkEngine();
+    } else {
+      // Fallback: try localStorage as last resort
+      const stored = localStorage.getItem('qcol_colab_url') || '';
+      if(stored) { engineURL=stored; checkEngine(); }
+    }
+  });
   refreshNbs();
   if(cells.length===0&&!_expositionMode)addCellAt(-1,'qiskit');
 }
 
-// ── CORE MESSAGES ─────────────────────────────────────────
 window.addEventListener('message',e=>{
   const d=e.data||{};
 
-  // User
   if(d.type==='QCOL_USER'||d.type==='QCOL_USER_UPDATE'){
-    // Accept any role
     if(d.user) showUI(d.user);
     else { _initialized=false; showUI({name:'Guest',role:'guest'}); }
   }
   if(d.type==='QCOL_CONFIG_UPDATED'){
-    const url=localStorage.getItem('qcol_colab_url');
-    if(url){ engineURL=url; checkEngine(); }
+    // Reload from cloud when config changes
+    loadCompilerUrlFromCloud().then(url => {
+      if(url && url !== engineURL) {
+        engineURL = url;
+        localStorage.setItem('qcol_colab_url', url);
+        checkEngine();
+      }
+    });
   }
 
-  // ── RETURN FROM QUANTUM ARCHITECT ─────────────────────────
-  // Architect sends code + structure when user presses Back
   if(d.type === 'QCOL_CIRCUIT_RETURN'){
     const cellId = d.cellId || _editingCellId;
     const cell   = cells.find(c => c.id === cellId);
     if(cell && cell.type === 'circuit'){
-      cell.hiddenCode  = d.code        || '';   // Qiskit code — executed, not displayed
-      cell.circuitData = d.circuitData || null; // {qubits,gates} — for drawing the diagram
+      cell.hiddenCode  = d.code        || '';
+      cell.circuitData = d.circuitData || null;
       cell.output      = '';
       cell.exec_count  = null;
       cell.errorLine   = null;
@@ -2323,13 +2224,11 @@ window.addEventListener('message',e=>{
       notify('⚛ Circuit saved to cell');
       saveCurrentNb(false);
     } else if(d.code && !cellId){
-      // Fallback: if no active circuit cell, silently ignore
       console.warn('QCOL_CIRCUIT_RETURN without destination circuit cell');
     }
     return;
   }
 
-  // Notebook from Projects — supports both message types
   const isOpenExpo = d.type==='QCOL_OPEN_NB_EXPOSITION';
   const isLoadNb   = (d.type==='QCOL_LOAD_NB') && d.nb;
 
@@ -2338,16 +2237,13 @@ window.addEventListener('message',e=>{
     const isExpo = isOpenExpo || !!d.expositionMode;
 
     if(!nb){ notify('❌ Notebook without data'); return; }
-    // In exposition mode any user can view
     if(!isExpo && !requireAuth()) return;
 
-    // Load cells
     document.getElementById('nb-name-inp').value = nb.title||nb.name||'Untitled';
     cells = (nb.cells && nb.cells.length > 0)
       ? nb.cells.map(c=>({...c, id:genId(), output:'', exec_count:null, mdEdit:false, errorLine:null}))
       : [];
 
-    // Show UI for guests in expo mode
     if(isExpo){
       _initialized = true;
       curUser = curUser || {name:'Guest', role:'guest'};
@@ -2359,33 +2255,24 @@ window.addEventListener('message',e=>{
 
     setView('notebook');
 
-    // Important order: first set _expositionMode, then renderCells
-    // so buildCellEl generates the correct HTML from the first render
     if(isExpo){
-      // Set flag BEFORE rendering
       _expositionMode = true;
       _originalCells  = JSON.parse(JSON.stringify(cells));
       document.body.classList.add('expo-mode');
-      // Buttons
       document.getElementById('expo-badge').style.display='inline-flex';
       ['btn-add-md','btn-import','btn-download','btn-save','btn-publish','stab-2'].forEach(id=>{
         const el=document.getElementById(id); if(el) el.style.display='none';
       });
-      // circuit stays visible in expo
       const rst=document.getElementById('btn-restore-all'); if(rst) rst.style.display='';
       const ni=document.getElementById('nb-name-inp');
       if(ni){ ni.readOnly=true; ni.style.opacity='.6'; }
-      // Hide secbar directly with JS (double security in addition to CSS)
       const sb=document.getElementById('secbar');if(sb)sb.style.display='none';
-      // Change back button text
       const bb=document.getElementById('btn-back');
       if(bb){bb.textContent='← PROJECTS';bb.title='Back to Projects';}
-      // Now we render — buildCellEl will see _expositionMode=true
       renderCells();
       if(cells[0]) focusCell(cells[0].id);
       notify('👁 Exposition mode — read the material and experiment with the code');
     } else {
-      // Normal mode — restore without btn-add-code/btn-add-qk (they no longer exist)
       _expositionMode = false;
       document.body.classList.remove('expo-mode');
       document.getElementById('expo-badge').style.display='none';
@@ -2403,7 +2290,6 @@ window.addEventListener('message',e=>{
   }
 });
 
-// Listen for localStorage changes (when Founder changes URL)
 window.addEventListener('storage',e=>{
   if(e.key==='qcol_colab_url'&&e.newValue){
     engineURL=e.newValue;
@@ -2411,16 +2297,26 @@ window.addEventListener('storage',e=>{
   }
 });
 
-// Request user
 postCore('QCOL_GET_USER');
 setTimeout(()=>{if(!_initialized){try{const s=localStorage.getItem('qcol_cur_user');if(s)showUI(JSON.parse(s));}catch(e){}}},700);
 setTimeout(()=>{if(!_initialized){showUI({name:'Guest',role:'guest'});}},1500);
 window.addEventListener('message',e=>{const d=e.data||{};if(d.type==='QCOL_USER_UPDATE'&&d.user){_initialized=false;showUI(d.user);}});
 
-function requireAuth(){return true;} // Quantum Notebook open to all
+function requireAuth(){return true;}
 
-// Init
-function initEngine(){const s=localStorage.getItem('qcol_colab_url');if(s){engineURL=s;checkEngine();}}
+function initEngine(){
+  // Load from cloud first
+  loadCompilerUrlFromCloud().then(url => {
+    if(url) {
+      engineURL = url;
+      localStorage.setItem('qcol_colab_url', url);
+      checkEngine();
+    } else {
+      const s=localStorage.getItem('qcol_colab_url');
+      if(s){engineURL=s;checkEngine();}
+    }
+  });
+}
 initEngine();
 setTimeout(()=>initMarkdown(),400);
 </script>
