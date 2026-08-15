@@ -129,7 +129,7 @@ textarea.fi{resize:vertical;min-height:70px;line-height:1.6;}
      ============================================================ -->
 <script>
 // ============================================================
-// QCOL CONFIG SYNC - VERSIÓN EMBEBIDA
+// QCOL CONFIG SYNC - VERSIÓN EMBEBIDA Y CORREGIDA
 // ============================================================
 
 class QcolConfigSync {
@@ -143,6 +143,7 @@ class QcolConfigSync {
         this.configCache = {};
         this.syncInterval = null;
         this._syncInProgress = false;
+        this._syncingKeys = new Set();
         
         this.onConfigUpdate = null;
         this.onSyncComplete = null;
@@ -172,7 +173,11 @@ class QcolConfigSync {
             this.isReady = true;
             console.log('✅ Config Sync inicializado');
             
-            this.syncInterval = setInterval(() => this.syncAll(), 15000);
+            // ✅ Sincronizar cada 10 segundos
+            this.syncInterval = setInterval(() => {
+                this.syncAll();
+                if (this.onSyncComplete) this.onSyncComplete();
+            }, 10000);
             
             return true;
         } catch (error) {
@@ -230,6 +235,8 @@ class QcolConfigSync {
         return await response.json();
     }
 
+    // ==================== SINCRONIZACIÓN CORREGIDA ====================
+    
     async syncAll() {
         if (this._syncInProgress) return;
         this._syncInProgress = true;
@@ -250,29 +257,53 @@ class QcolConfigSync {
     }
 
     async _syncConfig(cloudKey, localKey) {
+        // ✅ Evitar sincronización en bucle
+        if (this._syncingKeys.has(cloudKey)) {
+            console.log(`⏭️ ${cloudKey} ya está sincronizando, skip`);
+            return;
+        }
+        this._syncingKeys.add(cloudKey);
+        
         try {
             const cloudData = await this._fetch('quantum_ecosystem_config', {
                 eq: { key: cloudKey }
             });
+            
             let cloudValue = null;
+            let cloudTimestamp = null;
             if (cloudData && cloudData.length > 0) {
                 cloudValue = cloudData[0].value;
+                cloudTimestamp = new Date(cloudData[0].updated_at);
                 try { cloudValue = JSON.parse(cloudValue); } catch(e) {}
             }
             
             let localValue = localStorage.getItem(localKey);
             try { localValue = JSON.parse(localValue); } catch(e) {}
-            
-            const cloudTimestamp = cloudData && cloudData.length > 0 ? new Date(cloudData[0].updated_at) : null;
             const localTimestamp = localStorage.getItem(localKey + '_timestamp');
             const localTime = localTimestamp ? new Date(localTimestamp) : null;
             
+            // ✅ Si los valores son iguales, no hacer nada
+            const localString = JSON.stringify(localValue);
+            const cloudString = JSON.stringify(cloudValue);
+            if (localString === cloudString && cloudValue !== null) {
+                this._syncingKeys.delete(cloudKey);
+                return;
+            }
+            
+            // ✅ Si la nube tiene datos más recientes
             if (cloudValue !== null && cloudValue !== undefined) {
                 if (!localValue || (cloudTimestamp && localTime && cloudTimestamp > localTime)) {
+                    // ✅ Forzar actualización local
                     localStorage.setItem(localKey, JSON.stringify(cloudValue));
                     localStorage.setItem(localKey + '_timestamp', new Date().toISOString());
-                    console.log(`📥 Config ${cloudKey} actualizada desde la nube`);
-                    if (this.onConfigUpdate) this.onConfigUpdate(cloudKey, cloudValue);
+                    console.log(`📥 Config ${cloudKey} ACTUALIZADA desde la nube`);
+                    if (this.onConfigUpdate) {
+                        this.onConfigUpdate(cloudKey, cloudValue);
+                    }
+                    // ✅ Forzar recarga de UI
+                    if (typeof loadSaved === 'function') {
+                        setTimeout(loadSaved, 100);
+                    }
                 } else if (localValue && (!cloudTimestamp || !localTime || localTime > cloudTimestamp)) {
                     await this._updateOrInsert(cloudKey, localValue);
                     console.log(`📤 Config ${cloudKey} subida a la nube`);
@@ -283,6 +314,8 @@ class QcolConfigSync {
             }
         } catch (error) {
             console.warn(`⚠️ Error sincronizando ${cloudKey}:`, error.message);
+        } finally {
+            this._syncingKeys.delete(cloudKey);
         }
     }
 
@@ -375,12 +408,16 @@ class QcolConfigSync {
         
         window.configSync.onConfigUpdate = (key, value) => {
             console.log(`📥 Config actualizada: ${key}`, value);
-            if (typeof loadSaved === 'function') loadSaved();
+            if (typeof loadSaved === 'function') {
+                setTimeout(loadSaved, 200);
+            }
         };
         
         window.configSync.onSyncComplete = () => {
             console.log('✅ Configuración sincronizada');
-            if (typeof loadSaved === 'function') loadSaved();
+            if (typeof loadSaved === 'function') {
+                setTimeout(loadSaved, 200);
+            }
         };
         
         const user = JSON.parse(localStorage.getItem('qcol_user') || '{}');
@@ -836,6 +873,8 @@ async function testColab() {
   else notify('❌ No se pudo conectar al compilador después de 3 intentos');
 }
 
+// ========== GUARDAR CON SINCRONIZACIÓN EN LA NUBE ==========
+
 function saveColab() {
   const url = document.getElementById('colab-url').value.trim();
   localStorage.setItem('qcol_colab_url', url);
@@ -1009,9 +1048,15 @@ function syncIgnoredAttrsWithCloud() {
   .catch(e => notify('❌ Error sincronizando: ' + e.message));
 }
 
+// ========== LOAD SAVED CORREGIDO ==========
 function loadSaved() {
+  console.log('🔄 Recargando UI desde localStorage...');
+  
   if (window.configSync && window.configSync.isReady) {
-    // La configuración se sincroniza automáticamente
+    // ✅ Forzar sincronización manual al cargar
+    setTimeout(() => {
+      window.configSync.syncAll();
+    }, 500);
   }
   
   const gh = getGH();
@@ -1051,6 +1096,10 @@ function loadSaved() {
     document.getElementById('colab-url').value = savedUrl;
     setTimeout(() => checkEngine(), 1000);
   }
+  
+  // ✅ Actualizar monitor
+  loadMonitorConfig();
+  refreshMonitor();
 }
 
 // ══ HELPERS ══
