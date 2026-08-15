@@ -224,7 +224,6 @@ class QcolConfigSync {
         const response = await fetch(`${this.SUPABASE_URL}/rest/v1/${table}?key=eq.${key}`, {
             method: 'PATCH',
             headers: {
-                'Content-Type': 'application/json',
                 'apikey': this.SUPABASE_ANON_KEY,
                 'Authorization': `Bearer ${this.SUPABASE_ANON_KEY}`,
                 'Prefer': 'return=representation'
@@ -277,12 +276,22 @@ class QcolConfigSync {
                 cloudValue = cloudData[0].value;
                 cloudTimestamp = new Date(cloudData[0].updated_at);
                 try { cloudValue = JSON.parse(cloudValue); } catch(e) {}
+                
+                // 🔧 FORZAR founder_password como cadena SIEMPRE
+                if (cloudKey === 'founder_password' && cloudValue !== null && cloudValue !== undefined) {
+                    cloudValue = String(cloudValue);
+                }
             }
             
             let localValue = localStorage.getItem(localKey);
             try { localValue = JSON.parse(localValue); } catch(e) {}
             const localTimestamp = localStorage.getItem(localKey + '_timestamp');
             const localTime = localTimestamp ? new Date(localTimestamp) : null;
+            
+            // 🔧 FORZAR que localValue sea string para founder_password
+            if (cloudKey === 'founder_password') {
+                localValue = String(localValue || '');
+            }
             
             // ✅ Si los valores son iguales, no hacer nada
             const localString = JSON.stringify(localValue);
@@ -295,8 +304,9 @@ class QcolConfigSync {
             // ✅ Si la nube tiene datos más recientes
             if (cloudValue !== null && cloudValue !== undefined) {
                 if (!localValue || (cloudTimestamp && localTime && cloudTimestamp > localTime)) {
-                    // ✅ Forzar actualización local
-                    localStorage.setItem(localKey, JSON.stringify(cloudValue));
+                    // 🔧 FORZAR como cadena para founder_password
+                    const valueToStore = cloudKey === 'founder_password' ? String(cloudValue) : cloudValue;
+                    localStorage.setItem(localKey, typeof valueToStore === 'string' ? valueToStore : JSON.stringify(valueToStore));
                     localStorage.setItem(localKey + '_timestamp', new Date().toISOString());
                     console.log(`📥 Config ${cloudKey} ACTUALIZADA desde la nube`);
                     if (this.onConfigUpdate) {
@@ -307,11 +317,15 @@ class QcolConfigSync {
                         setTimeout(loadSaved, 100);
                     }
                 } else if (localValue && (!cloudTimestamp || !localTime || localTime > cloudTimestamp)) {
-                    await this._updateOrInsert(cloudKey, localValue);
+                    // 🔧 FORZAR como cadena para founder_password al subir
+                    const valueToUpload = cloudKey === 'founder_password' ? String(localValue) : localValue;
+                    await this._updateOrInsert(cloudKey, valueToUpload);
                     console.log(`📤 Config ${cloudKey} subida a la nube`);
                 }
             } else if (localValue !== null && localValue !== undefined) {
-                await this._updateOrInsert(cloudKey, localValue);
+                // 🔧 FORZAR como cadena para founder_password
+                const valueToUpload = cloudKey === 'founder_password' ? String(localValue) : localValue;
+                await this._updateOrInsert(cloudKey, valueToUpload);
                 console.log(`📤 Config ${cloudKey} subida a la nube (nueva)`);
             }
         } catch (error) {
@@ -322,7 +336,14 @@ class QcolConfigSync {
     }
 
     async _updateOrInsert(key, value) {
-        const stringValue = typeof value === 'string' ? value : JSON.stringify(value);
+        // 🔧 FORZAR founder_password como cadena JSON con comillas
+        let stringValue;
+        if (key === 'founder_password') {
+            // Guardar como JSON string con comillas: '"1027"'
+            stringValue = JSON.stringify(String(value));
+        } else {
+            stringValue = typeof value === 'string' ? value : JSON.stringify(value);
+        }
         const data = {
             id: 'cfg-' + key,
             key: key,
@@ -350,14 +371,33 @@ class QcolConfigSync {
         const localKey = this._getLocalKey(key);
         const value = localStorage.getItem(localKey);
         if (value) {
-            try { return JSON.parse(value); } catch(e) { return value; }
+            try { 
+                const parsed = JSON.parse(value);
+                // 🔧 Si es founder_password, asegurar que sea string
+                if (key === 'founder_password') {
+                    return String(parsed);
+                }
+                return parsed; 
+            } catch(e) { 
+                // 🔧 Si es founder_password, asegurar que sea string
+                if (key === 'founder_password') {
+                    return String(value);
+                }
+                return value; 
+            }
         }
         return null;
     }
 
     setConfig(key, value) {
         const localKey = this._getLocalKey(key);
-        localStorage.setItem(localKey, typeof value === 'string' ? value : JSON.stringify(value));
+        // 🔧 FORZAR founder_password como string
+        if (key === 'founder_password') {
+            value = String(value);
+            localStorage.setItem(localKey, value);
+        } else {
+            localStorage.setItem(localKey, typeof value === 'string' ? value : JSON.stringify(value));
+        }
         localStorage.setItem(localKey + '_timestamp', new Date().toISOString());
         if (this.isReady) {
             setTimeout(() => this._syncConfig(key, localKey), 500);
@@ -1143,12 +1183,15 @@ function toggleUp(un,v){const all=getUsers();const u=all.find(x=>x.username===un
 function promUser(un){const all=getUsers();const u=all.find(x=>x.username===un);if(u){u.role='admin';u.canUpload=true;saveUsersFn(all);renderUsers();notify(un+' → Administrador');}}
 function demUser(un){const all=getUsers();const u=all.find(x=>x.username===un);if(u){u.role='user';saveUsersFn(all);renderUsers();notify(un+' → Usuario');}}
 function delUser(un){if(confirm('¿Eliminar '+un+'?')){const all=getUsers().filter(x=>x.username!==un);saveUsersFn(all);renderUsers();notify('Usuario eliminado');}}
+
+// ✅ FUNCIÓN changeFounderPass CORREGIDA - Guarda como cadena (string)
 function changeFounderPass() {
   const cur = document.getElementById('fp-cur').value;
   const nw = document.getElementById('fp-new').value;
   const stored = localStorage.getItem('qcol_fp') || '1027';
   
-  if (cur !== stored) { 
+  // 🔧 Comparar como strings
+  if (String(cur) !== String(stored)) { 
     notify('Contraseña actual incorrecta'); 
     return; 
   }
@@ -1157,17 +1200,18 @@ function changeFounderPass() {
     return; 
   }
   
-  // ✅ Guardar localmente
-  localStorage.setItem('qcol_fp', nw);
+  // ✅ Guardar como CADENA (string) - NO como número
+  const newPassword = String(nw);
+  localStorage.setItem('qcol_fp', newPassword);
   localStorage.setItem('qcol_fp_timestamp', new Date().toISOString());
   
-  // ✅ Sincronizar con la nube
+  // ✅ Sincronizar con la nube como CADENA
   if (window.configSync && window.configSync.isReady) {
-    window.configSync.setConfig('founder_password', nw);
+    window.configSync.setConfig('founder_password', newPassword);
     notify('✅ Contraseña del fundador actualizada y sincronizada en la nube');
     addSysLog('Contraseña fundador cambiada y sincronizada en la nube', 'ok');
   } else {
-    postToCore('QCOL_SAVE_CONFIG', { key: 'founder_pass', value: nw });
+    postToCore('QCOL_SAVE_CONFIG', { key: 'founder_pass', value: newPassword });
     notify('✅ Contraseña del fundador actualizada (solo local)');
     addSysLog('Contraseña fundador cambiada (solo local)', 'warn');
   }

@@ -22,9 +22,6 @@
   }
 </script>
 <style>
-/* ============================================================
-   ESTILOS COMPLETOS (IDÉNTICOS AL ORIGINAL)
-   ============================================================ */
 :root {
   --bg:#010608;--s:#071220;--s2:#0c1c30;--s3:#112240;
   --b:#0d2a4a;--b2:#1a3a5c;
@@ -637,8 +634,8 @@ body::before{content:'';position:fixed;inset:0;
 
 <script>
 // ============================================================
-// 🔄 CONFIG SYNC - INTEGRADO DIRECTAMENTE EN INDEX.HTML
-//    SOLO LECTURA - NO ESCRIBE EN LA NUBE
+// 🔄 CONFIG SYNC READER - SOLO LECTURA (CORREGIDO)
+//    FORZA founder_password COMO CADENA
 // ============================================================
 
 class QcolConfigSyncReader {
@@ -678,7 +675,6 @@ class QcolConfigSyncReader {
             this.isReady = true;
             console.log('✅ Config Sync Reader inicializado (SOLO LECTURA)');
             
-            // Sincronizar cada 15 segundos (menos frecuente para solo lectura)
             this.syncInterval = setInterval(() => {
                 this.syncAll();
                 if (this.onSyncComplete) this.onSyncComplete();
@@ -714,7 +710,6 @@ class QcolConfigSyncReader {
         if (this._syncInProgress) return;
         this._syncInProgress = true;
         try {
-            // SOLO LECTURA: obtener todas las configuraciones
             const allConfigs = await this._fetch('quantum_ecosystem_config');
             
             if (allConfigs && allConfigs.length > 0) {
@@ -723,12 +718,17 @@ class QcolConfigSyncReader {
                     if (item.key) {
                         let value = item.value;
                         try { value = JSON.parse(value); } catch(e) { /* mantener como string */ }
+                        
+                        // 🔧 FORZAR founder_password como CADENA
+                        if (item.key === 'founder_password' && value !== null && value !== undefined) {
+                            value = String(value);
+                        }
+                        
                         configMap[item.key] = value;
                         this.configCache[item.key] = value;
                     }
                 });
                 
-                // Aplicar configuraciones localmente (SOLO LECTURA)
                 this._applyConfigToLocal('colab_url', 'qcol_colab_url', configMap);
                 this._applyConfigToLocal('ai_config', 'qcol_ai', configMap);
                 this._applyConfigToLocal('github_config', 'qcol_gh', configMap);
@@ -753,15 +753,19 @@ class QcolConfigSyncReader {
     }
 
     _applyConfigToLocal(cloudKey, localKey, configMap) {
-        const value = configMap[cloudKey];
+        let value = configMap[cloudKey];
         if (value !== undefined && value !== null) {
             try {
+                // 🔧 FORZAR founder_password como CADENA
+                if (cloudKey === 'founder_password') {
+                    value = String(value);
+                }
+                
                 const stringValue = typeof value === 'string' ? value : JSON.stringify(value);
                 localStorage.setItem(localKey, stringValue);
                 localStorage.setItem(localKey + '_timestamp', new Date().toISOString());
                 console.log(`📥 Config ${cloudKey} → ${localKey}: aplicada desde la nube`);
                 
-                // Disparar eventos para que la UI se actualice
                 if (this.onConfigUpdate) {
                     this.onConfigUpdate(cloudKey, value);
                 }
@@ -772,12 +776,23 @@ class QcolConfigSyncReader {
     }
 
     getConfig(key) {
-        // Primero buscar en caché (más reciente)
+        // 🔧 Si es founder_password, forzar como cadena
+        if (key === 'founder_password') {
+            const cached = this.configCache[key];
+            if (cached !== undefined) {
+                return String(cached);
+            }
+            const localValue = localStorage.getItem('qcol_fp');
+            if (localValue !== null) {
+                try { return String(JSON.parse(localValue)); } catch(e) { return String(localValue); }
+            }
+            return null;
+        }
+        
         if (this.configCache[key] !== undefined) {
             return this.configCache[key];
         }
         
-        // Si no está en caché, buscar en localStorage
         const localKeyMap = {
             'colab_url': 'qcol_colab_url',
             'ai_config': 'qcol_ai',
@@ -786,7 +801,6 @@ class QcolConfigSyncReader {
             'system_config': 'qcol_sys',
             'platform_config': 'qcol_cfg',
             'monitor_config': 'qcol_monitor_cfg',
-            'founder_password': 'qcol_fp',
             'users_config': 'qcol_users'
         };
         const localKey = localKeyMap[key] || key;
@@ -798,7 +812,6 @@ class QcolConfigSyncReader {
     }
 
     getRawConfig(key) {
-        // Obtener directamente de la caché sin procesar
         return this.configCache[key] || null;
     }
 
@@ -827,7 +840,6 @@ class QcolConfigSyncReader {
         
         window.configSync.onConfigUpdate = (key, value) => {
             console.log(`📥 Config actualizada desde la nube: ${key}`, value);
-            // Recargar UI si es necesario
             if (typeof QCOL !== 'undefined' && QCOL._refreshUI) {
                 setTimeout(QCOL._refreshUI, 200);
             }
@@ -835,7 +847,6 @@ class QcolConfigSyncReader {
         
         window.configSync.onSyncComplete = () => {
             console.log('✅ Configuración sincronizada desde la nube (solo lectura)');
-            // Notificar a los módulos que la configuración ha cambiado
             if (typeof QCOL !== 'undefined' && QCOL._broadcastConfig) {
                 setTimeout(QCOL._broadcastConfig, 300);
             }
@@ -878,9 +889,7 @@ class QcolConfigSyncReader {
 
   let cmEditor = null;
 
-  // ── FUNCIÓN PARA REFRESCAR UI DESDE CONFIG SYNC ──
   function refreshUIFromConfig() {
-    // Recargar configuración de IA
     const savedAI = localStorage.getItem('qcol_ai');
     if (savedAI) {
       try {
@@ -889,18 +898,15 @@ class QcolConfigSyncReader {
       } catch(e) {}
     }
     
-    // Recargar URL del compilador
     const colabUrl = localStorage.getItem('qcol_colab_url');
     if (colabUrl) {
       checkEngine();
     }
     
-    // Recargar configuración de GitHub
     const ghConfig = localStorage.getItem('qcol_gh');
     if (ghConfig) {
       try {
         const gh = JSON.parse(ghConfig);
-        // Actualizar badges o UI si es necesario
       } catch(e) {}
     }
   }
@@ -1417,24 +1423,25 @@ class QcolConfigSyncReader {
     broadcast({ type:'QCOL_USER_UPDATE', user:curUser });
   }
 
-  // ✅ doFounder con Config Sync Reader (solo lectura)
+  // ✅ doFounder CORREGIDO - SIEMPRE USA CADENA
   function doFounder() {
     const p = document.getElementById('f-pass').value;
-    let fp = '1027'; // default
+    let fp = '1027';
 
-    // Intentar obtener desde Config Sync Reader primero
+    // Intentar obtener desde Config Sync Reader
     if (window.configSync && window.configSync.isReady) {
       const syncFp = window.configSync.getConfig('founder_password');
-      if (syncFp) {
-        fp = syncFp;
+      if (syncFp !== null && syncFp !== undefined) {
+        fp = String(syncFp);
       } else {
-        fp = localStorage.getItem('qcol_fp') || '1027';
+        fp = String(localStorage.getItem('qcol_fp') || '1027');
       }
     } else {
-      fp = localStorage.getItem('qcol_fp') || '1027';
+      fp = String(localStorage.getItem('qcol_fp') || '1027');
     }
 
-    if (p === fp) {
+    // 🔧 Comparar como CADENAS
+    if (String(p) === String(fp)) {
       curUser = {
         name: 'Franci Laffita Camargo',
         username: 'franci_laffita',
@@ -1647,7 +1654,6 @@ class QcolConfigSyncReader {
   }
 
   async function init() {
-    // ── Force English default ──
     const storedAI = JSON.parse(localStorage.getItem('qcol_ai') || '{}');
     if (!storedAI.lang || storedAI.lang === 'es') {
       storedAI.lang = 'en';
@@ -1691,7 +1697,6 @@ class QcolConfigSyncReader {
       if (e.target === document.getElementById('auth-modal')) closeAuth();
     });
 
-    // ── Configurar listener para cuando Config Sync se complete ──
     if (window.configSync) {
       window.configSync.onConfigUpdate = (key, value) => {
         console.log(`📥 Index recibió actualización: ${key}`, value);
@@ -1702,30 +1707,24 @@ class QcolConfigSyncReader {
           setupAI();
         }
         if (key === 'founder_password') {
-          // Solo notificar, no almacenar ni reescribir
           console.log('🔑 Founder password actualizada en la nube');
         }
       };
       
-      // Esperar a que Config Sync esté listo
       const checkConfigSyncReady = setInterval(() => {
         if (window.configSync && window.configSync.isReady) {
           clearInterval(checkConfigSyncReady);
-          // Aplicar configuraciones iniciales
           refreshUIFromConfig();
-          // Forzar sincronización una vez
           setTimeout(() => {
             if (window.configSync) window.configSync.syncAll();
           }, 1000);
         }
       }, 500);
       
-      // Timeout para no esperar indefinidamente
       setTimeout(() => clearInterval(checkConfigSyncReady), 15000);
     }
   }
 
-  // ── EXPONER MÉTODOS PARA CONFIG SYNC ──
   return { 
     nav, openAuth, closeAuth, doLogin, doRegister, doFounder, doLogout,
     toggleAI, sendAI, notify, init, getUser:()=>curUser,
