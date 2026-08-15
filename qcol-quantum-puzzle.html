@@ -144,6 +144,14 @@ body::before{
     transform:translateY(-1px);
     box-shadow:0 6px 14px rgba(0,136,255,0.5);
 }
+.btn-refresh{
+    background:linear-gradient(125deg, #00aa66, #00cc88);
+    color:white;
+}
+.btn-refresh:hover{
+    transform:translateY(-1px);
+    box-shadow:0 6px 14px rgba(0,204,136,0.5);
+}
 .grid{
     display:grid;
     grid-template-columns:repeat(auto-fill, minmax(280px, 1fr));
@@ -537,20 +545,18 @@ body::before{
 <body>
 
 <!-- ============================================================
-     🔄 INICIALIZACIÓN GLOBAL - SUPABASE SYNC (SIN MODULE)
+     🔄 INICIALIZACIÓN GLOBAL - SUPABASE SYNC
      ============================================================ -->
 <script>
 // Cargar configuración y módulo de forma dinámica
 (async function initQuantumSync() {
     try {
-        // Importar configuración y módulo
         const { SUPABASE_CONFIG } = await import('./supabase-config.js');
-        const { default: QuantumSync } = await import('./qcol-cloud-sync.js');
+        const { default: QuantumSync } = await import('./quantum-sync.js');
         
         console.log('📦 Módulos importados correctamente');
         console.log('📌 SUPABASE_CONFIG:', SUPABASE_CONFIG);
         
-        // Crear instancia global
         window.quantumSync = new QuantumSync({
             supabaseUrl: SUPABASE_CONFIG.supabaseUrl,
             supabaseAnonKey: SUPABASE_CONFIG.supabaseAnonKey,
@@ -558,35 +564,42 @@ body::before{
         });
         
         console.log('📌 quantumSync creado:', window.quantumSync);
-        
-        // Inicializar la conexión
         await window.quantumSync.init();
         
         console.log('📌 quantumSync.isReady:', window.quantumSync.isReady);
         
-        // Configurar usuario
         window.quantumSync.setUser({
             id: 'usuario-123',
             name: 'Admin',
             role: 'founder'
         });
         
-        // Callbacks para actualizar la UI automáticamente
+        // ✅ Callbacks con DEBOUNCE para evitar parpadeo
+        let renderTimer = null;
+        let pendingRenderTimer = null;
+        let publishedRenderTimer = null;
+        
         window.quantumSync.onPendingUpdate = (apps) => {
             console.log('📋 Apps pendientes actualizadas:', apps.length);
-            if (typeof window.renderPendingList === 'function') {
-                window.renderPendingList();
-            }
+            clearTimeout(pendingRenderTimer);
+            pendingRenderTimer = setTimeout(() => {
+                if (typeof window.renderPendingList === 'function') {
+                    window.renderPendingList();
+                }
+            }, 300);
         };
         
         window.quantumSync.onPublishedUpdate = (apps) => {
             console.log('📦 Apps publicadas actualizadas:', apps.length);
-            if (typeof window.renderTagFilters === 'function') {
-                window.renderTagFilters();
-            }
-            if (typeof window.renderPublishedApps === 'function') {
-                window.renderPublishedApps();
-            }
+            clearTimeout(publishedRenderTimer);
+            publishedRenderTimer = setTimeout(() => {
+                if (typeof window.renderTagFilters === 'function') {
+                    window.renderTagFilters();
+                }
+                if (typeof window.renderPublishedApps === 'function') {
+                    window.renderPublishedApps();
+                }
+            }, 300);
         };
         
         window.quantumSync.onAppPublished = (app) => {
@@ -597,28 +610,39 @@ body::before{
             window.showNotification('🗑️ App rechazada en la nube');
         };
         
-        // Conectar el Puzzle para escuchar mensajes
+        // ✅ Sincronización automática cuando la página se vuelve visible
+        document.addEventListener('visibilitychange', async () => {
+            if (!document.hidden && window.quantumSync && window.quantumSync.isReady) {
+                console.log('🔄 Página visible, sincronizando...');
+                await window.quantumSync.syncAll(true);
+                renderTagFilters();
+                renderPublishedApps();
+                renderPendingList();
+            }
+        });
+        
         window.quantumSync.connectPuzzle();
         
         console.log('✅ Quantum Sync inicializado correctamente');
         console.log('✅ quantumSync.isReady:', window.quantumSync.isReady);
         
-        // Disparar actualización de UI
-        if (typeof window.renderTagFilters === 'function') {
-            window.renderTagFilters();
-        }
-        if (typeof window.renderPublishedApps === 'function') {
-            window.renderPublishedApps();
-        }
+        // ✅ Sincronización inicial - SOLO UNA VEZ
+        let initialSyncDone = false;
+        setTimeout(async () => {
+            if (!initialSyncDone && window.quantumSync && window.quantumSync.isReady) {
+                initialSyncDone = true;
+                await window.quantumSync.syncAll(true);
+                renderTagFilters();
+                renderPublishedApps();
+                renderPendingList();
+                console.log('✅ Sincronización inicial completada');
+            }
+        }, 300);
         
     } catch (error) {
         console.error('❌ Error inicializando Quantum Sync:', error);
         console.error('Detalles:', error.message);
-        if (typeof window.showNotification === 'function') {
-            window.showNotification('❌ Error de conexión con Supabase. Modo offline.');
-        } else {
-            console.warn('⚠️ showNotification aún no está disponible; mostrando solo en consola.');
-        }
+        window.showNotification('❌ Error de conexión con Supabase. Modo offline.');
     }
 })();
 </script>
@@ -636,7 +660,8 @@ body::before{
         <input id="searchInput" placeholder="Search quantum app..." oninput="renderPublishedApps()">
     </div>
     <div class="filter-tag" id="filterTagsContainer"></div>
-    <div>
+    <div style="display:flex; gap:0.5rem;">
+        <button class="btn btn-refresh" onclick="refreshApps()" title="Sincronizar con la nube">🔄</button>
         <button class="btn btn-pri" onclick="openQuantumAppStudio()" style="background: #6d28d9;">🎛️ QUANTUM APP STUDIO</button>
     </div>
 </div>
@@ -709,233 +734,39 @@ let currentExecutingApp = null;
 let pendingCompileRequest = null;
 
 // ============================================================
-// 🔄 FUNCIONES CON INTEGRACIÓN SUPABASE SYNC
+// 🔄 FUNCIONES CON INTEGRACIÓN SUPABASE SYNC - SOLO NUBE
 // ============================================================
 
 async function getPublishedApps() {
+    // ✅ SOLO usar la nube, NUNCA localStorage
     if (window.quantumSync && window.quantumSync.isReady) {
-        await window.quantumSync.syncPublishedApps();
-        return window.quantumSync.publishedApps;
+        await window.quantumSync.syncAll(true);
+        return window.quantumSync.publishedApps || [];
     }
-    // Fallback a localStorage
-    const stored = localStorage.getItem('qcol_published_quantum_apps');
-    if(stored) return JSON.parse(stored);
+    console.warn('⚠️ Sin conexión a la nube, devolviendo lista vacía');
     return [];
 }
 
+// ✅ No guardar nada en localStorage
 async function savePublishedApps(apps) {
-    localStorage.setItem('qcol_published_quantum_apps', JSON.stringify(apps));
+    // Solo usar la nube
+    console.log('⏭️ Ignorando guardado local de published');
 }
 
 async function getPendingApps() {
-    // SIEMPRE usar quantumSync si está disponible
+    // ✅ SOLO usar la nube, NUNCA localStorage
     if (window.quantumSync && window.quantumSync.isReady) {
-        await window.quantumSync.syncPendingApps();
-        return window.quantumSync.pendingApps;
+        await window.quantumSync.syncAll(true);
+        return window.quantumSync.pendingApps || [];
     }
-    // Fallback a localStorage
-    const stored = localStorage.getItem('qcol_pending_quantum_apps');
-    if(stored) return JSON.parse(stored);
+    console.warn('⚠️ Sin conexión a la nube, devolviendo lista vacía');
     return [];
 }
 
+// ✅ No guardar nada en localStorage
 async function savePendingApps(apps) {
-    localStorage.setItem('qcol_pending_quantum_apps', JSON.stringify(apps));
+    console.log('⏭️ Ignorando guardado local de pending');
 }
-
-// Initialize with RouteQ demo data (replaced old greeting demo)
-if(!localStorage.getItem('qcol_published_quantum_apps')) {
-    savePublishedApps([
-        {
-            id: 'routeq_demo_1',
-            title: 'RouteQ — Quantum Delivery Optimizer',
-            desc: 'Smart route optimization using quantum-inspired algorithms. Select stops, vehicle, priority — get the optimal delivery sequence.',
-            tags: 'route,optimization,delivery,quantum',
-            duration: 5,
-            pythonCode: `# RouteQ Quantum Backend (Python)
-# Optimización de rutas con QAOA y algoritmos cuánticos
-
-import numpy as np
-from datetime import datetime, timedelta
-
-SPEED_KMH = {"Motorcycle": 45, "Van": 35, "Truck": 28}
-DISTANCE_MATRIX_DEMO = np.array([
-    [0, 8.2, 14.1, 31.0, 47.3],
-    [8.2, 0, 6.5, 22.8, 39.1],
-    [14.1, 6.5, 0, 16.3, 33.6],
-    [31.0, 22.8, 16.3, 0, 18.5],
-    [47.3, 39.1, 33.6, 18.5, 0],
-])
-
-def greedy_fallback(distance_matrix, n):
-    visited = [False] * n
-    route = [0]
-    visited[0] = True
-    for _ in range(n - 1):
-        current = route[-1]
-        nearest = min([j for j in range(n) if not visited[j]], 
-                      key=lambda j: distance_matrix[current][j])
-        route.append(nearest)
-        visited[nearest] = True
-    return route
-
-def solve_route_quantum(stops, vehicle, priority):
-    n = len(stops)
-    if n > 5: n = 5
-    distance_matrix = DISTANCE_MATRIX_DEMO[:n, :n].copy()
-    if "Cost" in priority:
-        distance_matrix = distance_matrix * 1.2
-    elif "Eco" in priority:
-        distance_matrix = distance_matrix * 0.9
-    route = greedy_fallback(distance_matrix, n)
-    return route
-
-def calculate_metrics(route, stops, vehicle, priority):
-    speed = SPEED_KMH.get(vehicle, 35)
-    n = len(route)
-    if n > len(DISTANCE_MATRIX_DEMO):
-        n = len(DISTANCE_MATRIX_DEMO)
-    distance_matrix = DISTANCE_MATRIX_DEMO[:n, :n]
-    total_distance = sum(distance_matrix[route[i]][route[i+1]] for i in range(n-1))
-    travel_time_h = total_distance / speed
-    stop_time_h = n * 0.25
-    total_time_h = travel_time_h + stop_time_h
-    naive_distance = sum(distance_matrix[i][(i+1)%n] for i in range(n))
-    naive_time_h = naive_distance / speed + stop_time_h
-    saved_time_h = naive_time_h - total_time_h
-    saved_time_min = int(saved_time_h * 60)
-    saved_fuel = round(saved_time_h * speed * 0.08, 2)
-    saved_co2 = round((naive_distance - total_distance) * 0.21, 1)
-    start = datetime(2025, 1, 1, 8, 0)
-    schedule = []
-    current_time = start
-    cumulative_dist = 0
-    for idx, stop_idx in enumerate(route):
-        if idx > 0:
-            leg_dist = distance_matrix[route[idx-1]][stop_idx]
-            cumulative_dist += leg_dist
-            travel_min = int((leg_dist / speed) * 60)
-            current_time += timedelta(minutes=travel_min)
-        schedule.append({
-            "order": idx + 1,
-            "name": stops[stop_idx]["name"],
-            "icon": stops[stop_idx]["icon"],
-            "detail": stops[stop_idx]["sub"],
-            "arrive": current_time.strftime("%I:%M %p"),
-            "distance": round(cumulative_dist, 1)
-        })
-        current_time += timedelta(minutes=15)
-    total_h = int(total_time_h)
-    total_m = int((total_time_h - total_h) * 60)
-    time_str = f"{total_h}h {total_m}min" if total_h > 0 else f"{total_m}min"
-    saved_h = saved_time_min // 60
-    saved_m = saved_time_min % 60
-    saved_str = f"{saved_h}h {saved_m}min" if saved_h > 0 else f"{saved_m}min"
-    return {
-        "total_time": time_str,
-        "total_distance": f"{round(total_distance, 1)}km",
-        "stop_count": n,
-        "route": schedule,
-        "saved_time": saved_str,
-        "saved_fuel": f"\${saved_fuel}",
-        "saved_co2": f"{saved_co2} kg"
-    }
-
-def optimize_route(stops_data, vehicle, priority):
-    stops = stops_data[:5]
-    n = len(stops)
-    route = solve_route_quantum(stops, vehicle, priority)
-    return calculate_metrics(route, stops, vehicle, priority)`,
-            htmlCode: `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>RouteQ — Smart Delivery Optimizer</title>
-<style>
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&display=swap');
-:root { --bg: #080c18; --surface: #0f1724; --surface2: #162030; --border: #1c2d44; --accent: #00e5b0; --accent2: #0077ff; --text: #e2eaf8; --text2: #7a8fad; }
-* { margin: 0; padding: 0; box-sizing: border-box; }
-body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
-.app { position: relative; z-index: 1; max-width: 440px; margin: 0 auto; padding: 20px 18px 60px; }
-.header { display: flex; align-items: center; justify-content: space-between; padding: 10px 0 28px; }
-.logo { display: flex; align-items: center; gap: 10px; }
-.logo-mark { width: 38px; height: 38px; background: linear-gradient(135deg, var(--accent), var(--accent2)); border-radius: 11px; display: flex; align-items: center; justify-content: center; font-size: 20px; }
-.logo-name { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
-.logo-name span { color: var(--accent); }
-.powered { font-size: 11px; color: var(--text2); background: var(--surface); border: 1px solid var(--border); padding: 5px 10px; border-radius: 20px; }
-.hero { margin-bottom: 28px; }
-.hero h1 { font-size: 26px; font-weight: 700; line-height: 1.25; margin-bottom: 8px; }
-.hero p { font-size: 14px; color: var(--text2); }
-.card { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 20px; margin-bottom: 14px; }
-.card-label { font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--text2); margin-bottom: 14px; }
-.stops { display: flex; flex-direction: column; gap: 9px; margin-bottom: 12px; }
-.stop { display: flex; align-items: center; gap: 12px; background: var(--surface2); border: 1.5px solid var(--border); border-radius: 12px; padding: 12px 14px; cursor: pointer; transition: all 0.2s ease; }
-.stop.on { border-color: rgba(0,229,176,0.35); background: rgba(0,229,176,0.04); }
-.stop-ico { width: 38px; height: 38px; background: var(--bg); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 19px; }
-.stop-info { flex: 1; }
-.stop-name { font-size: 14px; font-weight: 600; }
-.stop-sub { font-size: 12px; color: var(--text2); }
-.stop-chk { width: 22px; height: 22px; border: 2px solid var(--border); border-radius: 7px; display: flex; align-items: center; justify-content: center; }
-.stop.on .stop-chk { background: var(--accent); border-color: var(--accent); }
-.add-stop { width: 100%; background: none; border: 1.5px dashed var(--border); border-radius: 12px; padding: 11px; color: var(--text2); font-family: 'DM Sans', sans-serif; font-size: 13px; cursor: pointer; }
-.vehicles { display: grid; grid-template-columns: repeat(3,1fr); gap: 9px; }
-.veh { background: var(--surface2); border: 1.5px solid var(--border); border-radius: 12px; padding: 14px 8px 12px; text-align: center; cursor: pointer; }
-.veh.on { border-color: var(--accent); background: rgba(0,229,176,0.06); }
-.veh-ico { font-size: 24px; margin-bottom: 6px; }
-.veh-name { font-size: 11px; font-weight: 600; color: var(--text2); }
-.priorities { display: flex; gap: 9px; }
-.pri { flex: 1; background: var(--surface2); border: 1.5px solid var(--border); border-radius: 12px; padding: 12px 10px; cursor: pointer; text-align: center; }
-.pri.on { border-color: var(--accent2); background: rgba(0,119,255,0.06); }
-.pri-label { font-size: 13px; font-weight: 600; }
-.go-btn { width: 100%; background: linear-gradient(135deg, var(--accent), var(--accent2)); border: none; border-radius: 15px; padding: 18px; color: #fff; font-family: 'DM Sans', sans-serif; font-size: 16px; font-weight: 700; cursor: pointer; margin-bottom: 14px; }
-.processing { display: none; flex-direction: column; align-items: center; padding: 36px 20px 28px; text-align: center; }
-.processing.show { display: flex; }
-.q-loader { width: 90px; height: 90px; position: relative; margin-bottom: 24px; }
-.q-ring { position: absolute; border-radius: 50%; border: 2px solid transparent; }
-.q-ring:nth-child(1) { inset:0; border-top-color: var(--accent); animation: spin 1.1s linear infinite; }
-@keyframes spin { to { transform: rotate(360deg); } }
-.results { display: none; }
-.results.show { display: block; }
-.result-title { font-size: 20px; font-weight: 700; margin-bottom: 16px; }
-.stats { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-bottom: 16px; }
-.stat { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 14px 12px; text-align: center; }
-.stat-val { font-size: 22px; font-weight: 700; color: var(--accent); }
-.reset-btn { width: 100%; background: var(--surface); border: 1.5px solid var(--border); border-radius: 13px; padding: 15px; color: var(--text2); font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; }
-</style>
-</head>
-<body>
-<div class="app">
-  <div class="header"><div class="logo"><div class="logo-mark">🗺️</div><div class="logo-name">Route<span>Q</span></div></div><div class="powered">QCOL Ecosystem</div></div>
-  <div id="formView"><div class="hero"><h1>Optimize your deliveries in seconds</h1><p>Select stops, choose vehicle, get the fastest route.</p></div>
-  <div class="card"><div class="card-label">📍 Delivery Stops</div><div class="stops" id="stopsList"></div><button class="add-stop" onclick="addStop()">+ Add custom stop</button></div>
-  <div class="card"><div class="card-label">🚗 Vehicle Type</div><div class="vehicles"><div class="veh on" onclick="selectVeh(this)"><div class="veh-ico">🛵</div><div class="veh-name">Motorcycle</div></div><div class="veh" onclick="selectVeh(this)"><div class="veh-ico">🚐</div><div class="veh-name">Van</div></div><div class="veh" onclick="selectVeh(this)"><div class="veh-ico">🚚</div><div class="veh-name">Truck</div></div></div></div>
-  <div class="card"><div class="card-label">🎯 Optimize For</div><div class="priorities"><div class="pri on" onclick="selectPri(this)"><div class="pri-label">⚡ Speed</div></div><div class="pri" onclick="selectPri(this)"><div class="pri-label">💰 Cost</div></div><div class="pri" onclick="selectPri(this)"><div class="pri-label">🌱 Eco</div></div></div></div>
-  <button class="go-btn" onclick="startOptimize()">✨ Optimize My Route</button></div>
-  <div class="processing" id="procView"><div class="q-loader"><div class="q-ring"></div><div class="q-ring"></div><div class="q-ring"></div></div><div class="proc-title">Finding your best route…</div></div>
-  <div class="results" id="resultView"><div class="result-title">🎉 Route Ready!</div><div class="stats" id="statsRow"></div><div id="routeList"></div><button class="reset-btn" onclick="resetApp()">← Plan another route</button></div>
-</div>
-<script>
-let stopsData = [{name:"Central Warehouse",icon:"🏪",sub:"Start"},{name:"City Hospital",icon:"🏥",sub:"Priority"},{name:"Lincoln School",icon:"🏫",sub:"Morning"},{name:"Downtown Mall",icon:"🏬",sub:"Shopping"},{name:"Riverside District",icon:"🏘️",sub:"Residential"}];
-function renderStops(){let h='';stopsData.forEach((s,i)=>{h+='<div class="stop on" onclick="toggleStop(this)" data-idx="'+i+'"><div class="stop-ico">'+s.icon+'</div><div class="stop-info"><div class="stop-name">'+s.name+'</div><div class="stop-sub">'+s.sub+'</div></div><div class="stop-chk">✓</div></div>';});document.getElementById('stopsList').innerHTML=h;}
-function toggleStop(el){el.classList.toggle('on');}
-function selectVeh(el){document.querySelectorAll('.veh').forEach(v=>v.classList.remove('on'));el.classList.add('on');}
-function selectPri(el){document.querySelectorAll('.pri').forEach(p=>p.classList.remove('on'));el.classList.add('on');}
-function addStop(){let n=prompt("Stop name:");if(n){stopsData.push({name:n,icon:"📍",sub:"Custom"});renderStops();}}
-function startOptimize(){let selected=[];document.querySelectorAll('.stop.on').forEach(s=>{let idx=parseInt(s.dataset.idx);if(!isNaN(idx))selected.push(stopsData[idx]);});let vehicle=document.querySelector('.veh.on .veh-name').textContent;let priority=document.querySelector('.pri.on .pri-label').textContent;document.getElementById('formView').style.display='none';document.getElementById('procView').classList.add('show');setTimeout(()=>{window.pyCall("optimize_route",selected,vehicle,priority).then(result=>{showResults(result);}).catch(err=>{console.error(err);showResults(getDemoFallback(selected));});},1500);}
-function getDemoFallback(stops){let n=stops.length;return{total_time:"2.4h",total_distance:"47km",stop_count:n,route:stops.map((s,i)=>({order:i+1,name:s.name,icon:s.icon,detail:s.sub,arrive:["8:00 AM","8:24 AM","9:10 AM","10:05 AM","11:20 AM"][i]||"9:00 AM",distance:i*12})),saved_time:"1h 12min",saved_fuel:"$8.40",saved_co2:"3.2 kg"};}
-function showResults(d){document.getElementById('procView').classList.remove('show');document.getElementById('resultView').classList.add('show');let s='<div class="stat"><div class="stat-val">'+d.total_time+'</div><div>Time</div></div><div class="stat"><div class="stat-val">'+d.total_distance+'</div><div>Distance</div></div><div class="stat"><div class="stat-val">'+d.stop_count+'</div><div>Stops</div></div>';document.getElementById('statsRow').innerHTML=s;let r='<div class="card"><div class="card-label">📍 Optimized Sequence</div>';d.route.forEach(stop=>{r+='<div style="padding:10px 0;border-bottom:1px solid #1c2d44;"><strong>'+stop.order+'.</strong> '+stop.name+'<br><small>Arrive: '+stop.arrive+'</small></div>';});r+='</div><div class="card" style="background:linear-gradient(135deg,rgba(0,229,176,0.08),rgba(0,119,255,0.08))"><strong>💡 Savings:</strong> '+d.saved_time+' • '+d.saved_fuel+' • '+d.saved_co2+'</div>';document.getElementById('routeList').innerHTML=r;}
-function resetApp(){document.getElementById('resultView').classList.remove('show');document.getElementById('formView').style.display='block';}
-renderStops();
-<\/script>
-</body>
-</html>`,
-            serverUrl: '',
-            createdAt: Date.now()
-        }
-    ]);
-}
-if(!localStorage.getItem('qcol_pending_quantum_apps')) savePendingApps([]);
 
 function escapeHtml(str) {
     if(!str) return '';
@@ -950,11 +781,47 @@ function extractUniqueTags(apps) {
     return Array.from(tagsSet);
 }
 
+// ============================================================
+// 🔥 CACHÉ PARA EVITAR RENDERS INNECESARIOS
+// ============================================================
+let cachedPendingApps = null;
+let cachedPendingHTML = null;
+let cachedPublishedApps = null;
+let cachedPublishedHTML = null;
+let cachedTags = null;
+let renderTimer = null;
+
+// ============================================================
+// 🔥 FUNCIÓN DE REFRESCO MANUAL
+// ============================================================
+async function refreshApps() {
+    showNotification('🔄 Sincronizando con la nube...');
+    if (window.quantumSync && window.quantumSync.isReady) {
+        await window.quantumSync.syncAll(true);
+        renderTagFilters();
+        renderPublishedApps();
+        renderPendingList();
+        showNotification('✅ Sincronización completada');
+    } else {
+        showNotification('❌ No hay conexión con la nube');
+    }
+}
+
+// ============================================================
+// 🔥 RENDER TAG FILTERS CON CACHÉ
+// ============================================================
 function renderTagFilters() {
     getPublishedApps().then(apps => {
         const allTags = extractUniqueTags(apps);
         const container = document.getElementById('filterTagsContainer');
         if(!container) return;
+        
+        const tagsString = JSON.stringify(allTags);
+        if (cachedTags === tagsString) {
+            return;
+        }
+        cachedTags = tagsString;
+        
         let html = `<span class="tag-chip ${activeTagFilter === 'all' ? 'active' : ''}" data-tag="all" onclick="setTagFilter('all')">🎲 ALL</span>`;
         allTags.forEach(tag => {
             html += `<span class="tag-chip ${activeTagFilter === tag ? 'active' : ''}" data-tag="${tag}" onclick="setTagFilter('${tag}')">#${tag}</span>`;
@@ -969,11 +836,23 @@ function setTagFilter(tag) {
     renderPublishedApps();
 }
 
+// ============================================================
+// 🔥 RENDER PUBLISHED APPS CON CACHÉ
+// ============================================================
 async function renderPublishedApps() {
     const apps = await getPublishedApps();
     const searchTerm = document.getElementById('searchInput')?.value.toLowerCase() || "";
+    
+    const appsString = JSON.stringify(apps);
+    if (cachedPublishedApps === appsString && searchTerm === "") {
+        return;
+    }
+    cachedPublishedApps = appsString;
+    
     let filtered = apps.filter(app => {
-        const matchSearch = app.title.toLowerCase().includes(searchTerm) || (app.desc || "").toLowerCase().includes(searchTerm) || (app.tags || "").toLowerCase().includes(searchTerm);
+        const matchSearch = (app.title || "").toLowerCase().includes(searchTerm) || 
+                           (app.desc || "").toLowerCase().includes(searchTerm) || 
+                           (app.tags || "").toLowerCase().includes(searchTerm);
         let matchTag = true;
         if(activeTagFilter !== 'all') {
             const appTags = (app.tags || "").toLowerCase().split(',').map(t => t.trim());
@@ -983,10 +862,16 @@ async function renderPublishedApps() {
     });
     
     const container = document.getElementById('puzzleGrid');
+    if(!container) return;
+    
     if(!filtered.length){
-        container.innerHTML = `<div class="empty-state"><div class="empty-icon">⚛️📦</div>
+        const emptyHTML = `<div class="empty-state"><div class="empty-icon">⚛️📦</div>
         <div class="empty-title">Empty quantum repository</div>
         <p style="font-size:0.7rem;color:#4a7a9b;margin-top:0.5rem;">Use "QUANTUM APP STUDIO" to create new applications.</p></div>`;
+        if (cachedPublishedHTML !== emptyHTML) {
+            container.innerHTML = emptyHTML;
+            cachedPublishedHTML = emptyHTML;
+        }
         return;
     }
     
@@ -995,17 +880,17 @@ async function renderPublishedApps() {
         const tagsArray = (app.tags || "").split(',').map(t => t.trim()).filter(t => t);
         const tagsHtml = tagsArray.map(tag => `<span class="tag">#${escapeHtml(tag)}</span>`).join('');
         const canDelete = isFounder;
-        const delBtn = canDelete ? `<button class="btn-icon" onclick="deletePublishedApp('${app.id}')">🗑️</button>` : '';
+        const delBtn = canDelete ? `<button class="btn-icon" onclick="window.deletePublishedApp('${app.id}')">🗑️</button>` : '';
         gridHtml += `
             <div class="card">
                 <div class="card-header"><span class="badge-app">⚛️ QUANTUM APP</span></div>
                 <div class="card-body">
-                    <div class="card-title">${escapeHtml(app.title)}</div>
+                    <div class="card-title">${escapeHtml(app.title || 'Untitled App')}</div>
                     <div class="card-desc">${escapeHtml(app.desc || 'No description')}</div>
                     <div class="card-meta"><span>⏱️ ${app.duration || 8} min</span></div>
                     <div class="tags">${tagsHtml}</div>
                     <div class="card-actions">
-                        <button class="btn-execute" onclick="executeQuantumApp('${app.id}')">▶ RUN PROGRAM</button>
+                        <button class="btn-execute" onclick="window.executeQuantumApp('${app.id}')">▶ RUN PROGRAM</button>
                         ${delBtn}
                     </div>
                 </div>
@@ -1013,21 +898,75 @@ async function renderPublishedApps() {
         `;
     });
     gridHtml += `</div>`;
-    container.innerHTML = gridHtml;
+    
+    if (cachedPublishedHTML !== gridHtml) {
+        container.innerHTML = gridHtml;
+        cachedPublishedHTML = gridHtml;
+    }
+}
+
+// ============================================================
+// 🔥 RENDER PENDING LIST CON CACHÉ
+// ============================================================
+async function renderPendingList() {
+    const pending = await getPendingApps();
+    const container = document.getElementById('pendingListContainer');
+    if(!container) return;
+    
+    const pendingString = JSON.stringify(pending);
+    if (cachedPendingApps === pendingString) {
+        return;
+    }
+    cachedPendingApps = pendingString;
+    
+    if(pending.length === 0) { 
+        const emptyHTML = `<div style="padding:2rem; text-align:center; color:var(--mu);">📭 No apps pending approval.</div>`;
+        if (cachedPendingHTML !== emptyHTML) {
+            container.innerHTML = emptyHTML;
+            cachedPendingHTML = emptyHTML;
+        }
+        return; 
+    }
+    
+    let html = `<div class="pending-grid">`;
+    pending.forEach(app => {
+        const title = app.title || app.name || 'Untitled App';
+        const appId = app.id;
+        html += `<div style="background: #0a1222; border-radius: 16px; margin-bottom: 12px; padding: 12px;">
+                    <strong>${escapeHtml(title)}</strong>
+                    <div style="margin-top:8px; display:flex; gap:8px;">
+                        <button class="btn" style="background: #00aa66;" onclick="window.publishPendingApp('${appId}')">✅ PUBLISH</button>
+                        <button class="btn" style="background: #aa3355;" onclick="window.rejectPendingApp('${appId}')">🗑️ REJECT</button>
+                    </div>
+                </div>`;
+    });
+    html += `</div>`;
+    
+    if (cachedPendingHTML !== html) {
+        container.innerHTML = html;
+        cachedPendingHTML = html;
+    }
 }
 
 // ========== EXECUTE APP USING QUANTUM APP STUDIO ==========
 function executeQuantumApp(appId) {
     getPublishedApps().then(apps => {
         const app = apps.find(a => a.id === appId);
-        if(!app) { showNotification('⚠️ App not found'); return; }
+        if(!app) { 
+            showNotification('⚠️ App not found'); 
+            return; 
+        }
+        
+        // ✅ Verificar que la app tiene código
+        if (!app.python_code || !app.html_code || app.python_code.trim() === '' || app.html_code.trim() === '') {
+            showNotification('⚠️ This app has no code. Edit it in Quantum App Studio first.');
+            return;
+        }
         
         currentExecutingApp = app;
-        
         const modal = document.getElementById('execAppModal');
         const titleSpan = document.getElementById('execAppTitle');
         titleSpan.innerHTML = `⚛️ ${escapeHtml(app.title)}`;
-        
         modal.classList.add('open');
         executeWithStudio(app);
     });
@@ -1127,18 +1066,21 @@ function executeWithStudio(app) {
 
     loadingDiv.style.display = 'flex';
 
-    const serverUrl = app.serverUrl || compilerUrl || localStorage.getItem('qcol_colab_url') || '';
+    const serverUrl = app.server_url || app.serverUrl || compilerUrl || localStorage.getItem('qcol_colab_url') || '';
 
-    if (!app.htmlCode && !app.pythonCode) {
+    // ✅ Verificación mejorada
+    if (!app.python_code && !app.html_code && !app.pythonCode && !app.htmlCode) {
         loadingDiv.style.display = 'none';
-        showNotification('The app has no HTML or Python code.');
+        showNotification('⚠️ This app has no HTML or Python code. Edit it in Studio first.');
         return;
     }
 
     if (window._execBlobUrl) { URL.revokeObjectURL(window._execBlobUrl); }
 
     try {
-        window._execBlobUrl = _buildAppBlob(app.pythonCode, app.htmlCode, serverUrl);
+        const pythonCode = app.python_code || app.pythonCode || '';
+        const htmlCode = app.html_code || app.htmlCode || '';
+        window._execBlobUrl = _buildAppBlob(pythonCode, htmlCode, serverUrl);
         iframe.src = window._execBlobUrl;
         iframe.onload = function() { loadingDiv.style.display = 'none'; };
         setTimeout(function() { if (loadingDiv.style.display !== 'none') loadingDiv.style.display = 'none'; }, 5000);
@@ -1169,10 +1111,8 @@ function openQuantumAppStudio() {
         var sf = document.getElementById('studioIframe');
         if (sf && sf.contentWindow) {
             sf.contentWindow.postMessage({ type: 'QCOL_REQUEST_STUDIO_CONNECTION' }, '*');
-            // Conectar el módulo de sincronización
             if (window.quantumSync && window.quantumSync.isReady) {
                 window.quantumSync.connectStudio(sf);
-                // Enviar URL del compilador
                 const url = compilerUrl || localStorage.getItem('qcol_colab_url') || '';
                 if (url) {
                     sf.contentWindow.postMessage({ type: 'QCOL_SET_COMPILER_URL', url: url }, '*');
@@ -1191,12 +1131,8 @@ window.addEventListener('message', async function(e) {
     const data = e.data;
     if (!data || typeof data !== 'object') return;
     
-    console.log('📨 Mensaje recibido en Puzzle:', data.type, data);
-    
-    // Mensaje del Studio: sincronizar app a la nube
     if (data.type === 'QCOL_STUDIO_SYNC_APP') {
         const { appId, appData } = data;
-        console.log('📥 Recibido sync desde Studio:', appId, appData);
         
         if (window.quantumSync && window.quantumSync.isReady) {
             try {
@@ -1214,10 +1150,9 @@ window.addEventListener('message', async function(e) {
                 
                 showNotification(`☁️ App "${result.title}" sincronizada con la nube (pendiente)`);
                 
-                // Actualizar la UI (pendientes)
-                if (typeof renderPendingList === 'function') {
-                    await renderPendingList();
-                }
+                await window.renderPendingList();
+                window.renderTagFilters();
+                await window.renderPublishedApps();
                 
                 if (e.source) {
                     e.source.postMessage({
@@ -1252,9 +1187,7 @@ window.addEventListener('message', async function(e) {
             localStorage.setItem('qcol_pending_quantum_apps', JSON.stringify(pending));
             showNotification(`📦 App "${appData.title}" guardada localmente`);
             
-            if (typeof renderPendingList === 'function') {
-                await renderPendingList();
-            }
+            await window.renderPendingList();
             
             if (e.source) {
                 e.source.postMessage({
@@ -1311,51 +1244,14 @@ function openPendingManager() {
 function closePendingModal() { document.getElementById('pendingModal').classList.remove('open'); }
 
 // ============================================================
-// 🔥 RENDER PENDING LIST
-// ============================================================
-async function renderPendingList() {
-    console.log('🔄 Renderizando lista de pendientes...');
-    console.log('📌 window.quantumSync:', window.quantumSync);
-    console.log('📌 window.quantumSync.isReady:', window.quantumSync?.isReady);
-    
-    const pending = await getPendingApps();
-    console.log('📋 Apps pendientes:', pending);
-    const container = document.getElementById('pendingListContainer');
-    if(!container) return;
-    if(pending.length === 0) { 
-        container.innerHTML = `<div style="padding:2rem; text-align:center; color:var(--mu);">📭 No apps pending approval.</div>`; 
-        return; 
-    }
-    let html = `<div class="pending-grid">`;
-    pending.forEach(app => {
-        const title = app.title || app.name || 'Untitled App';
-        const appId = app.id;
-        html += `<div style="background: #0a1222; border-radius: 16px; margin-bottom: 12px; padding: 12px;">
-                    <strong>${escapeHtml(title)}</strong>
-                    <div style="margin-top:8px; display:flex; gap:8px;">
-                        <button class="btn" style="background: #00aa66;" onclick="publishPendingApp('${appId}')">✅ PUBLISH</button>
-                        <button class="btn" style="background: #aa3355;" onclick="rejectPendingApp('${appId}')">🗑️ REJECT</button>
-                    </div>
-                </div>`;
-    });
-    html += `</div>`;
-    container.innerHTML = html;
-}
-
-// ============================================================
 // 🔥 PUBLISH PENDING APP
 // ============================================================
 async function publishPendingApp(appId) {
-    console.log('📤 Publicando app:', appId);
-    console.log('📌 window.quantumSync:', window.quantumSync);
-    console.log('📌 window.quantumSync.isReady:', window.quantumSync?.isReady);
-    
     if (!isFounder && !isAdmin) { 
         showNotification("Solo fundadores/admins pueden publicar"); 
         return; 
     }
     
-    // SOLO usar quantumSync
     if (!window.quantumSync || !window.quantumSync.isReady) {
         showNotification("❌ No hay conexión con la nube. Revisa la consola.");
         console.error('❌ quantumSync no disponible o no inicializado');
@@ -1363,16 +1259,12 @@ async function publishPendingApp(appId) {
     }
     
     try {
-        console.log('🔄 Usando quantumSync para publicar...');
         const published = await window.quantumSync.approveApp(appId, currentUser?.id);
-        console.log('✅ App publicada:', published);
         showNotification(`✅ App "${published.title}" publicada en la nube`);
         
-        // FORZAR recarga desde Supabase
         await window.quantumSync.syncPendingApps();
         await window.quantumSync.syncPublishedApps();
         
-        // Actualizar UI
         await renderPendingList();
         renderTagFilters();
         await renderPublishedApps();
@@ -1387,7 +1279,6 @@ async function publishPendingApp(appId) {
 // 🔥 REJECT PENDING APP
 // ============================================================
 async function rejectPendingApp(appId) {
-    console.log('🗑️ Rechazando app:', appId);
     if (!isFounder && !isAdmin) return;
     if (!confirm("Delete this pending app?")) return;
     
@@ -1399,13 +1290,20 @@ async function rejectPendingApp(appId) {
     try {
         await window.quantumSync.rejectApp(appId);
         showNotification("App rechazada en la nube");
+        
         await window.quantumSync.syncPendingApps();
         await renderPendingList();
+        renderTagFilters();
+        await renderPublishedApps();
+        
     } catch (error) {
         showNotification('❌ Error al rechazar: ' + error.message);
     }
 }
 
+// ============================================================
+// 🔥 DELETE PUBLISHED APP
+// ============================================================
 async function deletePublishedApp(appId) {
     if(!isFounder) { showNotification("Only founder can delete published apps"); return; }
     if(!confirm(`Delete app from repository?`)) return;
@@ -1418,9 +1316,11 @@ async function deletePublishedApp(appId) {
     try {
         await window.quantumSync.deletePublishedApp(appId);
         showNotification("App eliminada de la nube");
+        
         await window.quantumSync.syncPublishedApps();
         renderTagFilters();
         await renderPublishedApps();
+        
     } catch (error) {
         showNotification('❌ Error al eliminar: ' + error.message);
     }
@@ -1435,7 +1335,7 @@ function showNotification(msg, dur=2800) {
 }
 
 // ============================================================
-// HACER FUNCIONES GLOBALES
+// ✅ HACER FUNCIONES GLOBALES
 // ============================================================
 window.renderTagFilters = renderTagFilters;
 window.renderPublishedApps = renderPublishedApps;
@@ -1447,12 +1347,19 @@ window.deletePublishedApp = deletePublishedApp;
 window.openPendingManager = openPendingManager;
 window.openQuantumAppStudio = openQuantumAppStudio;
 window.closeStudioModal = closeStudioModal;
+window.executeQuantumApp = executeQuantumApp;
+window.refreshApps = refreshApps;
 
-// Inicializar UI
-setTimeout(() => {
-    renderTagFilters();
-    renderPublishedApps();
-}, 500);
+// ✅ Sincronizar al recargar la página
+window.addEventListener('load', async () => {
+    if (window.quantumSync && window.quantumSync.isReady) {
+        console.log('🔄 Página cargada, sincronizando...');
+        await window.quantumSync.syncAll(true);
+        renderTagFilters();
+        renderPublishedApps();
+        renderPendingList();
+    }
+});
 
 document.getElementById('studioModalReal')?.addEventListener('click', (e) => { if(e.target === document.getElementById('studioModalReal')) closeStudioModal(); });
 document.getElementById('pendingModal')?.addEventListener('click', (e) => { if(e.target === document.getElementById('pendingModal')) closePendingModal(); });
