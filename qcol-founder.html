@@ -248,6 +248,8 @@ class QcolConfigSync {
             await this._syncConfig('system_config', 'qcol_sys');
             await this._syncConfig('platform_config', 'qcol_cfg');
             await this._syncConfig('monitor_config', 'qcol_monitor_cfg');
+            // ✅ Sincronizar contraseña del fundador
+            await this._syncConfig('founder_password', 'qcol_fp');
             if (this.onSyncComplete) this.onSyncComplete();
         } catch (error) {
             console.error('Config Sync error:', error.message);
@@ -370,7 +372,8 @@ class QcolConfigSync {
             'deepseek_config': 'qcol_mistral',
             'system_config': 'qcol_sys',
             'platform_config': 'qcol_cfg',
-            'monitor_config': 'qcol_monitor_cfg'
+            'monitor_config': 'qcol_monitor_cfg',
+            'founder_password': 'qcol_fp'
         };
         return map[cloudKey] || cloudKey;
     }
@@ -1053,7 +1056,6 @@ function loadSaved() {
   console.log('🔄 Recargando UI desde localStorage...');
   
   if (window.configSync && window.configSync.isReady) {
-    // ✅ Forzar sincronización manual al cargar
     setTimeout(() => {
       window.configSync.syncAll();
     }, 500);
@@ -1097,7 +1099,6 @@ function loadSaved() {
     setTimeout(() => checkEngine(), 1000);
   }
   
-  // ✅ Actualizar monitor
   loadMonitorConfig();
   refreshMonitor();
 }
@@ -1143,14 +1144,35 @@ function promUser(un){const all=getUsers();const u=all.find(x=>x.username===un);
 function demUser(un){const all=getUsers();const u=all.find(x=>x.username===un);if(u){u.role='user';saveUsersFn(all);renderUsers();notify(un+' → Usuario');}}
 function delUser(un){if(confirm('¿Eliminar '+un+'?')){const all=getUsers().filter(x=>x.username!==un);saveUsersFn(all);renderUsers();notify('Usuario eliminado');}}
 function changeFounderPass() {
-  const cur=document.getElementById('fp-cur').value,nw=document.getElementById('fp-new').value;
-  const stored=localStorage.getItem('qcol_fp')||'1027';
-  if(cur!==stored){notify('Contraseña actual incorrecta');return;}
-  if(!nw){notify('Ingresa la nueva contraseña');return;}
-  localStorage.setItem('qcol_fp',nw);
-  postToCore('QCOL_SAVE_CONFIG',{key:'founder_pass',value:nw});
-  notify('✅ Contraseña del fundador actualizada');addSysLog('Contraseña fundador cambiada','ok');
-  ['fp-cur','fp-new'].forEach(id=>document.getElementById(id).value='');
+  const cur = document.getElementById('fp-cur').value;
+  const nw = document.getElementById('fp-new').value;
+  const stored = localStorage.getItem('qcol_fp') || '1027';
+  
+  if (cur !== stored) { 
+    notify('Contraseña actual incorrecta'); 
+    return; 
+  }
+  if (!nw) { 
+    notify('Ingresa la nueva contraseña'); 
+    return; 
+  }
+  
+  // ✅ Guardar localmente
+  localStorage.setItem('qcol_fp', nw);
+  localStorage.setItem('qcol_fp_timestamp', new Date().toISOString());
+  
+  // ✅ Sincronizar con la nube
+  if (window.configSync && window.configSync.isReady) {
+    window.configSync.setConfig('founder_password', nw);
+    notify('✅ Contraseña del fundador actualizada y sincronizada en la nube');
+    addSysLog('Contraseña fundador cambiada y sincronizada en la nube', 'ok');
+  } else {
+    postToCore('QCOL_SAVE_CONFIG', { key: 'founder_pass', value: nw });
+    notify('✅ Contraseña del fundador actualizada (solo local)');
+    addSysLog('Contraseña fundador cambiada (solo local)', 'warn');
+  }
+  
+  ['fp-cur', 'fp-new'].forEach(id => document.getElementById(id).value = '');
 }
 
 // ══ PROJECTS ══

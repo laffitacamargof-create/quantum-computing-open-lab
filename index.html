@@ -1164,15 +1164,35 @@ body::before{content:'';position:fixed;inset:0;
     broadcast({ type:'QCOL_USER_UPDATE', user:curUser });
   }
 
+  // ✅ Updated doFounder to read password from Config Sync or localStorage
   function doFounder() {
-    const p  = document.getElementById('f-pass').value;
-    const fp = localStorage.getItem('qcol_fp') || '1027';
+    const p = document.getElementById('f-pass').value;
+    let fp = '1027'; // default
+
+    if (window.configSync && window.configSync.isReady) {
+      const syncFp = window.configSync.getConfig('founder_password');
+      if (syncFp) {
+        fp = syncFp;
+      } else {
+        fp = localStorage.getItem('qcol_fp') || '1027';
+      }
+    } else {
+      fp = localStorage.getItem('qcol_fp') || '1027';
+    }
+
     if (p === fp) {
-      curUser = { name:'Franci Laffita Camargo', username:'franci_laffita', role:'founder', canUpload:true };
+      curUser = {
+        name: 'Franci Laffita Camargo',
+        username: 'franci_laffita',
+        role: 'founder',
+        canUpload: true
+      };
       localStorage.setItem('qcol_cur_user', JSON.stringify(curUser));
-      closeAuth(); updateUI(); renderMenu();
+      closeAuth();
+      updateUI();
+      renderMenu();
       notify('👑 Founder access granted');
-      broadcast({ type:'QCOL_USER_UPDATE', user:curUser });
+      broadcast({ type: 'QCOL_USER_UPDATE', user: curUser });
     } else {
       notify('Incorrect password');
     }
