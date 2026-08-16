@@ -215,6 +215,12 @@ body::before{
     font-family:var(--mono);
     color:#5f8ab0;
     margin-bottom:.9rem;
+    flex-wrap:wrap;
+}
+.card-meta .meta-item {
+    background:rgba(0,0,0,0.3);
+    padding:0.1rem 0.5rem;
+    border-radius:10px;
 }
 .tags{
     display:flex;
@@ -264,6 +270,11 @@ body::before{
     background:rgba(0,255,136,0.08);
     border-color:rgba(0,255,136,0.3);
     color:#aaffcc;
+}
+.btn-icon.code-view{
+    background:rgba(0,136,255,0.1);
+    border-color:rgba(0,136,255,0.3);
+    color:var(--bl2);
 }
 .empty-state{
     display:flex;
@@ -540,6 +551,30 @@ body::before{
     animation: spin 0.8s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+/* Code view modal */
+.code-view-modal .modal {
+    width: min(900px, 95vw);
+    height: 80vh;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+}
+.code-view-modal .modal-title {
+    padding: 0.8rem 1rem;
+    margin: 0;
+    border-left: none;
+    border-bottom: 1px solid var(--b);
+}
+.code-view-content {
+    flex: 1;
+    overflow: auto;
+    padding: 1rem;
+    background: #010608;
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    white-space: pre-wrap;
+    color: #aaffdd;
+}
 </style>
 </head>
 <body>
@@ -699,6 +734,17 @@ body::before{
     </div>
 </div>
 
+<!-- CODE VIEW MODAL -->
+<div class="modal-ov code-view-modal" id="codeViewModal">
+    <div class="modal" style="width: min(900px, 95vw); height: 80vh; padding: 0; display: flex; flex-direction: column;">
+        <div class="modal-title" style="padding: 0.8rem 1rem; margin: 0; border-left: none; border-bottom: 1px solid var(--b); display: flex; justify-content: space-between;">
+            <span id="codeViewTitle">📄 Código fuente</span>
+            <button class="btn-cancel" onclick="closeCodeViewModal()">CLOSE</button>
+        </div>
+        <div class="code-view-content" id="codeViewContent"></div>
+    </div>
+</div>
+
 <!-- APP EXECUTION MODAL -->
 <div class="modal-ov exec-modal" id="execAppModal">
     <div class="modal">
@@ -734,11 +780,92 @@ let currentExecutingApp = null;
 let pendingCompileRequest = null;
 
 // ============================================================
+// 🔧 FUNCIONES DE EXTRACCIÓN DE PYTHON (para apps unificadas)
+// ============================================================
+function extractPythonFromHTML(htmlContent) {
+    if (!htmlContent || typeof htmlContent !== 'string') return '';
+    
+    const match = htmlContent.match(/\/\/\s*⚡\s*PYTHON_START\s*([\s\S]*?)\s*\/\/\s*⚡\s*PYTHON_END/);
+    if (match) {
+        let pythonCode = match[1]
+            .split('\n')
+            .map(line => line.replace(/^\/\/\s*/, ''))
+            .join('\n')
+            .trim();
+        return pythonCode;
+    }
+    return '';
+}
+
+function getPythonLineCount(htmlContent) {
+    const pyCode = extractPythonFromHTML(htmlContent);
+    if (!pyCode) return 0;
+    return pyCode.split('\n').filter(line => line.trim()).length;
+}
+
+function getTotalLineCount(htmlContent) {
+    if (!htmlContent) return 0;
+    return htmlContent.split('\n').length;
+}
+
+function buildCompleteApp(htmlContent, serverUrl) {
+    const pythonCode = extractPythonFromHTML(htmlContent);
+    
+    const bridge = `
+<script>
+(function() {
+    window.__serverUrl = ${JSON.stringify(serverUrl || '')};
+    window.__pyCode = ${JSON.stringify(pythonCode || '')};
+    
+    window.pyCall = async function(funcName, ...args) {
+        return new Promise((resolve, reject) => {
+            const msgId = Date.now() + '-' + Math.random().toString(36).slice(2);
+            const handler = (event) => {
+                if (event.data && event.data.type === 'pyResult' && event.data.id === msgId) {
+                    window.removeEventListener('message', handler);
+                    if (event.data.error) reject(new Error(event.data.error));
+                    else resolve(event.data.result);
+                }
+            };
+            window.addEventListener('message', handler);
+            window.parent.postMessage({
+                type: 'pyCall',
+                id: msgId,
+                func: funcName,
+                args: args,
+                serverUrl: window.__serverUrl,
+                pythonCode: window.__pyCode
+            }, '*');
+        });
+    };
+    
+    console.log('🔮 Quantum App ready');
+    console.log('   📡 Server:', window.__serverUrl || '⚠️ Not configured');
+    console.log('   🐍 Python functions:', (window.__pyCode || '').split('\\n').filter(l => l.includes('def ')).length);
+})();
+<\/script>
+    `;
+    
+    let finalHtml = htmlContent || '<!DOCTYPE html><html><body><h2>⚛️ Quantum App</h2></body></html>';
+    
+    if (finalHtml.includes('</head>')) {
+        finalHtml = finalHtml.replace('</head>', bridge + '</head>');
+    } else if (finalHtml.includes('<body')) {
+        finalHtml = finalHtml.replace('<body', bridge + '<body');
+    } else if (finalHtml.includes('<html>')) {
+        finalHtml = finalHtml.replace('<html>', '<html>' + bridge);
+    } else {
+        finalHtml = bridge + finalHtml;
+    }
+    
+    return finalHtml;
+}
+
+// ============================================================
 // 🔄 FUNCIONES CON INTEGRACIÓN SUPABASE SYNC - SOLO NUBE
 // ============================================================
 
 async function getPublishedApps() {
-    // ✅ SOLO usar la nube, NUNCA localStorage
     if (window.quantumSync && window.quantumSync.isReady) {
         await window.quantumSync.syncAll(true);
         return window.quantumSync.publishedApps || [];
@@ -747,25 +874,13 @@ async function getPublishedApps() {
     return [];
 }
 
-// ✅ No guardar nada en localStorage
-async function savePublishedApps(apps) {
-    // Solo usar la nube
-    console.log('⏭️ Ignorando guardado local de published');
-}
-
 async function getPendingApps() {
-    // ✅ SOLO usar la nube, NUNCA localStorage
     if (window.quantumSync && window.quantumSync.isReady) {
         await window.quantumSync.syncAll(true);
         return window.quantumSync.pendingApps || [];
     }
     console.warn('⚠️ Sin conexión a la nube, devolviendo lista vacía');
     return [];
-}
-
-// ✅ No guardar nada en localStorage
-async function savePendingApps(apps) {
-    console.log('⏭️ Ignorando guardado local de pending');
 }
 
 function escapeHtml(str) {
@@ -837,7 +952,7 @@ function setTagFilter(tag) {
 }
 
 // ============================================================
-// 🔥 RENDER PUBLISHED APPS CON CACHÉ
+// 🔥 RENDER PUBLISHED APPS CON CACHÉ - SOPORTE PARA APPS UNIFICADAS
 // ============================================================
 async function renderPublishedApps() {
     const apps = await getPublishedApps();
@@ -881,16 +996,38 @@ async function renderPublishedApps() {
         const tagsHtml = tagsArray.map(tag => `<span class="tag">#${escapeHtml(tag)}</span>`).join('');
         const canDelete = isFounder;
         const delBtn = canDelete ? `<button class="btn-icon" onclick="window.deletePublishedApp('${app.id}')">🗑️</button>` : '';
+        
+        // ✅ SOPORTE PARA APPS UNIFICADAS
+        // Buscar content en orden: app.content -> app.html_code -> app.htmlCode
+        const unifiedContent = app.content || app.html_code || app.htmlCode || '';
+        const pythonLines = getPythonLineCount(unifiedContent);
+        const totalLines = getTotalLineCount(unifiedContent);
+        
+        // Extraer Python para mostrar estadísticas
+        const pythonCode = extractPythonFromHTML(unifiedContent);
+        const hasPython = pythonCode && pythonCode.trim().length > 0;
+        
         gridHtml += `
             <div class="card">
-                <div class="card-header"><span class="badge-app">⚛️ QUANTUM APP</span></div>
+                <div class="card-header">
+                    <span class="badge-app">${hasPython ? '⚛️' : '🌐'} QUANTUM APP</span>
+                    <span style="font-size:0.5rem;color:var(--mu);font-family:var(--mono);">
+                        ${hasPython ? `🐍 ${pythonLines}` : ''}
+                        📄 ${totalLines}
+                    </span>
+                </div>
                 <div class="card-body">
                     <div class="card-title">${escapeHtml(app.title || 'Untitled App')}</div>
                     <div class="card-desc">${escapeHtml(app.desc || 'No description')}</div>
-                    <div class="card-meta"><span>⏱️ ${app.duration || 8} min</span></div>
+                    <div class="card-meta">
+                        <span class="meta-item">⏱️ ${app.duration || 8} min</span>
+                        ${hasPython ? `<span class="meta-item">🐍 ${pythonLines} Python</span>` : ''}
+                        <span class="meta-item">📄 ${totalLines} lines</span>
+                    </div>
                     <div class="tags">${tagsHtml}</div>
                     <div class="card-actions">
                         <button class="btn-execute" onclick="window.executeQuantumApp('${app.id}')">▶ RUN PROGRAM</button>
+                        <button class="btn-icon code-view" onclick="window.viewAppCode('${app.id}')" title="Ver código">📄</button>
                         ${delBtn}
                     </div>
                 </div>
@@ -932,11 +1069,20 @@ async function renderPendingList() {
     pending.forEach(app => {
         const title = app.title || app.name || 'Untitled App';
         const appId = app.id;
+        const content = app.content || app.html_code || app.htmlCode || '';
+        const hasContent = content && content.length > 10;
+        const pyLines = getPythonLineCount(content);
+        
         html += `<div style="background: #0a1222; border-radius: 16px; margin-bottom: 12px; padding: 12px;">
                     <strong>${escapeHtml(title)}</strong>
+                    <span style="font-size:0.55rem;color:var(--mu);margin-left:0.5rem;">
+                        ${hasContent ? `📄 ${getTotalLineCount(content)} lines` : '⚠️ Sin código'}
+                        ${pyLines > 0 ? ` · 🐍 ${pyLines} Python` : ''}
+                    </span>
                     <div style="margin-top:8px; display:flex; gap:8px;">
                         <button class="btn" style="background: #00aa66;" onclick="window.publishPendingApp('${appId}')">✅ PUBLISH</button>
                         <button class="btn" style="background: #aa3355;" onclick="window.rejectPendingApp('${appId}')">🗑️ REJECT</button>
+                        ${hasContent ? `<button class="btn" style="background: #4444aa;" onclick="window.viewPendingCode('${appId}')">📄 VIEW</button>` : ''}
                     </div>
                 </div>`;
     });
@@ -948,7 +1094,57 @@ async function renderPendingList() {
     }
 }
 
-// ========== EXECUTE APP USING QUANTUM APP STUDIO ==========
+// ============================================================
+// 🔥 VIEW APP CODE (para apps publicadas)
+// ============================================================
+async function viewAppCode(appId) {
+    const apps = await getPublishedApps();
+    const app = apps.find(a => a.id === appId);
+    if(!app) {
+        showNotification('⚠️ App not found');
+        return;
+    }
+    
+    const content = app.content || app.html_code || app.htmlCode || '';
+    if(!content) {
+        showNotification('⚠️ Esta app no tiene código visible');
+        return;
+    }
+    
+    document.getElementById('codeViewTitle').textContent = `📄 Código: ${escapeHtml(app.title)}`;
+    document.getElementById('codeViewContent').textContent = content;
+    document.getElementById('codeViewModal').classList.add('open');
+}
+
+function closeCodeViewModal() {
+    document.getElementById('codeViewModal').classList.remove('open');
+}
+
+// ============================================================
+// 🔥 VIEW PENDING CODE
+// ============================================================
+async function viewPendingCode(appId) {
+    const pending = await getPendingApps();
+    const app = pending.find(a => a.id === appId);
+    if(!app) {
+        showNotification('⚠️ App not found');
+        return;
+    }
+    
+    const content = app.content || app.html_code || app.htmlCode || '';
+    if(!content) {
+        showNotification('⚠️ Esta app no tiene código visible');
+        return;
+    }
+    
+    document.getElementById('codeViewTitle').textContent = `📄 Código pendiente: ${escapeHtml(app.title || app.name)}`;
+    document.getElementById('codeViewContent').textContent = content;
+    document.getElementById('codeViewModal').classList.add('open');
+}
+
+// ============================================================
+// 🔥 EXECUTE APP - SOPORTE PARA APPS UNIFICADAS
+// ============================================================
 function executeQuantumApp(appId) {
     getPublishedApps().then(apps => {
         const app = apps.find(a => a.id === appId);
@@ -957,8 +1153,12 @@ function executeQuantumApp(appId) {
             return; 
         }
         
-        // ✅ Verificar que la app tiene código
-        if (!app.python_code || !app.html_code || app.python_code.trim() === '' || app.html_code.trim() === '') {
+        // ✅ Buscar contenido unificado
+        const unifiedContent = app.content || app.html_code || app.htmlCode || '';
+        const pythonCode = extractPythonFromHTML(unifiedContent);
+        
+        // Verificar que tiene contenido
+        if (!unifiedContent || unifiedContent.trim() === '') {
             showNotification('⚠️ This app has no code. Edit it in Quantum App Studio first.');
             return;
         }
@@ -968,11 +1168,46 @@ function executeQuantumApp(appId) {
         const titleSpan = document.getElementById('execAppTitle');
         titleSpan.innerHTML = `⚛️ ${escapeHtml(app.title)}`;
         modal.classList.add('open');
-        executeWithStudio(app);
+        executeWithUnifiedApp(unifiedContent, app);
     });
 }
 
-// Listen for pyCall from execIframe and execute them remotely
+// ============================================================
+// 🔥 EJECUTAR APP UNIFICADA
+// ============================================================
+function executeWithUnifiedApp(unifiedContent, app) {
+    const loadingDiv = document.getElementById('execLoading');
+    const iframe = document.getElementById('execIframe');
+    
+    loadingDiv.style.display = 'flex';
+    
+    const serverUrl = app.server_url || app.serverUrl || compilerUrl || localStorage.getItem('qcol_colab_url') || '';
+    
+    if (!unifiedContent || unifiedContent.trim() === '') {
+        loadingDiv.style.display = 'none';
+        showNotification('⚠️ This app has no content.');
+        return;
+    }
+    
+    if (window._execBlobUrl) { URL.revokeObjectURL(window._execBlobUrl); }
+    
+    try {
+        // Construir la app completa con el puente Python
+        const finalHtml = buildCompleteApp(unifiedContent, serverUrl);
+        const blob = new Blob([finalHtml], { type: 'text/html' });
+        window._execBlobUrl = URL.createObjectURL(blob);
+        iframe.src = window._execBlobUrl;
+        iframe.onload = function() { loadingDiv.style.display = 'none'; };
+        setTimeout(function() { if (loadingDiv.style.display !== 'none') loadingDiv.style.display = 'none'; }, 5000);
+    } catch(err) {
+        loadingDiv.style.display = 'none';
+        showNotification('Error building app: ' + err.message);
+    }
+}
+
+// ============================================================
+// 🔥 LISTEN FOR PYTHON CALLS
+// ============================================================
 window.addEventListener('message', async function _execPyCallHandler(ev) {
     const d = ev.data;
     if (!d || d.type !== 'pyCall') return;
@@ -1024,72 +1259,6 @@ async function _runPythonRemote(code, serverUrl) {
     return out?.output ?? out?.result ?? String(out ?? '');
 }
 
-function _buildAppBlob(pythonCode, htmlCode, serverUrl) {
-    const bridge = `<script>
-(function(){
-    window.__serverUrl  = ${JSON.stringify(serverUrl  || '')};
-    window.__pyCode     = ${JSON.stringify(pythonCode || '')};
-    window.pyCall = function(funcName) {
-        const args = Array.prototype.slice.call(arguments, 1);
-        return new Promise(function(resolve, reject) {
-            var msgId = Date.now() + '-' + Math.random().toString(36).slice(2);
-            function handler(ev) {
-                var d = ev.data;
-                if (d && d.type === 'pyResult' && d.id === msgId) {
-                    window.removeEventListener('message', handler);
-                    if (d.error) reject(new Error(d.error));
-                    else resolve(d.result);
-                }
-            }
-            window.addEventListener('message', handler);
-            window.parent.postMessage({
-                type: 'pyCall', id: msgId, func: funcName, args: args,
-                serverUrl: window.__serverUrl, pythonCode: window.__pyCode
-            }, '*');
-        });
-    };
-})();
-<\/script>`;
-
-    let html = htmlCode || '<!DOCTYPE html><html><body><h2>⚛️ App without interface</h2></body></html>';
-    if (html.includes('</head>'))        html = html.replace('</head>', bridge + '</head>');
-    else if (html.includes('<body'))      html = html.replace('<body', bridge + '<body');
-    else if (html.includes('<html'))      html = html.replace('<html>', '<html>' + bridge);
-    else                                  html = bridge + html;
-
-    return URL.createObjectURL(new Blob([html], { type: 'text/html' }));
-}
-
-function executeWithStudio(app) {
-    const loadingDiv = document.getElementById('execLoading');
-    const iframe     = document.getElementById('execIframe');
-
-    loadingDiv.style.display = 'flex';
-
-    const serverUrl = app.server_url || app.serverUrl || compilerUrl || localStorage.getItem('qcol_colab_url') || '';
-
-    // ✅ Verificación mejorada
-    if (!app.python_code && !app.html_code && !app.pythonCode && !app.htmlCode) {
-        loadingDiv.style.display = 'none';
-        showNotification('⚠️ This app has no HTML or Python code. Edit it in Studio first.');
-        return;
-    }
-
-    if (window._execBlobUrl) { URL.revokeObjectURL(window._execBlobUrl); }
-
-    try {
-        const pythonCode = app.python_code || app.pythonCode || '';
-        const htmlCode = app.html_code || app.htmlCode || '';
-        window._execBlobUrl = _buildAppBlob(pythonCode, htmlCode, serverUrl);
-        iframe.src = window._execBlobUrl;
-        iframe.onload = function() { loadingDiv.style.display = 'none'; };
-        setTimeout(function() { if (loadingDiv.style.display !== 'none') loadingDiv.style.display = 'none'; }, 5000);
-    } catch(err) {
-        loadingDiv.style.display = 'none';
-        showNotification('Error building app: ' + err.message);
-    }
-}
-
 function closeExecModal() {
     const modal = document.getElementById('execAppModal');
     modal.classList.remove('open');
@@ -1101,7 +1270,9 @@ function closeExecModal() {
 
 const _execPyCalls = new Map();
 
-// ========== COMMUNICATION WITH QUANTUM APP STUDIO ==========
+// ============================================================
+// 🔥 COMMUNICATION WITH QUANTUM APP STUDIO
+// ============================================================
 const studioModal = document.getElementById('studioModalReal');
 const studioIframe = document.getElementById('studioIframe');
 
@@ -1125,7 +1296,7 @@ function openQuantumAppStudio() {
 function closeStudioModal() { studioModal.classList.remove('open'); }
 
 // ============================================================
-// 🔥 MANEJADOR DE MENSAJES DEL STUDIO
+// 🔥 MANEJADOR DE MENSAJES DEL STUDIO - SOPORTE PARA CONTENIDO UNIFICADO
 // ============================================================
 window.addEventListener('message', async function(e) {
     const data = e.data;
@@ -1133,6 +1304,10 @@ window.addEventListener('message', async function(e) {
     
     if (data.type === 'QCOL_STUDIO_SYNC_APP') {
         const { appId, appData } = data;
+        
+        // ✅ Extraer el contenido unificado
+        const unifiedContent = appData.content || appData.htmlCode || '';
+        const pythonCode = extractPythonFromHTML(unifiedContent);
         
         if (window.quantumSync && window.quantumSync.isReady) {
             try {
@@ -1142,8 +1317,9 @@ window.addEventListener('message', async function(e) {
                     title: appData.title || appData.name || 'Untitled',
                     description: appData.description || '',
                     tags: appData.tags || '',
-                    pythonCode: appData.pythonCode || '',
-                    htmlCode: appData.htmlCode || '',
+                    content: unifiedContent,  // ✅ Guardar contenido unificado
+                    pythonCode: pythonCode,
+                    htmlCode: unifiedContent,
                     serverUrl: appData.serverUrl || '',
                     duration: appData.duration || 8
                 });
@@ -1179,13 +1355,26 @@ window.addEventListener('message', async function(e) {
             console.warn('⚠️ Quantum Sync no disponible, guardando localmente');
             const pending = JSON.parse(localStorage.getItem('qcol_pending_quantum_apps') || '[]');
             const existing = pending.find(p => p.id === appId);
+            const entry = {
+                id: appData.id || appId,
+                name: appData.name || appData.title || 'Untitled',
+                title: appData.title || appData.name || 'Untitled',
+                description: appData.description || '',
+                tags: appData.tags || '',
+                content: unifiedContent,
+                pythonCode: pythonCode,
+                htmlCode: unifiedContent,
+                serverUrl: appData.serverUrl || '',
+                duration: appData.duration || 8,
+                timestamp: Date.now()
+            };
             if (existing) {
-                Object.assign(existing, appData);
+                Object.assign(existing, entry);
             } else {
-                pending.push(appData);
+                pending.push(entry);
             }
             localStorage.setItem('qcol_pending_quantum_apps', JSON.stringify(pending));
-            showNotification(`📦 App "${appData.title}" guardada localmente`);
+            showNotification(`📦 App "${entry.title}" guardada localmente`);
             
             await window.renderPendingList();
             
@@ -1349,6 +1538,9 @@ window.openQuantumAppStudio = openQuantumAppStudio;
 window.closeStudioModal = closeStudioModal;
 window.executeQuantumApp = executeQuantumApp;
 window.refreshApps = refreshApps;
+window.viewAppCode = viewAppCode;
+window.viewPendingCode = viewPendingCode;
+window.closeCodeViewModal = closeCodeViewModal;
 
 // ✅ Sincronizar al recargar la página
 window.addEventListener('load', async () => {
@@ -1364,6 +1556,7 @@ window.addEventListener('load', async () => {
 document.getElementById('studioModalReal')?.addEventListener('click', (e) => { if(e.target === document.getElementById('studioModalReal')) closeStudioModal(); });
 document.getElementById('pendingModal')?.addEventListener('click', (e) => { if(e.target === document.getElementById('pendingModal')) closePendingModal(); });
 document.getElementById('execAppModal')?.addEventListener('click', (e) => { if(e.target === document.getElementById('execAppModal')) closeExecModal(); });
+document.getElementById('codeViewModal')?.addEventListener('click', (e) => { if(e.target === document.getElementById('codeViewModal')) closeCodeViewModal(); });
 </script>
 </body>
 </html>
