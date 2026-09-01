@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control System 240 · Mi Negocio</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #f4f7fc;
+            min-height: 100vh;
+            padding: 24px;
+        }
+        .app-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 40px;
+            box-shadow: 0 20px 60px rgba(11, 43, 68, 0.12);
+            overflow: hidden;
+        }
+        .app-header {
+            background: linear-gradient(135deg, #0b2b44 0%, #1a4b6d 100%);
+            padding: 16px 32px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            flex-wrap: wrap;
+            border-bottom: 2px solid #ffb347;
+        }
+        .logo-icon { font-size: 2rem; color: #ffb347; }
+        .brand-name {
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .brand-name span {
+            background: #ffb347;
+            color: #0b2b44;
+            padding: 0 14px;
+            border-radius: 100px;
+            font-size: 1.3rem;
+            font-weight: 800;
+        }
+        .header-actions {
+            margin-left: auto;
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .badge {
+            background: rgba(255,255,255,0.15);
+            color: white;
+            padding: 6px 18px;
+            border-radius: 40px;
+            font-weight: 500;
+            font-size: 0.85rem;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .badge i { color: #ffb347; margin-right: 6px; }
+        .btn-outline {
+            background: transparent;
+            color: white;
+            border: 1px solid rgba(255,255,255,0.3);
+            padding: 8px 20px;
+            border-radius: 40px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+        }
+        .btn-outline:hover {
+            background: rgba(255,255,255,0.1);
+            border-color: #ffb347;
+        }
+        .panel {
+            padding: 24px 32px 32px;
+        }
+        .tabs-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            background: #f0f4fa;
+            border-radius: 16px;
+            padding: 6px;
+            margin-bottom: 20px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .tab-btn {
+            padding: 10px 18px;
+            border: none;
+            background: transparent;
+            border-radius: 12px;
+            font-weight: 600;
+            color: #4a5b6e;
+            cursor: pointer;
+            transition: 0.2s;
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85rem;
+            white-space: nowrap;
+        }
+        .tab-btn i { color: #6a7b8e; font-size: 0.9rem; }
+        .tab-btn:hover { background: rgba(255,179,71,0.1); }
+        .tab-btn.active {
+            background: white;
+            color: #0b2b44;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+        }
+        .tab-btn.active i { color: #ffb347; }
+        .tab-content {
+            display: none;
+            animation: fadeUp 0.25s ease;
+        }
+        .tab-content.active { display: block; }
+        @keyframes fadeUp {
+            0% { opacity: 0.3; transform: translateY(6px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+        .flex-between {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+        h2 {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #0b2b44;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        h2 i { color: #ffb347; }
+        .table-wrap {
+            overflow-x: auto;
+            border-radius: 20px;
+            border: 1px solid #eef2f6;
+            margin-top: 8px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+            background: white;
+        }
+        th {
+            background: #f0f4fa;
+            color: #1e3a5f;
+            font-weight: 600;
+            padding: 10px 12px;
+            text-align: left;
+            position: sticky;
+            top: 0;
+        }
+        td {
+            padding: 9px 12px;
+            border-bottom: 1px solid #eef2f6;
+            color: #1e2f44;
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        tr:last-child td { border-bottom: none; }
+        .empty-state {
+            padding: 40px 20px;
+            text-align: center;
+            color: #7a8b9e;
+        }
+        .empty-state i { font-size: 2.5rem; color: #d0dbe8; margin-bottom: 12px; }
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 40px;
+            gap: 16px;
+            color: #4a5b6e;
+        }
+        .loading i {
+            font-size: 2rem;
+            color: #ffb347;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .badge-count {
+            background: #ffb34720;
+            color: #8a5a1a;
+            padding: 2px 12px;
+            border-radius: 40px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+        .servidor-status {
+            background: #e8f5e9;
+            padding: 10px 18px;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            border-left: 4px solid #28a745;
+            font-size: 0.85rem;
+            color: #1e3a5f;
+        }
+        .servidor-status.error {
+            background: #fbe9e7;
+            border-left-color: #dc3545;
+        }
+        .servidor-status i { color: #ffb347; }
+        .env-badge {
+            display: inline-block;
+            background: #17a2b8;
+            color: white;
+            padding: 2px 12px;
+            border-radius: 20px;
+            font-size: 0.65rem;
+            font-weight: 600;
+        }
+        .refresh-btn {
+            background: transparent;
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+            padding: 6px 16px;
+            border-radius: 40px;
+            cursor: pointer;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: 0.2s;
+        }
+        .refresh-btn:hover {
+            background: rgba(255,255,255,0.1);
+            border-color: #ffb347;
+        }
+        .sync-status {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.7rem;
+            padding: 4px 14px;
+            border-radius: 20px;
+            background: rgba(40, 167, 69, 0.2);
+            color: #28a745;
+        }
+        .sync-status i { color: #28a745; }
+        .sync-status.sync-error {
+            background: rgba(220, 53, 69, 0.2);
+            color: #dc3545;
+        }
+        .sync-status.sync-error i { color: #dc3545; }
+        .sync-status.sync-warning {
+            background: rgba(255, 193, 7, 0.2);
+            color: #ffc107;
+        }
+        .sync-status.sync-warning i { color: #ffc107; }
+        .diagnostico {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 12px;
+            padding: 12px 18px;
+            margin-bottom: 16px;
+            font-size: 0.85rem;
+            color: #856404;
+        }
+        .diagnostico i { color: #ffc107; }
+        .diagnostico.success {
+            background: #d4edda;
+            border-color: #28a745;
+            color: #155724;
+        }
+        .diagnostico.error {
+            background: #f8d7da;
+            border-color: #dc3545;
+            color: #721c24;
+        }
+        @media (max-width: 700px) {
+            .app-header { flex-direction: column; align-items: start; }
+            .header-actions { margin-left: 0; width: 100%; }
+            .panel { padding: 16px; }
+            .tabs-container { max-height: 150px; }
+            .tab-btn { font-size: 0.75rem; padding: 8px 12px; }
+            table { font-size: 0.75rem; }
+            th, td { padding: 6px 8px; }
+        }
+    </style>
+</head>
+<body>
+<div class="app-container">
+    <header class="app-header">
+        <i class="fas fa-cubes logo-icon"></i>
+        <div class="brand-name">Control System <span>240</span></div>
+        <div class="header-actions">
+            <span class="env-badge" style="background:#17a2b8;color:white;padding:4px 12px;border-radius:20px;font-size:0.65rem;">Supabase</span>
+            <span class="badge" id="negocioBadge"><i class="fas fa-store"></i> Sin sesión</span>
+            <span class="sync-status" id="syncStatus"><i class="fas fa-check-circle"></i> Conectado</span>
+            <button class="refresh-btn" id="btnRefrescar"><i class="fas fa-sync-alt"></i> Refrescar</button>
+            <button class="btn-outline" id="btnCerrarSesion"><i class="fas fa-sign-out-alt"></i> Salir</button>
+        </div>
+    </header>
+
+    <div class="panel">
+        <div class="servidor-status" id="servidorStatus">
+            <i class="fas fa-database"></i>
+            <span id="estadoConexion">Conectando a Supabase...</span>
+        </div>
+
+        <div id="diagnostico" class="diagnostico" style="display:none;">
+            <i class="fas fa-info-circle"></i>
+            <span id="diagnosticoTexto">Diagnóstico...</span>
+        </div>
+
+        <div class="tabs-container" id="tabsContainer">
+            <div class="loading" style="width:100%;"><i class="fas fa-spinner"></i> Cargando tablas...</div>
+        </div>
+
+        <div id="tabContentContainer">
+            <div class="loading"><i class="fas fa-spinner"></i> Cargando datos...</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function() {
+        'use strict';
+
+        // 🔑 NUEVA SERVICE ROLE KEY
+        var SUPABASE_KEY = "sb_secret_z11YVABuL0LESSbktFtRZA_J-_W8XMv";
+        var SUPABASE_URL = "https://fxtioitrdtahmljclyqv.supabase.co/rest/v1/";
+
+        // ================================================================
+        // CARGAR SESIÓN (para obtener el nombre del negocio y las tablas)
+        // ================================================================
+        var sesionData = localStorage.getItem('controlSystem240_sesion');
+        if (!sesionData) {
+            window.location.href = 'index.html';
+            return;
+        }
+
+        var sesion;
+        try {
+            sesion = JSON.parse(sesionData);
+        } catch(e) {
+            window.location.href = 'index.html';
+            return;
+        }
+
+        var nombreNegocio = sesion.negocio;
+        var configNegocio = sesion.config || {};
+        var TABLAS = configNegocio.tablas || [];
+
+        document.getElementById('negocioBadge').innerHTML = '<i class="fas fa-store"></i> ' + nombreNegocio;
+
+        console.log('🔍 DIAGNÓSTICO mi-negocio.html:');
+        console.log('📋 Tablas en sesión:', TABLAS);
+        console.log('📋 Cantidad de tablas:', TABLAS.length);
+        console.log('📋 Supabase URL:', SUPABASE_URL);
+        console.log('🔑 API KEY (nueva):', SUPABASE_KEY.substring(0, 25) + '...');
+
+        function mostrarDiagnostico(mensaje, tipo) {
+            var div = document.getElementById('diagnostico');
+            var texto = document.getElementById('diagnosticoTexto');
+            div.style.display = 'block';
+            texto.textContent = mensaje;
+            div.className = 'diagnostico';
+            if (tipo === 'error') {
+                div.classList.add('error');
+            } else if (tipo === 'success') {
+                div.classList.add('success');
+            }
+        }
+
+        function actualizarSyncStatus(tipo, texto) {
+            var status = document.getElementById('syncStatus');
+            status.className = 'sync-status';
+            if (tipo === 'success') {
+                status.innerHTML = '<i class="fas fa-check-circle"></i> ' + texto;
+            } else if (tipo === 'warning') {
+                status.classList.add('sync-warning');
+                status.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ' + texto;
+            } else if (tipo === 'error') {
+                status.classList.add('sync-error');
+                status.innerHTML = '<i class="fas fa-exclamation-triangle"></i> ' + texto;
+            } else {
+                status.innerHTML = '<i class="fas fa-sync"></i> ' + texto;
+            }
+        }
+
+        // ================================================================
+        // LEER DATOS DE UNA TABLA
+        // ================================================================
+        function leerTabla(tabla) {
+            var url = SUPABASE_URL + tabla + '?select=*';
+            console.log('📡 Intentando leer:', url);
+            return fetch(url, {
+                headers: {
+                    'apikey': SUPABASE_KEY,
+                    'Authorization': 'Bearer ' + SUPABASE_KEY
+                }
+            })
+            .then(function(response) {
+                if (!response.ok) {
+                    throw new Error('Status ' + response.status + ': ' + response.statusText);
+                }
+                return response.json();
+            });
+        }
+
+        // ================================================================
+        // RENDERIZAR TABLA EN HTML
+        // ================================================================
+        function renderizarTablaHTML(tabla, datos) {
+            if (!datos || datos.length === 0) {
+                return '<div class="empty-state"><i class="fas fa-table"></i><p>La tabla <strong>' + tabla + '</strong> está vacía</p></div>';
+            }
+
+            var columnas = Object.keys(datos[0]);
+            var html = '<div class="table-wrap"><table><thead><tr>';
+            for (var c = 0; c < columnas.length; c++) {
+                html = html + '<th>' + columnas[c] + '</th>';
+            }
+            html = html + '</tr></thead><tbody>';
+
+            for (var r = 0; r < datos.length; r++) {
+                var fila = datos[r];
+                html = html + '<tr>';
+                for (var c2 = 0; c2 < columnas.length; c2++) {
+                    var col = columnas[c2];
+                    var valor = fila[col];
+                    if (valor === null || valor === undefined) {
+                        valor = '';
+                    } else if (typeof valor === 'object') {
+                        valor = JSON.stringify(valor);
+                    } else if (typeof valor === 'boolean') {
+                        valor = valor ? '✅ Sí' : '❌ No';
+                    }
+                    html = html + '<td>' + valor + '</td>';
+                }
+                html = html + '</tr>';
+            }
+            html = html + '</tbody></table></div>';
+            return html;
+        }
+
+        // ================================================================
+        // CARGAR TODAS LAS TABLAS
+        // ================================================================
+        function cargarTodasLasTablas() {
+            var tabsContainer = document.getElementById('tabsContainer');
+            var contentContainer = document.getElementById('tabContentContainer');
+            
+            if (!TABLAS || TABLAS.length === 0) {
+                tabsContainer.innerHTML = '<div class="empty-state" style="width:100%;padding:20px;"><i class="fas fa-exclamation-triangle"></i><p>No hay tablas configuradas.</p></div>';
+                contentContainer.innerHTML = '<div class="empty-state"><i class="fas fa-table"></i><p>No se encontraron tablas</p></div>';
+                mostrarDiagnostico('⚠️ No hay tablas configuradas.', 'error');
+                document.getElementById('estadoConexion').innerHTML = '<i class="fas fa-times-circle" style="color:#dc3545;"></i> Sin tablas';
+                document.getElementById('servidorStatus').className = 'servidor-status error';
+                return;
+            }
+
+            mostrarDiagnostico('🔍 Verificando ' + TABLAS.length + ' tablas...', 'info');
+            tabsContainer.innerHTML = '';
+            contentContainer.innerHTML = '';
+
+            var tablasExistentes = [];
+            var totalVerificadas = 0;
+
+            for (var i = 0; i < TABLAS.length; i++) {
+                var tabla = TABLAS[i];
+                
+                (function(tabla) {
+                    fetch(SUPABASE_URL + tabla + '?limit=1', {
+                        headers: {
+                            'apikey': SUPABASE_KEY,
+                            'Authorization': 'Bearer ' + SUPABASE_KEY
+                        }
+                    })
+                    .then(function(response) {
+                        totalVerificadas++;
+                        if (response.ok) {
+                            tablasExistentes.push(tabla);
+                            console.log('✅ Tabla "' + tabla + '" existe');
+                        } else {
+                            console.log('⚠️ Tabla "' + tabla + '" no existe (Status: ' + response.status + ')');
+                        }
+                        if (totalVerificadas === TABLAS.length) {
+                            mostrarTablas(tablasExistentes);
+                        }
+                    })
+                    .catch(function() {
+                        totalVerificadas++;
+                        if (totalVerificadas === TABLAS.length) {
+                            mostrarTablas(tablasExistentes);
+                        }
+                    });
+                })(tabla);
+            }
+        }
+
+        function mostrarTablas(tablasExistentes) {
+            var tabsContainer = document.getElementById('tabsContainer');
+            var contentContainer = document.getElementById('tabContentContainer');
+
+            if (tablasExistentes.length === 0) {
+                tabsContainer.innerHTML = '<div class="empty-state" style="width:100%;padding:20px;"><i class="fas fa-exclamation-triangle"></i><p>No se encontraron tablas en Supabase</p></div>';
+                contentContainer.innerHTML = '<div class="empty-state"><i class="fas fa-table"></i><p>No hay tablas disponibles</p></div>';
+                mostrarDiagnostico('⚠️ No se encontraron tablas en Supabase.', 'error');
+                document.getElementById('estadoConexion').innerHTML = '<i class="fas fa-check-circle" style="color:#28a745;"></i> Conectado (sin tablas)';
+                document.getElementById('servidorStatus').className = 'servidor-status';
+                return;
+            }
+
+            mostrarDiagnostico('✅ Encontradas ' + tablasExistentes.length + ' tablas en Supabase', 'success');
+            tabsContainer.innerHTML = '';
+            contentContainer.innerHTML = '';
+
+            for (var i = 0; i < tablasExistentes.length; i++) {
+                var tabla = tablasExistentes[i];
+                var btn = document.createElement('button');
+                btn.className = 'tab-btn';
+                if (i === 0) { btn.classList.add('active'); }
+                btn.dataset.tab = tabla;
+                btn.innerHTML = '<i class="fas fa-table"></i> ' + tabla;
+                
+                (function(btn, tabla) {
+                    btn.addEventListener('click', function() {
+                        var tabId = this.dataset.tab;
+                        document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+                        this.classList.add('active');
+                        document.querySelectorAll('.tab-content').forEach(function(c) { c.classList.remove('active'); });
+                        var contenido = document.getElementById('tab-content-' + tabId);
+                        if (contenido) { contenido.classList.add('active'); }
+                    });
+                })(btn, tabla);
+                
+                tabsContainer.appendChild(btn);
+
+                var div = document.createElement('div');
+                div.id = 'tab-content-' + tabla;
+                div.className = 'tab-content';
+                if (i === 0) { div.classList.add('active'); }
+                div.innerHTML = '<div class="loading"><i class="fas fa-spinner"></i> Cargando ' + tabla + '...</div>';
+                contentContainer.appendChild(div);
+
+                (function(tabla) {
+                    leerTabla(tabla)
+                        .then(function(datos) {
+                            var divContenido = document.getElementById('tab-content-' + tabla);
+                            if (divContenido) {
+                                var html = '<div class="flex-between">' +
+                                    '<h2><i class="fas fa-table"></i> ' + tabla + '</h2>' +
+                                    '<span class="badge-count">' + (datos ? datos.length : 0) + ' registros</span>' +
+                                    '</div>';
+                                html = html + renderizarTablaHTML(tabla, datos);
+                                divContenido.innerHTML = html;
+                            }
+                        })
+                        .catch(function(error) {
+                            var divContenido = document.getElementById('tab-content-' + tabla);
+                            if (divContenido) {
+                                divContenido.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>Error: ' + error.message + '</p></div>';
+                            }
+                        });
+                })(tabla);
+            }
+
+            actualizarSyncStatus('success', 'Datos cargados');
+            document.getElementById('estadoConexion').innerHTML = '<i class="fas fa-check-circle" style="color:#28a745;"></i> Conectado a Supabase';
+            document.getElementById('servidorStatus').className = 'servidor-status';
+        }
+
+        // ================================================================
+        // EVENTOS
+        // ================================================================
+        document.getElementById('btnRefrescar').addEventListener('click', function() {
+            cargarTodasLasTablas();
+        });
+
+        document.getElementById('btnCerrarSesion').addEventListener('click', function() {
+            localStorage.removeItem('controlSystem240_sesion');
+            window.location.href = 'index.html';
+        });
+
+        // ================================================================
+        // INICIALIZAR
+        // ================================================================
+        document.getElementById('estadoConexion').innerHTML = '<i class="fas fa-spinner fa-spin"></i> Conectando...';
+        document.getElementById('servidorStatus').className = 'servidor-status';
+        
+        setTimeout(cargarTodasLasTablas, 500);
+
+        setInterval(function() {
+            cargarTodasLasTablas();
+        }, 60000);
+
+        console.log('✅ Control System 240 - Mi Negocio');
+        console.log('📁 Negocio:', nombreNegocio);
+        console.log('🔗 Supabase:', SUPABASE_URL);
+        console.log('🔑 Usando nueva service_role key');
+
+    })();
+</script>
+</body>
+</html>
