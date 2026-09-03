@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>QCOL — Quantum Computing Open Lab</title>
+<title>OpenQ — Quantum Computing Open Lab</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=JetBrains+Mono:wght@400;500&family=Exo+2:wght@300;400;500;600&display=swap" rel="stylesheet">
 <!-- CodeMirror 6 + marked -->
 <script type="importmap">
@@ -48,7 +48,7 @@ body::before{content:'';position:fixed;inset:0;
 .notif.show{transform:translateX(0);}
 
 /* HEADER */
-#qcol-header{
+#openq-header{
   display:flex;align-items:center;gap:.75rem;
   padding:.72rem 1.5rem;
   background:rgba(3,8,16,.97);
@@ -58,11 +58,11 @@ body::before{content:'';position:fixed;inset:0;
   height:58px;
 }
 
-/* LOGO — solo QCOL sin subtítulo */
+/* LOGO — solo OpenQ sin subtítulo */
 .logo{display:flex;align-items:center;gap:.65rem;cursor:pointer;text-decoration:none;}
 .logo-icon{filter:drop-shadow(0 0 6px rgba(0,200,255,.5));}
 .logo-text-wrap{display:flex;flex-direction:column;}
-.logo-qcol{display:flex;align-items:baseline;gap:0;}
+.logo-openq{display:flex;align-items:baseline;gap:0;}
 .logo-q{font-family:var(--orb);font-size:1.05rem;font-weight:900;color:#00ffdd;text-shadow:0 0 16px rgba(0,255,221,.5);}
 .logo-col{font-family:var(--orb);font-size:1.05rem;font-weight:900;color:var(--bl2);}
 
@@ -146,7 +146,7 @@ body::before{content:'';position:fixed;inset:0;
 #splash{position:fixed;inset:0;z-index:1000;background:radial-gradient(ellipse at center,#04101e 0%,var(--bg) 68%);display:flex;align-items:center;justify-content:center;transition:opacity .6s ease,visibility .6s;}
 #splash.hidden{opacity:0;visibility:hidden;pointer-events:none;}
 .splash-inner{text-align:center;animation:su 1s ease both;}
-.splash-qcol{display:flex;align-items:baseline;justify-content:center;gap:0;margin-bottom:.6rem;}
+.splash-openq{display:flex;align-items:baseline;justify-content:center;gap:0;margin-bottom:.6rem;}
 .splash-q{font-family:var(--orb);font-size:clamp(2.5rem,7vw,4rem);font-weight:900;color:#00ffdd;text-shadow:0 0 35px rgba(0,255,221,.55);}
 .splash-c{font-family:var(--orb);font-size:clamp(2.5rem,7vw,4rem);font-weight:900;color:var(--bl2);text-shadow:0 0 28px rgba(0,200,255,.45);}
 .splash-loading{display:flex;align-items:center;justify-content:center;gap:.4rem;color:var(--mu);font-family:var(--orb);font-size:.56rem;letter-spacing:.08em;margin-top:2rem;}
@@ -205,12 +205,12 @@ body::before{content:'';position:fixed;inset:0;
 .btn-ph:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(0,136,255,.4);}
 
 /* FOOTER */
-.qcol-footer{text-align:center;padding:1.2rem 1rem;border-top:1px solid var(--b);color:var(--mu);font-size:.64rem;letter-spacing:.04em;background:rgba(3,8,16,.5);margin-top:auto;}
-.qcol-footer span{color:var(--bl2);}
+.openq-footer{text-align:center;padding:1.2rem 1rem;border-top:1px solid var(--b);color:var(--mu);font-size:.64rem;letter-spacing:.04em;background:rgba(3,8,16,.5);margin-top:auto;}
+.openq-footer span{color:var(--bl2);}
 
 /* ══ MOBILE RESPONSIVE ══ */
 @media(max-width:768px){
-  #qcol-header { padding:.55rem 1rem; height:50px; }
+  #openq-header { padding:.55rem 1rem; height:50px; }
   .logo-q,.logo-col { font-size:.88rem; }
   .hbtn { padding:.26rem .55rem; font-size:.5rem; }
   .menu-hero h1 { font-size:clamp(.85rem,3vw,1.4rem); }
@@ -239,7 +239,7 @@ body::before{content:'';position:fixed;inset:0;
 </head>
 <body>
 
-<!-- SPLASH — solo QCOL grande -->
+<!-- SPLASH — solo OpenQ grande -->
 <div id="splash">
   <div class="splash-inner">
     <div style="margin-bottom:1.5rem;">
@@ -264,8 +264,8 @@ body::before{content:'';position:fixed;inset:0;
         </g>
       </svg>
     </div>
-    <div class="splash-qcol">
-      <span class="splash-q">Q</span><span class="splash-c">COL</span>
+    <div class="splash-openq">
+      <span class="splash-c">Open</span><span class="splash-q">Q</span>
     </div>
     <div class="splash-loading">
       <div class="splash-dot"></div>
@@ -276,8 +276,8 @@ body::before{content:'';position:fixed;inset:0;
 
 <div class="notif" id="notif"></div>
 
-<div id="qcol-header" style="display:none;">
-  <div class="logo" onclick="QCOL.nav('home')">
+<div id="openq-header" style="display:none;">
+  <div class="logo" onclick="OpenQ.nav('home')">
     <svg class="logo-icon" width="38" height="38" viewBox="0 0 40 40" fill="none">
       <line x1="3" y1="12" x2="37" y2="12" stroke="#0055aa" stroke-width="1.2" stroke-dasharray="2 2"/>
       <line x1="3" y1="20" x2="37" y2="20" stroke="#0055aa" stroke-width="1.2" stroke-dasharray="2 2"/>
@@ -296,14 +296,14 @@ body::before{content:'';position:fixed;inset:0;
       </g>
     </svg>
     <div class="logo-text-wrap">
-      <div class="logo-qcol">
-        <span class="logo-q">Q</span><span class="logo-col">COL</span>
+      <div class="logo-openq">
+        <span class="logo-col">Open</span><span class="logo-q">Q</span>
       </div>
     </div>
   </div>
   <div class="hdr-right">
     <div id="hdr-engine-badge" style="display:none;padding:.22rem .55rem;background:rgba(0,255,136,.08);border:1px solid rgba(0,255,136,.3);border-radius:4px;font-family:var(--orb);font-size:.46rem;color:var(--gr);">● COMPILER</div>
-    <button class="hbtn ai-btn" onclick="QCOL.toggleAI()">
+    <button class="hbtn ai-btn" onclick="OpenQ.toggleAI()">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" style="vertical-align:middle;">
         <circle cx="12" cy="12" r="10" stroke="#00ffdd" stroke-width="1.4"/>
         <path d="M8 12h8M12 8l4 4-4 4" stroke="#00ffdd" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
@@ -312,7 +312,7 @@ body::before{content:'';position:fixed;inset:0;
       QuantumChat
     </button>
     <div id="hdr-user-area">
-      <button class="hbtn" onclick="QCOL.openAuth('login')">LOGIN</button>
+      <button class="hbtn" onclick="OpenQ.openAuth('login')">LOGIN</button>
     </div>
   </div>
 </div>
@@ -330,7 +330,7 @@ body::before{content:'';position:fixed;inset:0;
         QuantumChat
         <span id="ai-prov-lbl" style="font-size:.46rem;color:var(--mu);margin-left:.3rem;"></span>
       </div>
-      <button class="ai-close-btn" onclick="QCOL.toggleAI()">✕</button>
+      <button class="ai-close-btn" onclick="OpenQ.toggleAI()">✕</button>
     </div>
     <div class="ai-msgs" id="ai-messages">
       <div class="ai-msg bot">
@@ -343,7 +343,7 @@ body::before{content:'';position:fixed;inset:0;
     </div>
     <div class="ai-input-row">
       <div id="ai-editor" style="flex:1;"></div>
-      <button class="ai-send" onclick="QCOL.sendAI()">➤</button>
+      <button class="ai-send" onclick="OpenQ.sendAI()">➤</button>
     </div>
     <div class="ai-status-bar">
       <div class="ai-status-dot" id="ai-sdot"></div>
@@ -361,11 +361,11 @@ body::before{content:'';position:fixed;inset:0;
         <input class="form-i" id="l-user" type="text" placeholder="your_username"></div>
       <div class="form-g"><label class="form-l">PASSWORD</label>
         <input class="form-i" id="l-pass" type="password" placeholder="••••••••"
-          onkeydown="if(event.key==='Enter')QCOL.doLogin()"></div>
-      <button class="btn-submit" onclick="QCOL.doLogin()">ENTER THE LAB</button>
-      <div class="modal-sw">No account? <a onclick="QCOL.openAuth('register')">Create account</a></div>
-      <div class="modal-sw" style="margin-top:.3rem;"><a onclick="QCOL.openAuth('founder')">👑 Founder access</a></div>
-      <button class="btn-cancel" onclick="QCOL.closeAuth()">CANCEL</button>
+          onkeydown="if(event.key==='Enter')OpenQ.doLogin()"></div>
+      <button class="btn-submit" onclick="OpenQ.doLogin()">ENTER THE LAB</button>
+      <div class="modal-sw">No account? <a onclick="OpenQ.openAuth('register')">Create account</a></div>
+      <div class="modal-sw" style="margin-top:.3rem;"><a onclick="OpenQ.openAuth('founder')">👑 Founder access</a></div>
+      <button class="btn-cancel" onclick="OpenQ.closeAuth()">CANCEL</button>
     </div>
     <div id="auth-register" style="display:none;">
       <div class="modal-title">⚛ CREATE ACCOUNT</div>
@@ -376,20 +376,20 @@ body::before{content:'';position:fixed;inset:0;
         <input class="form-i" id="r-user" type="text" placeholder="unique_username"></div>
       <div class="form-g"><label class="form-l">PASSWORD</label>
         <input class="form-i" id="r-pass" type="password" placeholder="••••••••"></div>
-      <button class="btn-submit" onclick="QCOL.doRegister()">CREATE MY ACCOUNT</button>
-      <div class="modal-sw">Already have one? <a onclick="QCOL.openAuth('login')">Login</a></div>
-      <div class="modal-sw" style="margin-top:.3rem;"><a onclick="QCOL.openAuth('founder')">👑 Founder access</a></div>
-      <button class="btn-cancel" onclick="QCOL.closeAuth()">CANCEL</button>
+      <button class="btn-submit" onclick="OpenQ.doRegister()">CREATE MY ACCOUNT</button>
+      <div class="modal-sw">Already have one? <a onclick="OpenQ.openAuth('login')">Login</a></div>
+      <div class="modal-sw" style="margin-top:.3rem;"><a onclick="OpenQ.openAuth('founder')">👑 Founder access</a></div>
+      <button class="btn-cancel" onclick="OpenQ.closeAuth()">CANCEL</button>
     </div>
     <div id="auth-founder" style="display:none;">
       <div class="modal-title">👑 FOUNDER ACCESS</div>
       <div class="modal-sub">Exclusive ecosystem area</div>
       <div class="form-g"><label class="form-l">PASSWORD</label>
         <input class="form-i" id="f-pass" type="password" placeholder="••••••••"
-          onkeydown="if(event.key==='Enter')QCOL.doFounder()"></div>
-      <button class="btn-submit" onclick="QCOL.doFounder()">ACCESS</button>
-      <div class="modal-sw"><a onclick="QCOL.openAuth('login')">← Back to login</a></div>
-      <button class="btn-cancel" onclick="QCOL.closeAuth()">CANCEL</button>
+          onkeydown="if(event.key==='Enter')OpenQ.doFounder()"></div>
+      <button class="btn-submit" onclick="OpenQ.doFounder()">ACCESS</button>
+      <div class="modal-sw"><a onclick="OpenQ.openAuth('login')">← Back to login</a></div>
+      <button class="btn-cancel" onclick="OpenQ.closeAuth()">CANCEL</button>
     </div>
   </div>
 </div>
@@ -402,7 +402,7 @@ body::before{content:'';position:fixed;inset:0;
       <p>It's not just an open ecosystem — it's a board where every piece fits, contributes a unique function, and combines with the others to create larger architectures and pieces. The board is an infinite puzzle where everyone can contribute, integrating frameworks, libraries, algorithms, and quantum hardware into a single universal layer accessible to all.</p>
     </div>
     <div id="logout-bar" style="display:none;position:absolute;top:.6rem;right:.7rem;z-index:20;">
-      <button onclick="QCOL.doLogout()" style="
+      <button onclick="OpenQ.doLogout()" style="
         background:rgba(255,68,102,.08);
         border:1px solid rgba(255,68,102,.3);
         border-radius:6px;
@@ -419,21 +419,21 @@ body::before{content:'';position:fixed;inset:0;
       </button>
     </div>
     <div class="menu-grid" id="menu-grid"></div>
-    <div class="qcol-footer">
+    <div class="openq-footer">
       Founded by <span>Franci Laffita Camargo</span> · Open core quantum ecosystem — built so anyone can access, build and benefit from quantum computing.
     </div>
   </div>
 
   <div class="screen" id="screen-projects">
     <div class="screen-hdr">
-      <button class="btn-back" onclick="QCOL.nav('home')">← MENU</button>
+      <button class="btn-back" onclick="OpenQ.nav('home')">← MENU</button>
       <div class="screen-title">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
           <rect x="3" y="3" width="18" height="18" rx="3" stroke="#00ccff" stroke-width="1.5"/>
           <path d="M3 9h18M9 21V9" stroke="#00ccff" stroke-width="1.5"/>
         </svg>PROJECTS
       </div>
-      <button class="hbtn ai-btn" onclick="QCOL.toggleAI()">
+      <button class="hbtn ai-btn" onclick="OpenQ.toggleAI()">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" style="vertical-align:middle;margin-right:3px;">
           <circle cx="12" cy="12" r="10" stroke="#00ffdd" stroke-width="1.4"/>
           <path d="M8 12h8M12 8l4 4-4 4" stroke="#00ffdd" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
@@ -449,7 +449,7 @@ body::before{content:'';position:fixed;inset:0;
 
   <div class="screen" id="screen-architect">
     <div class="screen-hdr">
-      <button class="btn-back" onclick="QCOL.nav('home')">← MENU</button>
+      <button class="btn-back" onclick="OpenQ.nav('home')">← MENU</button>
       <div class="screen-title">
         <svg width="18" height="18" viewBox="0 0 40 40" fill="none">
           <line x1="2" y1="14" x2="38" y2="14" stroke="#004488" stroke-width="1.5" stroke-dasharray="3 2"/>
@@ -467,7 +467,7 @@ body::before{content:'';position:fixed;inset:0;
         ⚙️ QUANTUM OPEN LAB
       </div>
       <div id="arch-badge" style="display:none;padding:.22rem .5rem;background:rgba(0,255,136,.08);border:1px solid rgba(0,255,136,.3);border-radius:4px;font-family:var(--orb);font-size:.46rem;color:var(--gr);">● COMPILER</div>
-      <button class="hbtn ai-btn" onclick="QCOL.toggleAI()">
+      <button class="hbtn ai-btn" onclick="OpenQ.toggleAI()">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" style="vertical-align:middle;margin-right:3px;">
           <circle cx="12" cy="12" r="10" stroke="#00ffdd" stroke-width="1.4"/>
           <path d="M8 12h8M12 8l4 4-4 4" stroke="#00ffdd" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
@@ -483,7 +483,7 @@ body::before{content:'';position:fixed;inset:0;
 
   <div class="screen" id="screen-architect-pro">
     <div class="screen-hdr">
-      <button class="btn-back" onclick="QCOL.nav('home')">← MENU</button>
+      <button class="btn-back" onclick="OpenQ.nav('home')">← MENU</button>
       <div class="screen-title">
         <svg width="18" height="18" viewBox="0 0 40 40" fill="none">
           <line x1="2" y1="14" x2="38" y2="14" stroke="#4a2a7a" stroke-width="1.5" stroke-dasharray="3 2"/>
@@ -498,7 +498,7 @@ body::before{content:'';position:fixed;inset:0;
         📓 QUANTUM NOTEBOOK
         <span style="font-family:var(--orb);font-size:.5rem;color:var(--pu);padding:.1rem .38rem;border:1px solid rgba(189,147,249,.3);border-radius:3px;">ADMIN+</span>
       </div>
-      <button class="hbtn ai-btn" onclick="QCOL.toggleAI()">
+      <button class="hbtn ai-btn" onclick="OpenQ.toggleAI()">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" style="vertical-align:middle;margin-right:3px;">
           <circle cx="12" cy="12" r="10" stroke="#00ffdd" stroke-width="1.4"/>
           <path d="M8 12h8M12 8l4 4-4 4" stroke="#00ffdd" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
@@ -514,7 +514,7 @@ body::before{content:'';position:fixed;inset:0;
 
   <div class="screen" id="screen-library">
     <div class="screen-hdr">
-      <button class="btn-back" onclick="QCOL.nav('home')">← MENU</button>
+      <button class="btn-back" onclick="OpenQ.nav('home')">← MENU</button>
       <div class="screen-title">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
           <path d="M4 19.5A2.5 2.5 0 016.5 17H20" stroke="#00ccff" stroke-width="1.5"/>
@@ -523,7 +523,7 @@ body::before{content:'';position:fixed;inset:0;
         </svg>
         LIBRARY AND TUTORIALS
       </div>
-      <button class="hbtn ai-btn" onclick="QCOL.toggleAI()">
+      <button class="hbtn ai-btn" onclick="OpenQ.toggleAI()">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" style="vertical-align:middle;margin-right:3px;">
           <circle cx="12" cy="12" r="10" stroke="#00ffdd" stroke-width="1.4"/>
           <path d="M8 12h8M12 8l4 4-4 4" stroke="#00ffdd" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
@@ -539,7 +539,7 @@ body::before{content:'';position:fixed;inset:0;
 
   <div class="screen" id="screen-account">
     <div class="screen-hdr">
-      <button class="btn-back" onclick="QCOL.nav('home')">← MENU</button>
+      <button class="btn-back" onclick="OpenQ.nav('home')">← MENU</button>
       <div class="screen-title">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
           <circle cx="12" cy="8" r="4" stroke="#00ccff" stroke-width="1.5"/>
@@ -547,7 +547,7 @@ body::before{content:'';position:fixed;inset:0;
         </svg>
         MY ACCOUNT
       </div>
-      <button class="hbtn ai-btn" onclick="QCOL.toggleAI()">
+      <button class="hbtn ai-btn" onclick="OpenQ.toggleAI()">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" style="vertical-align:middle;margin-right:3px;">
           <circle cx="12" cy="12" r="10" stroke="#00ffdd" stroke-width="1.4"/>
           <path d="M8 12h8M12 8l4 4-4 4" stroke="#00ffdd" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
@@ -563,9 +563,9 @@ body::before{content:'';position:fixed;inset:0;
 
   <div class="screen" id="screen-founder">
     <div class="screen-hdr">
-      <button class="btn-back" onclick="QCOL.nav('home')">← MENU</button>
+      <button class="btn-back" onclick="OpenQ.nav('home')">← MENU</button>
       <div class="screen-title">👑 FOUNDER PANEL</div>
-      <button class="hbtn ai-btn" onclick="QCOL.toggleAI()">
+      <button class="hbtn ai-btn" onclick="OpenQ.toggleAI()">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" style="vertical-align:middle;margin-right:3px;">
           <circle cx="12" cy="12" r="10" stroke="#00ffdd" stroke-width="1.4"/>
           <path d="M8 12h8M12 8l4 4-4 4" stroke="#00ffdd" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
@@ -581,7 +581,7 @@ body::before{content:'';position:fixed;inset:0;
 
   <div class="screen" id="screen-help">
     <div class="screen-hdr">
-      <button class="btn-back" onclick="QCOL.nav('home')">← MENU</button>
+      <button class="btn-back" onclick="OpenQ.nav('home')">← MENU</button>
       <div class="screen-title">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
           <circle cx="12" cy="12" r="10" stroke="#00ccff" stroke-width="1.5"/>
@@ -589,7 +589,7 @@ body::before{content:'';position:fixed;inset:0;
         </svg>
         HELP
       </div>
-      <button class="hbtn ai-btn" onclick="QCOL.toggleAI()">
+      <button class="hbtn ai-btn" onclick="OpenQ.toggleAI()">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" style="vertical-align:middle;margin-right:3px;">
           <circle cx="12" cy="12" r="10" stroke="#00ffdd" stroke-width="1.4"/>
           <path d="M8 12h8M12 8l4 4-4 4" stroke="#00ffdd" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
@@ -606,7 +606,7 @@ body::before{content:'';position:fixed;inset:0;
   <!-- NEW MODULE: QUANTUM PUZZLE (formerly MODULE LAB) -->
   <div class="screen" id="screen-quantum-puzzle">
     <div class="screen-hdr">
-      <button class="btn-back" onclick="QCOL.nav('home')">← MENU</button>
+      <button class="btn-back" onclick="OpenQ.nav('home')">← MENU</button>
       <div class="screen-title">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
           <path d="M14.5 5.5L18.5 9.5M6.5 18.5L5.5 17.5M16.5 8.5L15.5 7.5" stroke="#ffd700" stroke-width="1.8" stroke-linecap="round"/>
@@ -616,7 +616,7 @@ body::before{content:'';position:fixed;inset:0;
         </svg>
         🧩 QUANTUM PUZZLE
       </div>
-      <button class="hbtn ai-btn" onclick="QCOL.toggleAI()">
+      <button class="hbtn ai-btn" onclick="OpenQ.toggleAI()">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" style="vertical-align:middle;margin-right:3px;">
           <circle cx="12" cy="12" r="10" stroke="#00ffdd" stroke-width="1.4"/>
           <path d="M8 12h8M12 8l4 4-4 4" stroke="#00ffdd" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
@@ -638,7 +638,7 @@ body::before{content:'';position:fixed;inset:0;
 //    FORZA founder_password COMO CADENA
 // ============================================================
 
-class QcolConfigSyncReader {
+class OpenQConfigSyncReader {
     constructor(config) {
         this.SUPABASE_URL = config.supabaseUrl;
         this.SUPABASE_ANON_KEY = config.supabaseAnonKey;
@@ -729,15 +729,15 @@ class QcolConfigSyncReader {
                     }
                 });
                 
-                this._applyConfigToLocal('colab_url', 'qcol_colab_url', configMap);
-                this._applyConfigToLocal('ai_config', 'qcol_ai', configMap);
-                this._applyConfigToLocal('github_config', 'qcol_gh', configMap);
-                this._applyConfigToLocal('deepseek_config', 'qcol_mistral', configMap);
-                this._applyConfigToLocal('system_config', 'qcol_sys', configMap);
-                this._applyConfigToLocal('platform_config', 'qcol_cfg', configMap);
-                this._applyConfigToLocal('monitor_config', 'qcol_monitor_cfg', configMap);
-                this._applyConfigToLocal('founder_password', 'qcol_fp', configMap);
-                this._applyConfigToLocal('users_config', 'qcol_users', configMap);
+                this._applyConfigToLocal('colab_url', 'openq_colab_url', configMap);
+                this._applyConfigToLocal('ai_config', 'openq_ai', configMap);
+                this._applyConfigToLocal('github_config', 'openq_gh', configMap);
+                this._applyConfigToLocal('deepseek_config', 'openq_mistral', configMap);
+                this._applyConfigToLocal('system_config', 'openq_sys', configMap);
+                this._applyConfigToLocal('platform_config', 'openq_cfg', configMap);
+                this._applyConfigToLocal('monitor_config', 'openq_monitor_cfg', configMap);
+                this._applyConfigToLocal('founder_password', 'openq_fp', configMap);
+                this._applyConfigToLocal('users_config', 'openq_users', configMap);
                 
                 if (this.onConfigUpdate) {
                     this.onConfigUpdate(configMap);
@@ -782,7 +782,7 @@ class QcolConfigSyncReader {
             if (cached !== undefined) {
                 return String(cached);
             }
-            const localValue = localStorage.getItem('qcol_fp');
+            const localValue = localStorage.getItem('openq_fp');
             if (localValue !== null) {
                 try { return String(JSON.parse(localValue)); } catch(e) { return String(localValue); }
             }
@@ -794,14 +794,14 @@ class QcolConfigSyncReader {
         }
         
         const localKeyMap = {
-            'colab_url': 'qcol_colab_url',
-            'ai_config': 'qcol_ai',
-            'github_config': 'qcol_gh',
-            'deepseek_config': 'qcol_mistral',
-            'system_config': 'qcol_sys',
-            'platform_config': 'qcol_cfg',
-            'monitor_config': 'qcol_monitor_cfg',
-            'users_config': 'qcol_users'
+            'colab_url': 'openq_colab_url',
+            'ai_config': 'openq_ai',
+            'github_config': 'openq_gh',
+            'deepseek_config': 'openq_mistral',
+            'system_config': 'openq_sys',
+            'platform_config': 'openq_cfg',
+            'monitor_config': 'openq_monitor_cfg',
+            'users_config': 'openq_users'
         };
         const localKey = localKeyMap[key] || key;
         const value = localStorage.getItem(localKey);
@@ -833,22 +833,22 @@ class QcolConfigSyncReader {
             supabaseAnonKey: 'sb_publishable_Uw4ViBXo3UvvlSHzOiAcDA_9Jn6eMcf'
         };
         
-        window.configSync = new QcolConfigSyncReader({
+        window.configSync = new OpenQConfigSyncReader({
             supabaseUrl: SUPABASE_CONFIG.supabaseUrl,
             supabaseAnonKey: SUPABASE_CONFIG.supabaseAnonKey
         });
         
         window.configSync.onConfigUpdate = (key, value) => {
             console.log(`📥 Config actualizada desde la nube: ${key}`, value);
-            if (typeof QCOL !== 'undefined' && QCOL._refreshUI) {
-                setTimeout(QCOL._refreshUI, 200);
+            if (typeof OpenQ !== 'undefined' && OpenQ._refreshUI) {
+                setTimeout(OpenQ._refreshUI, 200);
             }
         };
         
         window.configSync.onSyncComplete = () => {
             console.log('✅ Configuración sincronizada desde la nube (solo lectura)');
-            if (typeof QCOL !== 'undefined' && QCOL._broadcastConfig) {
-                setTimeout(QCOL._broadcastConfig, 300);
+            if (typeof OpenQ !== 'undefined' && OpenQ._broadcastConfig) {
+                setTimeout(OpenQ._broadcastConfig, 300);
             }
         };
         
@@ -868,7 +868,7 @@ class QcolConfigSyncReader {
 
   window.marked = marked;
 
-  const QCOL = (() => {
+  const OpenQ = (() => {
 
   const VERSION = '2.1.0';
   const MODULES = {
@@ -884,13 +884,13 @@ class QcolConfigSyncReader {
 
   let curUser = null;
   let iframes = {};
-  let aiCfg = JSON.parse(localStorage.getItem('qcol_ai') || '{}');
+  let aiCfg = JSON.parse(localStorage.getItem('openq_ai') || '{}');
   let aiHistory = [];
 
   let cmEditor = null;
 
   function refreshUIFromConfig() {
-    const savedAI = localStorage.getItem('qcol_ai');
+    const savedAI = localStorage.getItem('openq_ai');
     if (savedAI) {
       try {
         aiCfg = JSON.parse(savedAI);
@@ -898,12 +898,12 @@ class QcolConfigSyncReader {
       } catch(e) {}
     }
     
-    const colabUrl = localStorage.getItem('qcol_colab_url');
+    const colabUrl = localStorage.getItem('openq_colab_url');
     if (colabUrl) {
       checkEngine();
     }
     
-    const ghConfig = localStorage.getItem('qcol_gh');
+    const ghConfig = localStorage.getItem('openq_gh');
     if (ghConfig) {
       try {
         const gh = JSON.parse(ghConfig);
@@ -915,19 +915,19 @@ class QcolConfigSyncReader {
     Object.values(iframes).forEach(f => {
       try {
         f.contentWindow.postMessage({
-          type: 'QCOL_CONFIG',
+          type: 'OPENQ_CONFIG',
           user: curUser,
           version: VERSION,
-          engineReady: !!localStorage.getItem('qcol_colab_url'),
-          ghUser: (JSON.parse(localStorage.getItem('qcol_gh')||'{}').user)||'laffitacamargof-create',
-          ghRepo: (JSON.parse(localStorage.getItem('qcol_gh')||'{}').repo)||'quantum-computing-open-lab',
+          engineReady: !!localStorage.getItem('openq_colab_url'),
+          ghUser: (JSON.parse(localStorage.getItem('openq_gh')||'{}').user)||'laffitacamargof-create',
+          ghRepo: (JSON.parse(localStorage.getItem('openq_gh')||'{}').repo)||'quantum-computing-open-lab',
         }, '*');
       } catch(e){}
     });
   }
 
   function dbLoad() {
-      const stored = localStorage.getItem('qcol_db');
+      const stored = localStorage.getItem('openq_db');
       if (stored) {
           try {
               return JSON.parse(stored);
@@ -938,7 +938,7 @@ class QcolConfigSyncReader {
 
   function dbSave(newData) {
       try {
-          localStorage.setItem('qcol_db', JSON.stringify(newData));
+          localStorage.setItem('openq_db', JSON.stringify(newData));
           return true;
       } catch(e) {
           console.error('dbSave error', e);
@@ -965,13 +965,13 @@ class QcolConfigSyncReader {
           const empty = {
               version: 1,
               config: {
-                  colab_url: localStorage.getItem('qcol_colab_url') || '',
-                  mistral_key: localStorage.getItem('qcol_mistral_key') || '',
-                  mistral_enabled: localStorage.getItem('qcol_mistral_enabled') === 'true',
-                  mistral_model: localStorage.getItem('qcol_mistral_model') || 'deepseek-chat',
-                  mistral_timeout: parseInt(localStorage.getItem('qcol_mistral_timeout') || '10'),
-                  ignored_attrs: JSON.parse(localStorage.getItem('qcol_ignored_attrs') || '[]'),
-                  ignored_attrs_reasons: JSON.parse(localStorage.getItem('qcol_ignored_attrs_reasons') || '{}')
+                  colab_url: localStorage.getItem('openq_colab_url') || '',
+                  mistral_key: localStorage.getItem('openq_mistral_key') || '',
+                  mistral_enabled: localStorage.getItem('openq_mistral_enabled') === 'true',
+                  mistral_model: localStorage.getItem('openq_mistral_model') || 'deepseek-chat',
+                  mistral_timeout: parseInt(localStorage.getItem('openq_mistral_timeout') || '10'),
+                  ignored_attrs: JSON.parse(localStorage.getItem('openq_ignored_attrs') || '[]'),
+                  ignored_attrs_reasons: JSON.parse(localStorage.getItem('openq_ignored_attrs_reasons') || '{}')
               },
               users: [],
               circuits: {},
@@ -983,20 +983,20 @@ class QcolConfigSyncReader {
       }
       if (data?.config) {
           const c = data.config;
-          if (c.colab_url)       localStorage.setItem('qcol_colab_url',         c.colab_url);
-          if (c.mistral_key)     localStorage.setItem('qcol_mistral_key',        c.mistral_key);
-          if (c.mistral_model)   localStorage.setItem('qcol_mistral_model',      c.mistral_model);
-          if (c.mistral_enabled !== undefined) localStorage.setItem('qcol_mistral_enabled', c.mistral_enabled);
-          if (c.ignored_attrs)   localStorage.setItem('qcol_ignored_attrs',      JSON.stringify(c.ignored_attrs));
-          if (c.ignored_attrs_reasons) localStorage.setItem('qcol_ignored_attrs_reasons', JSON.stringify(c.ignored_attrs_reasons));
+          if (c.colab_url)       localStorage.setItem('openq_colab_url',         c.colab_url);
+          if (c.mistral_key)     localStorage.setItem('openq_mistral_key',        c.mistral_key);
+          if (c.mistral_model)   localStorage.setItem('openq_mistral_model',      c.mistral_model);
+          if (c.mistral_enabled !== undefined) localStorage.setItem('openq_mistral_enabled', c.mistral_enabled);
+          if (c.ignored_attrs)   localStorage.setItem('openq_ignored_attrs',      JSON.stringify(c.ignored_attrs));
+          if (c.ignored_attrs_reasons) localStorage.setItem('openq_ignored_attrs_reasons', JSON.stringify(c.ignored_attrs_reasons));
       }
-      broadcast({ type: 'QCOL_CONFIG_UPDATED', db: data });
+      broadcast({ type: 'OPENQ_CONFIG_UPDATED', db: data });
   }
 
   window.addEventListener('message', e => {
     const d = e.data; if (!d?.type) return;
 
-    if (d.type === 'QCOL_OPEN_NB_EXPOSITION') {
+    if (d.type === 'OPENQ_OPEN_NB_EXPOSITION') {
       nav('architect-pro');
       const sendExpo = () => {
         const nbFrame = iframes['architect-pro'];
@@ -1021,7 +1021,7 @@ class QcolConfigSyncReader {
       return;
     }
 
-    if (d.type === 'QCOL_OPEN_ARCHITECT_EDIT') {
+    if (d.type === 'OPENQ_OPEN_ARCHITECT_EDIT') {
       nav('architect');
       const sendToArchitect = () => {
         const archFrame = iframes['architect'];
@@ -1044,7 +1044,7 @@ class QcolConfigSyncReader {
       return;
     }
 
-    if (d.type === 'QCOL_CIRCUIT_RETURN') {
+    if (d.type === 'OPENQ_CIRCUIT_RETURN') {
       nav('architect-pro');
       const sendToNB = () => {
         const nbFrame = iframes['architect-pro'];
@@ -1067,30 +1067,30 @@ class QcolConfigSyncReader {
       return;
     }
 
-    if (d.type === 'QCOL_NAV')          nav(d.screen);
-    if (d.type === 'QCOL_NOTIFY')       notify(d.msg);
-    if (d.type === 'QCOL_LOGIN')        openAuth('login');
-    if (d.type === 'QCOL_TOGGLE_AI')    toggleAI();
-    if (d.type === 'QCOL_GET_CONFIG')   sendCfg(e.source);
-    if (d.type === 'QCOL_GET_USER') {
+    if (d.type === 'OPENQ_NAV')          nav(d.screen);
+    if (d.type === 'OPENQ_NOTIFY')       notify(d.msg);
+    if (d.type === 'OPENQ_LOGIN')        openAuth('login');
+    if (d.type === 'OPENQ_TOGGLE_AI')    toggleAI();
+    if (d.type === 'OPENQ_GET_CONFIG')   sendCfg(e.source);
+    if (d.type === 'OPENQ_GET_USER') {
         try {
-            e.source.postMessage({ type: 'QCOL_USER', user: curUser }, '*');
-            e.source.postMessage({ type: 'QCOL_USER_UPDATE', user: curUser }, '*');
+            e.source.postMessage({ type: 'OPENQ_USER', user: curUser }, '*');
+            e.source.postMessage({ type: 'OPENQ_USER_UPDATE', user: curUser }, '*');
         } catch(err) {}
     }
-    if (d.type === 'QCOL_LOGOUT')       doLogout();
-    if (d.type === 'QCOL_OPEN_FOUNDER') openAuth('founder');
-    if (d.type === 'QCOL_SAVE') {
+    if (d.type === 'OPENQ_LOGOUT')       doLogout();
+    if (d.type === 'OPENQ_OPEN_FOUNDER') openAuth('founder');
+    if (d.type === 'OPENQ_SAVE') {
       const val = typeof d.val === 'object' ? JSON.stringify(d.val) : d.val;
       localStorage.setItem(d.key, val);
       const CONFIG_KEYS = {
-          'qcol_colab_url': 'colab_url',
-          'qcol_mistral_key': 'mistral_key',
-          'qcol_mistral_enabled': 'mistral_enabled',
-          'qcol_mistral_model': 'mistral_model',
-          'qcol_mistral_timeout': 'mistral_timeout',
-          'qcol_ignored_attrs': 'ignored_attrs',
-          'qcol_ignored_attrs_reasons': 'ignored_attrs_reasons'
+          'openq_colab_url': 'colab_url',
+          'openq_mistral_key': 'mistral_key',
+          'openq_mistral_enabled': 'mistral_enabled',
+          'openq_mistral_model': 'mistral_model',
+          'openq_mistral_timeout': 'mistral_timeout',
+          'openq_ignored_attrs': 'ignored_attrs',
+          'openq_ignored_attrs_reasons': 'ignored_attrs_reasons'
       };
       if (CONFIG_KEYS[d.key]) {
           let data = dbLoad();
@@ -1101,22 +1101,22 @@ class QcolConfigSyncReader {
           data.config[CONFIG_KEYS[d.key]] = parsedVal;
           dbSave(data);
       }
-      if (d.key === 'qcol_colab_url') checkEngine();
-      if (d.key === 'qcol_ai') { aiCfg = d.val; setupAI(); }
-      if (d.key === 'qcol_fp') notify('✅ Founder password updated');
-      broadcast({ type:'QCOL_CONFIG_UPDATED', key: d.key });
+      if (d.key === 'openq_colab_url') checkEngine();
+      if (d.key === 'openq_ai') { aiCfg = d.val; setupAI(); }
+      if (d.key === 'openq_fp') notify('✅ Founder password updated');
+      broadcast({ type:'OPENQ_CONFIG_UPDATED', key: d.key });
     }
-    if (d.type === 'QCOL_MONITOR_RUN') {
+    if (d.type === 'OPENQ_MONITOR_RUN') {
       try {
-        const raw  = localStorage.getItem('qcol_monitor_data');
+        const raw  = localStorage.getItem('openq_monitor_data');
         const data = raw ? JSON.parse(raw) : {runs:[], total:0};
         data.runs.push(d);
         data.total = (data.total||0) + 1;
         if (data.runs.length > 1000) data.runs = data.runs.slice(-1000);
-        localStorage.setItem('qcol_monitor_data', JSON.stringify(data));
+        localStorage.setItem('openq_monitor_data', JSON.stringify(data));
       } catch(e) {}
     }
-    if (d.type === 'QCOL_SAVE_CIRCUIT' && d.username) {
+    if (d.type === 'OPENQ_SAVE_CIRCUIT' && d.username) {
         dbGet('circuits').then(circuits => {
             const all = circuits || {};
             if (!all[d.username]) all[d.username] = [];
@@ -1125,7 +1125,7 @@ class QcolConfigSyncReader {
             dbSet('circuits', all);
         });
     }
-    if (d.type === 'QCOL_SAVE_NOTEBOOK' && d.username) {
+    if (d.type === 'OPENQ_SAVE_NOTEBOOK' && d.username) {
         dbGet('notebooks').then(nbs => {
             const all = nbs || {};
             if (!all[d.username]) all[d.username] = [];
@@ -1135,12 +1135,12 @@ class QcolConfigSyncReader {
             dbSet('notebooks', all);
         });
     }
-    if (d.type === 'QCOL_GET_DB') {
+    if (d.type === 'OPENQ_GET_DB') {
         dbGet(d.section).then(data => {
-            broadcast({ type: 'QCOL_DB_DATA', section: d.section, data });
+            broadcast({ type: 'OPENQ_DB_DATA', section: d.section, data });
         });
     }
-    if (d.type === 'QCOL_DEL_CIRCUIT' && d.username && d.index !== undefined) {
+    if (d.type === 'OPENQ_DEL_CIRCUIT' && d.username && d.index !== undefined) {
         dbGet('circuits').then(circuits => {
             const all = circuits || {};
             if (d.index === -1) {
@@ -1149,7 +1149,7 @@ class QcolConfigSyncReader {
                 all[d.username].splice(d.index, 1);
             }
             dbSet('circuits', all);
-            broadcast({ type: 'QCOL_DB_DATA', section: 'circuits', data: all });
+            broadcast({ type: 'OPENQ_DB_DATA', section: 'circuits', data: all });
         });
     }
   });
@@ -1163,12 +1163,12 @@ class QcolConfigSyncReader {
   function sendCfg(src) {
     try {
       src.postMessage({
-        type: 'QCOL_CONFIG',
+        type: 'OPENQ_CONFIG',
         user: curUser,
         version: VERSION,
-        engineReady: !!localStorage.getItem('qcol_colab_url'),
-        ghUser: (JSON.parse(localStorage.getItem('qcol_gh')||'{}').user)||'laffitacamargof-create',
-        ghRepo: (JSON.parse(localStorage.getItem('qcol_gh')||'{}').repo)||'quantum-computing-open-lab',
+        engineReady: !!localStorage.getItem('openq_colab_url'),
+        ghUser: (JSON.parse(localStorage.getItem('openq_gh')||'{}').user)||'laffitacamargof-create',
+        ghRepo: (JSON.parse(localStorage.getItem('openq_gh')||'{}').repo)||'quantum-computing-open-lab',
       }, '*');
     } catch(e) {}
   }
@@ -1209,14 +1209,14 @@ class QcolConfigSyncReader {
     if (!file) return;
     const iframe = document.createElement('iframe');
     iframe.className = 'module-iframe';
-    iframe.setAttribute('data-qcol', screen);
+    iframe.setAttribute('data-openq', screen);
     iframe.src = file;
     iframe.onload = () => {
       iframes[screen] = iframe;
       setTimeout(() => {
           sendCfg(iframe.contentWindow);
-          iframe.contentWindow.postMessage({ type: 'QCOL_USER_UPDATE', user: curUser }, '*');
-          iframe.contentWindow.postMessage({ type: 'QCOL_USER', user: curUser }, '*');
+          iframe.contentWindow.postMessage({ type: 'OPENQ_USER_UPDATE', user: curUser }, '*');
+          iframe.contentWindow.postMessage({ type: 'OPENQ_USER', user: curUser }, '*');
       }, 300);
     };
     iframe.onerror = () => { wrap.innerHTML = renderPH(screen); };
@@ -1245,7 +1245,7 @@ class QcolConfigSyncReader {
       <div class="ph-title">${i.title}</div>
       <p class="ph-desc">${i.desc}<br><br>
         This module will be activated when the administrator configures it.</p>
-      <button class="btn-ph" onclick="QCOL.nav('founder')">⚙️ Configure</button>
+      <button class="btn-ph" onclick="OpenQ.nav('founder')">⚙️ Configure</button>
     </div>`;
   }
 
@@ -1262,7 +1262,7 @@ class QcolConfigSyncReader {
           <rect x="3" y="3" width="18" height="18" rx="3" stroke="#00ccff" stroke-width="1.5"/>
           <path d="M3 9h18M9 21V9" stroke="#00ccff" stroke-width="1.5"/></svg>`,
         title:'PROJECTS', badge:'', badgeTxt:'',
-        desc:'Explore and publish quantum computing projects. Share ideas, algorithms, circuits and interactive notebook booklets with the QCOL community.',
+        desc:'Explore and publish quantum computing projects. Share ideas, algorithms, circuits and interactive notebook booklets with the OpenQ community.',
         delay:.05, show:true,
       },
       {
@@ -1313,7 +1313,7 @@ class QcolConfigSyncReader {
       },
       {
         screen: curUser ? 'account' : null,
-        onClick: curUser ? null : "QCOL.openAuth('login')",
+        onClick: curUser ? null : "OpenQ.openAuth('login')",
         icon:`<svg width="22" height="22" viewBox="0 0 24 24" fill="none">
           <circle cx="12" cy="8" r="4" stroke="#00ccff" stroke-width="1.5"/>
           <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke="#00ccff" stroke-width="1.5" stroke-linecap="round"/>
@@ -1324,7 +1324,7 @@ class QcolConfigSyncReader {
       },
       {
         screen: isF ? 'founder' : null,
-        onClick: isF ? null : "QCOL.openAuth('founder')",
+        onClick: isF ? null : "OpenQ.openAuth('founder')",
         icon:`<svg width="26" height="26" viewBox="0 0 48 48" fill="none">
           <rect x="4" y="8" width="40" height="32" rx="4" fill="rgba(189,147,249,.08)" stroke="#bd93f9" stroke-width="1.8"/>
           <rect x="9" y="14" width="12" height="7" rx="2" fill="rgba(189,147,249,.15)" stroke="#bd93f9" stroke-width="1.2"/>
@@ -1340,7 +1340,7 @@ class QcolConfigSyncReader {
             stroke="#bd93f9" stroke-width="1.3" stroke-linecap="round"/>
         </svg>`,
         title:'CONFIGURATION', badge:'badge-admin', badgeTxt:'SYSTEM',
-        desc:'QCOL ecosystem control panel. Users, compiler, AI and GitHub.',
+        desc:'OpenQ ecosystem control panel. Users, compiler, AI and GitHub.',
         delay:.3, show: isF,
       },
       {
@@ -1350,7 +1350,7 @@ class QcolConfigSyncReader {
           <path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3M12 17h.01" stroke="#00ccff" stroke-width="1.5" stroke-linecap="round"/>
         </svg>`,
         title:'HELP', badge:'', badgeTxt:'',
-        desc:'Complete documentation, quick start guides and frequently asked questions about the QCOL ecosystem.',
+        desc:'Complete documentation, quick start guides and frequently asked questions about the OpenQ ecosystem.',
         delay:.35, show:true,
       },
       {
@@ -1370,7 +1370,7 @@ class QcolConfigSyncReader {
     document.getElementById('menu-grid').innerHTML = cards.filter(c => c.show).map(c => {
       const click = c.onClick
         ? `onclick="${c.onClick}"`
-        : c.screen ? `onclick="QCOL.nav('${c.screen}')"` : '';
+        : c.screen ? `onclick="OpenQ.nav('${c.screen}')"` : '';
       const cls = (c.locked && !isAdm) ? 'menu-card locked' : 'menu-card';
       const lock = (c.locked && !isAdm)
         ? `<div style="font-size:.6rem;color:var(--rd);margin-top:.4rem;">🔒 Requires admin account</div>` : '';
@@ -1400,10 +1400,10 @@ class QcolConfigSyncReader {
     const f = users.find(x => x.username === u && x.password === p);
     if (!f) return notify('Incorrect username or password');
     curUser = f;
-    localStorage.setItem('qcol_cur_user', JSON.stringify(curUser));
+    localStorage.setItem('openq_cur_user', JSON.stringify(curUser));
     closeAuth(); updateUI(); renderMenu();
     notify(`Welcome, ${f.name}!`);
-    broadcast({ type:'QCOL_USER_UPDATE', user:curUser });
+    broadcast({ type:'OPENQ_USER_UPDATE', user:curUser });
   }
 
   async function doRegister() {
@@ -1417,10 +1417,10 @@ class QcolConfigSyncReader {
     users.push(nu);
     await dbSet('users', users);
     curUser = nu;
-    localStorage.setItem('qcol_cur_user', JSON.stringify(curUser));
+    localStorage.setItem('openq_cur_user', JSON.stringify(curUser));
     closeAuth(); updateUI(); renderMenu();
     notify(`Welcome, ${name}!`);
-    broadcast({ type:'QCOL_USER_UPDATE', user:curUser });
+    broadcast({ type:'OPENQ_USER_UPDATE', user:curUser });
   }
 
   // ✅ doFounder CORREGIDO - SIEMPRE USA CADENA
@@ -1434,10 +1434,10 @@ class QcolConfigSyncReader {
       if (syncFp !== null && syncFp !== undefined) {
         fp = String(syncFp);
       } else {
-        fp = String(localStorage.getItem('qcol_fp') || '1027');
+        fp = String(localStorage.getItem('openq_fp') || '1027');
       }
     } else {
-      fp = String(localStorage.getItem('qcol_fp') || '1027');
+      fp = String(localStorage.getItem('openq_fp') || '1027');
     }
 
     // 🔧 Comparar como CADENAS
@@ -1448,12 +1448,12 @@ class QcolConfigSyncReader {
         role: 'founder',
         canUpload: true
       };
-      localStorage.setItem('qcol_cur_user', JSON.stringify(curUser));
+      localStorage.setItem('openq_cur_user', JSON.stringify(curUser));
       closeAuth();
       updateUI();
       renderMenu();
       notify('👑 Founder access granted');
-      broadcast({ type: 'QCOL_USER_UPDATE', user: curUser });
+      broadcast({ type: 'OPENQ_USER_UPDATE', user: curUser });
     } else {
       notify('Incorrect password');
     }
@@ -1461,10 +1461,10 @@ class QcolConfigSyncReader {
 
   function doLogout() {
     curUser = null;
-    localStorage.removeItem('qcol_cur_user');
+    localStorage.removeItem('openq_cur_user');
     updateUI(); renderMenu(); nav('home');
     notify('Logged out');
-    broadcast({ type:'QCOL_USER_UPDATE', user:null });
+    broadcast({ type:'OPENQ_USER_UPDATE', user:null });
   }
 
   function updateUI() {
@@ -1473,20 +1473,20 @@ class QcolConfigSyncReader {
     if (curUser) {
       const ini = curUser.name.split(' ').map(n=>n[0]).join('').substring(0,2).toUpperCase();
       const ico = curUser.role==='founder'?'👑':curUser.role==='admin'?'🔑':''
-      area.innerHTML = `<div class="user-chip" onclick="QCOL.nav('account')">
+      area.innerHTML = `<div class="user-chip" onclick="OpenQ.nav('account')">
         <div class="user-dot"></div>${ico} ${ini}
         <span style="font-size:.42rem;color:var(--mu);">${curUser.role.toUpperCase()}</span>
       </div>`;
       if (logoutBar) logoutBar.style.display = 'block';
     } else {
-      area.innerHTML = `<button class="hbtn" onclick="QCOL.openAuth('login')">LOGIN</button>`;
+      area.innerHTML = `<button class="hbtn" onclick="OpenQ.openAuth('login')">LOGIN</button>`;
       if (logoutBar) logoutBar.style.display = 'none';
     }
   }
 
   // ── AI ──
   function setupAI() {
-    aiCfg = JSON.parse(localStorage.getItem('qcol_ai') || '{}');
+    aiCfg = JSON.parse(localStorage.getItem('openq_ai') || '{}');
     const dot = document.getElementById('ai-sdot');
     const txt = document.getElementById('ai-stxt');
     const lbl = document.getElementById('ai-prov-lbl');
@@ -1570,7 +1570,7 @@ class QcolConfigSyncReader {
     const langNote = lang==='es' ? ' Always respond in Spanish.'
                    : lang==='en' ? ' Always respond in English.'
                    : ' Respond in both Spanish and English.';
-    const sys = (aiCfg.prompt || 'You are the QCOL assistant, a quantum computing ecosystem. Respond concisely and technically.') + langNote;
+    const sys = (aiCfg.prompt || 'You are the OpenQ assistant, a quantum computing ecosystem. Respond concisely and technically.') + langNote;
     const msgs = [
       { role:'system', content:sys },
       ...aiHistory.slice(-6),
@@ -1636,7 +1636,7 @@ class QcolConfigSyncReader {
   }
 
   async function checkEngine() {
-    const url = localStorage.getItem('qcol_colab_url');
+    const url = localStorage.getItem('openq_colab_url');
     if (!url) return;
     try {
       const r = await fetch(url + '/health', { signal:AbortSignal.timeout(5000) });
@@ -1654,10 +1654,10 @@ class QcolConfigSyncReader {
   }
 
   async function init() {
-    const storedAI = JSON.parse(localStorage.getItem('qcol_ai') || '{}');
+    const storedAI = JSON.parse(localStorage.getItem('openq_ai') || '{}');
     if (!storedAI.lang || storedAI.lang === 'es') {
       storedAI.lang = 'en';
-      localStorage.setItem('qcol_ai', JSON.stringify(storedAI));
+      localStorage.setItem('openq_ai', JSON.stringify(storedAI));
     }
 
     const editorContainer = document.getElementById('ai-editor');
@@ -1675,13 +1675,13 @@ class QcolConfigSyncReader {
       else {
         clearInterval(t);
         document.getElementById('splash').classList.add('hidden');
-        document.getElementById('qcol-header').style.display = 'flex';
+        document.getElementById('openq-header').style.display = 'flex';
       }
     }, 650);
 
     setupAI();
 
-    const saved = localStorage.getItem('qcol_cur_user');
+    const saved = localStorage.getItem('openq_cur_user');
     if (saved) try { curUser = JSON.parse(saved); } catch(e) {}
 
     await dbInit().then(() => {
@@ -1734,8 +1734,8 @@ class QcolConfigSyncReader {
 
 })();
 
-window.QCOL = QCOL;
-document.addEventListener('DOMContentLoaded', QCOL.init);
+window.OpenQ = OpenQ;
+document.addEventListener('DOMContentLoaded', OpenQ.init);
 </script>
 </body>
 </html>
