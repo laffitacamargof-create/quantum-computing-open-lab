@@ -1645,7 +1645,7 @@ async function syncWithPyodide(retryCount = 0) {
     const rawCode = document.getElementById('code-ta').value;
     if (!rawCode.trim()) { isUpdatingFromCircuit = false; return; }
     const out = document.getElementById('out-body');
-    out.innerHTML += '<span class="inf">🔄 Syncing code → visual circuit...</span>\n';
+    out.innerHTML += '<span class="inf">🔄 Syncing code → visual circuit... (v2)</span>\n';
     try {
         const py = await initPyodide();
         const code = robustPreprocess(rawCode);
@@ -1686,9 +1686,9 @@ def _sanitize(code):
     lines = code.splitlines()
     out = []
     for line in lines:
-        safe = ''.join(c if (ord(c) < 128 or c in '\\n\\t') else '_' for c in line)
+        safe = ''.join(c if (ord(c) < 128 or c in (chr(10), chr(9))) else '_' for c in line)
         out.append(safe)
-    return '\\n'.join(out)
+    return chr(10).join(out)
 
 _clean_code = _sanitize(_user_code)
 
@@ -1697,7 +1697,7 @@ try:
 except SyntaxError as _se:
     _bad_line = getattr(_se, 'lineno', None)
     if _bad_line is not None:
-        _patched = '\\n'.join(
+        _patched = chr(10).join(
             l if i+1 != _bad_line else '    pass  # syntax fixed'
             for i, l in enumerate(_clean_code.splitlines())
         )
@@ -1745,12 +1745,12 @@ if _error is None:
                 break
     if _circuit is None:
         import re as _re
-        _m = _re.search(r'QuantumCircuit\\s*\\((\\d+)', _clean_code)
+        _m = _re.search('QuantumCircuit[ ' + chr(9) + ']*[(]([0-9]+)', _clean_code)
         if _m:
             _num_qubits = int(_m.group(1))
             _error = None
         else:
-            _error = "No QuantumCircuit found in the code.\\nUse: qc = QuantumCircuit(n)"
+            _error = "No QuantumCircuit found in the code." + chr(10) + "Use: qc = QuantumCircuit(n)"
     else:
         try:
             _nq = getattr(_circuit, 'num_qubits', 2)
