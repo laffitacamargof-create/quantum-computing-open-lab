@@ -1000,24 +1000,27 @@ class OpenQConfigSyncReader {
       nav('architect-pro');
       const sendExpo = () => {
         const nbFrame = iframes['architect-pro'];
-        if (nbFrame && nbFrame.contentWindow) {
-          nbFrame.contentWindow.postMessage(d, '*');
-          return true;
+        if (nbFrame && nbFrame.contentWindow && nbFrame.contentDocument &&
+            nbFrame.contentDocument.readyState === 'complete') {
+          try {
+            nbFrame.contentWindow.postMessage(d, '*');
+            return true;
+          } catch(err) { return false; }
         }
         return false;
       };
 
-      if (!sendExpo()) {
-        let attempts = 0;
-        const retry = setInterval(() => {
-          attempts++;
-          if (sendExpo()) {
-            clearInterval(retry);
-          } else if (attempts > 25) {
-            clearInterval(retry);
-          }
-        }, 200);
-      }
+      let attempts = 0;
+      const retry = setInterval(() => {
+        attempts++;
+        if (sendExpo()) {
+          clearInterval(retry);
+          console.log('✅ Notebook exposition enviado al iframe');
+        } else if (attempts > 40) {
+          clearInterval(retry);
+          console.warn('❌ No se pudo enviar el notebook al iframe tras 10s');
+        }
+      }, 250);
       return;
     }
 
@@ -1025,22 +1028,24 @@ class OpenQConfigSyncReader {
       nav('architect');
       const sendToArchitect = () => {
         const archFrame = iframes['architect'];
-        if (archFrame && archFrame.contentWindow) {
-          archFrame.contentWindow.postMessage(d, '*');
+        if (archFrame && archFrame.contentWindow && archFrame.contentDocument &&
+            archFrame.contentDocument.readyState === 'complete') {
+          try {
+            archFrame.contentWindow.postMessage(d, '*');
+            return true;
+          } catch(err) { return false; }
         }
+        return false;
       };
-      if (iframes['architect']) {
-        setTimeout(sendToArchitect, 150);
-      } else {
-        let attempts = 0;
-        const retry = setInterval(() => {
-          attempts++;
-          if (iframes['architect'] && iframes['architect'].contentWindow) {
-            clearInterval(retry);
-            iframes['architect'].contentWindow.postMessage(d, '*');
-          } else if (attempts > 20) clearInterval(retry);
-        }, 200);
-      }
+      let attempts = 0;
+      const retry = setInterval(() => {
+        attempts++;
+        if (sendToArchitect()) {
+          clearInterval(retry);
+        } else if (attempts > 40) {
+          clearInterval(retry);
+        }
+      }, 250);
       return;
     }
 
@@ -1048,22 +1053,24 @@ class OpenQConfigSyncReader {
       nav('architect-pro');
       const sendToNB = () => {
         const nbFrame = iframes['architect-pro'];
-        if (nbFrame && nbFrame.contentWindow) {
-          nbFrame.contentWindow.postMessage(d, '*');
+        if (nbFrame && nbFrame.contentWindow && nbFrame.contentDocument &&
+            nbFrame.contentDocument.readyState === 'complete') {
+          try {
+            nbFrame.contentWindow.postMessage(d, '*');
+            return true;
+          } catch(err) { return false; }
         }
+        return false;
       };
-      if (iframes['architect-pro']) {
-        setTimeout(sendToNB, 150);
-      } else {
-        let attempts = 0;
-        const retry = setInterval(() => {
-          attempts++;
-          if (iframes['architect-pro'] && iframes['architect-pro'].contentWindow) {
-            clearInterval(retry);
-            iframes['architect-pro'].contentWindow.postMessage(d, '*');
-          } else if (attempts > 20) clearInterval(retry);
-        }, 200);
-      }
+      let attempts = 0;
+      const retry = setInterval(() => {
+        attempts++;
+        if (sendToNB()) {
+          clearInterval(retry);
+        } else if (attempts > 40) {
+          clearInterval(retry);
+        }
+      }, 250);
       return;
     }
 
