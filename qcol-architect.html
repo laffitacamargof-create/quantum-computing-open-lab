@@ -446,7 +446,7 @@ const MAX_GATES = 150;
 let blochStates = {};
 let currentBlochQubit = 0;
 let _errorLine = -1;
-// ⬇ Mientras el usuario escribe, NO sobrescribir el textarea
+// ⬇ FIX #1: solo bloquea actualizaciones si el usuario está escribiendo
 let _userTyping = false;
 let _typingTimer = null;
 
@@ -543,7 +543,7 @@ if 'QuantumCircuit' in globals():
 `);
 }
 
-// Gate definitions — mediciones usan {q} UNA vez por cada lado
+// Gate definitions
 const GATES = {
   '1q': [
     { id: 'H', sym: 'H', bg: '#1a5fb4', glow:'#1a5fb4', desc: 'Hadamard', code: 'qc.h({q})', regex: /qc\.h\((\d+)\)/ },
@@ -566,9 +566,10 @@ const GATES = {
     { id: 'CCX', sym: 'CCX', bg: '#005f6a', glow:'#005f6a', desc: 'Toffoli', code: 'qc.ccx({q},{q2},{q3})', regex: /qc\.ccx\((\d+),\s*(\d+),\s*(\d+)\)/, triple: true },
     { id: 'CSW', sym: 'CSW', bg: '#283593', glow:'#283593', desc: 'Fredkin (CSWAP)', code: 'qc.cswap({q},{q2},{q3})', regex: /qc\.cswap\((\d+),\s*(\d+),\s*(\d+)\)/, triple: true }
   ],
-  // ⬇ Medición: cada una usa {q} DOS veces (pero las generamos por separado)
+  // ⬇ FIX #4: La medición individual — el code NO se usa como plantilla
+  // porque se genera aparte con lógica 1x1 en updateCodeFromCircuit()
   'meas': [
-    { id: 'M', sym: 'M', bg: '#6d4c41', glow:'#6d4c41', desc: 'Measure', code: 'qc.measure({q}, {q})', regex: /qc\.measure\((\d+),\s*\d+\)/ }
+    { id: 'M', sym: 'M', bg: '#6d4c41', glow:'#6d4c41', desc: 'Measure', code: 'qc.measure({q},{q})', regex: /qc\.measure\((\d+),\s*\d+\)/ }
   ]
 };
 
@@ -803,7 +804,19 @@ function renderCircuit() {
   container.innerHTML = html;
 }
 
+// ⬇ FIX #5: ahora SÍ recalcula el número de qubits basándose en la posición máxima
 function updateCircuitInfo() {
+  // Calcular cuántos qubits se necesitan realmente
+  let maxQ = 1;
+  for (const g of circuit.gates) {
+    if (g.q !== undefined && g.q > maxQ) maxQ = g.q;
+    if (g.q2 !== undefined && g.q2 > maxQ) maxQ = g.q2;
+    if (g.q3 !== undefined && g.q3 > maxQ) maxQ = g.q3;
+  }
+  const needed = Math.max(2, maxQ + 1);
+  // Solo auto-expandir, nunca auto-reducir (para no borrar qubits del usuario)
+  if (needed > circuit.qubits) circuit.qubits = needed;
+  
   const _mCount = circuit.gates.filter(g => g.id === 'M').length;
   const ng = circuit.gates.length - _mCount;
   const _badge = `${circuit.qubits} qubits · ${ng} gates${_mCount > 0 ? ' · ' + _mCount + ' meas.' : ''}`;
@@ -827,26 +840,36 @@ function updateBlochSelector() {
 }
 
 // ═══════════════════════════════════════════════════════════
-// CODE GENERATION — Mediciones UNA POR UNA (qc.measure(0, 0))
+// ⬇ FIX #3 + #4: Genera código con qubits reales + mediciones 1x1
 // ═══════════════════════════════════════════════════════════
 function updateCodeFromCircuit() {
   if (isUpdatingFromCode) return;
-  // ⬇ NUNCA sobrescribir el textarea mientras el usuario está escribiendo
   if (_userTyping) return;
-
-  let code = `from qiskit import QuantumCircuit\nimport numpy as np\nfrom qiskit_aer import AerSimulator\n\nqc = QuantumCircuit(${circuit.qubits}, ${circuit.qubits})\n\n`;
+  
+  // ⬇ Calcular el número real de qubits necesarios
+  let maxQ = 1;
+  for (const g of circuit.gates) {
+    if (g.q !== undefined && g.q > maxQ) maxQ = g.q;
+    if (g.q2 !== undefined && g.q2 > maxQ) maxQ = g.q2;
+    if (g.q3 !== undefined && g.q3 > maxQ) maxQ = g.q3;
+  }
+  const nQubits = Math.max(2, maxQ + 1);  // ⬅ DINÁMICO, no estático
+  const nClbits = nQubits;
+  
+  let code = `from qiskit import QuantumCircuit\nimport numpy as np\nfrom qiskit_aer import AerSimulator\n\nqc = QuantumCircuit(${nQubits}, ${nClbits})\n\n`;
+  
   const nonMeasGates = circuit.gates.filter(g => g.id !== 'M');
   const measGates    = circuit.gates.filter(g => g.id === 'M');
-
+  
   nonMeasGates.forEach(g => {
-    // ⬇ Reemplazo GLOBAL con regex para plantillas con {q} repetido
+    // ⬇ Reemplazo GLOBAL con regex para cubrir {q} repetido en la plantilla
     let line = g.def.code
       .replace(/\{q2\}/g, g.q2 !== undefined ? g.q2 : 0)
       .replace(/\{q3\}/g, g.q3 !== undefined ? g.q3 : 0)
       .replace(/\{q\}/g,  g.q);
     code += line + '\n';
   });
-
+  
   // ⬇ Mediciones UNA POR UNA: qc.measure(0, 0), qc.measure(1, 1), ...
   if (measGates.length > 0) {
     code += '\n';
@@ -854,14 +877,14 @@ function updateCodeFromCircuit() {
       code += `qc.measure(${g.q}, ${g.q})\n`;
     });
   }
-
+  
   code += `\nprint(qc.draw(output='text'))\n\nsimulator = AerSimulator()\nresult = simulator.run(qc, shots=1024).result()\ncounts = result.get_counts()\nprint("Results:", counts)`;
   const ta = document.getElementById('code-ta');
   if (ta && ta.value !== code) { ta.value = code; updateSyntaxHighlight(); }
 }
 
 // ═══════════════════════════════════════════════════════════
-// UNIVERSAL QISKIT MOCK
+// QISKIT MOCK
 // ═══════════════════════════════════════════════════════════
 const QISKIT_MOCK_CODE = `
 import sys, types, importlib
@@ -1007,7 +1030,12 @@ class QuantumCircuit:
     def _add(self, name, qubits_raw, params=None):
         try:
             clean = _expand_qubits(qubits_raw)
-            if clean: self.data.append(Operation(name, clean, params or []))
+            if clean:
+                self.data.append(Operation(name, clean, params or []))
+                for q in clean:
+                    if isinstance(q, int) and q >= self.num_qubits:
+                        self.num_qubits = q + 1
+                        self._qubits_list = list(range(self.num_qubits))
         except: pass
         return self
 
@@ -1213,6 +1241,7 @@ async function initPyodide() {
     } catch (err) {
         out.innerHTML = `<span class="er">❌ Error loading Pyodide: ${err.message}</span>\n`;
         notify('❌ Error loading Pyodide');
+        console.error(err);
     }
     pyodideLoading = false;
     return pyodide;
@@ -1491,7 +1520,6 @@ json.dumps({"success": _error is None, "error": _error, "num_qubits": max(1, int
             updateCircuitInfo();
             out.innerHTML += `<span class="ok">✅ Synced — ${data.num_qubits} qubits · ${_gCount} gates${_mCount > 0 ? ' · ' + _mCount + ' meas.' : ''}</span>\n`;
             notify(`Circuit updated: ${_gCount} gates`);
-            // ⬇ NO llamamos a updateCodeFromCircuit aquí (evita sobrescribir)
             updateSyntaxHighlight();
         } else {
             const errText = data.error || '';
@@ -1678,13 +1706,14 @@ function updateSyntaxHighlight() {
     syn.scrollLeft = ta.scrollLeft;
 }
 
-// ⬇ onCodeEdit: marca _userTyping y programa sync tras 1500ms sin escribir
+// ⬇ FIX #1: el editor NO se bloquea permanentemente. Solo marca _userTyping
+// durante 1.5s de inactividad, y luego sincroniza con el circuito.
 function onCodeEdit() {
     _userTyping = true;
     if (_typingTimer) clearTimeout(_typingTimer);
     _typingTimer = setTimeout(() => {
         _userTyping = false;
-        // ⬇ Al dejar de escribir, sincronizamos el circuito con el código
+        // Solo sincronizar DESPUÉS de que el usuario deje de escribir
         if (pyodide !== null) {
             syncWithPyodide().catch(() => {});
         } else if (engineOK && engineURL) {
@@ -1719,6 +1748,7 @@ function onCodeScroll() {
 
 function forceSync() {
     _userTyping = false;
+    if (_typingTimer) clearTimeout(_typingTimer);
     if (pyodide !== null) {
         syncWithPyodide();
         notify('🔄 Forced sync');
@@ -1890,6 +1920,7 @@ result = simulator.run(qc, shots=1024).result()
 counts = result.get_counts()
 print("Results:", counts)`;
     _userTyping = false;
+    if (_typingTimer) clearTimeout(_typingTimer);
     document.getElementById('code-ta').value = defaultCode;
     updateSyntaxHighlight();
 }
@@ -1907,7 +1938,6 @@ function saveCircuit() {
     if (idx >= 0) all[idx] = entry;
     else all.unshift(entry);
     localStorage.setItem(key, JSON.stringify(all.slice(0, 100)));
-    // ⬇ Enviamos como OPENQ_SAVE_CIRCUIT (index lo espera así)
     window.parent.postMessage({ type: 'OPENQ_SAVE_CIRCUIT', username: curUser?.username, circuit: { name, code, lib: curLib, date: new Date().toLocaleDateString() } }, '*');
     notify('✅ Saved: ' + name);
     renderSaveList();
@@ -1927,6 +1957,8 @@ function loadCircuit(i) {
     const key = 'qcol_circuits_' + curUser.username;
     const c = JSON.parse(localStorage.getItem(key) || '[]')[i];
     if (!c) return;
+    _userTyping = false;
+    if (_typingTimer) clearTimeout(_typingTimer);
     document.getElementById('code-ta').value = c.code;
     document.getElementById('save-name').value = c.name;
     if (c.circ) {
@@ -2178,7 +2210,6 @@ window.removeFromQueue = removeFromQueue;
 let _notebookCellId = null;
 let _notebookMode   = false;
 
-// ⬇ IMPORTANTE: enviamos como OPENQ_* para que index(16).html lo maneje
 function postCore(type, data={}) {
     try { window.parent.postMessage({type, ...data}, '*'); } catch(e) {}
 }
@@ -2192,19 +2223,19 @@ function updateCircuitFromCode(){
     }
 }
 
-// ⬇ Al pulsar SAVE AND RETURN: forzamos sync primero, luego enviamos OPENQ_CIRCUIT_RETURN
+// ⬇ FIX #2: al pulsar SAVE AND RETURN forzamos sync antes de leer
 async function returnToNotebook(){
     if(!_notebookMode || !_notebookCellId){
         postCore('OPENQ_NAV', {screen:'home'});
         return;
     }
 
-    // Forzar sincronización código → circuito antes de leer
     _userTyping = false;
     if (_typingTimer) clearTimeout(_typingTimer);
     const ta = document.getElementById('code-ta');
     const code = ta ? ta.value.trim() : '';
 
+    // Forzar sync código → circuito ANTES de leer
     if (code && pyodide !== null) {
         try { await syncWithPyodide(); } catch(e) { console.warn('sync on return failed', e); }
     }
@@ -2225,7 +2256,7 @@ async function returnToNotebook(){
         }))
     };
 
-    // ⬇ Enviamos OPENQ_CIRCUIT_RETURN (no QCOL_) para que index(16).html lo maneje
+    // ⬇ Enviamos OPENQ_CIRCUIT_RETURN
     window.parent.postMessage({
         type:        'OPENQ_CIRCUIT_RETURN',
         cellId:      _notebookCellId,
@@ -2264,7 +2295,6 @@ async function checkEngine() {
                 setStatus('● COMPILER ACTIVE', 'badge-on');
                 const libs = (d.libs || []).slice(0,4).join(', ');
                 notify('✅ Compiler connected' + (libs ? ' · ' + libs : ''));
-                // ⬇ Enviamos OPENQ_SAVE con key openq_colab_url
                 postCore('OPENQ_SAVE', {key:'openq_colab_url', val:engineURL});
                 return;
             }
@@ -2280,12 +2310,8 @@ async function checkEngine() {
     notify('❌ Could not connect after 3 attempts');
 }
 
-// ═══════════════════════════════════════════════════════════
-// MESSAGE LISTENER — acepta QCOL_* y OPENQ_* (normaliza a QCOL_*)
-// ═══════════════════════════════════════════════════════════
 window.addEventListener('message', e => {
     const d = e.data || {};
-    // Normalizar: acepta QCOL_* y OPENQ_* (convierte a QCOL_* interno)
     if (typeof d.type === 'string') {
         if (d.type.startsWith('OPENQ_')) d.type = 'QCOL_' + d.type.slice(6);
     }
@@ -2302,9 +2328,9 @@ window.addEventListener('message', e => {
             const ta = document.getElementById('code-ta');
             if(ta){
                 _userTyping = false;
+                if (_typingTimer) clearTimeout(_typingTimer);
                 ta.value = d.code;
                 updateSyntaxHighlight();
-                // Sincronizar circuito desde el código entrante
                 setTimeout(() => {
                     if (pyodide !== null) syncWithPyodide().catch(()=>{});
                 }, 200);
