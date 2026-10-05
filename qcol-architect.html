@@ -1686,9 +1686,9 @@ def _sanitize(code):
     lines = code.splitlines()
     out = []
     for line in lines:
-        safe = ''.join(c if (ord(c) < 128 or c in '\\\\n\\\\t') else '_' for c in line)
+        safe = ''.join(c if (ord(c) < 128 or c in '\\n\\t') else '_' for c in line)
         out.append(safe)
-    return '\\\\n'.join(out)
+    return '\\n'.join(out)
 
 _clean_code = _sanitize(_user_code)
 
@@ -1697,7 +1697,7 @@ try:
 except SyntaxError as _se:
     _bad_line = getattr(_se, 'lineno', None)
     if _bad_line is not None:
-        _patched = '\\\\n'.join(
+        _patched = '\\n'.join(
             l if i+1 != _bad_line else '    pass  # syntax fixed'
             for i, l in enumerate(_clean_code.splitlines())
         )
@@ -1745,12 +1745,12 @@ if _error is None:
                 break
     if _circuit is None:
         import re as _re
-        _m = _re.search(r'QuantumCircuit\\\\s*\\\\((\\\\d+)', _clean_code)
+        _m = _re.search(r'QuantumCircuit\\s*\\((\\d+)', _clean_code)
         if _m:
             _num_qubits = int(_m.group(1))
             _error = None
         else:
-            _error = "No QuantumCircuit found in the code.\\\\nUse: qc = QuantumCircuit(n)"
+            _error = "No QuantumCircuit found in the code.\\nUse: qc = QuantumCircuit(n)"
     else:
         try:
             _nq = getattr(_circuit, 'num_qubits', 2)
@@ -2060,14 +2060,6 @@ function updateSyntaxHighlight() {
     syn.scrollLeft = ta.scrollLeft;
 }
 
-// ⬇⬇⬇ onCodeEdit CORREGIDO: no interfiere con la escritura ⬇⬇⬇
-// Cambios:
-//   - Aumentado el debounce a 1200ms
-//   - No se dispara syncWithPyodide si el editor tiene el foco (el usuario está escribiendo)
-//   - Se preserva el cursor al reemplazar contenido en updateCodeFromCircuit
-let _isUserTyping = false;
-let _userTypingTimeout = null;
-
 function onCodeEdit() { 
     const code = document.getElementById('code-ta').value;
     const gateCallCount = (code.match(/\bqc\.\w+\s*\(/g) || []).length;
@@ -2087,23 +2079,14 @@ function onCodeEdit() {
     }
     updateSyntaxHighlight(); 
 
-    // ✅ Marcar que el usuario está escribiendo
-    _isUserTyping = true;
-    if (_userTypingTimeout) clearTimeout(_userTypingTimeout);
-    _userTypingTimeout = setTimeout(() => {
-        _isUserTyping = false;
-        // Solo sincronizar si NO está escribiendo y el textarea NO tiene foco
-        const ta = document.getElementById('code-ta');
-        if (document.activeElement === ta) return;
-        if (syncTimeout) clearTimeout(syncTimeout);
-        syncTimeout = setTimeout(() => {
-            if (pyodide !== null) {
-                syncWithPyodide().catch(() => {});
-            } else if (engineOK && engineURL) {
-                syncFromServer('pyodide-not-loaded').catch(() => {});
-            }
-        }, 1200);
-    }, 1500);
+    if (syncTimeout) clearTimeout(syncTimeout);
+    syncTimeout = setTimeout(() => {
+        if (pyodide !== null) {
+            syncWithPyodide().catch(() => {});
+        } else if (engineOK && engineURL) {
+            syncFromServer('pyodide-not-loaded').catch(() => {});
+        }
+    }, 800);
     
     if (circuit.gates.length === 0) {
         clearTimeout(window._emptyCanvasTimeout);
