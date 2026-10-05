@@ -504,6 +504,7 @@ s.blt{color:#ffb86c;}
 <div class="modal-ov" id="pub-modal">
   <div class="modal">
     <div class="modal-title">📤 Publish Notebook</div>
+    <div id="pub-note" style="font-size:.62rem;line-height:1.6;opacity:.75;margin-bottom:.8rem;">☁️ Published notebooks are visible to everyone in Projects right away.</div>
     <div class="fg"><label class="fl">TITLE</label>
       <input class="fi" id="pub-title" placeholder="Name"></div>
     <div class="fg"><label class="fl">DESCRIPTION</label>
@@ -511,7 +512,7 @@ s.blt{color:#ffb86c;}
     <div class="fg"><label class="fl">TAGS</label>
       <input class="fi" id="pub-tags" placeholder="Qiskit · LaTeX"></div>
     <div class="btn-row">
-      <button class="btn-pri" onclick="publishNb()">📤 Publish</button>
+      <button class="btn-pri" id="pub-btn" onclick="publishNb()">📤 Publish</button>
       <button class="btn-cancel" onclick="closePublish()">Cancel</button>
     </div>
   </div>
@@ -519,6 +520,7 @@ s.blt{color:#ffb86c;}
 
 <script>window.MathJax={tex:{inlineMath:[['$','$'],['\\(','\\)']],displayMath:[['$$','$$'],['\\[','\\]']]},startup:{typeset:false}};</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" async></script>
+<script src="repo-sync.js"></script>
 <script>
 // ═══════════════════════════════════════════════════════════════
 // QCOL QUANTUM NOTEBOOK v5.0 — Full Output + Expo mode
@@ -1758,22 +1760,75 @@ function refreshNbs(){
   if(!nbs.length){grid.innerHTML=`<div class="nb-empty-state"><div class="nb-empty-icon">📓</div><div class="nb-empty-ttl">No saved notebooks</div></div>`;return;}
   grid.innerHTML=nbs.map(nb=>`<div class="nb-card"><div class="nb-card-hdr"><div class="nb-card-title">${escH(nb.name)}</div><div class="nb-card-badge">${nb.cells?.length||0} cells</div></div><div class="nb-card-body"><div class="nb-card-meta">${new Date(nb.saved).toLocaleDateString()}</div><div class="nb-card-actions"><button class="btn-edit-nb" onclick="loadNb('${escH(nb.name)}')">📝 Edit</button><button class="btn-pub-nb" onclick="loadNb('${escH(nb.name)}');showPublish()">📤</button><button class="btn-del-nb" onclick="deleteNb('${escH(nb.name)}')">🗑</button></div></div></div>`).join('');
 }
-function showPublish(){const name=document.getElementById('nb-name-inp').value||'';document.getElementById('pub-title').value=name;document.getElementById('pub-modal').classList.add('open');}
+async function showPublish(){
+  if(_expositionMode)return;
+  const name=document.getElementById('nb-name-inp').value||'';
+  document.getElementById('pub-title').value=name;
+  document.getElementById('pub-desc').value='';
+  document.getElementById('pub-tags').value='';
+  const note=document.getElementById('pub-note');
+  const linked=window.RepoSync?RepoSync.getLinked(name):null;
+  if(note) note.textContent=(linked&&RepoSync.hasOwnKey(linked))
+    ?'☁️ This notebook is already published. Publishing again UPDATES it (no duplicates).'
+    :'☁️ Published notebooks are visible to everyone in Projects right away.';
+  document.getElementById('pub-modal').classList.add('open');
+  if(linked&&RepoSync.hasOwnKey(linked)){
+    try{
+      const m=await RepoSync.getOne(linked,'title,description,tags');
+      if(m){
+        document.getElementById('pub-title').value=m.title||name;
+        document.getElementById('pub-desc').value=m.description||'';
+        document.getElementById('pub-tags').value=m.tags||'';
+      }
+    }catch(e){}
+  }
+}
 function closePublish(){document.getElementById('pub-modal').classList.remove('open');}
-function publishNb(){
-  if(!requireAuth())return;
+async function publishNb(){
+  if(_expositionMode)return;
+  if(!curUser||curUser.role==='guest'){notify('🔒 Sign in to publish notebooks');return;}
+  if(!window.RepoSync){notify('❌ Cloud module not loaded (repo-sync.js)');return;}
+  // sincronizar lo escrito en los textareas
+  cells.forEach(c=>{
+    const ta=document.getElementById('ta-'+c.id);
+    const mta=document.getElementById('mta-'+c.id);
+    if(ta)c.code=ta.value;
+    if(mta)c.code=mta.value;
+  });
   saveCurrentNb(false);
-  const name=document.getElementById('nb-name-inp').value||'Untitled';
+  const localName=(document.getElementById('nb-name-inp').value||'Untitled').trim();
+  const title=(document.getElementById('pub-title').value||localName).trim();
   const desc=document.getElementById('pub-desc').value.trim();
   const tags=document.getElementById('pub-tags').value.trim();
-  const id=name.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'');
-  const projs=JSON.parse(localStorage.getItem('qcol_projs')||'[]');
-  const existing=projs.findIndex(p=>p.id===id);
-  const entry={id,title:name,type:'nb',desc,tags,size:cells.length,time:Math.max(5,cells.length*2),added:new Date().toLocaleDateString(),author:curUser?.name||'Admin',cells:JSON.parse(JSON.stringify(cells))};
-  if(existing>=0)projs[existing]=entry;else projs.unshift(entry);
-  localStorage.setItem('qcol_projs',JSON.stringify(projs));
-  postCore('QCOL_SAVE',{key:'qcol_projs',val:projs});
-  downloadNb();closePublish();notify('✅ Published: '+name);
+  if(!title){notify('Title is required');return;}
+  // solo lo necesario: sin salidas (pueden pesar mucho) ni estados de edición
+  const clean=cells.map(c=>({type:c.type,code:c.code||'',hiddenCode:c.hiddenCode||'',circuitData:c.circuitData||null}));
+  const btn=document.getElementById('pub-btn');
+  if(btn){btn.disabled=true;btn.textContent='⏳ Publishing...';}
+  const meta={title:title,description:desc,tags:tags,cell_count:clean.length,est_minutes:Math.max(5,clean.length*2),content:clean};
+  try{
+    let updated=false;
+    const linked=RepoSync.getLinked(localName);
+    const key=linked?RepoSync.ownKey(linked):null;
+    if(linked&&key){
+      try{
+        await RepoSync.update(linked,key,meta);
+        updated=true;
+      }catch(e){
+        if(!/not_found/i.test(e.message))throw e;   // si lo borraron, se publica de nuevo
+      }
+    }
+    if(!updated){
+      const id=await RepoSync.create(Object.assign({kind:'nb',author:curUser?.name||'Anonymous'},meta));
+      RepoSync.link(localName,id);
+    }
+    closePublish();
+    notify((updated?'✅ Updated: ':'✅ Published: ')+title);
+  }catch(e){
+    notify('❌ '+RepoSync.friendlyError(e),4500);
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent='📤 Publish';}
+  }
 }
 function setView(v){
   curView=v;

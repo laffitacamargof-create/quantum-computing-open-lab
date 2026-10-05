@@ -62,13 +62,18 @@ textarea.fi{resize:vertical;min-height:70px;line-height:1.6;}
 .btn-row{display:flex;gap:.5rem;margin-top:.8rem;}
 .btn-cancel{padding:.45rem .9rem;background:transparent;border:1px solid var(--b2);border-radius:7px;color:var(--mu);font-family:var(--orb);font-size:.58rem;cursor:pointer;}
 .g2{display:grid;grid-template-columns:1fr 1fr;gap:.7rem;}
+.banner{margin:1rem 1.3rem 0;padding:.5rem .9rem;border:1px solid rgba(255,215,0,.3);background:rgba(255,215,0,.06);border-radius:8px;font-family:var(--orb);font-size:.52rem;color:var(--gd);display:flex;align-items:center;gap:.6rem;}
+.banner button{margin-left:auto;}
+.hint{font-size:.62rem;color:var(--mu);line-height:1.6;margin-bottom:.8rem;}
+.btn-gold{background:linear-gradient(135deg,#7a5a00,var(--gd));color:#111;}
 </style>
 </head>
 <body>
 <div class="notif" id="notif"></div>
 <div class="admin-bar" id="admin-bar">
   👑 Admin mode — Manage lab projects
-  <button class="btn btn-pri" style="margin-left:auto;" onclick="openAdd()">+ ADD</button>
+  <button class="btn btn-gold" id="btn-migrate" style="margin-left:auto;display:none;" onclick="migrateLocal()">☁ MIGRATE LOCAL</button>
+  <button class="btn btn-pri" id="btn-add" onclick="openAdd()">+ ADD</button>
 </div>
 <div class="toolbar">
   <div class="search-box">
@@ -93,11 +98,12 @@ textarea.fi{resize:vertical;min-height:70px;line-height:1.6;}
       <select class="fi" id="a-type">
         <option value="pdf">PDF / LaTeX</option>
         <option value="video">Video</option>
-        <option value="nb" class="opt-nb" style="display:none;">Notebook .ipynb</option>
       </select>
     </div>
-    <div class="fg"><label class="fl">FILE ID (no extension, unique)</label><input class="fi" id="a-id" placeholder="e.g.: shor_algorithm"></div>
+    <p class="hint">📓 Notebooks are published from <b>Quantum Notebook → 📤 PUBLISH</b>. Here you can add PDFs and Videos.</p>
+    <div class="fg"><label class="fl">FILE ID (no extension, unique: a-z, 0-9, _ , -)</label><input class="fi" id="a-id" placeholder="e.g.: shor_algorithm"></div>
     <div class="fg"><label class="fl">DESCRIPTION</label><textarea class="fi" id="a-desc" placeholder="Brief description"></textarea></div>
+    <div class="fg"><label class="fl">URL (optional for PDF — required for Video)</label><input class="fi" id="a-url" placeholder="https://..."></div>
     <div class="fg"><label class="fl">TAGS</label><input class="fi" id="a-tags" placeholder="Qiskit · Algorithms"></div>
     <div class="g2">
       <div class="fg"><label class="fl">CELLS / PAGES</label><input class="fi" id="a-size" type="number" value="10"></div>
@@ -116,14 +122,15 @@ textarea.fi{resize:vertical;min-height:70px;line-height:1.6;}
     <div class="modal-title">✏️ Edit Project</div>
     <div class="fg"><label class="fl">TITLE</label><input class="fi" id="e-t" placeholder="Project title"></div>
     <div class="fg"><label class="fl">TYPE</label>
-      <select class="fi" id="e-type">
+      <select class="fi" id="e-type" disabled style="opacity:0.7;">
         <option value="pdf">PDF / LaTeX</option>
         <option value="video">Video</option>
-        <option value="nb" class="opt-nb-edit" style="display:none;">Notebook .ipynb</option>
+        <option value="nb">Notebook .ipynb</option>
       </select>
     </div>
-    <div class="fg"><label class="fl">FILE ID (unique, not editable)</label><input class="fi" id="e-id" readonly disabled style="opacity:0.7;background:#0a1428;"></div>
+    <div class="fg" id="e-id-wrap"><label class="fl">FILE ID (unique, not editable)</label><input class="fi" id="e-id" readonly disabled style="opacity:0.7;background:#0a1428;"></div>
     <div class="fg"><label class="fl">DESCRIPTION</label><textarea class="fi" id="e-desc" placeholder="Description"></textarea></div>
+    <div class="fg" id="e-url-wrap"><label class="fl">URL</label><input class="fi" id="e-url" placeholder="https://..."></div>
     <div class="fg"><label class="fl">TAGS</label><input class="fi" id="e-tags" placeholder="tags"></div>
     <div class="g2">
       <div class="fg"><label class="fl">CELLS / PAGES</label><input class="fi" id="e-size" type="number"></div>
@@ -136,12 +143,28 @@ textarea.fi{resize:vertical;min-height:70px;line-height:1.6;}
   </div>
 </div>
 
+<!-- FOUNDER KEY MODAL -->
+<div class="modal-ov" id="key-modal">
+  <div class="modal">
+    <div class="modal-title">🔑 Founder key</div>
+    <p class="hint">Enter the founder key to manage items you did not publish from this device. It is stored only in this browser.</p>
+    <div class="fg"><input class="fi" id="key-inp" type="password" placeholder="Founder key" autocomplete="off"></div>
+    <div class="btn-row">
+      <button class="btn btn-pri" onclick="keyModalOk()">✅ Confirm</button>
+      <button class="btn-cancel" onclick="keyModalCancel()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script src="repo-sync.js"></script>
 <script>
 let curUser=null,isAdmin=false,isFounder=false,cfg={},filt='all';
-let editingProjId = null;
+let editingProjId=null;
+let items=[],loading=true,loadError=null,refreshFn=null;
 
 function postCore(t,d={}){window.parent.postMessage({type:t,...d},'*');}
 function notify(msg){const n=document.getElementById('notif');n.textContent=msg;n.classList.add('show');clearTimeout(n._t);n._t=setTimeout(()=>n.classList.remove('show'),3000);postCore('QCOL_NOTIFY',{msg});}
+function errMsg(e){return RepoSync.friendlyError(e);}
 
 window.addEventListener('message',e=>{
   const d=e.data;if(!d?.type)return;
@@ -150,23 +173,79 @@ window.addEventListener('message',e=>{
     curUser=d.user;
     isAdmin = (curUser?.role==='admin' || curUser?.role==='founder');
     isFounder = (curUser?.role==='founder');
-    // Show/hide Notebook option in both modals based on role
-    document.querySelectorAll('.opt-nb').forEach(o => o.style.display = isAdmin ? '' : 'none');
-    document.querySelectorAll('.opt-nb-edit').forEach(o => o.style.display = isAdmin ? '' : 'none');
     document.getElementById('admin-bar').classList.toggle('show', isAdmin);
+    updateMigrateBtn();
     render();
   }
 });
 postCore('QCOL_GET_CONFIG');
 
-// ==================== DATA ====================
-function getP(){return JSON.parse(localStorage.getItem('qcol_projs')||'[]');}
-function saveP(p){localStorage.setItem('qcol_projs',JSON.stringify(p));}
+// ==================== DATA (nube) ====================
+function fromRow(r){
+  return {id:r.id,type:r.kind,slug:r.slug||'',title:r.title||'',desc:r.description||'',
+    tags:r.tags||'',size:r.cell_count||0,time:r.est_minutes||0,url:r.file_url||'',
+    author:r.author_name||'',added:r.created_at||''};
+}
+function getP(){return items;}
+function applyRows(rows,err){
+  loading=false;
+  if(err){
+    loadError=err;
+    if(!items.length){const c=RepoSync.getCached();if(c&&c.length)items=c.map(fromRow);}
+  }else{
+    loadError=null;
+    items=rows.map(fromRow);
+  }
+  render();
+}
+function reload(){ if(refreshFn) return refreshFn(); }
 
 // ==================== FILTERS ====================
 function setF(f,el){filt=f;document.querySelectorAll('.fbtn').forEach(b=>b.classList.remove('on'));el.classList.add('on');render();}
 
-// ==================== RENDER + PERMISSIONS ====================
+// ==================== PERMISOS ====================
+function canManage(p){ return isFounder || RepoSync.hasOwnKey(p.id); }
+
+function askFounderKey(){
+  return new Promise(resolve=>{
+    window._keyResolve=resolve;
+    const i=document.getElementById('key-inp'); i.value='';
+    document.getElementById('key-modal').classList.add('open');
+    setTimeout(()=>i.focus(),50);
+  });
+}
+function keyModalOk(){
+  const v=document.getElementById('key-inp').value.trim();
+  document.getElementById('key-modal').classList.remove('open');
+  if(window._keyResolve){window._keyResolve(v||null);window._keyResolve=null;}
+}
+function keyModalCancel(){
+  document.getElementById('key-modal').classList.remove('open');
+  if(window._keyResolve){window._keyResolve(null);window._keyResolve=null;}
+}
+document.getElementById('key-inp').addEventListener('keydown',e=>{if(e.key==='Enter')keyModalOk();});
+
+async function ensureFounderKey(){
+  let k=RepoSync.getFounderKey();
+  if(k) return k;
+  k=await askFounderKey();
+  if(!k) return null;
+  try{
+    const ok=await RepoSync.verifyFounder(k);
+    if(!ok){notify('❌ Wrong founder key');return null;}
+  }catch(e){notify('❌ '+errMsg(e));return null;}
+  RepoSync.setFounderKey(k);
+  return k;
+}
+// llave a usar para un item: la propia (si lo publiqué yo) o la del fundador
+async function keyFor(id){
+  const own=RepoSync.ownKey(id);
+  if(own) return own;
+  if(isFounder) return await ensureFounderKey();
+  return null;
+}
+
+// ==================== RENDER ====================
 function render(){
   const q=document.getElementById('search').value.toLowerCase();
   const all=getP().filter(p=>{
@@ -175,124 +254,140 @@ function render(){
     return mf&&mq;
   });
   const c=document.getElementById('content');
+  let banner='';
+  if(loadError){
+    banner=`<div class="banner">⚠️ No connection to the cloud${items.length?' — showing the last saved copy':''}.<button class="btn btn-pri" onclick="reload()">Retry</button></div>`;
+  }
+  if(loading&&!items.length){
+    c.innerHTML=`<div class="empty"><div class="empty-icon">☁️</div><div class="empty-title">Loading projects...</div></div>`;return;
+  }
   if(all.length===0){
-    c.innerHTML=`<div class="empty"><div class="empty-icon">📂</div>
+    c.innerHTML=banner+`<div class="empty"><div class="empty-icon">📂</div>
       <div class="empty-title">${q?'No results':'No projects yet'}</div>
-      <div class="empty-desc">${q?'No projects found for "'+q+'"':isAdmin?'Use the + ADD button to publish the first project.':'The administrator has not published any projects yet.'}</div>
+      <div class="empty-desc">${q?'No projects found for "'+escapeHtml(q)+'"':'Nothing has been published yet. Publish a notebook from Quantum Notebook → 📤 PUBLISH.'}</div>
     </div>`;return;
   }
-  c.innerHTML='<div class="grid">'+all.map(p=>{
+  c.innerHTML=banner+'<div class="grid">'+all.map(p=>{
     const tl=p.type==='nb'?'NOTEBOOK':p.type==='pdf'?'PDF LaTeX':'VIDEO';
     const tc=p.type==='nb'?'tnb':p.type==='pdf'?'tpdf':'tvid';
-    const meta=p.type==='nb'?`<span>⚛ ${p.size||10} cells</span><span>⏱ ${p.time||10} min</span>`:p.type==='pdf'?`<span>📄 ${p.size||10} pages</span><span>⏱ ${p.time||10} min</span>`:`<span>▶ Video</span><span>⏱ ${p.time||10} min</span>`;
-    
-    const canDelete = isFounder;
-    const canModify = isFounder;
-    const delBtn = canDelete ? `<button class="btn-del" onclick="delProj('${p.id}')" title="Delete permanently">🗑</button>` : '';
-    const editBtn = canModify ? `<button class="btn-edit" onclick="editProj('${p.id}')" title="Edit project">✏️</button>` : '';
+    const meta=p.type==='nb'?`<span>⚛ ${p.size||0} cells</span><span>⏱ ${p.time||10} min</span>`:p.type==='pdf'?`<span>📄 ${p.size||10} pages</span><span>⏱ ${p.time||10} min</span>`:`<span>▶ Video</span><span>⏱ ${p.time||10} min</span>`;
+    const author=p.author?`<div class="card-meta"><span>👤 ${escapeHtml(p.author)}</span></div>`:'';
+    const manage=canManage(p);
+    const delBtn = manage ? `<button class="btn-del" onclick="delProj('${p.id}')" title="Delete permanently">🗑</button>` : '';
+    const editBtn = manage ? `<button class="btn-edit" onclick="editProj('${p.id}')" title="Edit project">✏️</button>` : '';
     const execText = p.type==='nb'?'▶ RUN':p.type==='pdf'?'📖 VIEW':'▶ VIEW';
     return`<div class="card"><div class="card-hdr"><span class="tbadge ${tc}">${tl}</span><span class="card-tags">${escapeHtml(p.tags||'')}</span></div>
       <div class="card-body"><div class="card-title">${escapeHtml(p.title)}</div><p class="card-desc">${escapeHtml(p.desc||'')}</p>
-      <div class="card-meta">${meta}</div>
+      <div class="card-meta">${meta}</div>${author}
       <div class="card-actions"><button class="btn-exec" onclick="execProj('${p.id}')">${execText}</button>${editBtn}${delBtn}</div></div></div>`;
   }).join('')+'</div>';
 }
 
-function escapeHtml(str){if(!str)return '';return str.replace(/[&<>]/g,function(m){if(m==='&')return '&amp;';if(m==='<')return '&lt;';if(m==='>')return '&gt;';return m;});}
+function escapeHtml(str){if(!str)return '';return String(str).replace(/[&<>"']/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m];});}
 
-// ==================== NEW execProj FUNCTION (STEP 1) ====================
-function execProj(id) {
-    const projs = JSON.parse(localStorage.getItem('qcol_projs') || '[]');
-    const p = projs.find(x => x.id === id);
-    if (!p) { notify('Project not found'); return; }
-    
-    if (p.type === 'nb') {
-        // Prepare the notebook — ensure it has a valid structure
-        const nb = {
-            title:  p.title  || p.name || 'Untitled',
-            name:   p.name   || p.title || 'Untitled',
-            desc:   p.desc   || '',
-            cells:  (p.cells && p.cells.length > 0) ? p.cells : [
-                // If no cells, create a welcome cell
-                {
-                    id: 'c'+Date.now(),
-                    type: 'markdown',
-                    code: `# ${p.title||'Notebook'}
+// ==================== EJECUTAR / ABRIR ====================
+async function execProj(id) {
+  const p = items.find(x => x.id === id);
+  if (!p) { notify('Project not found'); return; }
 
-${p.desc||''}`,
-                    output: '', exec_count: null, mdEdit: false
-                }
-            ]
-        };
-        // Navigate to Quantum Notebook first, then send the message
-        // The core must route this message to the Quantum Notebook iframe
-        window.parent.postMessage({
-            type: 'QCOL_OPEN_NB_EXPOSITION',
-            nb: nb,
-            expositionMode: true
-        }, '*');
-        notify('👁 Opening in exposition mode...');
-    } else if (p.type === 'pdf') {
-        const gh = cfg && cfg.ghUser ? cfg.ghUser : 'laffitacamargof-create';
-        const repo = cfg && cfg.ghRepo ? cfg.ghRepo : 'quantum-computing-open-lab';
-        window.open(`https://github.com/${gh}/${repo}/blob/main/docs/${id}.pdf`, '_blank');
-    } else if (p.type === 'video') {
-        window.open(p.url || '#', '_blank');
-    } else {
-        notify('Unrecognized project type: ' + p.type);
+  if (p.type === 'nb') {
+    notify('⏳ Loading notebook...');
+    try{
+      const row = await RepoSync.getContent(id);
+      const cells = Array.isArray(row.content) ? row.content : [];
+      const nb = {
+        title: row.title || 'Untitled',
+        name:  row.title || 'Untitled',
+        desc:  row.description || '',
+        cells: cells.length ? cells : [{
+          id:'c'+Date.now(), type:'markdown',
+          code:`# ${row.title||'Notebook'}\n\n${row.description||''}`,
+          output:'', exec_count:null, mdEdit:false
+        }]
+      };
+      // El core enruta este mensaje al Quantum Notebook (modo exposición)
+      window.parent.postMessage({ type:'QCOL_OPEN_NB_EXPOSITION', nb:nb, expositionMode:true }, '*');
+      notify('👁 Opening in exposition mode...');
+    }catch(e){
+      notify(e.message==='not_found' ? '⚠️ This notebook no longer exists' : '❌ '+errMsg(e));
+      reload();
     }
+  } else if (p.type === 'pdf') {
+    if (p.url) { window.open(p.url, '_blank', 'noopener'); return; }
+    const gh = cfg && cfg.ghUser ? cfg.ghUser : 'laffitacamargof-create';
+    const repo = cfg && cfg.ghRepo ? cfg.ghRepo : 'quantum-computing-open-lab';
+    window.open(`https://github.com/${gh}/${repo}/blob/main/docs/${p.slug||p.id}.pdf`, '_blank', 'noopener');
+  } else if (p.type === 'video') {
+    if (p.url) window.open(p.url, '_blank', 'noopener');
+    else notify('⚠️ This video has no URL yet');
+  } else {
+    notify('Unrecognized project type: ' + p.type);
+  }
 }
 
-// ==================== DELETE (founder only) ====================
-function delProj(id){
-  if(!isFounder){ notify('❌ Only the founder can delete projects'); return; }
-  if(!confirm('⚠️ Permanently delete project?'))return;
-  const newProjs=getP().filter(x=>x.id!==id);
-  saveP(newProjs);
-  notify('🗑 Project deleted');
-  render();
+// ==================== DELETE ====================
+async function delProj(id){
+  const p=items.find(x=>x.id===id);
+  if(!p||!canManage(p)){ notify('❌ You cannot delete this project'); return; }
+  if(!confirm('⚠️ Permanently delete "'+p.title+'" for everyone?'))return;
+  const key=await keyFor(id);
+  if(!key){ notify('❌ Key required'); return; }
+  try{
+    await RepoSync.remove(id,key);
+    notify('🗑 Project deleted');
+  }catch(e){
+    if(/forbidden/i.test(e.message)&&isFounder) RepoSync.clearFounderKey();
+    notify('❌ '+errMsg(e));
+  }
+  reload();
 }
 
-// ==================== ADD (admins only) ====================
+// ==================== ADD (admins: PDF / Video) ====================
 function openAdd(){ if(!isAdmin){ notify('❌ Only administrators can add projects'); return; } document.getElementById('add-modal').classList.add('open'); }
 function closeAdd(){ document.getElementById('add-modal').classList.remove('open'); }
-function addProj(){
+async function addProj(){
   if(!isAdmin){ notify('❌ Only administrators can add projects'); return; }
   const t=document.getElementById('a-t').value.trim();
   let id=document.getElementById('a-id').value.trim().replace(/\s/g,'_').toLowerCase();
   const type=document.getElementById('a-type').value;
   const desc=document.getElementById('a-desc').value.trim();
   const tags=document.getElementById('a-tags').value.trim();
+  const url=document.getElementById('a-url').value.trim();
   const size=parseInt(document.getElementById('a-size').value)||10;
   const time=parseInt(document.getElementById('a-time').value)||15;
   if(!t||!id){notify('Title and ID are required');return;}
-  const all=getP(); if(all.find(p=>p.id===id)){notify('⚠️ ID already exists, choose another');return;}
-  // for videos, if no url is provided, assign a placeholder
-  let url = '';
-  if(type==='video') url = `#video-${id}`;
-  all.push({id,title:t,type,desc,tags,size,time,url, added:new Date().toLocaleDateString()});
-  saveP(all);
+  if(!/^[a-z0-9_-]{1,80}$/.test(id)){notify('ID: only a-z, 0-9, _ and -');return;}
+  if(type==='video'&&!url){notify('A video needs a URL');return;}
+  if(url&&!/^https?:\/\//i.test(url)){notify('URL must start with http:// or https://');return;}
+  const key=await ensureFounderKey();
+  if(!key)return;
+  try{
+    await RepoSync.create({kind:type,title:t,slug:id,description:desc,tags:tags,cell_count:size,est_minutes:time,file_url:url,author:curUser?.name||'',founderKey:key});
+  }catch(e){
+    if(/forbidden/i.test(e.message)) RepoSync.clearFounderKey();
+    notify('❌ '+errMsg(e));return;
+  }
   closeAdd();
   notify(`✅ Project "${t}" added`);
-  render();
-  document.getElementById('a-t').value='';
-  document.getElementById('a-id').value='';
-  document.getElementById('a-desc').value='';
-  document.getElementById('a-tags').value='';
+  ['a-t','a-id','a-desc','a-tags','a-url'].forEach(i=>document.getElementById(i).value='');
   document.getElementById('a-size').value='10';
   document.getElementById('a-time').value='15';
   document.getElementById('a-type').value='pdf';
+  reload();
 }
 
-// ==================== EDIT (founder only) ====================
+// ==================== EDIT ====================
 function editProj(id){
-  if(!isFounder){ notify('❌ Only the founder can edit projects'); return; }
-  const proj=getP().find(p=>p.id===id);
+  const proj=items.find(p=>p.id===id);
   if(!proj){ notify('Project not found'); return; }
+  if(!canManage(proj)){ notify('❌ You cannot edit this project'); return; }
   editingProjId=id;
   document.getElementById('e-t').value=proj.title;
   document.getElementById('e-type').value=proj.type;
-  document.getElementById('e-id').value=proj.id;
+  document.getElementById('e-id').value=proj.slug||'';
+  document.getElementById('e-id-wrap').style.display=proj.type==='nb'?'none':'';
+  document.getElementById('e-url-wrap').style.display=proj.type==='nb'?'none':'';
+  document.getElementById('e-url').value=proj.url||'';
   document.getElementById('e-desc').value=proj.desc||'';
   document.getElementById('e-tags').value=proj.tags||'';
   document.getElementById('e-size').value=proj.size||10;
@@ -300,40 +395,81 @@ function editProj(id){
   document.getElementById('edit-modal').classList.add('open');
 }
 function closeEdit(){ document.getElementById('edit-modal').classList.remove('open'); editingProjId=null; }
-function updateProj(){
-  if(!isFounder){ notify('Action denied: founder only'); closeEdit(); return; }
+async function updateProj(){
   if(!editingProjId){ notify('Internal error'); closeEdit(); return; }
+  const id=editingProjId;
+  const proj=items.find(p=>p.id===id);
+  if(!proj||!canManage(proj)){ notify('Action denied'); closeEdit(); return; }
   const newTitle=document.getElementById('e-t').value.trim();
-  const newType=document.getElementById('e-type').value;
   const newDesc=document.getElementById('e-desc').value.trim();
   const newTags=document.getElementById('e-tags').value.trim();
   const newSize=parseInt(document.getElementById('e-size').value)||10;
   const newTime=parseInt(document.getElementById('e-time').value)||15;
+  const newUrl=document.getElementById('e-url').value.trim();
   if(!newTitle){ notify('Title cannot be empty'); return; }
-  let projects=getP();
-  const index=projects.findIndex(p=>p.id===editingProjId);
-  if(index===-1){ notify('Project does not exist'); closeEdit(); return; }
-  projects[index]={...projects[index], title:newTitle, type:newType, desc:newDesc, tags:newTags, size:newSize, time:newTime};
-  saveP(projects);
-  notify('✏️ Project updated');
-  closeEdit();
-  render();
+  if(newUrl&&!/^https?:\/\//i.test(newUrl)){notify('URL must start with http:// or https://');return;}
+  const key=await keyFor(id);
+  if(!key){ notify('❌ Key required'); return; }
+  const fields={title:newTitle,description:newDesc,tags:newTags,cell_count:newSize,est_minutes:newTime};
+  if(proj.type!=='nb'&&newUrl) fields.file_url=newUrl;
+  try{
+    await RepoSync.update(id,key,fields);
+    notify('✏️ Project updated');
+    closeEdit();
+  }catch(e){
+    if(/forbidden/i.test(e.message)&&isFounder) RepoSync.clearFounderKey();
+    notify('❌ '+errMsg(e));
+  }
+  reload();
+}
+
+// ==================== MIGRAR datos locales antiguos (founder) ====================
+function localLegacy(){try{return JSON.parse(localStorage.getItem('qcol_projs')||'[]');}catch(e){return [];}}
+function updateMigrateBtn(){
+  const b=document.getElementById('btn-migrate');
+  if(b) b.style.display=(isFounder&&localLegacy().length)?'':'none';
+}
+async function migrateLocal(){
+  if(!isFounder){notify('❌ Founder only');return;}
+  const legacy=localLegacy();
+  if(!legacy.length){notify('Nothing to migrate');updateMigrateBtn();return;}
+  if(!confirm('Upload '+legacy.length+' local project(s) to the cloud so everyone can see them?'))return;
+  const key=await ensureFounderKey();
+  if(!key)return;
+  let ok=0,skip=0,fail=0;
+  for(const p of legacy){
+    if(items.some(x=>x.type===p.type&&x.title===p.title)){skip++;continue;}
+    try{
+      if(p.type==='nb'){
+        const cells=(p.cells||[]).map(c=>({type:c.type,code:c.code||'',hiddenCode:c.hiddenCode||'',circuitData:c.circuitData||null}));
+        if(!cells.length){skip++;continue;}
+        await RepoSync.create({kind:'nb',title:p.title,description:p.desc||'',tags:p.tags||'',cell_count:cells.length,est_minutes:p.time||10,author:p.author||'',content:cells});
+      }else{
+        const u=/^https?:\/\//i.test(p.url||'')?p.url:'';
+        const slug=/^[a-z0-9_-]{1,80}$/.test(p.id||'')?p.id:null;
+        await RepoSync.create({kind:p.type,title:p.title,slug:slug,description:p.desc||'',tags:p.tags||'',cell_count:p.size||10,est_minutes:p.time||15,file_url:u,author:p.author||'',founderKey:key});
+      }
+      ok++;
+    }catch(e){fail++;console.warn('migrate',p.title,e.message);}
+  }
+  notify(`☁ Migrated ${ok} · skipped ${skip} · failed ${fail}`);
+  if(ok&&!fail){ try{localStorage.setItem('qcol_projs_backup',localStorage.getItem('qcol_projs'));localStorage.removeItem('qcol_projs');}catch(e){} }
+  updateMigrateBtn();
+  reload();
 }
 
 // ==================== MODAL CLOSE EVENTS ====================
 document.getElementById('add-modal').addEventListener('click',e=>{if(e.target===document.getElementById('add-modal'))closeAdd();});
 document.getElementById('edit-modal').addEventListener('click',e=>{if(e.target===document.getElementById('edit-modal'))closeEdit();});
 
-// ==================== Initial sync ====================
-function syncNotebookOptionDelayed(){
-  const adminState=isAdmin;
-  document.querySelectorAll('.opt-nb').forEach(o => o.style.display = adminState ? '' : 'none');
-  document.querySelectorAll('.opt-nb-edit').forEach(o => o.style.display = adminState ? '' : 'none');
-}
-setInterval(syncNotebookOptionDelayed, 500);
-
+// ==================== INICIO ====================
 window.render=render;
 render();
+if(window.RepoSync){
+  refreshFn=RepoSync.startPolling(applyRows,30000);
+}else{
+  loading=false;loadError=new Error('repo-sync.js not loaded');render();
+}
 </script>
 </body>
 </html>
