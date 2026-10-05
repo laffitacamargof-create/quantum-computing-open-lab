@@ -989,11 +989,17 @@ function updateCodeFromCircuit() {
   });
 
   // ✅ Mediciones UNA POR UNA: qc.measure(0, 0), qc.measure(1, 1), ...
+  // Si el usuario no colocó mediciones, se miden todos los qubits (como en la versión ES)
+  // para que get_counts() no falle con 'No counts for experiment "0"'.
+  code += '\n';
   if (meas.length > 0) {
-    code += '\n';
     meas.forEach(g => {
       code += `qc.measure(${g.q}, ${g.q})\n`;
     });
+  } else {
+    for (let i = 0; i < nQubits; i++) {
+      code += `qc.measure(${i}, ${i})\n`;
+    }
   }
 
   code += `\nprint(qc.draw(output='text'))\n\nsimulator = AerSimulator()\nresult = simulator.run(qc, shots=1024).result()\ncounts = result.get_counts()\nprint("Results:", counts)`;
@@ -2137,7 +2143,10 @@ function formatError(errText, code) {
         'ImportError': '💡 Could not import — the library is not available.',
         'IndentationError': '💡 Indentation error — verify the spaces at the beginning of the line.',
     };
-    const explanation = explanations[errType] || '💡 Review the code on the indicated line.';
+    let explanation = explanations[errType] || '💡 Review the code on the indicated line.';
+    if (/No counts for experiment/i.test(errText)) {
+        explanation = '💡 The circuit has no measurements — add qc.measure(q, q) for each qubit before calling get_counts().';
+    }
     html += `❌ ${errType}` + (errLine ? ` on line ${errLine}` : '') + '\n';
     if (errLine && lines[errLine - 1]) html += `\n<span class="err-line"><span class="err-arrow">→ L${errLine}:</span> ${escapeHtml(lines[errLine - 1])}</span>\n`;
     const msgLines = errText.split('\n').filter(l => l.trim());
