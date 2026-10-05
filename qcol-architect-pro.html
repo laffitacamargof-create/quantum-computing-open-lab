@@ -1786,7 +1786,7 @@ async function showPublish(){
 function closePublish(){document.getElementById('pub-modal').classList.remove('open');}
 async function publishNb(){
   if(_expositionMode)return;
-  if(!curUser||curUser.role==='guest'){notify('🔒 Sign in to publish notebooks');return;}
+  // ✅ Permitir publicar a CUALQUIER usuario (incluso sin login)
   if(!window.RepoSync){notify('❌ Cloud module not loaded (repo-sync.js)');return;}
   // sincronizar lo escrito en los textareas
   cells.forEach(c=>{
@@ -1805,6 +1805,7 @@ async function publishNb(){
   const clean=cells.map(c=>({type:c.type,code:c.code||'',hiddenCode:c.hiddenCode||'',circuitData:c.circuitData||null}));
   const btn=document.getElementById('pub-btn');
   if(btn){btn.disabled=true;btn.textContent='⏳ Publishing...';}
+  const authorName = (curUser && curUser.name) ? curUser.name : 'Anonymous';
   const meta={title:title,description:desc,tags:tags,cell_count:clean.length,est_minutes:Math.max(5,clean.length*2),content:clean};
   try{
     let updated=false;
@@ -1819,7 +1820,7 @@ async function publishNb(){
       }
     }
     if(!updated){
-      const id=await RepoSync.create(Object.assign({kind:'nb',author:curUser?.name||'Anonymous'},meta));
+      const id=await RepoSync.create(Object.assign({kind:'nb',author:authorName},meta));
       RepoSync.link(localName,id);
     }
     closePublish();
