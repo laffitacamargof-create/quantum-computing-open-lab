@@ -427,7 +427,7 @@ body { background:var(--bg); color:var(--tx); font-family:var(--ex); }
 <script>
 // ═══════════════════════════════════════════════════════════
 // QUANTUM ARCHITECT — Hybrid automatic: local sync (Pyodide) + remote execution (server)
-// SISTEMA DE SINCRONIZACIÓN SIMPLE (idéntico a la versión en español que funciona)
+// SISTEMA DE SINCRONIZACIÓN BILATERAL CORREGIDO
 // ═══════════════════════════════════════════════════════════
 
 let circuit = { qubits: 2, gates: [] };
@@ -732,7 +732,7 @@ function onWireDrop(e, qubit) {
 function findGateDef(id) { for (const cat of Object.values(GATES)) { const g = cat.find(g => g.id === id); if (g) return g; } return null; }
 
 // ═══════════════════════════════════════════════════════════
-// ✅ RESTAURADO: placeGate() — versión española (simple, sin lógica especial para M)
+// placeGate() — versión corregida: añade puerta y normaliza
 // ═══════════════════════════════════════════════════════════
 function placeGate(gateId, qubit) {
   if (isUpdatingFromCode) return;
@@ -763,7 +763,6 @@ function placeGate(gateId, qubit) {
     const q2 = qubit + 1 < circuit.qubits ? qubit + 1 : qubit - 1;
     circuit.gates.push({ id: gateId, q: Math.min(qubit, q2), q2: Math.max(qubit, q2), def: def, uid: nextId++ });
   } else {
-    // ✅ VERSIÓN ESPAÑOLA: simple, sin lógica especial para M
     circuit.gates.push({ id: gateId, q: qubit, def: def, uid: nextId++ });
   }
   circuit.gates = normalizeMeasurements(circuit.gates);
@@ -833,6 +832,19 @@ function normalizeMeasurements(gates) {
     }
   }
   return [...nonMeas, ...measMap.values()];
+}
+
+// ═══════════════════════════════════════════════════════════
+// CÁLCULO DINÁMICO DE QUBITS: máximo índice usado en puertas
+// ═══════════════════════════════════════════════════════════
+function computeRequiredQubits() {
+  let maxQ = 1;
+  for (const g of circuit.gates) {
+    if (typeof g.q === 'number' && g.q > maxQ) maxQ = g.q;
+    if (typeof g.q2 === 'number' && g.q2 > maxQ) maxQ = g.q2;
+    if (typeof g.q3 === 'number' && g.q3 > maxQ) maxQ = g.q3;
+  }
+  return Math.max(2, maxQ + 1);
 }
 
 function renderCircuit() {
@@ -951,20 +963,46 @@ function updateBlochSelector() {
 }
 
 // ═══════════════════════════════════════════════════════════
-// ✅ RESTAURADO: updateCodeFromCircuit() — versión española exacta
-// Genera: qc.measure(range(n), range(n)) — una sola línea
-// Compatible con Qiskit 1.0+ y con el sistema de sincronización bilateral
+// updateCodeFromCircuit() — CORREGIDO:
+//   1. Detección dinámica de qubits (max q, q2, q3 + 1)
+//   2. Mediciones UNA POR UNA: qc.measure(0,0), qc.measure(1,1)
+//   3. NO usa range() ni listas
 // ═══════════════════════════════════════════════════════════
 function updateCodeFromCircuit() {
   if (isUpdatingFromCode) return;
-  let code = `from qiskit import QuantumCircuit\nimport numpy as np\nfrom qiskit_aer import AerSimulator\n\nqc = QuantumCircuit(${circuit.qubits}, ${circuit.qubits})\n\n`;
-  circuit.gates.forEach(g => {
-    let line = g.def.code.replace('{q}', g.q).replace('{q2}', g.q2 !== undefined ? g.q2 : 0).replace('{q3}', g.q3 !== undefined ? g.q3 : 0);
+
+  const nQubits = computeRequiredQubits();
+  if (nQubits !== circuit.qubits) circuit.qubits = nQubits;
+
+  let code = `from qiskit import QuantumCircuit\nimport numpy as np\nfrom qiskit_aer import AerSimulator\n\nqc = QuantumCircuit(${nQubits}, ${nQubits})\n\n`;
+
+  // Puertas NO-medición primero (en su orden)
+  const nonMeas = circuit.gates.filter(g => g.id !== 'M');
+  const meas = circuit.gates.filter(g => g.id === 'M');
+
+  nonMeas.forEach(g => {
+    let line = g.def.code
+      .replace(/\{q2\}/g, g.q2 !== undefined ? g.q2 : 0)
+      .replace(/\{q3\}/g, g.q3 !== undefined ? g.q3 : 0)
+      .replace(/\{q\}/g, g.q);
     code += line + '\n';
   });
-  code += `\nqc.measure(range(${circuit.qubits}), range(${circuit.qubits}))\nprint(qc.draw(output='text'))\n\nsimulator = AerSimulator()\nresult = simulator.run(qc, shots=1024).result()\ncounts = result.get_counts()\nprint("Results:", counts)`;
+
+  // ✅ Mediciones UNA POR UNA: qc.measure(0, 0), qc.measure(1, 1), ...
+  if (meas.length > 0) {
+    code += '\n';
+    meas.forEach(g => {
+      code += `qc.measure(${g.q}, ${g.q})\n`;
+    });
+  }
+
+  code += `\nprint(qc.draw(output='text'))\n\nsimulator = AerSimulator()\nresult = simulator.run(qc, shots=1024).result()\ncounts = result.get_counts()\nprint("Results:", counts)`;
+
   const ta = document.getElementById('code-ta');
-  if (ta && ta.value !== code) { ta.value = code; updateSyntaxHighlight(); }
+  if (ta && ta.value !== code) {
+    ta.value = code;
+    updateSyntaxHighlight();
+  }
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1600,7 +1638,7 @@ async function syncFromServer(reason) {
     }
 }
 
-// ⬇⬇⬇ SIMPLE SYNC SYSTEM (identical to the Spanish version that works) ⬇⬇⬇
+// ⬇⬇⬇ SISTEMA DE SINCRONIZACIÓN BILATERAL CORREGIDO ⬇⬇⬇
 async function syncWithPyodide(retryCount = 0) {
     if (isUpdatingFromCircuit) return;
     isUpdatingFromCircuit = true;
@@ -1781,6 +1819,10 @@ json.dumps({
                 }
             }
             circuit.gates = normalizeMeasurements(newGates);
+            
+            // ✅ Asegurar que circuit.qubits refleja el máximo qubit usado
+            const requiredQ = computeRequiredQubits();
+            if (requiredQ > circuit.qubits) circuit.qubits = requiredQ;
             
             const _mCount = circuit.gates.filter(g => g.id === 'M').length;
             const _gCount = circuit.gates.length - _mCount;
@@ -2018,7 +2060,14 @@ function updateSyntaxHighlight() {
     syn.scrollLeft = ta.scrollLeft;
 }
 
-// ⬇⬇⬇ SIMPLE onCodeEdit (identical to the Spanish version that works) ⬇⬇⬇
+// ⬇⬇⬇ onCodeEdit CORREGIDO: no interfiere con la escritura ⬇⬇⬇
+// Cambios:
+//   - Aumentado el debounce a 1200ms
+//   - No se dispara syncWithPyodide si el editor tiene el foco (el usuario está escribiendo)
+//   - Se preserva el cursor al reemplazar contenido en updateCodeFromCircuit
+let _isUserTyping = false;
+let _userTypingTimeout = null;
+
 function onCodeEdit() { 
     const code = document.getElementById('code-ta').value;
     const gateCallCount = (code.match(/\bqc\.\w+\s*\(/g) || []).length;
@@ -2031,18 +2080,30 @@ function onCodeEdit() {
             if (count > MAX_GATES) { cutLine = i; break; }
         }
         const ta = document.getElementById('code-ta');
+        const cursorPos = ta.selectionStart;
         ta.value = lines.slice(0, cutLine).join('\n');
+        ta.selectionStart = ta.selectionEnd = Math.min(cursorPos, ta.value.length);
         notify(`⛔ Limit of ${MAX_GATES} gates in code. Extra lines removed.`);
     }
     updateSyntaxHighlight(); 
-    if (syncTimeout) clearTimeout(syncTimeout);
-    syncTimeout = setTimeout(() => {
-        if (pyodide !== null) {
-            syncWithPyodide().catch(() => {});
-        } else if (engineOK && engineURL) {
-            syncFromServer('pyodide-not-loaded').catch(() => {});
-        }
-    }, 800);
+
+    // ✅ Marcar que el usuario está escribiendo
+    _isUserTyping = true;
+    if (_userTypingTimeout) clearTimeout(_userTypingTimeout);
+    _userTypingTimeout = setTimeout(() => {
+        _isUserTyping = false;
+        // Solo sincronizar si NO está escribiendo y el textarea NO tiene foco
+        const ta = document.getElementById('code-ta');
+        if (document.activeElement === ta) return;
+        if (syncTimeout) clearTimeout(syncTimeout);
+        syncTimeout = setTimeout(() => {
+            if (pyodide !== null) {
+                syncWithPyodide().catch(() => {});
+            } else if (engineOK && engineURL) {
+                syncFromServer('pyodide-not-loaded').catch(() => {});
+            }
+        }, 1200);
+    }, 1500);
     
     if (circuit.gates.length === 0) {
         clearTimeout(window._emptyCanvasTimeout);
@@ -2238,7 +2299,8 @@ from qiskit_aer import AerSimulator
 qc = QuantumCircuit(2, 2)
 qc.h(0)
 qc.cx(0, 1)
-qc.measure(range(2), range(2))
+qc.measure(0, 0)
+qc.measure(1, 1)
 print(qc.draw(output='text'))
 
 simulator = AerSimulator()
@@ -2516,7 +2578,7 @@ function updateCircuitFromCode(){
     }
 }
 
-// ⬇⬇⬇ SIMPLE returnToNotebook (identical to the Spanish version that works) ⬇⬇⬇
+// ⬇⬇⬇ returnToNotebook CORREGIDO: envía código + circuitData completos ⬇⬇⬇
 function returnToNotebook(){
     if(!_notebookMode || !_notebookCellId){
         postCore('OPENQ_NAV', {screen:'home'});
@@ -2539,11 +2601,15 @@ function returnToNotebook(){
             }
         }))
     };
+    // ✅ Enviar AMBOS: código Y circuitData para que la celda notebook
+    //    pueda reconstruir el circuito exactamente como está
     window.parent.postMessage({
         type:        'OPENQ_CIRCUIT_RETURN',
         cellId:       _notebookCellId,
         code:         code,
-        circuitData:  circuitData
+        circuitData:  circuitData,
+        qubits:       circuit.qubits,
+        gates:        circuitData.gates
     }, '*');
     notify('⚛ Circuit saved — returning to Notebook...');
     setTimeout(()=>{ postCore('OPENQ_NAV', {screen:'architect-pro'}); }, 400);
