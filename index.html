@@ -873,7 +873,7 @@ class OpenQConfigSyncReader {
   const VERSION = '2.1.0';
   const MODULES = {
     projects:       'qcol-projects.html',
-    architect:      'qcol-architect.html',
+    architect:      'qcol-architect-v2.html',
     'architect-pro':'qcol-architect-pro.html',
     library:        'qcol-library.html',
     account:        'qcol-account.html',
@@ -1217,7 +1217,7 @@ class OpenQConfigSyncReader {
     const iframe = document.createElement('iframe');
     iframe.className = 'module-iframe';
     iframe.setAttribute('data-openq', screen);
-    iframe.src = file;
+    iframe.src = file + '?v=' + Date.now();
     iframe.onload = () => {
       iframes[screen] = iframe;
       setTimeout(() => {
