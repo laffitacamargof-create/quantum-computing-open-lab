@@ -542,9 +542,9 @@ function goBack(){
   if(_expositionMode){
     // Exit exposition mode → return to projects repository
     deactivateExpositionMode();
-    postCore('QCOL_NAV',{screen:'projects'});
+    postCore('OPENQ_NAV',{screen:'projects'});
   } else {
-    postCore('QCOL_NAV',{screen:'home'});
+    postCore('OPENQ_NAV',{screen:'home'});
   }
 }
 
@@ -643,7 +643,7 @@ async function checkEngine(){
     else throw new Error('HTTP '+r.status);
   }catch(e){engineOK=false;badge.textContent='● NO COMPILER';badge.className='eng-pill';}
 }
-function setEngineURL(url){engineURL=url;localStorage.setItem('qcol_colab_url',url);checkEngine();notify('🌐 Engine updated');}
+function setEngineURL(url){engineURL=url;localStorage.setItem('openq_colab_url',url);checkEngine();notify('🌐 Engine updated');}
 
 // ── QISKIT PREAMBLE ───────────────────────────────────────────
 const QISKIT_PREAMBLE=`from qiskit import QuantumCircuit, QuantumRegister, ClassicalRegister, transpile
@@ -913,7 +913,7 @@ function openCircuitEditor(cellId){
   const cell = cells.find(c => c.id === cellId);
   if(!cell) return;
   _editingCellId = cellId;
-  postCore('QCOL_OPEN_ARCHITECT_EDIT', {
+  postCore('OPENQ_OPEN_ARCHITECT_EDIT', {
     cellId,
     code:        cell.hiddenCode || '',
     circuitData: cell.circuitData || null
@@ -2234,11 +2234,11 @@ function showUI(user){
   loadCompilerUrlFromCloud().then(url => {
     if(url) {
       engineURL = url;
-      localStorage.setItem('qcol_colab_url', url);
+      localStorage.setItem('openq_colab_url', url);
       checkEngine();
     } else {
       // Fallback: try localStorage as last resort
-      const stored = localStorage.getItem('qcol_colab_url') || '';
+      const stored = localStorage.getItem('openq_colab_url') || '';
       if(stored) { engineURL=stored; checkEngine(); }
     }
   });
@@ -2248,23 +2248,24 @@ function showUI(user){
 
 window.addEventListener('message',e=>{
   const d=e.data||{};
+  if(typeof d.type==='string'&&d.type.indexOf('QCOL_')===0)d.type='OPENQ_'+d.type.slice(5); // compat. módulos antiguos
 
-  if(d.type==='QCOL_USER'||d.type==='QCOL_USER_UPDATE'){
+  if(d.type==='OPENQ_USER'||d.type==='OPENQ_USER_UPDATE'){
     if(d.user) showUI(d.user);
     else { _initialized=false; showUI({name:'Guest',role:'guest'}); }
   }
-  if(d.type==='QCOL_CONFIG_UPDATED'){
+  if(d.type==='OPENQ_CONFIG_UPDATED'){
     // Reload from cloud when config changes
     loadCompilerUrlFromCloud().then(url => {
       if(url && url !== engineURL) {
         engineURL = url;
-        localStorage.setItem('qcol_colab_url', url);
+        localStorage.setItem('openq_colab_url', url);
         checkEngine();
       }
     });
   }
 
-  if(d.type === 'QCOL_CIRCUIT_RETURN'){
+  if(d.type === 'OPENQ_CIRCUIT_RETURN'){
     const cellId = d.cellId || _editingCellId;
     const cell   = cells.find(c => c.id === cellId);
     if(cell && cell.type === 'circuit'){
@@ -2279,13 +2280,13 @@ window.addEventListener('message',e=>{
       notify('⚛ Circuit saved to cell');
       saveCurrentNb(false);
     } else if(d.code && !cellId){
-      console.warn('QCOL_CIRCUIT_RETURN without destination circuit cell');
+      console.warn('OPENQ_CIRCUIT_RETURN without destination circuit cell');
     }
     return;
   }
 
-  const isOpenExpo = d.type==='QCOL_OPEN_NB_EXPOSITION';
-  const isLoadNb   = (d.type==='QCOL_LOAD_NB') && d.nb;
+  const isOpenExpo = d.type==='OPENQ_OPEN_NB_EXPOSITION';
+  const isLoadNb   = (d.type==='OPENQ_LOAD_NB') && d.nb;
 
   if(isOpenExpo || isLoadNb){
     const nb     = d.nb;
@@ -2346,16 +2347,16 @@ window.addEventListener('message',e=>{
 });
 
 window.addEventListener('storage',e=>{
-  if(e.key==='qcol_colab_url'&&e.newValue){
+  if(e.key==='openq_colab_url'&&e.newValue){
     engineURL=e.newValue;
     checkEngine();
   }
 });
 
-postCore('QCOL_GET_USER');
-setTimeout(()=>{if(!_initialized){try{const s=localStorage.getItem('qcol_cur_user');if(s)showUI(JSON.parse(s));}catch(e){}}},700);
+postCore('OPENQ_GET_USER');
+setTimeout(()=>{if(!_initialized){try{const s=localStorage.getItem('openq_cur_user');if(s)showUI(JSON.parse(s));}catch(e){}}},700);
 setTimeout(()=>{if(!_initialized){showUI({name:'Guest',role:'guest'});}},1500);
-window.addEventListener('message',e=>{const d=e.data||{};if(d.type==='QCOL_USER_UPDATE'&&d.user){_initialized=false;showUI(d.user);}});
+window.addEventListener('message',e=>{const d=e.data||{};if(d.type==='OPENQ_USER_UPDATE'&&d.user){_initialized=false;showUI(d.user);}});
 
 function requireAuth(){return true;}
 
@@ -2364,10 +2365,10 @@ function initEngine(){
   loadCompilerUrlFromCloud().then(url => {
     if(url) {
       engineURL = url;
-      localStorage.setItem('qcol_colab_url', url);
+      localStorage.setItem('openq_colab_url', url);
       checkEngine();
     } else {
-      const s=localStorage.getItem('qcol_colab_url');
+      const s=localStorage.getItem('openq_colab_url');
       if(s){engineURL=s;checkEngine();}
     }
   });

@@ -163,13 +163,14 @@ let editingProjId=null;
 let items=[],loading=true,loadError=null,refreshFn=null;
 
 function postCore(t,d={}){window.parent.postMessage({type:t,...d},'*');}
-function notify(msg){const n=document.getElementById('notif');n.textContent=msg;n.classList.add('show');clearTimeout(n._t);n._t=setTimeout(()=>n.classList.remove('show'),3000);postCore('QCOL_NOTIFY',{msg});}
+function notify(msg){const n=document.getElementById('notif');n.textContent=msg;n.classList.add('show');clearTimeout(n._t);n._t=setTimeout(()=>n.classList.remove('show'),3000);postCore('OPENQ_NOTIFY',{msg});}
 function errMsg(e){return RepoSync.friendlyError(e);}
 
 window.addEventListener('message',e=>{
   const d=e.data;if(!d?.type)return;
-  if(d.type==='QCOL_CONFIG'){cfg=d;}
-  if(d.type==='QCOL_USER_UPDATE'){
+  if(typeof d.type==='string'&&d.type.indexOf('QCOL_')===0)d.type='OPENQ_'+d.type.slice(5); // compat.
+  if(d.type==='OPENQ_CONFIG'){cfg=d;}
+  if(d.type==='OPENQ_USER_UPDATE'){
     curUser=d.user;
     isAdmin = (curUser?.role==='admin' || curUser?.role==='founder');
     isFounder = (curUser?.role==='founder');
@@ -178,7 +179,7 @@ window.addEventListener('message',e=>{
     render();
   }
 });
-postCore('QCOL_GET_CONFIG');
+postCore('OPENQ_GET_CONFIG');
 
 // ==================== DATA (nube) ====================
 function fromRow(r){
@@ -306,7 +307,7 @@ async function execProj(id) {
         }]
       };
       // El core enruta este mensaje al Quantum Notebook (modo exposición)
-      window.parent.postMessage({ type:'QCOL_OPEN_NB_EXPOSITION', nb:nb, expositionMode:true }, '*');
+      window.parent.postMessage({ type:'OPENQ_OPEN_NB_EXPOSITION', nb:nb, expositionMode:true }, '*');
       notify('👁 Opening in exposition mode...');
     }catch(e){
       notify(e.message==='not_found' ? '⚠️ This notebook no longer exists' : '❌ '+errMsg(e));
@@ -424,7 +425,14 @@ async function updateProj(){
 }
 
 // ==================== MIGRAR datos locales antiguos (founder) ====================
-function localLegacy(){try{return JSON.parse(localStorage.getItem('qcol_projs')||'[]');}catch(e){return [];}}
+function readLS(k){try{const v=JSON.parse(localStorage.getItem(k)||'[]');return Array.isArray(v)?v:[];}catch(e){return [];}}
+function localLegacy(){
+  const seen=new Set(),out=[];
+  readLS('openq_projs').concat(readLS('qcol_projs')).forEach(x=>{
+    const k=(x&&(x.id||x.title))||''; if(!k||seen.has(k))return; seen.add(k); out.push(x);
+  });
+  return out;
+}
 function updateMigrateBtn(){
   const b=document.getElementById('btn-migrate');
   if(b) b.style.display=(isFounder&&localLegacy().length)?'':'none';
@@ -453,7 +461,9 @@ async function migrateLocal(){
     }catch(e){fail++;console.warn('migrate',p.title,e.message);}
   }
   notify(`☁ Migrated ${ok} · skipped ${skip} · failed ${fail}`);
-  if(ok&&!fail){ try{localStorage.setItem('qcol_projs_backup',localStorage.getItem('qcol_projs'));localStorage.removeItem('qcol_projs');}catch(e){} }
+  if(ok&&!fail){ try{
+    ['qcol_projs','openq_projs'].forEach(k=>{const v=localStorage.getItem(k);if(v){localStorage.setItem(k+'_backup',v);localStorage.removeItem(k);}});
+  }catch(e){} }
   updateMigrateBtn();
   reload();
 }
