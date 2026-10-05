@@ -11,8 +11,6 @@ body{background:var(--bg);color:var(--tx);font-family:var(--exo);min-height:100v
 body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,136,255,.03)1px,transparent 1px),linear-gradient(90deg,rgba(0,136,255,.03)1px,transparent 1px);background-size:40px 40px;pointer-events:none;}
 .notif{position:fixed;top:.8rem;right:.8rem;z-index:999;padding:.55rem 1rem;background:rgba(4,14,28,.97);border:1px solid var(--bl2);border-radius:8px;font-family:var(--orb);font-size:.6rem;color:var(--bl2);transform:translateX(130%);transition:transform .3s; backdrop-filter: blur(2px);}
 .notif.show{transform:translateX(0);}
-.admin-bar{display:none;background:rgba(255,215,0,.05);border-bottom:1px solid rgba(255,215,0,.15);padding:.5rem 1.3rem;font-family:var(--orb);font-size:.56rem;color:var(--gd);align-items:center;gap:.5rem;}
-.admin-bar.show{display:flex;}
 .toolbar{display:flex;align-items:center;gap:.7rem;padding:.85rem 1.3rem;background:var(--s);border-bottom:1px solid var(--b);flex-wrap:wrap;position:sticky;top:0;z-index:10;}
 .search-box{display:flex;align-items:center;gap:.4rem;background:rgba(0,0,0,.35);border:1px solid var(--b2);border-radius:7px;padding:.32rem .7rem;flex:1;max-width:300px;}
 .search-box input{background:transparent;border:none;color:var(--tx);font-family:var(--exo);font-size:.75rem;outline:none;width:100%;}
@@ -65,16 +63,10 @@ textarea.fi{resize:vertical;min-height:70px;line-height:1.6;}
 .banner{margin:1rem 1.3rem 0;padding:.5rem .9rem;border:1px solid rgba(255,215,0,.3);background:rgba(255,215,0,.06);border-radius:8px;font-family:var(--orb);font-size:.52rem;color:var(--gd);display:flex;align-items:center;gap:.6rem;}
 .banner button{margin-left:auto;}
 .hint{font-size:.62rem;color:var(--mu);line-height:1.6;margin-bottom:.8rem;}
-.btn-gold{background:linear-gradient(135deg,#7a5a00,var(--gd));color:#111;}
 </style>
 </head>
 <body>
 <div class="notif" id="notif"></div>
-<div class="admin-bar" id="admin-bar">
-  👑 Admin mode — Manage lab projects
-  <button class="btn btn-gold" id="btn-migrate" style="margin-left:auto;display:none;" onclick="migrateLocal()">☁ MIGRATE LOCAL</button>
-  <button class="btn btn-pri" id="btn-add" onclick="openAdd()">+ ADD</button>
-</div>
 <div class="toolbar">
   <div class="search-box">
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="8" stroke="#4a7a9b" stroke-width="2"/><path d="M21 21l-4.35-4.35" stroke="#4a7a9b" stroke-width="2" stroke-linecap="round"/></svg>
@@ -88,33 +80,6 @@ textarea.fi{resize:vertical;min-height:70px;line-height:1.6;}
   </div>
 </div>
 <div id="content"></div>
-
-<!-- ADD MODAL (admins only) -->
-<div class="modal-ov" id="add-modal">
-  <div class="modal">
-    <div class="modal-title">➕ Add Project</div>
-    <div class="fg"><label class="fl">TITLE</label><input class="fi" id="a-t" placeholder="Project name"></div>
-    <div class="fg"><label class="fl">TYPE</label>
-      <select class="fi" id="a-type">
-        <option value="pdf">PDF / LaTeX</option>
-        <option value="video">Video</option>
-      </select>
-    </div>
-    <p class="hint">📓 Notebooks are published from <b>Quantum Notebook → 📤 PUBLISH</b>. Here you can add PDFs and Videos.</p>
-    <div class="fg"><label class="fl">FILE ID (no extension, unique: a-z, 0-9, _ , -)</label><input class="fi" id="a-id" placeholder="e.g.: shor_algorithm"></div>
-    <div class="fg"><label class="fl">DESCRIPTION</label><textarea class="fi" id="a-desc" placeholder="Brief description"></textarea></div>
-    <div class="fg"><label class="fl">URL (optional for PDF — required for Video)</label><input class="fi" id="a-url" placeholder="https://..."></div>
-    <div class="fg"><label class="fl">TAGS</label><input class="fi" id="a-tags" placeholder="Qiskit · Algorithms"></div>
-    <div class="g2">
-      <div class="fg"><label class="fl">CELLS / PAGES</label><input class="fi" id="a-size" type="number" value="10"></div>
-      <div class="fg"><label class="fl">TIME (min)</label><input class="fi" id="a-time" type="number" value="15"></div>
-    </div>
-    <div class="btn-row">
-      <button class="btn btn-pri" onclick="addProj()">✅ Save</button>
-      <button class="btn-cancel" onclick="closeAdd()">Cancel</button>
-    </div>
-  </div>
-</div>
 
 <!-- EDIT MODAL (founders only) -->
 <div class="modal-ov" id="edit-modal">
@@ -174,8 +139,6 @@ window.addEventListener('message',e=>{
     curUser=d.user;
     isAdmin = (curUser?.role==='admin' || curUser?.role==='founder');
     isFounder = (curUser?.role==='founder');
-    document.getElementById('admin-bar').classList.toggle('show', isAdmin);
-    updateMigrateBtn();
     render();
   }
 });
@@ -343,40 +306,6 @@ async function delProj(id){
   reload();
 }
 
-// ==================== ADD (admins: PDF / Video) ====================
-function openAdd(){ if(!isAdmin){ notify('❌ Only administrators can add projects'); return; } document.getElementById('add-modal').classList.add('open'); }
-function closeAdd(){ document.getElementById('add-modal').classList.remove('open'); }
-async function addProj(){
-  if(!isAdmin){ notify('❌ Only administrators can add projects'); return; }
-  const t=document.getElementById('a-t').value.trim();
-  let id=document.getElementById('a-id').value.trim().replace(/\s/g,'_').toLowerCase();
-  const type=document.getElementById('a-type').value;
-  const desc=document.getElementById('a-desc').value.trim();
-  const tags=document.getElementById('a-tags').value.trim();
-  const url=document.getElementById('a-url').value.trim();
-  const size=parseInt(document.getElementById('a-size').value)||10;
-  const time=parseInt(document.getElementById('a-time').value)||15;
-  if(!t||!id){notify('Title and ID are required');return;}
-  if(!/^[a-z0-9_-]{1,80}$/.test(id)){notify('ID: only a-z, 0-9, _ and -');return;}
-  if(type==='video'&&!url){notify('A video needs a URL');return;}
-  if(url&&!/^https?:\/\//i.test(url)){notify('URL must start with http:// or https://');return;}
-  const key=await ensureFounderKey();
-  if(!key)return;
-  try{
-    await RepoSync.create({kind:type,title:t,slug:id,description:desc,tags:tags,cell_count:size,est_minutes:time,file_url:url,author:curUser?.name||'',founderKey:key});
-  }catch(e){
-    if(/forbidden/i.test(e.message)) RepoSync.clearFounderKey();
-    notify('❌ '+errMsg(e));return;
-  }
-  closeAdd();
-  notify(`✅ Project "${t}" added`);
-  ['a-t','a-id','a-desc','a-tags','a-url'].forEach(i=>document.getElementById(i).value='');
-  document.getElementById('a-size').value='10';
-  document.getElementById('a-time').value='15';
-  document.getElementById('a-type').value='pdf';
-  reload();
-}
-
 // ==================== EDIT ====================
 function editProj(id){
   const proj=items.find(p=>p.id===id);
@@ -424,52 +353,7 @@ async function updateProj(){
   reload();
 }
 
-// ==================== MIGRAR datos locales antiguos (founder) ====================
-function readLS(k){try{const v=JSON.parse(localStorage.getItem(k)||'[]');return Array.isArray(v)?v:[];}catch(e){return [];}}
-function localLegacy(){
-  const seen=new Set(),out=[];
-  readLS('openq_projs').concat(readLS('qcol_projs')).forEach(x=>{
-    const k=(x&&(x.id||x.title))||''; if(!k||seen.has(k))return; seen.add(k); out.push(x);
-  });
-  return out;
-}
-function updateMigrateBtn(){
-  const b=document.getElementById('btn-migrate');
-  if(b) b.style.display=(isFounder&&localLegacy().length)?'':'none';
-}
-async function migrateLocal(){
-  if(!isFounder){notify('❌ Founder only');return;}
-  const legacy=localLegacy();
-  if(!legacy.length){notify('Nothing to migrate');updateMigrateBtn();return;}
-  if(!confirm('Upload '+legacy.length+' local project(s) to the cloud so everyone can see them?'))return;
-  const key=await ensureFounderKey();
-  if(!key)return;
-  let ok=0,skip=0,fail=0;
-  for(const p of legacy){
-    if(items.some(x=>x.type===p.type&&x.title===p.title)){skip++;continue;}
-    try{
-      if(p.type==='nb'){
-        const cells=(p.cells||[]).map(c=>({type:c.type,code:c.code||'',hiddenCode:c.hiddenCode||'',circuitData:c.circuitData||null}));
-        if(!cells.length){skip++;continue;}
-        await RepoSync.create({kind:'nb',title:p.title,description:p.desc||'',tags:p.tags||'',cell_count:cells.length,est_minutes:p.time||10,author:p.author||'',content:cells});
-      }else{
-        const u=/^https?:\/\//i.test(p.url||'')?p.url:'';
-        const slug=/^[a-z0-9_-]{1,80}$/.test(p.id||'')?p.id:null;
-        await RepoSync.create({kind:p.type,title:p.title,slug:slug,description:p.desc||'',tags:p.tags||'',cell_count:p.size||10,est_minutes:p.time||15,file_url:u,author:p.author||'',founderKey:key});
-      }
-      ok++;
-    }catch(e){fail++;console.warn('migrate',p.title,e.message);}
-  }
-  notify(`☁ Migrated ${ok} · skipped ${skip} · failed ${fail}`);
-  if(ok&&!fail){ try{
-    ['qcol_projs','openq_projs'].forEach(k=>{const v=localStorage.getItem(k);if(v){localStorage.setItem(k+'_backup',v);localStorage.removeItem(k);}});
-  }catch(e){} }
-  updateMigrateBtn();
-  reload();
-}
-
 // ==================== MODAL CLOSE EVENTS ====================
-document.getElementById('add-modal').addEventListener('click',e=>{if(e.target===document.getElementById('add-modal'))closeAdd();});
 document.getElementById('edit-modal').addEventListener('click',e=>{if(e.target===document.getElementById('edit-modal'))closeEdit();});
 
 // ==================== INICIO ====================
