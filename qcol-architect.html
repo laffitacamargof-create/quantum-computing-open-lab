@@ -1603,7 +1603,8 @@ async function syncFromServer(reason) {
     if (!rawCode) return false;
     const out = document.getElementById('out-body');
     out.innerHTML += `<span class="inf">🔧 Corrector active (${reason}) — running on server...</span>\n`;
-    const cleanCode = _cleanCodeForServer(rawCode);
+    const _ensC = ensureMeasurements(_cleanCodeForServer(rawCode));
+    const cleanCode = _ensC.code;
     const isHF = engineURL.includes('hf.space') || engineURL.includes('huggingface');
     try {
         const res = await fetchWithRetry(
@@ -1625,6 +1626,7 @@ async function syncFromServer(reason) {
         _lastServerOutput = d.output || '';
         const parsed = _parseTextDraw(_lastServerOutput);
         if (parsed && parsed.gates.length > 0) {
+            if (_ensC.added) parsed.gates = parsed.gates.filter(g => g.id !== 'M'); // mediciones auto-añadidas: no ensuciar el canvas
             parsed.gates = normalizeMeasurements(parsed.gates);
             circuit.qubits = Math.min(parsed.numQubits, MAX_QUBITS);
             circuit.gates = parsed.gates;
