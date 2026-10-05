@@ -7,9 +7,6 @@
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=JetBrains+Mono:wght@400;500;600&family=Exo+2:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
 <style>
-/* ══════════════════════════════════════════════════
-   QUANTUM ARCHITECT — Automatic Hybrid
-══════════════════════════════════════════════════ */
 :root {
   --bg:#0a0e1a; --bg2:#0d1220; --bg3:#111827; --bg4:#060912;
   --p:#0f1626;  --p2:#141e30;  --p3:#1a2640;
@@ -426,7 +423,7 @@ body { background:var(--bg); color:var(--tx); font-family:var(--ex); }
 
 <script>
 // ═══════════════════════════════════════════════════════════
-// QUANTUM ARCHITECT — Automatic Hybrid: local sync (Pyodide) + remote execution (server)
+// QUANTUM ARCHITECT — Automatic Hybrid
 // ═══════════════════════════════════════════════════════════
 
 let circuit = { qubits: 2, gates: [] };
@@ -449,7 +446,7 @@ const MAX_GATES = 150;
 let blochStates = {};
 let currentBlochQubit = 0;
 let _errorLine = -1;
-// ⬇ NUEVO: bloquea sobrescribir el textarea mientras el usuario escribe
+// ⬇ Mientras el usuario escribe, NO sobrescribir el textarea
 let _userTyping = false;
 let _typingTimer = null;
 
@@ -457,15 +454,12 @@ let QCOL_IGNORED_ATTRS = new Set();
 
 async function loadIgnoredAttrs() {
     const local = localStorage.getItem('qcol_ignored_attrs');
-    if (local) {
-        try { QCOL_IGNORED_ATTRS = new Set(JSON.parse(local)); } catch(e) {}
-    }
+    if (local) { try { QCOL_IGNORED_ATTRS = new Set(JSON.parse(local)); } catch(e) {} }
     if (engineURL && engineURL.trim()) {
         try {
             const base = engineURL.replace(/\/+$/, '');
             const res = await fetch(base + '/run/get_ignored_attrs', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ data: [] })
             });
             if (res.ok) {
@@ -493,8 +487,7 @@ async function saveIgnoredAttrLocal(attr, reason) {
         try {
             const base = engineURL.replace(/\/+$/, '');
             await fetch(base + '/run/save_ignored_attr', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ data: [{ attribute: attr, reason, classified_by:'deepseek-chat', timestamp:new Date().toISOString(), version:'qcol-v1' }] })
             });
         } catch(e) {}
@@ -509,7 +502,6 @@ async function callMistralClassifier(errorPayload) {
     const enabled = localStorage.getItem('qcol_mistral_enabled') === 'true';
     if (!enabled || !apiKey) return null;
     const url = 'https://api.deepseek.com/v1/chat/completions';
-    const model = 'deepseek-chat';
     const timeoutSec = parseInt(localStorage.getItem('qcol_mistral_timeout') || '10');
     const timeoutMs = timeoutSec * 1000;
     const customPrompt = localStorage.getItem('qcol_mistral_prompt') || '';
@@ -522,10 +514,7 @@ async function callMistralClassifier(errorPayload) {
         const response = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-            body: JSON.stringify({
-                model, messages: [{ role:'system', content:systemPrompt }, { role:'user', content:userMessage }],
-                temperature: 0.0, max_tokens: 20
-            }),
+            body: JSON.stringify({ model: 'deepseek-chat', messages: [{ role:'system', content:systemPrompt }, { role:'user', content:userMessage }], temperature: 0.0, max_tokens: 20 }),
             signal: controller.signal
         });
         clearTimeout(timeoutId);
@@ -554,6 +543,7 @@ if 'QuantumCircuit' in globals():
 `);
 }
 
+// Gate definitions — mediciones usan {q} UNA vez por cada lado
 const GATES = {
   '1q': [
     { id: 'H', sym: 'H', bg: '#1a5fb4', glow:'#1a5fb4', desc: 'Hadamard', code: 'qc.h({q})', regex: /qc\.h\((\d+)\)/ },
@@ -576,7 +566,7 @@ const GATES = {
     { id: 'CCX', sym: 'CCX', bg: '#005f6a', glow:'#005f6a', desc: 'Toffoli', code: 'qc.ccx({q},{q2},{q3})', regex: /qc\.ccx\((\d+),\s*(\d+),\s*(\d+)\)/, triple: true },
     { id: 'CSW', sym: 'CSW', bg: '#283593', glow:'#283593', desc: 'Fredkin (CSWAP)', code: 'qc.cswap({q},{q2},{q3})', regex: /qc\.cswap\((\d+),\s*(\d+),\s*(\d+)\)/, triple: true }
   ],
-  // ⬇ MEDICIÓN: cambiamos el code para que sea uno por uno (qc.measure(q, q))
+  // ⬇ Medición: cada una usa {q} DOS veces (pero las generamos por separado)
   'meas': [
     { id: 'M', sym: 'M', bg: '#6d4c41', glow:'#6d4c41', desc: 'Measure', code: 'qc.measure({q}, {q})', regex: /qc\.measure\((\d+),\s*\d+\)/ }
   ]
@@ -837,52 +827,52 @@ function updateBlochSelector() {
 }
 
 // ═══════════════════════════════════════════════════════════
-// CODE GENERATION — MEDICIONES UNA POR UNA (qc.measure(q, q))
+// CODE GENERATION — Mediciones UNA POR UNA (qc.measure(0, 0))
 // ═══════════════════════════════════════════════════════════
 function updateCodeFromCircuit() {
   if (isUpdatingFromCode) return;
-  // ⬇ No sobrescribir el textarea mientras el usuario está escribiendo
+  // ⬇ NUNCA sobrescribir el textarea mientras el usuario está escribiendo
   if (_userTyping) return;
-  
+
   let code = `from qiskit import QuantumCircuit\nimport numpy as np\nfrom qiskit_aer import AerSimulator\n\nqc = QuantumCircuit(${circuit.qubits}, ${circuit.qubits})\n\n`;
-  // Primero las puertas (no mediciones)
   const nonMeasGates = circuit.gates.filter(g => g.id !== 'M');
   const measGates    = circuit.gates.filter(g => g.id === 'M');
-  
+
   nonMeasGates.forEach(g => {
-    let line = g.def.code.replace('{q}', g.q).replace('{q2}', g.q2 !== undefined ? g.q2 : 0).replace('{q3}', g.q3 !== undefined ? g.q3 : 0);
+    // ⬇ Reemplazo GLOBAL con regex para plantillas con {q} repetido
+    let line = g.def.code
+      .replace(/\{q2\}/g, g.q2 !== undefined ? g.q2 : 0)
+      .replace(/\{q3\}/g, g.q3 !== undefined ? g.q3 : 0)
+      .replace(/\{q\}/g,  g.q);
     code += line + '\n';
   });
-  
-  // ⬇ Mediciones UNA POR UNA: qc.measure(0, 0) / qc.measure(1, 1) ...
+
+  // ⬇ Mediciones UNA POR UNA: qc.measure(0, 0), qc.measure(1, 1), ...
   if (measGates.length > 0) {
     code += '\n';
     measGates.forEach(g => {
       code += `qc.measure(${g.q}, ${g.q})\n`;
     });
   }
-  
+
   code += `\nprint(qc.draw(output='text'))\n\nsimulator = AerSimulator()\nresult = simulator.run(qc, shots=1024).result()\ncounts = result.get_counts()\nprint("Results:", counts)`;
   const ta = document.getElementById('code-ta');
   if (ta && ta.value !== code) { ta.value = code; updateSyntaxHighlight(); }
 }
 
 // ═══════════════════════════════════════════════════════════
-// DEFINITIVE UNIVERSAL QISKIT MOCK
+// UNIVERSAL QISKIT MOCK
 // ═══════════════════════════════════════════════════════════
 const QISKIT_MOCK_CODE = `
 import sys, types, importlib
 
 class _Stub:
     __slots__ = ('_name',)
-    def __init__(self, name=None):
-        object.__setattr__(self, '_name', name or 'Stub')
-    def __getattr__(self, attr):
-        return _Stub(f"{object.__getattribute__(self,'_name')}.{attr}")
+    def __init__(self, name=None): object.__setattr__(self, '_name', name or 'Stub')
+    def __getattr__(self, attr): return _Stub(f"{object.__getattribute__(self,'_name')}.{attr}")
     def __setattr__(self, attr, val): pass
     def __delattr__(self, attr): pass
-    def __call__(self, *args, **kwargs):
-        return _Stub(f"{object.__getattribute__(self,'_name')}()")
+    def __call__(self, *args, **kwargs): return _Stub(f"{object.__getattribute__(self,'_name')}()")
     def __getitem__(self, idx): return _Stub(f"{object.__getattribute__(self,'_name')}[{idx}]")
     def __setitem__(self, idx, val): pass
     def __delitem__(self, idx): pass
@@ -919,8 +909,7 @@ class _Stub:
     def __exit__(self, *a): return False
     def __repr__(self): return f"<Stub:{object.__getattribute__(self,'_name')}>"
     def __str__(self): return ""
-    def __reduce__(self):
-        return (_Stub, (object.__getattribute__(self,'_name'),))
+    def __reduce__(self): return (_Stub, (object.__getattribute__(self,'_name'),))
     def __get__(self, obj, objtype=None): return self
 
 class _DynamicModule(types.ModuleType):
@@ -959,10 +948,8 @@ class ClassicalRegister:
 class Operation:
     __slots__ = ('name', 'qubits', 'params', 'operation')
     def __init__(self, name, qubits, params=None):
-        self.name = name
-        self.qubits = qubits
-        self.params = params or []
-        self.operation = self
+        self.name = name; self.qubits = qubits
+        self.params = params or []; self.operation = self
 
 def _safe_int(q):
     if isinstance(q, int): return q
@@ -990,9 +977,7 @@ def _expand_qubits(qubits):
 
 class QuantumCircuit:
     def __init__(self, *args, **kwargs):
-        self.data = []
-        self.num_qubits = 2
-        self.num_clbits = 0
+        self.data = []; self.num_qubits = 2; self.num_clbits = 0
         self._name = kwargs.get('name', 'circuit')
         int_args = []
         for a in args:
@@ -1129,7 +1114,6 @@ _KNOWN_QUANTUM_PKGS = {
     'pyquil', 'braket', 'pytket', 'strawberryfields', 'thewalrus',
     'mitiq', 'openfermion', 'pyscf',
 }
-
 class _UniversalFinder:
     def find_spec(self, fullname, path, target=None):
         if fullname in sys.modules: return None
@@ -1143,17 +1127,15 @@ class _UniversalFinder:
                 except: pass
             return None
         return None
-
 class _UniversalLoader:
     def create_module(self, spec): return None
     def exec_module(self, module): pass
-
 sys.meta_path.insert(0, _UniversalFinder())
 
 qiskit_mod = _DynamicModule('qiskit', is_package=True)
-qiskit_mod.QuantumRegister    = QuantumRegister
-qiskit_mod.ClassicalRegister  = ClassicalRegister
-qiskit_mod.QuantumCircuit     = QuantumCircuit
+qiskit_mod.QuantumRegister = QuantumRegister
+qiskit_mod.ClassicalRegister = ClassicalRegister
+qiskit_mod.QuantumCircuit = QuantumCircuit
 sys.modules['qiskit'] = qiskit_mod
 
 for _sub in [
@@ -1177,8 +1159,7 @@ for _sub in [
 for _mod_name in ['qiskit.circuit', 'qiskit.circuit.gate', 'qiskit.circuit.instruction']:
     _m = sys.modules.get(_mod_name)
     if _m:
-        _m.Gate = _Stub('Gate')
-        _m.Instruction = _Stub('Instruction')
+        _m.Gate = _Stub('Gate'); _m.Instruction = _Stub('Instruction')
         _m.QuantumCircuit = QuantumCircuit
         _m.QuantumRegister = QuantumRegister
         _m.ClassicalRegister = ClassicalRegister
@@ -1229,13 +1210,9 @@ async function initPyodide() {
         await injectIgnoredAttrsIntoPython(pyodide);
         out.innerHTML = '<span class="ok">✅ Pyodide ready</span>\n';
         notify('✅ Pyodide ready');
-        if (document.getElementById('code-ta').value.trim() && !_userTyping) {
-            syncWithPyodide().catch(console.error);
-        }
     } catch (err) {
         out.innerHTML = `<span class="er">❌ Error loading Pyodide: ${err.message}</span>\n`;
         notify('❌ Error loading Pyodide');
-        console.error(err);
     }
     pyodideLoading = false;
     return pyodide;
@@ -1246,8 +1223,7 @@ function mapOpNameToGateId(opName) {
         'h':'H','x':'X','y':'Y','z':'Z','s':'S','t':'T','sx':'SX',
         'rx':'RX','ry':'RY','rz':'RZ','p':'RZ',
         'cx':'CX','cz':'CZ','swap':'SWAP','cp':'CZ',
-        'ccx':'CCX','cswap':'CSW','mcx':'CCX',
-        'measure':'M'
+        'ccx':'CCX','cswap':'CSW','mcx':'CCX','measure':'M'
     };
     return map[opName] || 'H';
 }
@@ -1257,14 +1233,7 @@ function robustPreprocess(code) {
     for (let i = 0; i < code.length; i++) {
         const cp = code.codePointAt(i);
         if (cp > 127) {
-            const latinMap = {
-                'θ':'theta','λ':'lam','μ':'mu','π':'pi','σ':'sigma',
-                'φ':'phi','ψ':'psi','ω':'omega',
-                '₀':'0','₁':'1','₂':'2','₃':'3','₄':'4','₅':'5','₆':'6','₇':'7','₈':'8','₉':'9',
-                '⁰':'0','¹':'1','²':'2','³':'3','⁴':'4','⁵':'5','⁶':'6','⁷':'7','⁸':'8','⁹':'9',
-                'á':'a','é':'e','í':'i','ó':'o','ú':'u',
-                'Á':'A','É':'E','Í':'I','Ó':'O','Ú':'U','ñ':'n','Ñ':'N'
-            };
+            const latinMap = { 'θ':'theta','λ':'lam','μ':'mu','π':'pi','σ':'sigma','φ':'phi','ψ':'psi','ω':'omega','₀':'0','₁':'1','₂':'2','₃':'3','₄':'4','₅':'5','₆':'6','₇':'7','₈':'8','₉':'9','⁰':'0','¹':'1','²':'2','³':'3','⁴':'4','⁵':'5','⁶':'6','⁷':'7','⁸':'8','⁹':'9','á':'a','é':'e','í':'i','ó':'o','ú':'u','Á':'A','É':'E','Í':'I','Ó':'O','Ú':'U','ñ':'n','Ñ':'N' };
             if (latinMap[code[i]]) { out += latinMap[code[i]]; continue; }
             out += '_';
             if (cp > 0xFFFF) i++;
@@ -1297,24 +1266,8 @@ function robustPreprocess(code) {
 
 function classifyLocallyFirst(errText, attr) {
     if (!attr) return null;
-    const UNNEC = new Set([
-        'random','math','cmath','os','sys','time','datetime','itertools',
-        'functools','collections','copy','json','string','pathlib','typing',
-        'run','result','get_counts','get_statevector','get_memory','shots',
-        'AerSimulator','Aer','backend','provider','job','status','noise_model',
-        'draw','mpl','text','latex','svg','png','plot','histogram','bloch',
-        'matplotlib','pyplot','plt',
-        'depth','size','num_parameters','width','count_ops','copy',
-        'inverse','repeat','power','definition','qasm',
-        'transpile','optimize','schedule','coupling_map','optimization_level',
-        'counts','circuit_result','measurement','probs','probabilities',
-    ]);
-    const CRIT = new Set([
-        'h','x','y','z','s','t','sx','cx','cy','cz','ccx','swap',
-        'rx','ry','rz','u','p','cp','measure','measure_all','barrier',
-        'QuantumCircuit','QuantumRegister','ClassicalRegister',
-        'num_qubits','qubits','clbits','data','append','compose',
-    ]);
+    const UNNEC = new Set(['random','math','cmath','os','sys','time','datetime','itertools','functools','collections','copy','json','string','pathlib','typing','run','result','get_counts','get_statevector','get_memory','shots','AerSimulator','Aer','backend','provider','job','status','noise_model','draw','mpl','text','latex','svg','png','plot','histogram','bloch','matplotlib','pyplot','plt','depth','size','num_parameters','width','count_ops','inverse','repeat','power','definition','qasm','transpile','optimize','schedule','coupling_map','optimization_level','counts','circuit_result','measurement','probs','probabilities']);
+    const CRIT = new Set(['h','x','y','z','s','t','sx','cx','cy','cz','ccx','swap','rx','ry','rz','u','p','cp','measure','measure_all','barrier','QuantumCircuit','QuantumRegister','ClassicalRegister','num_qubits','qubits','clbits','data','append','compose']);
     if (UNNEC.has(attr)) return { classification:'unnecessary', attribute:attr, reason:'Non-structural (local)' };
     if (CRIT.has(attr))  return { classification:'critical',    attribute:attr, reason:'Structural' };
     if (/get_counts|plot_histogram|matplotlib|pyplot|\.draw\(/.test(errText))
@@ -1341,8 +1294,7 @@ function _cleanCodeForServer(raw) {
         .replace(/^.*from\s+qiskit\.tools.*$/gm, '# removed')
         .replace(/^.*from\s+qiskit\.providers\.ibmq.*$/gm, '# removed')
         .replace(/\bAer\.get_backend\s*\([^)]*\)/g, 'AerSimulator()')
-        .replace(/\bexecute\s*\(\s*(\w+)\s*,\s*[^,)]+(?:,\s*shots\s*=\s*(\d+))?\s*\)/g,
-            (m, qc, shots) => `AerSimulator().run(transpile(${qc}, AerSimulator()), shots=${shots || 1024})`);
+        .replace(/\bexecute\s*\(\s*(\w+)\s*,\s*[^,)]+(?:,\s*shots\s*=\s*(\d+))?\s*\)/g, (m, qc, shots) => `AerSimulator().run(transpile(${qc}, AerSimulator()), shots=${shots || 1024})`);
 }
 
 function _parseTextDraw(text) {
@@ -1351,11 +1303,7 @@ function _parseTextDraw(text) {
     const qubitLines = lines.filter(l => /^\s*(q_?\d+\s*:|q\[\d+\]\s*:)/.test(l));
     if (qubitLines.length === 0) return null;
     const gates = [];
-    const symMap = {
-        'H':'H','X':'X','Y':'Y','Z':'Z','S':'S','T':'T','SX':'SX',
-        'RX':'RX','RY':'RY','RZ':'RZ','CX':'CX','CZ':'CZ','SWAP':'SWAP',
-        'CCX':'CCX','M':'M','Rx':'RX','Ry':'RY','Rz':'RZ','Sx':'SX'
-    };
+    const symMap = { 'H':'H','X':'X','Y':'Y','Z':'Z','S':'S','T':'T','SX':'SX','RX':'RX','RY':'RY','RZ':'RZ','CX':'CX','CZ':'CZ','SWAP':'SWAP','CCX':'CCX','M':'M','Rx':'RX','Ry':'RY','Rz':'RZ','Sx':'SX' };
     qubitLines.forEach((line, qi) => {
         const matches = [...line.matchAll(/┤\s*(\w+)\s*[├┤]/g)];
         matches.forEach(m => {
@@ -1385,11 +1333,9 @@ async function syncFromServer(reason) {
     try {
         const res = await fetchWithRetry(
             isHF ? engineURL + '/run/predict' : engineURL + '/run',
-            {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: isHF ? JSON.stringify({ data: [cleanCode], fn_index: 1 }) : JSON.stringify({ code: cleanCode, lib: curLib })
-            }, 2, 20000);
+            { method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: isHF ? JSON.stringify({ data: [cleanCode], fn_index: 1 }) : JSON.stringify({ code: cleanCode, lib: curLib }) },
+            2, 20000);
         const raw = await res.json();
         let d = isHF ? (raw.data ? raw.data[0] : raw) : raw;
         if (typeof d === 'string') { try { d = JSON.parse(d); } catch(e) {} }
@@ -1545,6 +1491,7 @@ json.dumps({"success": _error is None, "error": _error, "num_qubits": max(1, int
             updateCircuitInfo();
             out.innerHTML += `<span class="ok">✅ Synced — ${data.num_qubits} qubits · ${_gCount} gates${_mCount > 0 ? ' · ' + _mCount + ' meas.' : ''}</span>\n`;
             notify(`Circuit updated: ${_gCount} gates`);
+            // ⬇ NO llamamos a updateCodeFromCircuit aquí (evita sobrescribir)
             updateSyntaxHighlight();
         } else {
             const errText = data.error || '';
@@ -1622,19 +1569,11 @@ async function runServerCode() {
     try {
         let res, d;
         if (isHF) {
-            res = await fetchWithRetry(engineURL + '/run/predict', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ data: [code], fn_index: 0 })
-            }, 3, 30000);
+            res = await fetchWithRetry(engineURL + '/run/predict', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ data: [code], fn_index: 0 }) }, 3, 30000);
             const raw = await res.json();
             d = raw.data ? raw.data[0] : raw;
         } else {
-            res = await fetchWithRetry(engineURL + '/run', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ code, lib: curLib })
-            }, 3, 30000);
+            res = await fetchWithRetry(engineURL + '/run', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code, lib: curLib }) }, 3, 30000);
             d = await res.json();
         }
         const el = ((Date.now() - t0) / 1000).toFixed(2);
@@ -1739,21 +1678,20 @@ function updateSyntaxHighlight() {
     syn.scrollLeft = ta.scrollLeft;
 }
 
-// ⬇ ACTUALIZADO: maneja el flag _userTyping para no pisar lo que el usuario escribe
+// ⬇ onCodeEdit: marca _userTyping y programa sync tras 1500ms sin escribir
 function onCodeEdit() {
-    // Marcar que el usuario está escribiendo
     _userTyping = true;
     if (_typingTimer) clearTimeout(_typingTimer);
     _typingTimer = setTimeout(() => {
         _userTyping = false;
-        // Solo sincronizar DESPUÉS de que el usuario deje de escribir
+        // ⬇ Al dejar de escribir, sincronizamos el circuito con el código
         if (pyodide !== null) {
             syncWithPyodide().catch(() => {});
         } else if (engineOK && engineURL) {
             syncFromServer('after-typing').catch(() => {});
         }
     }, 1500);
-    
+
     const code = document.getElementById('code-ta').value;
     const gateCallCount = (code.match(/\bqc\.\w+\s*\(/g) || []).length;
     if (gateCallCount > MAX_GATES) {
@@ -1797,14 +1735,7 @@ function formatError(errText, code) {
     if (errLine && errLine > 0) highlightErrorLine(errLine);
     const typeMatch = errText.match(/(SyntaxError|NameError|TypeError|ValueError|ImportError|AttributeError|IndexError|KeyError|ZeroDivisionError|IndentationError)[:\s]/);
     const errType = typeMatch ? typeMatch[1] : 'Error';
-    const explanations = {
-        'SyntaxError': '💡 Syntax error.',
-        'NameError': '💡 Undefined variable.',
-        'TypeError': '💡 Incorrect type.',
-        'ValueError': '💡 Incorrect value.',
-        'ImportError': '💡 Could not import.',
-        'IndentationError': '💡 Indentation error.',
-    };
+    const explanations = { 'SyntaxError': '💡 Syntax error.', 'NameError': '💡 Undefined variable.', 'TypeError': '💡 Incorrect type.', 'ValueError': '💡 Incorrect value.', 'ImportError': '💡 Could not import.', 'IndentationError': '💡 Indentation error.' };
     const explanation = explanations[errType] || '💡 Review the code.';
     html += `❌ ${errType}` + (errLine ? ` on line ${errLine}` : '') + '\n';
     if (errLine && lines[errLine - 1]) html += `\n→ L${errLine}: ${escapeHtml(lines[errLine - 1])}\n`;
@@ -1958,8 +1889,9 @@ simulator = AerSimulator()
 result = simulator.run(qc, shots=1024).result()
 counts = result.get_counts()
 print("Results:", counts)`;
+    _userTyping = false;
     document.getElementById('code-ta').value = defaultCode;
-    onCodeEdit();
+    updateSyntaxHighlight();
 }
 function copyCode() { navigator.clipboard.writeText(document.getElementById('code-ta').value); notify('📋 Code copied'); }
 function updCur() { const ta = document.getElementById('code-ta'); const txt = ta.value.substring(0, ta.selectionStart); const lines = txt.split('\n'); document.getElementById('sb-cur').textContent = `Ln ${lines.length}, Col ${lines[lines.length-1].length+1}`; }
@@ -1975,7 +1907,8 @@ function saveCircuit() {
     if (idx >= 0) all[idx] = entry;
     else all.unshift(entry);
     localStorage.setItem(key, JSON.stringify(all.slice(0, 100)));
-    window.parent.postMessage({ type: 'QCOL_SAVE_CIRCUIT', username: curUser?.username, circuit: { name, code, lib: curLib, date: new Date().toLocaleDateString() } }, '*');
+    // ⬇ Enviamos como OPENQ_SAVE_CIRCUIT (index lo espera así)
+    window.parent.postMessage({ type: 'OPENQ_SAVE_CIRCUIT', username: curUser?.username, circuit: { name, code, lib: curLib, date: new Date().toLocaleDateString() } }, '*');
     notify('✅ Saved: ' + name);
     renderSaveList();
 }
@@ -2005,7 +1938,7 @@ function loadCircuit(i) {
             updateCircuitInfo();
         } catch (e) {}
     }
-    onCodeEdit();
+    updateSyntaxHighlight();
     setTab('out');
     notify('Loaded: ' + c.name);
 }
@@ -2144,8 +2077,7 @@ async function loadCompilerUrlFromCloud() {
         const SUPABASE_URL = 'https://rtkcfbnoqbivylejhspv.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_Uw4ViBXo3UvvlSHzOiAcDA_9Jn6eMcf';
         const response = await fetch(`${SUPABASE_URL}/rest/v1/quantum_ecosystem_config?key=eq.colab_url&select=value`, {
-            method: 'GET',
-            headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` }
+            method: 'GET', headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` }
         });
         if (!response.ok) return null;
         const data = await response.json();
@@ -2198,8 +2130,12 @@ function init() {
         if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); saveCircuit(); }
         if ((e.ctrlKey || e.metaKey) && e.key === 'r') { e.preventDefault(); runCode(); }
     };
-    // ⬇ Al perder el foco, marcar que ya no se está escribiendo
-    ta.addEventListener('blur', () => { _userTyping = false; });
+    // ⬇ Al perder el foco, si ya no se escribe, forzamos sync
+    ta.addEventListener('blur', () => {
+        _userTyping = false;
+        if (_typingTimer) clearTimeout(_typingTimer);
+        if (pyodide !== null) syncWithPyodide().catch(()=>{});
+    });
 
     drawBloch();
     renderSaveList();
@@ -2242,6 +2178,7 @@ window.removeFromQueue = removeFromQueue;
 let _notebookCellId = null;
 let _notebookMode   = false;
 
+// ⬇ IMPORTANTE: enviamos como OPENQ_* para que index(16).html lo maneje
 function postCore(type, data={}) {
     try { window.parent.postMessage({type, ...data}, '*'); } catch(e) {}
 }
@@ -2252,23 +2189,26 @@ function updateCircuitFromCode(){
     if(!code) return;
     if(engineOK && engineURL){
         syncFromServer('from-notebook').catch(e=>console.warn('sync failed',e));
-    } else {
-        if(typeof normalizeQiskitCode === 'function'){
-            try{
-                const nc = normalizeQiskitCode(code);
-                if(nc && nc.gates){ circuit.gates=nc.gates; circuit.qubits=nc.qubits||circuit.qubits; renderCircuit(); updateCircuitInfo(); }
-            } catch(e){ console.warn('parse failed',e); }
-        }
     }
 }
 
-function returnToNotebook(){
+// ⬇ Al pulsar SAVE AND RETURN: forzamos sync primero, luego enviamos OPENQ_CIRCUIT_RETURN
+async function returnToNotebook(){
     if(!_notebookMode || !_notebookCellId){
-        postCore('QCOL_NAV', {screen:'home'});
+        postCore('OPENQ_NAV', {screen:'home'});
         return;
     }
-    const ta   = document.getElementById('code-ta');
+
+    // Forzar sincronización código → circuito antes de leer
+    _userTyping = false;
+    if (_typingTimer) clearTimeout(_typingTimer);
+    const ta = document.getElementById('code-ta');
     const code = ta ? ta.value.trim() : '';
+
+    if (code && pyodide !== null) {
+        try { await syncWithPyodide(); } catch(e) { console.warn('sync on return failed', e); }
+    }
+
     const circuitData = {
         qubits: circuit.qubits,
         gates:  circuit.gates.map(g => ({
@@ -2284,15 +2224,16 @@ function returnToNotebook(){
             }
         }))
     };
-    // ⬇ Enviamos SIEMPRE con prefijo QCOL_ y con cellId
+
+    // ⬇ Enviamos OPENQ_CIRCUIT_RETURN (no QCOL_) para que index(16).html lo maneje
     window.parent.postMessage({
-        type:        'QCOL_CIRCUIT_RETURN',
+        type:        'OPENQ_CIRCUIT_RETURN',
         cellId:      _notebookCellId,
         code:        code,
         circuitData: circuitData
     }, '*');
     notify('⚛ Circuit saved — returning to Notebook...');
-    setTimeout(()=>{ postCore('QCOL_NAV', {screen:'architect-pro'}); }, 400);
+    setTimeout(()=>{ postCore('OPENQ_NAV', {screen:'architect-pro'}); }, 400);
 }
 
 async function checkEngine() {
@@ -2312,10 +2253,8 @@ async function checkEngine() {
             const controller = new AbortController();
             const tid = setTimeout(() => controller.abort(), 30000);
             const res = await fetch(engineURL + '/health/predict', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ data: [''] }),
-                signal: controller.signal
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ data: [''] }), signal: controller.signal
             });
             clearTimeout(tid);
             if (res.ok) {
@@ -2325,7 +2264,8 @@ async function checkEngine() {
                 setStatus('● COMPILER ACTIVE', 'badge-on');
                 const libs = (d.libs || []).slice(0,4).join(', ');
                 notify('✅ Compiler connected' + (libs ? ' · ' + libs : ''));
-                postCore('QCOL_SAVE', {key:'qcol_colab_url', val:engineURL});
+                // ⬇ Enviamos OPENQ_SAVE con key openq_colab_url
+                postCore('OPENQ_SAVE', {key:'openq_colab_url', val:engineURL});
                 return;
             }
             throw new Error('HTTP ' + res.status);
@@ -2341,14 +2281,15 @@ async function checkEngine() {
 }
 
 // ═══════════════════════════════════════════════════════════
-// MESSAGE LISTENER — acepta QCOL_* y OPENQ_* (normaliza)
+// MESSAGE LISTENER — acepta QCOL_* y OPENQ_* (normaliza a QCOL_*)
 // ═══════════════════════════════════════════════════════════
 window.addEventListener('message', e => {
     const d = e.data || {};
+    // Normalizar: acepta QCOL_* y OPENQ_* (convierte a QCOL_* interno)
     if (typeof d.type === 'string') {
         if (d.type.startsWith('OPENQ_')) d.type = 'QCOL_' + d.type.slice(6);
     }
-    
+
     if(d.type === 'QCOL_OPEN_ARCHITECT_EDIT'){
         _notebookCellId = d.cellId || null;
         _notebookMode   = true;
@@ -2356,15 +2297,17 @@ window.addEventListener('message', e => {
         const sepBack = document.getElementById('sep-back-nb');
         if(btnBack){ btnBack.style.display=''; }
         if(sepBack){ sepBack.style.display=''; }
+
         if(d.code && d.code.trim()){
             const ta = document.getElementById('code-ta');
             if(ta){
-                ta.value = d.code;
-                // ⬇ no marcar como _userTyping porque el código viene de afuera
                 _userTyping = false;
+                ta.value = d.code;
                 updateSyntaxHighlight();
-                // Cargar circuito desde el código sin sobrescribir
-                setTimeout(() => { if (pyodide !== null) syncWithPyodide().catch(()=>{}); }, 200);
+                // Sincronizar circuito desde el código entrante
+                setTimeout(() => {
+                    if (pyodide !== null) syncWithPyodide().catch(()=>{});
+                }, 200);
             }
         } else if(d.circuitData && d.circuitData.gates){
             circuit.qubits = d.circuitData.qubits || 2;
@@ -2372,6 +2315,7 @@ window.addEventListener('message', e => {
             circuit.gates = normalizeMeasurements(circuit.gates);
             renderCircuit();
             updateCircuitInfo();
+            _userTyping = false;
             updateCodeFromCircuit();
         } else {
             clearCircuit();
@@ -2400,8 +2344,8 @@ window.addEventListener('message', e => {
     }
 });
 
-postCore('QCOL_GET_USER');
-postCore('QCOL_GET_CONFIG');
+postCore('OPENQ_GET_USER');
+postCore('OPENQ_GET_CONFIG');
 setTimeout(() => {
     const stored = localStorage.getItem('qcol_cur_user');
     if (stored && !curUser) { try { curUser = JSON.parse(stored); renderSaveList(); } catch(e){} }
