@@ -732,7 +732,8 @@ function onWireDrop(e, qubit) {
 function findGateDef(id) { for (const cat of Object.values(GATES)) { const g = cat.find(g => g.id === id); if (g) return g; } return null; }
 
 // ═══════════════════════════════════════════════════════════
-// placeGate() — versión corregida: añade puerta y normaliza
+// placeGate() — CORREGIDO: si se suelta una puerta que requiere
+// más qubits de los disponibles, AUTO-EXPANDE (como en la versión ES)
 // ═══════════════════════════════════════════════════════════
 function placeGate(gateId, qubit) {
   if (isUpdatingFromCode) return;
@@ -747,6 +748,10 @@ function placeGate(gateId, qubit) {
   }
 
   if (def.triple) {
+    // ✅ AUTO-EXPANSIÓN: si el qubit está en la posición N-1 o N-2,
+    //    expandir circuit.qubits para acomodar los 3 cables.
+    const needed = Math.min(MAX_QUBITS, Math.max(qubit + 3, 3));
+    if (circuit.qubits < needed) circuit.qubits = needed;
     if (circuit.qubits < 3) { notify('You need at least 3 qubits'); isUpdatingFromCircuit = false; return; }
     let qCtrl = qubit;
     let qSwap1 = qubit + 1 < circuit.qubits ? qubit + 1 : qubit - 1;
@@ -759,6 +764,9 @@ function placeGate(gateId, qubit) {
     const qs = [qCtrl, qSwap1, qSwap2].sort((a, b) => a - b);
     circuit.gates.push({ id: gateId, q: qs[0], q2: qs[1], q3: qs[2], def: def, uid: nextId++ });
   } else if (def.multi) {
+    // ✅ AUTO-EXPANSIÓN: si el qubit está en la última posición, expandir.
+    const needed = Math.min(MAX_QUBITS, Math.max(qubit + 2, 2));
+    if (circuit.qubits < needed) circuit.qubits = needed;
     if (circuit.qubits < 2) { notify('You need at least 2 qubits'); isUpdatingFromCircuit = false; return; }
     const q2 = qubit + 1 < circuit.qubits ? qubit + 1 : qubit - 1;
     circuit.gates.push({ id: gateId, q: Math.min(qubit, q2), q2: Math.max(qubit, q2), def: def, uid: nextId++ });
@@ -964,19 +972,22 @@ function updateBlochSelector() {
 
 // ═══════════════════════════════════════════════════════════
 // updateCodeFromCircuit() — CORREGIDO:
-//   1. Detección dinámica de qubits (max q, q2, q3 + 1)
-//   2. Mediciones UNA POR UNA: qc.measure(0,0), qc.measure(1,1)
-//   3. NO usa range() ni listas
+//   1. RESpeta circuit.qubits MANUAL (botones +/-) — sólo expande
+//      si alguna puerta usa un índice mayor.
+//   2. Detección dinámica de qubits (max q, q2, q3 + 1) PERO
+//      nunca inferior a circuit.qubits (el estado manual manda).
+//   3. Mediciones UNA POR UNA: qc.measure(0,0), qc.measure(1,1)
 // ═══════════════════════════════════════════════════════════
 function updateCodeFromCircuit() {
   if (isUpdatingFromCode) return;
 
-  const nQubits = computeRequiredQubits();
+  // ✅ El máximo entre circuit.qubits (manual) y computeRequiredQubits()
+  const required = computeRequiredQubits();
+  const nQubits = Math.max(circuit.qubits, required);
   if (nQubits !== circuit.qubits) circuit.qubits = nQubits;
 
   let code = `from qiskit import QuantumCircuit\nimport numpy as np\nfrom qiskit_aer import AerSimulator\n\nqc = QuantumCircuit(${nQubits}, ${nQubits})\n\n`;
 
-  // Puertas NO-medición primero (en su orden)
   const nonMeas = circuit.gates.filter(g => g.id !== 'M');
   const meas = circuit.gates.filter(g => g.id === 'M');
 
@@ -988,9 +999,6 @@ function updateCodeFromCircuit() {
     code += line + '\n';
   });
 
-  // ✅ Mediciones UNA POR UNA: qc.measure(0, 0), qc.measure(1, 1), ...
-  // Si el usuario no colocó mediciones, se miden todos los qubits (como en la versión ES)
-  // para que get_counts() no falle con 'No counts for experiment "0"'.
   code += '\n';
   if (meas.length > 0) {
     meas.forEach(g => {
@@ -1626,7 +1634,7 @@ async function syncFromServer(reason) {
         _lastServerOutput = d.output || '';
         const parsed = _parseTextDraw(_lastServerOutput);
         if (parsed && parsed.gates.length > 0) {
-            if (_ensC.added) parsed.gates = parsed.gates.filter(g => g.id !== 'M'); // mediciones auto-añadidas: no ensuciar el canvas
+            if (_ensC.added) parsed.gates = parsed.gates.filter(g => g.id !== 'M');
             parsed.gates = normalizeMeasurements(parsed.gates);
             circuit.qubits = Math.min(parsed.numQubits, MAX_QUBITS);
             circuit.gates = parsed.gates;
@@ -1828,7 +1836,6 @@ json.dumps({
             }
             circuit.gates = normalizeMeasurements(newGates);
             
-            // ✅ Asegurar que circuit.qubits refleja el máximo qubit usado
             const requiredQ = computeRequiredQubits();
             if (requiredQ > circuit.qubits) circuit.qubits = requiredQ;
             
@@ -1905,8 +1912,6 @@ json.dumps({
     }
 }
 
-// Si el código no tiene ninguna medición, inserta una justo antes de dibujar/ejecutar
-// (así get_counts() no falla con 'No counts for experiment "0"'). No toca el editor.
 function ensureMeasurements(code) {
     if (/\.measure\s*\(/.test(code) || /measure_all\s*\(/.test(code)) return { code, added: false };
     if (!/^\s*qc\s*=\s*QuantumCircuit/m.test(code)) return { code, added: false };
@@ -2170,6 +2175,9 @@ function formatError(errText, code) {
     if (/No counts for experiment/i.test(errText)) {
         explanation = '💡 The circuit has no measurements — add qc.measure(q, q) for each qubit before calling get_counts().';
     }
+    if (/Index.*out of range/i.test(errText)) {
+        explanation = '💡 A gate uses a qubit index larger than the circuit size. Use + Qubit to add more, or check the indices.';
+    }
     html += `❌ ${errType}` + (errLine ? ` on line ${errLine}` : '') + '\n';
     if (errLine && lines[errLine - 1]) html += `\n<span class="err-line"><span class="err-arrow">→ L${errLine}:</span> ${escapeHtml(lines[errLine - 1])}</span>\n`;
     const msgLines = errText.split('\n').filter(l => l.trim());
@@ -2295,15 +2303,43 @@ function applyBlochGate(gate) {
     updateBlochSelector();
 }
 
-function addQubit() { if (circuit.qubits < MAX_QUBITS) { circuit.qubits++; if (!blochStates[circuit.qubits-1]) blochStates[circuit.qubits-1] = { theta: 0, phi: 0 }; renderCircuit(); updateCircuitInfo(); updateCodeFromCircuit(); notify(`${circuit.qubits} qubits`); } else notify(`Maximum ${MAX_QUBITS} qubits`); }
+// ═══════════════════════════════════════════════════════════
+// addQubit / removeQubit — CORREGIDO:
+//   - addQubit respeta MAX_QUBITS (20)
+//   - removeQubit recalcula circuit.qubits correctamente y no
+//     fuerza un valor arbitrario
+// ═══════════════════════════════════════════════════════════
+function addQubit() {
+  if (circuit.qubits < MAX_QUBITS) {
+    circuit.qubits++;
+    if (!blochStates[circuit.qubits-1]) blochStates[circuit.qubits-1] = { theta: 0, phi: 0 };
+    renderCircuit();
+    updateCircuitInfo();
+    updateCodeFromCircuit();
+    notify(`${circuit.qubits} qubits`);
+  } else {
+    notify(`Maximum ${MAX_QUBITS} qubits`);
+  }
+}
 function removeQubit() {
-    if (circuit.qubits > 1) {
-        circuit.gates = circuit.gates.filter(g => g.q < circuit.qubits-1 && (!g.q2 || g.q2 < circuit.qubits-1) && (!g.q3 || g.q3 < circuit.qubits-1));
-        circuit.qubits--;
-        circuit.gates = normalizeMeasurements(circuit.gates);
-        if (currentBlochQubit >= circuit.qubits) currentBlochQubit = circuit.qubits-1;
-        renderCircuit(); updateCircuitInfo(); updateCodeFromCircuit(); notify(`${circuit.qubits} qubits`);
-    }
+  // ✅ No permitir bajar de lo requerido por las puertas existentes
+  const required = computeRequiredQubits();
+  if (circuit.qubits > 1 && circuit.qubits > required) {
+    circuit.gates = circuit.gates.filter(g =>
+      g.q < circuit.qubits-1 &&
+      (g.q2 === undefined || g.q2 < circuit.qubits-1) &&
+      (g.q3 === undefined || g.q3 < circuit.qubits-1)
+    );
+    circuit.qubits--;
+    circuit.gates = normalizeMeasurements(circuit.gates);
+    if (currentBlochQubit >= circuit.qubits) currentBlochQubit = circuit.qubits-1;
+    renderCircuit(); updateCircuitInfo(); updateCodeFromCircuit();
+    notify(`${circuit.qubits} qubits`);
+  } else if (circuit.qubits <= required) {
+    notify(`Cannot remove: gates require ${required} qubits`);
+  } else {
+    notify('Minimum 1 qubit');
+  }
 }
 function clearCircuit() { circuit.gates = []; for (let i = 0; i < circuit.qubits; i++) blochStates[i] = { theta: 0, phi: 0 }; renderCircuit(); updateCircuitInfo(); updateCodeFromCircuit(); drawBloch(); notify('Circuit cleared'); }
 function clearCode() { 
@@ -2593,7 +2629,6 @@ function updateCircuitFromCode(){
     }
 }
 
-// ⬇⬇⬇ returnToNotebook CORREGIDO: envía código + circuitData completos ⬇⬇⬇
 function returnToNotebook(){
     if(!_notebookMode || !_notebookCellId){
         postCore('OPENQ_NAV', {screen:'home'});
@@ -2616,8 +2651,6 @@ function returnToNotebook(){
             }
         }))
     };
-    // ✅ Enviar AMBOS: código Y circuitData para que la celda notebook
-    //    pueda reconstruir el circuito exactamente como está
     window.parent.postMessage({
         type:        'OPENQ_CIRCUIT_RETURN',
         cellId:       _notebookCellId,
