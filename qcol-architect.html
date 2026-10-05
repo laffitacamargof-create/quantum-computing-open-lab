@@ -1426,7 +1426,7 @@ _aer.Aer = _Stub('Aer')
 sys.modules['qiskit_aer'] = _aer
 sys.modules['qiskit_aer.backends'] = _DynamicModule('qiskit_aer.backends', True)
 
-print("[QCOL Mock v3] Universal system loaded — any Qiskit code will be accepted.");
+print("[QCOL Mock v3] Universal system loaded — any Qiskit code will be accepted.")
 `;
 
 // ═══════════════════════════════════════════════════════════
@@ -1751,9 +1751,9 @@ def _sanitize(code):
     lines = code.splitlines()
     out = []
     for line in lines:
-        safe = ''.join(c if (ord(c) < 128 or c in '\\\\n\\\\t') else '_' for c in line)
+        safe = ''.join(c if (ord(c) < 128 or c in '\\n\\t') else '_' for c in line)
         out.append(safe)
-    return '\\\\n'.join(out)
+    return '\\n'.join(out)
 
 _clean_code = _sanitize(_user_code)
 
@@ -1762,7 +1762,7 @@ try:
 except SyntaxError as _se:
     _bad_line = getattr(_se, 'lineno', None)
     if _bad_line is not None:
-        _patched = '\\\\n'.join(
+        _patched = '\\n'.join(
             l if i+1 != _bad_line else '    pass  # syntax fixed'
             for i, l in enumerate(_clean_code.splitlines())
         )
@@ -1810,12 +1810,12 @@ if _error is None:
                 break
     if _circuit is None:
         import re as _re
-        _m = _re.search(r'QuantumCircuit\\\\s*\\\\((\\\\d+)', _clean_code)
+        _m = _re.search(r'QuantumCircuit\\s*\\((\\d+)', _clean_code)
         if _m:
             _num_qubits = int(_m.group(1))
             _error = None
         else:
-            _error = "No QuantumCircuit found in the code.\\\\nUse: qc = QuantumCircuit(n)"
+            _error = "No QuantumCircuit found in the code.\\nUse: qc = QuantumCircuit(n)"
     else:
         try:
             _nq = getattr(_circuit, 'num_qubits', 2)
@@ -2558,43 +2558,6 @@ function initResize() {
     document.onmouseup = () => { resizingH = false; resizingV = false; document.body.style.cursor = ''; };
 }
 
-// ═══════════════════════════════════════════════════════════
-// LOAD CONFIGURATION FROM THE CLOUD VIA SUPABASE
-// ═══════════════════════════════════════════════════════════
-async function loadCompilerUrlFromCloud() {
-    try {
-        const SUPABASE_URL = 'https://rtkcfbnoqbivylejhspv.supabase.co';
-        const SUPABASE_ANON_KEY = 'sb_publishable_Uw4ViBXo3UvvlSHzOiAcDA_9Jn6eMcf';
-        
-        const response = await fetch(`${SUPABASE_URL}/rest/v1/quantum_ecosystem_config?key=eq.colab_url&select=value`, {
-            method: 'GET',
-            headers: {
-                'apikey': SUPABASE_ANON_KEY,
-                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
-            }
-        });
-        
-        if (!response.ok) {
-            console.warn('⚠️ Could not fetch colab_url from cloud:', response.status);
-            return null;
-        }
-        
-        const data = await response.json();
-        if (data && data.length > 0 && data[0].value) {
-            let value = data[0].value;
-            try { value = JSON.parse(value); } catch(e) {}
-            return value;
-        }
-        return null;
-    } catch (error) {
-        console.warn('⚠️ Error loading colab_url from cloud:', error.message);
-        return null;
-    }
-}
-
-// ═══════════════════════════════════════════════════════════
-// INITIALIZATION (LOAD FROM CLOUD FIRST)
-// ═══════════════════════════════════════════════════════════
 function init() {
     loadIgnoredAttrs().then(() => {
         if (pyodide) injectIgnoredAttrsIntoPython(pyodide);
@@ -2641,28 +2604,6 @@ function init() {
     drawBloch();
     renderSaveList();
     renderQueue();
-    
-    // ═══ LOAD COMPILER URL FROM CLOUD (NOT LOCAL) ═══
-    loadCompilerUrlFromCloud().then(url => {
-        if (url) {
-            engineURL = url;
-            localStorage.setItem('qcol_colab_url', url); // cache for fallback
-            checkEngine();
-        } else {
-            // Fallback: try localStorage as last resort
-            const localUrl = localStorage.getItem('qcol_colab_url') || '';
-            if (localUrl) {
-                engineURL = localUrl;
-                checkEngine();
-            } else {
-                notify('⚠️ No compiler configured. Set it in the Founder panel.');
-                document.getElementById('compiler-status').textContent = '● NO COMPILER';
-                document.getElementById('compiler-status').classList.remove('active', 'waiting');
-                document.getElementById('eng-badge').textContent = '● NO COMPILER';
-                document.getElementById('eng-badge').className = 'badge badge-eng-off';
-            }
-        }
-    });
     
     setTimeout(() => { initPyodide().catch(console.error); }, 1000);
 }
@@ -2785,21 +2726,8 @@ async function checkEngine() {
     notify('❌ Could not connect after 3 attempts');
 }
 
-// ═══════════════════════════════════════════════════════════
-// MESSAGE LISTENER — FIX: accept BOTH QCOL_* and OPENQ_*
-// ═══════════════════════════════════════════════════════════
 window.addEventListener('message', e => {
     const d = e.data || {};
-    
-    // ── Normalize: accept both "QCOL_" and "OPENQ_" prefixes ──
-    if (typeof d.type === 'string') {
-        if (d.type.startsWith('QCOL_')) {
-            d.type = 'QCOL_' + d.type.slice(5);
-        } else if (d.type.startsWith('OPENQ_')) {
-            d.type = 'QCOL_' + d.type.slice(6);  // ← THIS is the fix
-        }
-    }
-    
     if(d.type === 'QCOL_OPEN_ARCHITECT_EDIT'){
         _notebookCellId = d.cellId || null;
         _notebookMode   = true;
@@ -2840,12 +2768,8 @@ window.addEventListener('message', e => {
         renderSaveList();
     }
     if (d.type === 'QCOL_CONFIG' || d.type === 'QCOL_CONFIG_UPDATED') {
-        // Only use if no URL loaded yet, or if the cloud URL is different
         const url = localStorage.getItem('qcol_colab_url') || '';
-        if (url && url !== engineURL) { 
-            engineURL = url; 
-            checkEngine();
-        }
+        if (url && url !== engineURL) { engineURL = url; checkEngine(); }
     }
     if (d.type === 'QCOL_USER_UPDATE') {
         curUser = d.user; renderSaveList();
@@ -2857,11 +2781,8 @@ postCore('QCOL_GET_CONFIG');
 setTimeout(() => {
     const stored = localStorage.getItem('qcol_cur_user');
     if (stored && !curUser) { try { curUser = JSON.parse(stored); renderSaveList(); } catch(e){} }
-    // If engineURL not set yet, try to load from localStorage (will be overwritten by cloud later)
-    if (!engineURL) {
-        const url = localStorage.getItem('qcol_colab_url') || '';
-        if (url) { engineURL = url; checkEngine(); }
-    }
+    const url = localStorage.getItem('qcol_colab_url') || '';
+    if (url) { engineURL = url; checkEngine(); }
 }, 800);
 
 init();
