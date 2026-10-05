@@ -81,7 +81,7 @@ textarea.fi{resize:vertical;min-height:70px;line-height:1.6;}
 </div>
 <div id="content"></div>
 
-<!-- EDIT MODAL (founders only) -->
+<!-- EDIT MODAL (solo para PDFs y Videos; los notebooks se editan en Quantum Notebook) -->
 <div class="modal-ov" id="edit-modal">
   <div class="modal">
     <div class="modal-title">✏️ Edit Project</div>
@@ -168,6 +168,7 @@ function reload(){ if(refreshFn) return refreshFn(); }
 function setF(f,el){filt=f;document.querySelectorAll('.fbtn').forEach(b=>b.classList.remove('on'));el.classList.add('on');render();}
 
 // ==================== PERMISOS ====================
+// Solo el autor original (que tiene la ownKey guardada en su navegador) o el founder pueden editar/borrar.
 function canManage(p){ return isFounder || RepoSync.hasOwnKey(p.id); }
 
 function askFounderKey(){
@@ -263,6 +264,7 @@ async function execProj(id) {
         title: row.title || 'Untitled',
         name:  row.title || 'Untitled',
         desc:  row.description || '',
+        tags:  row.tags || '',
         cells: cells.length ? cells : [{
           id:'c'+Date.now(), type:'markdown',
           code:`# ${row.title||'Notebook'}\n\n${row.description||''}`,
@@ -292,7 +294,9 @@ async function execProj(id) {
 // ==================== DELETE ====================
 async function delProj(id){
   const p=items.find(x=>x.id===id);
-  if(!p||!canManage(p)){ notify('❌ You cannot delete this project'); return; }
+  if(!p){ notify('❌ Project not found'); return; }
+  // ✅ Solo el autor original (con ownKey en este navegador) o el founder pueden borrar
+  if(!canManage(p)){ notify('🔒 You can only delete notebooks you published from this device'); return; }
   if(!confirm('⚠️ Permanently delete "'+p.title+'" for everyone?'))return;
   const key=await keyFor(id);
   if(!key){ notify('❌ Key required'); return; }
@@ -307,10 +311,47 @@ async function delProj(id){
 }
 
 // ==================== EDIT ====================
-function editProj(id){
+// Los notebooks se editan en Quantum Notebook (nombre, descripción, celdas).
+// Los PDFs/Videos se editan en el modal local (título, URL, tags, etc.).
+async function editProj(id){
   const proj=items.find(p=>p.id===id);
   if(!proj){ notify('Project not found'); return; }
-  if(!canManage(proj)){ notify('❌ You cannot edit this project'); return; }
+  // ✅ Solo el autor original o el founder pueden editar
+  if(!canManage(proj)){ notify('🔒 You can only edit notebooks you published from this device'); return; }
+
+  // 📓 NOTEBOOK → abrir Quantum Notebook en modo edición
+  if(proj.type === 'nb'){
+    notify('⏳ Opening notebook editor...');
+    try{
+      const row = await RepoSync.getContent(id);
+      const cells = Array.isArray(row.content) ? row.content : [];
+      const nb = {
+        title: row.title || 'Untitled',
+        name:  row.title || 'Untitled',
+        desc:  row.description || '',
+        tags:  row.tags || '',
+        cells: cells.length ? cells : [{
+          id:'c'+Date.now(), type:'markdown',
+          code:`# ${row.title||'Notebook'}\n\n${row.description||''}`,
+          output:'', exec_count:null, mdEdit:false
+        }],
+        repoId: id  // ← importante: para que el Notebook sepa que es edición de un item existente
+      };
+      // Enviar al core: abrir Quantum Notebook SIN modo exposición (modo edición)
+      window.parent.postMessage({
+        type:'OPENQ_OPEN_NB_EDIT',
+        nb: nb,
+        repoId: id
+      }, '*');
+      notify('✏️ Opening in edit mode...');
+    }catch(e){
+      notify(e.message==='not_found' ? '⚠️ This notebook no longer exists' : '❌ '+errMsg(e));
+      reload();
+    }
+    return;
+  }
+
+  // 📄 PDF / 🎬 VIDEO → modal local
   editingProjId=id;
   document.getElementById('e-t').value=proj.title;
   document.getElementById('e-type').value=proj.type;
