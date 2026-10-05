@@ -1903,6 +1903,24 @@ json.dumps({
     }
 }
 
+// Si el código no tiene ninguna medición, inserta una justo antes de dibujar/ejecutar
+// (así get_counts() no falla con 'No counts for experiment "0"'). No toca el editor.
+function ensureMeasurements(code) {
+    if (/\.measure\s*\(/.test(code) || /measure_all\s*\(/.test(code)) return { code, added: false };
+    if (!/^\s*qc\s*=\s*QuantumCircuit/m.test(code)) return { code, added: false };
+    const lines = code.split('\n');
+    let idx = lines.findIndex(l => !/^\s*#/.test(l) && /qc\.draw\s*\(|\.run\s*\(|get_counts|\bexecute\s*\(|\btranspile\s*\(/.test(l));
+    if (idx < 0) idx = lines.length;
+    const block = [
+        'try:',
+        '    qc.measure(list(range(qc.num_qubits)), list(range(qc.num_qubits)))',
+        'except Exception:',
+        '    qc.measure_all()'
+    ];
+    lines.splice(idx, 0, ...block);
+    return { code: lines.join('\n'), added: true };
+}
+
 async function runServerCode() {
     const code = document.getElementById('code-ta').value.trim();
     if (!code) { notify('Write code first'); return; }
@@ -1922,6 +1940,9 @@ async function runServerCode() {
     const out = document.getElementById('out-body');
     out.innerHTML = `<span class="inf">Sending code to quantum compiler (Qiskit 1.0+)...\n</span>`;
 
+    const _ens = ensureMeasurements(code);
+    const sendCode = _ens.code;
+    if (_ens.added) out.innerHTML += `<span class="inf">ℹ️ No measurements found — measuring all qubits for this run.\n</span>`;
     const isHF = engineURL.includes('hf.space') || engineURL.includes('huggingface');
     try {
         let res, d;
@@ -1929,7 +1950,7 @@ async function runServerCode() {
             res = await fetchWithRetry(engineURL + '/run/predict', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ data: [code], fn_index: 0 })
+                body: JSON.stringify({ data: [sendCode], fn_index: 0 })
             }, 3, 30000);
             const raw = await res.json();
             d = raw.data ? raw.data[0] : raw;
@@ -1937,7 +1958,7 @@ async function runServerCode() {
             res = await fetchWithRetry(engineURL + '/run', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ code, lib: curLib })
+                body: JSON.stringify({ code: sendCode, lib: curLib })
             }, 3, 30000);
             d = await res.json();
         }
