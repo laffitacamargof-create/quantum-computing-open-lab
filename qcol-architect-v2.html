@@ -1572,35 +1572,51 @@ function _cleanCodeForServer(raw) {
         .replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹]/g, c => '⁰¹²³⁴⁵⁶⁷⁸⁹'.indexOf(c));
 }
 
+// Puertas que Qiskit dibuja SIN caja (┤ X ├): no se pueden contar al leer el dibujo del servidor
+const _NO_BOX_IDS = new Set(['SWAP', 'CZ', 'CSW']);
+
 function _parseTextDraw(text) {
     if (!text) return null;
-    const lines = text.split('\n');
-    const qubitLines = lines.filter(l => /^\s*(q_?\d+\s*:|q\[\d+\]\s*:)/.test(l));
-    if (qubitLines.length === 0) return null;
+    // 1) Qiskit parte los circuitos anchos en varios bloques (« al inicio, » al final).
+    //    Se unen por qubit para leer el circuito COMPLETO y no solo el primer bloque.
+    const rowsByQubit = {};
+    text.split('\n').forEach(line => {
+        const m = line.match(/^\s*«?\s*(?:q_?(\d+)|q\[(\d+)\])\s*:/);
+        if (!m) return;
+        const idx = parseInt(m[1] !== undefined ? m[1] : m[2], 10);
+        const body = line.slice(m[0].length).replace(/[«»]/g, '');
+        rowsByQubit[idx] = (rowsByQubit[idx] || '') + body;
+    });
+    const qIdx = Object.keys(rowsByQubit).map(Number).sort((a, b) => a - b);
+    if (qIdx.length === 0) return null;
+
     const gates = [];
     const symMap = {
         'H':'H','X':'X','Y':'Y','Z':'Z','S':'S','T':'T','SX':'SX',
         'RX':'RX','RY':'RY','RZ':'RZ','CX':'CX','CZ':'CZ','SWAP':'SWAP',
-        'CCX':'CCX','M':'M','Rx':'RX','Ry':'RY','Rz':'RZ','Sx':'SX'
+        'CCX':'CCX','M':'M','Rx':'RX','Ry':'RY','Rz':'RZ','Sx':'SX','√X':'SX'
     };
-    qubitLines.forEach((line, qi) => {
-        const matches = [...line.matchAll(/┤\s*(\w+)\s*[├┤]/g)];
-        matches.forEach(m => {
+    qIdx.forEach(qi => {
+        const row = rowsByQubit[qi];
+        // 2) Puertas en caja, con o sin parámetros: ┤ H ├  ┤ Rz(π/4) ├
+        for (const m of row.matchAll(/┤\s*([^\s├┤()]+)\s*(?:\([^)]*\))?\s*[├┤]/g)) {
             const name = m[1].trim();
+            if (name === 'M') continue;               // las mediciones se cuentan abajo
             const gid = symMap[name] || mapOpNameToGateId(name.toLowerCase());
             const def = findGateDef(gid);
             if (def && gates.length < MAX_GATES) {
                 gates.push({ id: gid, q: qi, def, uid: nextId++ });
             }
-        });
-        if (/[░»╫]/.test(line) || /┤M[├┤]/.test(line)) {
+        }
+        // 3) Mediciones reales (┤M├); una barrera ░ ya NO se confunde con una medición
+        if (/┤\s*M\s*[├┤]/.test(row)) {
             const def = findGateDef('M');
             if (def) gates.push({ id: 'M', q: qi, def, uid: nextId++ });
         }
     });
     const nonM = gates.filter(g => g.id !== 'M');
     const meas  = gates.filter(g => g.id === 'M');
-    return { numQubits: qubitLines.length, gates: [...nonM, ...meas] };
+    return { numQubits: qIdx[qIdx.length - 1] + 1, gates: [...nonM, ...meas] };
 }
 
 async function syncFromServer(reason) {
@@ -2076,7 +2092,8 @@ async function runServerCode() {
             const _sp = _parseTextDraw(_lastServerOutput);
             if (_sp && _sp.gates.length > 0) {
                 _sp.gates = normalizeMeasurements(_sp.gates);
-                const _vg = circuit.gates.filter(g => g.id !== 'M').length;
+                // Solo se comparan las puertas que el dibujo de texto muestra en caja (sin SWAP/CZ/CSW)
+                const _vg = circuit.gates.filter(g => g.id !== 'M' && !_NO_BOX_IDS.has(g.id)).length;
                 const _sg = _sp.gates.filter(g => g.id !== 'M').length;
                 const _pct = _sg > 0 ? Math.abs(_vg - _sg) / _sg : 0;
                 if (_pct > 0.15 || (circuit.gates.length === 0 && _sg > 0)) {
