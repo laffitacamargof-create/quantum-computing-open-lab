@@ -884,6 +884,7 @@ function syncQubitCount() {
 function renderCircuit() {
   const container = document.getElementById('circuit-canvas');
   if (!container) return;
+  syncQubitCount();   // los cables siempre cubren la última puerta/medición (nada queda fuera de pantalla)
   const depth = Array(circuit.qubits).fill(0);
   const placed = circuit.gates.map(g => {
     let col;
@@ -1650,6 +1651,18 @@ async function syncFromServer(reason) {
         const parsed = _parseTextDraw(_lastServerOutput);
         if (parsed && parsed.gates.length > 0) {
             if (_ensC.added) parsed.gates = parsed.gates.filter(g => g.id !== 'M'); // mediciones auto-añadidas: no ensuciar el canvas
+            // Si el circuito ya cargado coincide con lo que dibuja el servidor, NO se reemplaza
+            // (la reconstrucción desde texto pierde información: CX→X, SWAP, CZ...)
+            if (reason === 'from-notebook' && circuit.gates.length > 0) {
+                const _vg0 = circuit.gates.filter(g => g.id !== 'M' && !_NO_BOX_IDS.has(g.id)).length;
+                const _sg0 = parsed.gates.filter(g => g.id !== 'M').length;
+                const _pct0 = _sg0 > 0 ? Math.abs(_vg0 - _sg0) / _sg0 : 0;
+                if (_pct0 <= 0.15) {
+                    out.innerHTML += `<span class="ok">✅ Server check: circuit matches (${_vg0} gates)</span>\n`;
+                    if (d.bloch?.probabilities) updateBlochFromProbs(d.bloch.probabilities);
+                    return false;
+                }
+            }
             parsed.gates = normalizeMeasurements(parsed.gates);
             circuit.qubits = Math.min(parsed.numQubits, MAX_QUBITS);
             circuit.gates = parsed.gates;
@@ -1676,7 +1689,7 @@ async function syncWithPyodide(retryCount = 0) {
     const rawCode = document.getElementById('code-ta').value;
     if (!rawCode.trim()) { isUpdatingFromCircuit = false; return; }
     const out = document.getElementById('out-body');
-    out.innerHTML += '<span class="inf">🔄 Syncing code → visual circuit... (v3)</span>\n';
+    out.innerHTML += '<span class="inf">🔄 Syncing code → visual circuit... (v4)</span>\n';
     try {
         const py = await initPyodide();
         const code = robustPreprocess(rawCode);
@@ -2207,8 +2220,29 @@ function updateSyntaxHighlight() {
     syn.scrollLeft = ta.scrollLeft;
 }
 
+// Si el usuario borra TODO el código, se borra también todo el circuito visual
+// (puertas y mediciones). Los cables se conservan para poder seguir arrastrando puertas.
+function clearVisualForEmptyCode() {
+    if (syncTimeout) clearTimeout(syncTimeout);
+    clearTimeout(window._emptyCanvasTimeout);
+    const hadContent = circuit.gates.length > 0;
+    circuit.gates = [];
+    for (let i = 0; i < circuit.qubits; i++) blochStates[i] = { theta: 0, phi: 0 };
+    _errorLine = -1;
+    renderCircuit();
+    updateCircuitInfo();
+    updateBlochSelector();
+    drawBloch();
+    updateSyntaxHighlight();
+    if (hadContent) {
+        const out = document.getElementById('out-body');
+        if (out) out.innerHTML += '<span class="inf">🧹 Code empty — visual circuit cleared</span>\n';
+    }
+}
+
 function onCodeEdit() { 
     const code = document.getElementById('code-ta').value;
+    if (!code.trim()) { clearVisualForEmptyCode(); return; }
     const gateCallCount = (code.match(/\bqc\.\w+\s*\(/g) || []).length;
     if (gateCallCount > MAX_GATES) {
         const lines = code.split('\n');
