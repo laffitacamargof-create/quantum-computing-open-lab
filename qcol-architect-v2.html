@@ -1990,7 +1990,7 @@ function _argIndices(arg) {
 
 function scanMaxQubitIndex(code) {
     const clean = code.split('\n').map(l => l.replace(/#.*$/, '')).join('\n');
-    let maxIdx = -1, usesMeasure = false, m;
+    let maxIdx = -1, maxClbit = -1, usesMeasure = false, m;
     const re = /\bqc\.(\w+)\s*\(/g;
     while ((m = re.exec(clean))) {
         const name = m[1].toLowerCase();
@@ -2003,27 +2003,34 @@ function scanMaxQubitIndex(code) {
         if (depth !== 0) continue;
         const args = _splitTopLevel(clean.slice(re.lastIndex, i - 1));
         let picked = [];
-        if (name === 'measure') { usesMeasure = true; picked = args.slice(0, 2); }
+        if (name === 'measure') {
+            usesMeasure = true;
+            if (args[0]) for (const ix of _argIndices(args[0])) if (ix > maxIdx) maxIdx = ix;      // qubit
+            if (args[1]) for (const ix of _argIndices(args[1])) if (ix > maxClbit) maxClbit = ix;  // bit clásico
+        }
         else if (_GQ1.has(name)) picked = args.slice(-1);
         else if (_GQ2.has(name)) picked = args.slice(-2);
         else if (_GQ3.has(name)) picked = args.slice(-3);
         for (const a of picked) for (const ix of _argIndices(a)) if (ix > maxIdx) maxIdx = ix;
     }
-    return { maxIdx, usesMeasure };
+    return { maxIdx, maxClbit, usesMeasure };
 }
 
 function autoFixQubitDeclaration(code) {
     const decl = /(\bqc\s*=\s*QuantumCircuit\s*\(\s*)(\d+)\s*(?:,\s*(\d+)\s*)?\)/;
     const dm = code.match(decl);
     if (!dm) return { code, changed: false, overLimit: false };
-    const { maxIdx, usesMeasure } = scanMaxQubitIndex(code);
+    const { maxIdx, maxClbit, usesMeasure } = scanMaxQubitIndex(code);
     const need = maxIdx + 1;
+    const needC = maxClbit + 1;
     const q0 = parseInt(dm[2], 10);
     const c0 = dm[3] !== undefined ? parseInt(dm[3], 10) : undefined;
     const overLimit = need > MAX_QUBITS;
     const n = Math.min(MAX_QUBITS, Math.max(q0, need));
+    // Bits clásicos: si el usuario declaró (n, n) simétrico se mantiene simétrico;
+    // si declaró un tamaño distinto (p. ej. (8, 3)) solo crece si un measure lo necesita.
     let c = c0;
-    if (c0 !== undefined) c = Math.min(MAX_QUBITS, Math.max(c0, need));
+    if (c0 !== undefined) c = (c0 === q0) ? n : Math.min(MAX_QUBITS, Math.max(c0, needC));
     else if (usesMeasure) c = n;
     if (n === q0 && c === c0) return { code, changed: false, overLimit };
     const rep = dm[1] + n + (c !== undefined ? ', ' + c : '') + ')';
