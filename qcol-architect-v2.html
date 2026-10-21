@@ -2081,7 +2081,7 @@ function qcolWithPlotCapture(code) {
 }
 function qcolExtractPlots(output) {
   const imgs = [];
-  const text = String(output || '').replace(/@@QCOLPLOT@@([A-Za-z0-9+\/=]+)@@END@@\n?/g, (m, b64) => { imgs.push(b64); return ''; });
+  const text = String(output || '').replace(/@@QCOLPLOT@@([A-Za-z0-9+\/=]+)@@END@@\n?/g, (m, b64) => { if (!imgs.includes(b64)) imgs.push(b64); return ''; });  // figuras idénticas se muestran una sola vez
   return { text, imgs };
 }
 
