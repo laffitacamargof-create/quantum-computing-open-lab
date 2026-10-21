@@ -692,6 +692,8 @@ function renderOutput(outArea, d, elapsed, cellId){
   const shotsFromCode   = extractShots(srcCode);
   const realShots = shotsFromServer || shotsFromCode || 1024;
 
+  const _plots=qcolExtractPlots(d.output);
+  d.output=_plots.text;
   const isOk=d.success!==false;
   const hdrCls=isOk?'out-header-ok':'out-header-err';
   const hdrIcon=isOk?'✅':'❌';
@@ -741,6 +743,13 @@ function renderOutput(outArea, d, elapsed, cellId){
       <div style="font-family:var(--orb);font-size:.4rem;color:var(--mu);padding:.2rem 0 .3rem;letter-spacing:.05em;">MATPLOTLIB PLOT</div>
       <img class="out-img" src="data:image/png;base64,${d.plot_png}" alt="Plot">
     </div>`;
+  }
+
+  if(!d.plot_png&&_plots.imgs.length){
+    _plots.imgs.forEach((b,i)=>{html+=`<div style="padding:.3rem .5rem;background:#04080e;border-top:1px solid rgba(0,136,255,.08);">
+      <div style="font-family:var(--orb);font-size:.4rem;color:var(--mu);padding:.2rem 0 .3rem;letter-spacing:.05em;">MATPLOTLIB PLOT${_plots.imgs.length>1?' '+(i+1):''}</div>
+      <img class="out-img" src="data:image/png;base64,${b}" alt="Plot">
+    </div>`;});
   }
 
   if(d.plot_svg){
@@ -1618,6 +1627,32 @@ function buildErrorOut(errText){
 }
 
 // ── EXECUTION ─────────────────────────────────────────────────
+// ── GRÁFICOS DE MATPLOTLIB (plt.show) ─────────────────────────────
+// El servidor no siempre devuelve la imagen. Se añade al final del código un pequeño bloque
+// que guarda las figuras abiertas como PNG (base64) y las imprime con marcas; aquí se extraen
+// de la salida y se dibujan. No cambia el código del usuario ni los números de línea.
+const QCOL_PLOT_SUFFIX = [
+  '',
+  'try:',
+  '    import matplotlib.pyplot as __qp, io as __qio, base64 as __qb',
+  '    for __qn in __qp.get_fignums():',
+  '        __qf = __qp.figure(__qn); __qbuf = __qio.BytesIO()',
+  "        __qf.savefig(__qbuf, format='png', dpi=90, bbox_inches='tight')",
+  "        print('@@QCOLPLOT@@' + __qb.b64encode(__qbuf.getvalue()).decode() + '@@END@@')",
+  "    __qp.close('all')",
+  'except Exception:',
+  '    pass',
+  ''
+].join('\n');
+function qcolWithPlotCapture(code) {
+  return /matplotlib|pyplot|\bplt\s*\./.test(code) ? code + '\n' + QCOL_PLOT_SUFFIX : code;
+}
+function qcolExtractPlots(output) {
+  const imgs = [];
+  const text = String(output || '').replace(/@@QCOLPLOT@@([A-Za-z0-9+\/=]+)@@END@@\n?/g, (m, b64) => { imgs.push(b64); return ''; });
+  return { text, imgs };
+}
+
 async function runCell(id){
   if(!_expositionMode&&!requireAuth())return;
   if(running){notify('An execution is already in progress');return;}
@@ -1640,7 +1675,7 @@ async function runCell(id){
     if(engineOK&&engineURL){
       const resp=await fetch(engineURL+'/run/predict',{
         method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({data:[code],fn_index:1}),
+        body:JSON.stringify({data:[qcolWithPlotCapture(code)],fn_index:1}),
         signal:AbortSignal.timeout(90000)
       });
       const raw=await resp.json();

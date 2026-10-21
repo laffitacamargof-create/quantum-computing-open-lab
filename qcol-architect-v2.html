@@ -2059,6 +2059,32 @@ function autoFixQubitDeclarationInEditor() {
     return true;
 }
 
+// ── GRÁFICOS DE MATPLOTLIB (plt.show) ─────────────────────────────
+// El servidor no siempre devuelve la imagen. Se añade al final del código un pequeño bloque
+// que guarda las figuras abiertas como PNG (base64) y las imprime con marcas; aquí se extraen
+// de la salida y se dibujan. No cambia el código del usuario ni los números de línea.
+const QCOL_PLOT_SUFFIX = [
+  '',
+  'try:',
+  '    import matplotlib.pyplot as __qp, io as __qio, base64 as __qb',
+  '    for __qn in __qp.get_fignums():',
+  '        __qf = __qp.figure(__qn); __qbuf = __qio.BytesIO()',
+  "        __qf.savefig(__qbuf, format='png', dpi=90, bbox_inches='tight')",
+  "        print('@@QCOLPLOT@@' + __qb.b64encode(__qbuf.getvalue()).decode() + '@@END@@')",
+  "    __qp.close('all')",
+  'except Exception:',
+  '    pass',
+  ''
+].join('\n');
+function qcolWithPlotCapture(code) {
+  return /matplotlib|pyplot|\bplt\s*\./.test(code) ? code + '\n' + QCOL_PLOT_SUFFIX : code;
+}
+function qcolExtractPlots(output) {
+  const imgs = [];
+  const text = String(output || '').replace(/@@QCOLPLOT@@([A-Za-z0-9+\/=]+)@@END@@\n?/g, (m, b64) => { imgs.push(b64); return ''; });
+  return { text, imgs };
+}
+
 async function runServerCode() {
     autoFixQubitDeclarationInEditor();
     const code = document.getElementById('code-ta').value.trim();
@@ -2080,7 +2106,7 @@ async function runServerCode() {
     out.innerHTML = `<span class="inf">Sending code to quantum compiler (Qiskit 1.0+)...\n</span>`;
 
     const _ens = ensureMeasurements(code);
-    const sendCode = _ens.code;
+    const sendCode = qcolWithPlotCapture(_ens.code);
     if (_ens.added) out.innerHTML += `<span class="inf">ℹ️ No measurements found — measuring all qubits for this run.\n</span>`;
     const isHF = engineURL.includes('hf.space') || engineURL.includes('huggingface');
     try {
@@ -2103,8 +2129,11 @@ async function runServerCode() {
         }
         const el = ((Date.now() - t0) / 1000).toFixed(2);
         document.getElementById('out-elapsed').textContent = el + 's';
+        const _plots = qcolExtractPlots(d.output);
+        d.output = _plots.text;
         if (d.success) {
             out.innerHTML = `<span class="inf">╔════════════════════════════╗\n║  Compiler · ${el}s\n╚════════════════════════════╝\n\n</span><span class="ok">${escapeHtml(d.output)}</span>`;
+            _plots.imgs.forEach((b, i) => { out.innerHTML += `\n<div style="margin:.4rem 0;"><div class="inf" style="font-size:.55rem;">📈 MATPLOTLIB PLOT ${_plots.imgs.length > 1 ? (i + 1) : ''}</div><img src="data:image/png;base64,${b}" alt="Plot" style="max-width:100%;background:#fff;border-radius:6px;"></div>`; });
             if (d.bloch?.probabilities) updateBlochFromProbs(d.bloch.probabilities);
             setRunSt('idle', 'Ready');
             logMonitorRun({ success: true, lib: curLib, qubits: circuit.qubits, time: parseFloat(el) });
