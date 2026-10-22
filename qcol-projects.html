@@ -241,16 +241,35 @@ function render(){
     const delBtn = manage ? `<button class="btn-del" onclick="delProj('${p.id}')" title="Delete permanently">🗑</button>` : '';
     const editBtn = manage ? `<button class="btn-edit" onclick="editProj('${p.id}')" title="Edit project">✏️</button>` : '';
     const execText = p.type==='nb'?'▶ RUN':p.type==='pdf'?'📖 VIEW':'▶ VIEW';
+    const linkBtn = p.type==='nb' ? `<button class="btn-edit" onclick="copyNbLink('${p.id}')" title="Copy direct link / Copiar enlace directo">🔗</button>` : '';
     return`<div class="card"><div class="card-hdr"><span class="tbadge ${tc}">${tl}</span><span class="card-tags">${escapeHtml(p.tags||'')}</span></div>
       <div class="card-body"><div class="card-title">${escapeHtml(p.title)}</div><p class="card-desc">${escapeHtml(p.desc||'')}</p>
       <div class="card-meta">${meta}</div>${author}
-      <div class="card-actions"><button class="btn-exec" onclick="execProj('${p.id}')">${execText}</button>${editBtn}${delBtn}</div></div></div>`;
+      <div class="card-actions"><button class="btn-exec" onclick="execProj('${p.id}')">${execText}</button>${linkBtn}${editBtn}${delBtn}</div></div></div>`;
   }).join('')+'</div>';
 }
 
 function escapeHtml(str){if(!str)return '';return String(str).replace(/[&<>"']/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m];});}
 
 // ==================== EJECUTAR / ABRIR ====================
+
+// ===== ENLACE DIRECTO (copiar) =====
+function qcolSlug(t){return String(t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,60);}
+function qcolDirectLink(kind,id,title){
+  let L; try{ L=(window.parent!==window)?window.parent.location:window.location; }catch(e){ L=window.location; }
+  const sl=qcolSlug(title);
+  return L.origin+L.pathname.replace(/[^\/]*$/,'')+'#'+kind+'/'+encodeURIComponent(id)+(sl?'/'+sl:'');
+}
+async function qcolCopyText(txt){
+  try{ await navigator.clipboard.writeText(txt); return true; }catch(e){}
+  try{ const ta=document.createElement('textarea'); ta.value=txt; ta.style.position='fixed'; ta.style.opacity='0'; document.body.appendChild(ta); ta.select(); const ok=document.execCommand('copy'); ta.remove(); if(ok) return true; }catch(e){}
+  try{ window.prompt('Copy this link / Copia este enlace:',txt); }catch(e){}
+  return false;
+}
+async function copyNbLink(id){
+  const p=items.find(x=>x.id===id); const url=qcolDirectLink('notebook',id,p&&p.title);
+  const ok=await qcolCopyText(url); notify(ok?'🔗 Direct link copied':'🔗 '+url);
+}
 async function execProj(id) {
   const p = items.find(x => x.id === id);
   if (!p) { notify('Project not found'); return; }

@@ -891,6 +891,7 @@ async function renderPublishedApps() {
                     <div class="tags">${tagsHtml}</div>
                     <div class="card-actions">
                         <button class="btn-execute" onclick="window.executeQuantumApp('${app.id}')">▶ RUN PROGRAM</button>
+                        <button class="btn-icon" onclick="window.copyAppLink('${app.id}')" title="Copy direct link / Copiar enlace directo">🔗</button>
                         ${delBtn}
                     </div>
                 </div>
@@ -949,6 +950,26 @@ async function renderPendingList() {
 }
 
 // ========== EXECUTE APP USING QUANTUM APP STUDIO ==========
+
+// ===== ENLACE DIRECTO (copiar) =====
+function qcolSlug(t){return String(t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,60);}
+function qcolDirectLink(kind,id,title){
+  let L; try{ L=(window.parent!==window)?window.parent.location:window.location; }catch(e){ L=window.location; }
+  const sl=qcolSlug(title);
+  return L.origin+L.pathname.replace(/[^\/]*$/,'')+'#'+kind+'/'+encodeURIComponent(id)+(sl?'/'+sl:'');
+}
+async function qcolCopyText(txt){
+  try{ await navigator.clipboard.writeText(txt); return true; }catch(e){}
+  try{ const ta=document.createElement('textarea'); ta.value=txt; ta.style.position='fixed'; ta.style.opacity='0'; document.body.appendChild(ta); ta.select(); const ok=document.execCommand('copy'); ta.remove(); if(ok) return true; }catch(e){}
+  try{ window.prompt('Copy this link / Copia este enlace:',txt); }catch(e){}
+  return false;
+}
+async function copyAppLink(appId){
+  const apps=(window.quantumSync&&window.quantumSync.publishedApps)||[]; const a=apps.find(x=>String(x.id)===String(appId));
+  const url=qcolDirectLink('app',appId,a&&(a.title||a.name));
+  const ok=await qcolCopyText(url); showNotification(ok?'🔗 Direct link copied':'🔗 '+url);
+}
+window.copyAppLink=copyAppLink;
 function executeQuantumApp(appId) {
     getPublishedApps().then(apps => {
         const app = apps.find(a => a.id === appId);
