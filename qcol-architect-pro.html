@@ -2286,6 +2286,24 @@ window.addEventListener('message',e=>{
   const d=e.data||{};
   if(typeof d.type==='string'&&d.type.indexOf('QCOL_')===0)d.type='OPENQ_'+d.type.slice(5); // compat. módulos antiguos
 
+  // ===== DEEP LINK: abrir un notebook publicado por su ID (#notebook/ID) =====
+  if(d.type==='OPENQ_DEEPLINK' && d.kind==='nb' && d.id){
+    (async()=>{
+      try{
+        let tries=0; while(!window.RepoSync && tries++<20) await new Promise(r=>setTimeout(r,250));
+        if(!window.RepoSync) throw new Error('Cloud module not loaded');
+        let row=await RepoSync.getOne(d.id,'title,content');
+        if(Array.isArray(row)) row=row[0];
+        if(!row) throw new Error('Notebook not found');
+        let cs=row.content; if(typeof cs==='string'){ try{cs=JSON.parse(cs);}catch(e){cs=[];} }
+        if(!Array.isArray(cs)) cs=[];
+        window.postMessage({type:'OPENQ_OPEN_NB_EXPOSITION', nb:{id:d.id,title:row.title||'Notebook',cells:cs}},'*');
+        try{ parent.postMessage({type:'OPENQ_SET_ROUTE',hash:'notebook/'+d.id,title:row.title||'Notebook'},'*'); }catch(e){}
+      }catch(err){ notify('❌ '+((window.RepoSync&&RepoSync.friendlyError)?RepoSync.friendlyError(err):err.message),5000); }
+    })();
+    return;
+  }
+
   if(d.type==='OPENQ_USER'||d.type==='OPENQ_USER_UPDATE'){
     if(d.user) showUI(d.user);
     else { _initialized=false; showUI({name:'Guest',role:'guest'}); }

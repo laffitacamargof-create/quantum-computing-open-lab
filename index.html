@@ -1017,6 +1017,8 @@ class OpenQConfigSyncReader {
 
     if (d.type === 'OPENQ_OPEN_NB_EXPOSITION') {
       nav('architect-pro');
+      { const nid = d.nb && (d.nb.id || d.nb.repo_id || d.nb.nbId) || d.id || d.nbId;
+        if (nid) { _shareCtx = { hash: 'notebook/' + nid, title: (d.nb && (d.nb.title || d.nb.name)) || '' }; _setHash(_shareCtx.hash); _updateShareFab(); } }
       const sendExpo = () => {
         const nbFrame = iframes['architect-pro'];
         if (nbFrame && nbFrame.contentWindow && nbFrame.contentDocument &&
@@ -1280,7 +1282,7 @@ class OpenQConfigSyncReader {
     const tag = (t.tagName || '').toLowerCase();
     return tag === 'input' || tag === 'textarea' || tag === 'select' || t.isContentEditable || (t.closest && t.closest('.cm-editor'));
   }
-  document.addEventListener('keydown', e => {
+  function onKey(e, fromFrame) {
     const menu = document.getElementById('share-menu');
     const menuOpen = menu && menu.classList.contains('open');
     if (menuOpen) {
@@ -1300,7 +1302,7 @@ class OpenQConfigSyncReader {
     // Esc con modal de login abierto: cerrarlo
     const am = document.getElementById('auth-modal');
     if (e.key === 'Escape' && am && am.classList.contains('open')) { e.preventDefault(); closeAuth(); return; }
-    if (_typing(e)) return;
+    if (_typing(e) && !e.altKey) return;
     const c = _combo(e);
     // Atajos globales de base: Esc atrás, Alt+H inicio, Alt+S compartir
     if (c === 'escape') {
@@ -1315,7 +1317,25 @@ class OpenQConfigSyncReader {
       return;
     }
     for (const sc of _shortcuts) if (sc.combo === c) { e.preventDefault(); sc.fn(e); return; }
-  });
+  }
+  document.addEventListener('keydown', e => onKey(e, false));
+  // reescaneo periódico: módulos/apps que crean iframes o recargan su documento después
+  setInterval(() => { document.querySelectorAll('iframe').forEach(f => { try { attachKeys(f); } catch (e) {} }); }, 1500);
+  // Teclas con el cursor DENTRO de un módulo (iframe del mismo origen): se escuchan también allí
+  function attachKeys(iframe) {
+    try {
+      const d = iframe.contentDocument; if (!d) return;
+      d.querySelectorAll('iframe').forEach(f => { try { attachKeys(f); } catch (e) {} });  // iframes anidados (Quantum Apps, etc.)
+      if (d.__openqKeys) return;
+      d.__openqKeys = true;
+      d.addEventListener('keydown', e => {
+        if (e.defaultPrevented) return;
+        // Esc dentro del módulo: solo si no hay nada enfocado (para no pisar sus propios modales)
+        if (e.key === 'Escape' && d.activeElement && d.activeElement !== d.body) return;
+        onKey(e, true);
+      });
+    } catch (err) { /* iframe de otro origen: no accesible */ }
+  }
   // clic dentro de un módulo (iframe): el padre no recibe 'click', pero sí 'blur'
   window.addEventListener('blur', () => setTimeout(() => {
     const m = document.getElementById('share-menu');
@@ -1380,7 +1400,7 @@ class OpenQConfigSyncReader {
     const parts = raw.split('/').filter(Boolean);
     const head = parts[0].toLowerCase().replace(/_/g, '-');
     const alias = { notebook: 'architect-pro', 'quantum-notebook': 'architect-pro',
-                    puzzle: 'quantum-puzzle', apps: 'projects', app: 'projects' };
+                    puzzle: 'quantum-puzzle', apps: 'quantum-puzzle', app: 'quantum-puzzle' };
     let screen = alias[head] || head;
     if (!MODULES[screen] && screen !== 'home') return;
     _routing = true;
@@ -1391,7 +1411,8 @@ class OpenQConfigSyncReader {
     else if (head === 'projects' && parts[1] && parts[2]) { kind = parts[1].toLowerCase(); id = parts[2]; }
     else if ((head === 'notebook' || head === 'quantum-notebook') && parts[1]) { kind = 'nb'; id = parts[1]; }
     if (kind && id) {
-      const target = (head === 'notebook' || head === 'quantum-notebook') ? 'architect-pro' : 'projects';
+      const target = (kind === 'nb') ? 'architect-pro' : (kind === 'app') ? 'quantum-puzzle' : 'projects';
+      if (screen !== target) { _routing = true; try { nav(target); } finally { _routing = false; } }
       _sendToModule(target, { type: 'OPENQ_DEEPLINK', kind: kind === 'notebook' ? 'nb' : kind, id });
     }
   }
@@ -1410,6 +1431,7 @@ class OpenQConfigSyncReader {
     iframe.src = file + '?v=' + Date.now();
     iframe.onload = () => {
       iframes[screen] = iframe;
+      attachKeys(iframe);
       setTimeout(() => {
           sendCfg(iframe.contentWindow);
           iframe.contentWindow.postMessage({ type: 'OPENQ_USER_UPDATE', user: curUser }, '*');

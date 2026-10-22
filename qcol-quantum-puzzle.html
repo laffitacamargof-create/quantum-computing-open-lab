@@ -964,6 +964,7 @@ function executeQuantumApp(appId) {
         }
         
         currentExecutingApp = app;
+        try { parent.postMessage({ type: 'OPENQ_SET_ROUTE', hash: 'app/' + encodeURIComponent(app.id), title: app.title || app.name || 'Quantum App' }, '*'); } catch (e) {}
         const modal = document.getElementById('execAppModal');
         const titleSpan = document.getElementById('execAppTitle');
         titleSpan.innerHTML = `⚛️ ${escapeHtml(app.title)}`;
@@ -1097,6 +1098,7 @@ function closeExecModal() {
     if (iframe.src) iframe.src = 'about:blank';
     if (window._execBlobUrl) { URL.revokeObjectURL(window._execBlobUrl); window._execBlobUrl = null; }
     currentExecutingApp = null;
+    try { parent.postMessage({ type: 'OPENQ_SET_ROUTE', hash: 'quantum-puzzle', title: 'Quantum Puzzle' }, '*'); } catch (e) {}
 }
 
 const _execPyCalls = new Map();
@@ -1359,6 +1361,26 @@ window.addEventListener('load', async () => {
         renderPublishedApps();
         renderPendingList();
     }
+});
+
+// ===== DEEP LINK: #app/ID -> abre la Quantum App publicada ya ejecutándose =====
+window.addEventListener('message', function _openqDeepLinkApp(ev) {
+    const d = ev.data;
+    if (!d || d.type !== 'OPENQ_DEEPLINK' || d.kind !== 'app' || !d.id) return;
+    const id = String(d.id);
+    let tries = 0;
+    const timer = setInterval(async () => {
+        tries++;
+        try {
+            if (window.quantumSync && window.quantumSync.isReady) {
+                const apps = await getPublishedApps();
+                const app = apps.find(a => String(a.id) === id);
+                if (app) { clearInterval(timer); executeQuantumApp(app.id); return; }
+                if (tries > 6) { clearInterval(timer); showNotification('⚠️ App not found (it may have been removed or not published yet)', 4500); return; }
+            }
+        } catch (e) { /* reintenta */ }
+        if (tries > 40) { clearInterval(timer); showNotification('❌ Could not load the app (no connection to the cloud)', 4500); }
+    }, 500);
 });
 
 document.getElementById('studioModalReal')?.addEventListener('click', (e) => { if(e.target === document.getElementById('studioModalReal')) closeStudioModal(); });
