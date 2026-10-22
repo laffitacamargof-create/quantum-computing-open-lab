@@ -1277,7 +1277,9 @@ class OpenQConfigSyncReader {
   const _shortcuts = [];
   function addShortcut(combo, fn, desc) { _shortcuts.push({ combo: combo.toLowerCase(), fn, desc }); }
   function _combo(e) {
-    const k = e.key.length === 1 ? e.key.toLowerCase() : e.key.toLowerCase();
+    let k = e.key.toLowerCase();
+    if (/^Key[A-Z]$/.test(e.code || '')) k = e.code.slice(3).toLowerCase();      // Alt/Option+letra en cualquier teclado
+    else if (/^Digit[0-9]$/.test(e.code || '')) k = e.code.slice(5);
     return (e.ctrlKey || e.metaKey ? 'ctrl+' : '') + (e.altKey ? 'alt+' : '') + (e.shiftKey && e.key.length > 1 ? 'shift+' : '') + k;
   }
   function _typing(e) {
@@ -1384,6 +1386,7 @@ class OpenQConfigSyncReader {
       if (a && a.id !== 'screen-home') { e.preventDefault(); goBack(); }
       return;
     }
+    if (e.key === '?' || c === 'f1') { e.preventDefault(); notify('⌨ Flechas: mover · Enter/Espacio: abrir · Esc: atrás · Alt+S: compartir · Alt+H: inicio · Tab: botones', 7000); return; }
     if (c === 'alt+h') { e.preventDefault(); nav('home'); return; }
     if (c === 'alt+s' || c === 'alt+c') {
       const a = document.querySelector('.screen.active');
@@ -1392,7 +1395,7 @@ class OpenQConfigSyncReader {
     }
     for (const sc of _shortcuts) if (sc.combo === c) { e.preventDefault(); sc.fn(e); return; }
   }
-  document.addEventListener('keydown', e => onKey(e, false));
+  document.addEventListener('keydown', e => onKey(e, false), true);   // fase de captura: ningún módulo puede bloquearlo
   // reescaneo periódico: módulos/apps que crean iframes o recargan su documento después
   setInterval(() => {
     _makeFocusable(document);
@@ -1415,7 +1418,7 @@ class OpenQConfigSyncReader {
           if (d.querySelector('.modal-ov.open,.modal.open,.modal-overlay.open,.overlay.open,dialog[open],[role=dialog]')) return;
         }
         onKey(e, true);
-      });
+      }, true);
     } catch (err) { /* iframe de otro origen: no accesible */ }
   }
   // clic dentro de un módulo (iframe): el padre no recibe 'click', pero sí 'blur'
@@ -2048,6 +2051,8 @@ class OpenQConfigSyncReader {
 
 })();
 
+window.OPENQ_BUILD = '2026-10-22-k3 (teclado + enlaces con nombre)';
+console.log('%cQuolab build ' + window.OPENQ_BUILD, 'color:#00ffdd');
 window.OpenQ = OpenQ;
 document.addEventListener('DOMContentLoaded', OpenQ.init);
 </script>
