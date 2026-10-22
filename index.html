@@ -235,11 +235,30 @@ body::before{content:'';position:fixed;inset:0;
   #ai-panel-wrapper { width:calc(100vw - 1rem); right:.5rem; }
   .hbtn.ai-btn span { display:none; }
 }
+#share-fab{position:fixed;right:16px;bottom:16px;z-index:900;display:none;align-items:center;gap:.4rem;padding:.6rem .95rem;border-radius:999px;border:1px solid rgba(0,200,255,.5);background:rgba(4,16,30,.92);color:#00ccff;font-family:var(--orb);font-size:.62rem;letter-spacing:.08em;cursor:pointer;box-shadow:0 4px 18px rgba(0,136,255,.35);backdrop-filter:blur(6px);}
+#share-fab:hover{background:rgba(0,136,255,.25);}
+#share-menu{position:fixed;right:16px;bottom:64px;z-index:901;display:none;flex-direction:column;min-width:230px;padding:.5rem;border-radius:12px;border:1px solid rgba(0,200,255,.35);background:rgba(4,16,30,.97);box-shadow:0 8px 28px rgba(0,0,0,.55);}
+#share-menu.open{display:flex;}
+#share-menu .sh-url{font-size:.62rem;color:var(--mu);word-break:break-all;padding:.3rem .5rem .5rem;border-bottom:1px solid rgba(255,255,255,.08);margin-bottom:.3rem;}
+#share-menu button{background:none;border:0;color:#e6f4ff;text-align:left;padding:.5rem .6rem;border-radius:8px;cursor:pointer;font-size:.8rem;}
+#share-menu button:hover,#share-menu button:focus{background:rgba(0,136,255,.25);outline:none;}
+#share-fab:focus-visible{outline:2px solid #00ffdd;outline-offset:2px;}
 </style>
 </head>
 <body>
 
 <!-- SPLASH — Quolab grande -->
+<button id="share-fab" type="button" onclick="OpenQ.toggleShare()" aria-label="Share" aria-haspopup="menu" aria-expanded="false">🔗 SHARE / COMPARTIR <span style="opacity:.6;font-size:.52rem">Alt+S</span></button>
+<div id="share-menu" role="menu" aria-label="Share">
+  <div class="sh-url" id="share-url"></div>
+  <button onclick="OpenQ.share('copy')">📋 Copy link / Copiar enlace</button>
+  <button onclick="OpenQ.share('native')">📤 Share… / Compartir…</button>
+  <button onclick="OpenQ.share('whatsapp')">💬 WhatsApp</button>
+  <button onclick="OpenQ.share('telegram')">✈️ Telegram</button>
+  <button onclick="OpenQ.share('linkedin')">💼 LinkedIn</button>
+  <button onclick="OpenQ.share('x')">𝕏 X / Twitter</button>
+  <button onclick="OpenQ.share('email')">✉️ Email</button>
+</div>
 <div id="splash">
   <div class="splash-inner">
     <div style="margin-bottom:1.5rem;">
@@ -1085,6 +1104,12 @@ class OpenQConfigSyncReader {
             e.source.postMessage({ type: 'OPENQ_USER_UPDATE', user: curUser }, '*');
         } catch(err) {}
     }
+    if (d.type === 'OPENQ_SET_ROUTE' && d.hash) {
+      // un módulo informa que está mostrando un notebook/app concreto: #projects/nb/ID, #app/ID...
+      _shareCtx = { hash: String(d.hash).replace(/^#/, ''), title: d.title || '' };
+      _setHash(_shareCtx.hash);
+      _updateShareFab();
+    }
     if (d.type === 'OPENQ_LOGOUT')       doLogout();
     if (d.type === 'OPENQ_OPEN_FOUNDER') openAuth('founder');
     if (d.type === 'OPENQ_SAVE') {
@@ -1190,6 +1215,12 @@ class OpenQConfigSyncReader {
       if (wrap) wrap.innerHTML = '';
   }
 
+  const _navStack = []; let _backing = false;
+  function goBack() {
+    const prev = _navStack.length ? _navStack.pop() : 'home';
+    _backing = true; try { nav(prev); } finally { _backing = false; }
+  }
+
   function nav(screen) {
     const s = screen.replace(/_/g, '-');
     const currentActive = document.querySelector('.screen.active');
@@ -1200,12 +1231,171 @@ class OpenQConfigSyncReader {
         clearModuleIframe('architect-pro');
     }
 
+    const _prev = currentId ? currentId.replace(/^screen-/, '') : null;
+    if (_prev && _prev !== s && !_backing) { _navStack.push(_prev); if (_navStack.length > 30) _navStack.shift(); }
     document.querySelectorAll('.screen').forEach(x => x.classList.remove('active'));
     const el = document.getElementById('screen-' + s);
     if (el) { el.classList.add('active'); }
     window.scrollTo(0, 0);
     if (s !== 'home') loadModule(s);
+    if (!_routing) { _shareCtx = null; _setHash(s === 'home' ? '' : s); }
+    _updateShareFab();
   }
+
+  // ===== SHARE =====
+  let _shareCtx = null; // {hash,title} enviado por un módulo (notebook/app específico)
+  function _currentShareUrl() {
+    return location.origin + location.pathname + location.search + (location.hash || '');
+  }
+  function _updateShareFab() {
+    const fab = document.getElementById('share-fab');
+    const menu = document.getElementById('share-menu');
+    if (!fab) return;
+    const a = document.querySelector('.screen.active');
+    const show = a && a.id !== 'screen-home';
+    fab.style.display = show ? 'flex' : 'none';
+    if (!show && menu) menu.classList.remove('open');
+  }
+  function toggleShare(forceClose) {
+    const menu = document.getElementById('share-menu');
+    const fab = document.getElementById('share-fab');
+    document.getElementById('share-url').textContent = _currentShareUrl();
+    const open = forceClose === true ? false : !menu.classList.contains('open');
+    menu.classList.toggle('open', open);
+    fab.setAttribute('aria-expanded', open ? 'true' : 'false');
+    if (open) { const b = menu.querySelector('button'); if (b) b.focus(); }
+    else if (forceClose === true && document.activeElement && menu.contains(document.activeElement)) fab.focus();
+  }
+
+  // ===== TECLADO (PC) =====
+  // Registro simple de atajos: más adelante se añaden aquí con OpenQ.addShortcut(...)
+  const _shortcuts = [];
+  function addShortcut(combo, fn, desc) { _shortcuts.push({ combo: combo.toLowerCase(), fn, desc }); }
+  function _combo(e) {
+    const k = e.key.length === 1 ? e.key.toLowerCase() : e.key.toLowerCase();
+    return (e.ctrlKey || e.metaKey ? 'ctrl+' : '') + (e.altKey ? 'alt+' : '') + (e.shiftKey && e.key.length > 1 ? 'shift+' : '') + k;
+  }
+  function _typing(e) {
+    const t = e.target; if (!t) return false;
+    const tag = (t.tagName || '').toLowerCase();
+    return tag === 'input' || tag === 'textarea' || tag === 'select' || t.isContentEditable || (t.closest && t.closest('.cm-editor'));
+  }
+  document.addEventListener('keydown', e => {
+    const menu = document.getElementById('share-menu');
+    const menuOpen = menu && menu.classList.contains('open');
+    if (menuOpen) {
+      const items = Array.from(menu.querySelectorAll('button'));
+      const i = items.indexOf(document.activeElement);
+      const go = n => { items[(n + items.length) % items.length].focus(); };
+      if (e.key === 'Escape') { e.preventDefault(); toggleShare(true); return; }             // Esc: cerrar / atrás
+      if (e.key === 'ArrowDown' || e.key === 'ArrowRight') { e.preventDefault(); go(i + 1); return; }
+      if (e.key === 'ArrowUp' || e.key === 'ArrowLeft')    { e.preventDefault(); go(i - 1); return; }
+      if (e.key === ' ' || e.key === 'Spacebar') { e.preventDefault(); go(i + 1); return; }  // Espacio: cambiar de opción
+      if (e.key === 'Home') { e.preventDefault(); go(0); return; }
+      if (e.key === 'End')  { e.preventDefault(); go(items.length - 1); return; }
+      if (e.key === 'Tab')  { toggleShare(true); return; }
+      if (e.key === 'Enter') { e.preventDefault(); if (i >= 0) items[i].click(); else go(0); return; } // Enter: ejecutar (como clic)
+      return;
+    }
+    // Esc con modal de login abierto: cerrarlo
+    const am = document.getElementById('auth-modal');
+    if (e.key === 'Escape' && am && am.classList.contains('open')) { e.preventDefault(); closeAuth(); return; }
+    if (_typing(e)) return;
+    const c = _combo(e);
+    // Atajos globales de base: Esc atrás, Alt+H inicio, Alt+S compartir
+    if (c === 'escape') {
+      const a = document.querySelector('.screen.active');
+      if (a && a.id !== 'screen-home') { e.preventDefault(); goBack(); }
+      return;
+    }
+    if (c === 'alt+h') { e.preventDefault(); nav('home'); return; }
+    if (c === 'alt+s' || c === 'alt+c') {
+      const a = document.querySelector('.screen.active');
+      if (a && a.id !== 'screen-home') { e.preventDefault(); toggleShare(); }
+      return;
+    }
+    for (const sc of _shortcuts) if (sc.combo === c) { e.preventDefault(); sc.fn(e); return; }
+  });
+  // clic dentro de un módulo (iframe): el padre no recibe 'click', pero sí 'blur'
+  window.addEventListener('blur', () => setTimeout(() => {
+    const m = document.getElementById('share-menu');
+    if (m && m.classList.contains('open') && document.activeElement && document.activeElement.tagName === 'IFRAME') toggleShare(true);
+  }, 0));
+  document.addEventListener('click', e => {
+    const menu = document.getElementById('share-menu');
+    if (menu && menu.classList.contains('open') && !menu.contains(e.target) && e.target.id !== 'share-fab') toggleShare(true);
+  });
+  async function share(how) {
+    const url = _currentShareUrl();
+    const title = (_shareCtx && _shareCtx.title) || document.title || 'Quolab';
+    const u = encodeURIComponent(url), t = encodeURIComponent(title);
+    if (how === 'copy') {
+      try { await navigator.clipboard.writeText(url); }
+      catch (e) {
+        const ta = document.createElement('textarea'); ta.value = url;
+        document.body.appendChild(ta); ta.select();
+        try { document.execCommand('copy'); } catch (e2) {}
+        ta.remove();
+      }
+      notify('✅ Link copied / Enlace copiado');
+    } else if (how === 'native') {
+      if (navigator.share) { try { await navigator.share({ title, url }); } catch (e) {} }
+      else { await share('copy'); }
+    } else {
+      const links = {
+        whatsapp: 'https://wa.me/?text=' + t + '%20' + u,
+        telegram: 'https://t.me/share/url?url=' + u + '&text=' + t,
+        linkedin: 'https://www.linkedin.com/sharing/share-offsite/?url=' + u,
+        x: 'https://twitter.com/intent/tweet?url=' + u + '&text=' + t,
+        email: 'mailto:?subject=' + t + '&body=' + u
+      };
+      if (links[how]) window.open(links[how], '_blank', 'noopener');
+    }
+    toggleShare(true);
+  }
+
+  // ===== DEEP LINKS (#screen, #projects/nb/ID, #app/ID) =====
+  let _routing = false;
+  function _setHash(h) {
+    try {
+      const url = location.pathname + location.search + (h ? '#' + h : '');
+      history.replaceState(null, '', url);
+    } catch (e) {}
+  }
+  function _sendToModule(screen, msg) {
+    let tries = 0;
+    const t = setInterval(() => {
+      tries++;
+      const f = iframes[screen];
+      if (f && f.contentWindow && f.contentDocument && f.contentDocument.readyState === 'complete') {
+        // pequeña espera para que el módulo registre su listener
+        setTimeout(() => { try { f.contentWindow.postMessage(msg, '*'); } catch (e) {} }, 600);
+        clearInterval(t);
+      } else if (tries > 60) clearInterval(t);
+    }, 250);
+  }
+  function routeFromHash() {
+    const raw = decodeURIComponent((location.hash || '').replace(/^#\/?/, '')).trim();
+    if (!raw) return;
+    const parts = raw.split('/').filter(Boolean);
+    const head = parts[0].toLowerCase().replace(/_/g, '-');
+    const alias = { notebook: 'architect-pro', 'quantum-notebook': 'architect-pro',
+                    puzzle: 'quantum-puzzle', apps: 'projects', app: 'projects' };
+    let screen = alias[head] || head;
+    if (!MODULES[screen] && screen !== 'home') return;
+    _routing = true;
+    try { nav(screen); } finally { _routing = false; }
+    // #projects/nb/ID  |  #app/ID  |  #notebook/ID
+    let kind = null, id = null;
+    if (head === 'app' && parts[1]) { kind = 'app'; id = parts[1]; }
+    else if (head === 'projects' && parts[1] && parts[2]) { kind = parts[1].toLowerCase(); id = parts[2]; }
+    else if ((head === 'notebook' || head === 'quantum-notebook') && parts[1]) { kind = 'nb'; id = parts[1]; }
+    if (kind && id) {
+      const target = (head === 'notebook' || head === 'quantum-notebook') ? 'architect-pro' : 'projects';
+      _sendToModule(target, { type: 'OPENQ_DEEPLINK', kind: kind === 'notebook' ? 'nb' : kind, id });
+    }
+  }
+  window.addEventListener('hashchange', routeFromHash);
 
   function loadModule(screen) {
     if (iframes[screen]) return;
@@ -1699,6 +1889,8 @@ class OpenQConfigSyncReader {
         checkEngine();
     });
     updateUI();
+    routeFromHash();
+    _updateShareFab();
 
     document.getElementById('auth-modal').addEventListener('click', e => {
       if (e.target === document.getElementById('auth-modal')) closeAuth();
@@ -1733,7 +1925,7 @@ class OpenQConfigSyncReader {
   }
 
   return { 
-    nav, openAuth, closeAuth, doLogin, doRegister, doFounder, doLogout,
+    nav, toggleShare, share, addShortcut, openAuth, closeAuth, doLogin, doRegister, doFounder, doLogout,
     toggleAI, sendAI, notify, init, getUser:()=>curUser,
     _refreshUI: refreshUIFromConfig,
     _broadcastConfig: broadcastConfigToModules
