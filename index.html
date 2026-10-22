@@ -242,6 +242,8 @@ body::before{content:'';position:fixed;inset:0;
 #share-menu .sh-url{font-size:.62rem;color:var(--mu);word-break:break-all;padding:.3rem .5rem .5rem;border-bottom:1px solid rgba(255,255,255,.08);margin-bottom:.3rem;}
 #share-menu button{background:none;border:0;color:#e6f4ff;text-align:left;padding:.5rem .6rem;border-radius:8px;cursor:pointer;font-size:.8rem;}
 #share-menu button:hover,#share-menu button:focus{background:rgba(0,136,255,.25);outline:none;}
+#openq-header .hbtn:focus-visible,.logo:focus-visible,.menu-card:focus{outline:2px solid #00ffdd;outline-offset:2px;}
+.menu-card:focus{transform:translateY(-5px);border-color:rgba(0,200,255,.7);}
 #share-fab:focus-visible{outline:2px solid #00ffdd;outline-offset:2px;}
 </style>
 </head>
@@ -1018,7 +1020,7 @@ class OpenQConfigSyncReader {
     if (d.type === 'OPENQ_OPEN_NB_EXPOSITION') {
       nav('architect-pro');
       { const nid = d.nb && (d.nb.id || d.nb.repo_id || d.nb.nbId) || d.id || d.nbId;
-        if (nid) { _shareCtx = { hash: 'notebook/' + nid, title: (d.nb && (d.nb.title || d.nb.name)) || '' }; _setHash(_shareCtx.hash); _updateShareFab(); } }
+        if (nid) { const ttl = (d.nb && (d.nb.title || d.nb.name)) || ''; _shareCtx = { hash: _withSlug('notebook/' + nid, ttl), title: ttl }; _setHash(_shareCtx.hash); _updateShareFab(); try { document.title = (ttl ? ttl + ' · ' : '') + 'Quolab'; } catch (e) {} } }
       const sendExpo = () => {
         const nbFrame = iframes['architect-pro'];
         if (nbFrame && nbFrame.contentWindow && nbFrame.contentDocument &&
@@ -1108,8 +1110,9 @@ class OpenQConfigSyncReader {
     }
     if (d.type === 'OPENQ_SET_ROUTE' && d.hash) {
       // un módulo informa que está mostrando un notebook/app concreto: #projects/nb/ID, #app/ID...
-      _shareCtx = { hash: String(d.hash).replace(/^#/, ''), title: d.title || '' };
+      _shareCtx = { hash: _withSlug(String(d.hash).replace(/^#/, ''), d.title || ''), title: d.title || '' };
       _setHash(_shareCtx.hash);
+      try { document.title = (d.title ? d.title + ' · ' : '') + 'Quolab'; } catch (e) {}
       _updateShareFab();
     }
     if (d.type === 'OPENQ_LOGOUT')       doLogout();
@@ -1240,7 +1243,7 @@ class OpenQConfigSyncReader {
     if (el) { el.classList.add('active'); }
     window.scrollTo(0, 0);
     if (s !== 'home') loadModule(s);
-    if (!_routing) { _shareCtx = null; _setHash(s === 'home' ? '' : s); }
+    if (!_routing) { _shareCtx = null; _setHash(s === 'home' ? '' : s); try { document.title = 'Quolab'; } catch (e) {} }
     _updateShareFab();
   }
 
@@ -1282,6 +1285,76 @@ class OpenQConfigSyncReader {
     const tag = (t.tagName || '').toLowerCase();
     return tag === 'input' || tag === 'textarea' || tag === 'select' || t.isContentEditable || (t.closest && t.closest('.cm-editor'));
   }
+  // ----- navegación espacial con flechas por botones/tarjetas (ecosistema y herramientas) -----
+  const _CAND = 'a[href],button,select,input:not([type=hidden]),textarea,[tabindex],[role=button],[onclick]';
+  function _makeFocusable(doc) {
+    try {
+      doc.querySelectorAll('[onclick]').forEach(el => {
+        if (!el.hasAttribute('tabindex') && !/^(A|BUTTON|INPUT|SELECT|TEXTAREA|SUMMARY)$/.test(el.tagName)) {
+          el.setAttribute('tabindex', '0'); if (!el.hasAttribute('role')) el.setAttribute('role', 'button');
+        }
+      });
+      if (!doc.getElementById('openq-kbd-style')) {
+        const st = doc.createElement('style'); st.id = 'openq-kbd-style';
+        st.textContent = '[tabindex]:focus-visible,a:focus-visible,button:focus-visible,[role=button]:focus-visible{outline:2px solid #00ffdd !important;outline-offset:2px !important;}';
+        (doc.head || doc.documentElement).appendChild(st);
+      }
+    } catch (e) {}
+  }
+  function _isVisible(el) {
+    const w = el.ownerDocument.defaultView; if (!w) return false;
+    const r = el.getBoundingClientRect(); if (r.width < 2 || r.height < 2) return false;
+    if (r.bottom < 0 || r.right < 0 || r.top > w.innerHeight || r.left > w.innerWidth) return false;
+    const cs = w.getComputedStyle(el); return cs.visibility !== 'hidden' && cs.display !== 'none';
+  }
+  function _cands(doc) {
+    let root = doc;
+    if (doc === document) {
+      const am = document.getElementById('auth-modal');
+      if (am && am.classList.contains('open')) root = am;
+    }
+    return Array.from(root.querySelectorAll(_CAND)).filter(el =>
+      !el.disabled && el.tabIndex >= 0 && _isVisible(el) && !el.closest('#share-menu') && !el.closest('#splash'));
+  }
+  function _spatial(doc, key, cur) {
+    const list = _cands(doc); if (!list.length) return false;
+    if (!cur || cur === doc.body || !list.includes(cur)) {
+      // sin foco previo: primero lo de la pantalla activa (tarjetas del ecosistema), no el encabezado
+      const inScreen = doc === document ? list.filter(el => el.closest('.screen.active')) : [];
+      (inScreen[0] || list[0]).focus(); return true;
+    }
+    const r = cur.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    let best = null, bs = Infinity;
+    list.forEach(el => {
+      if (el === cur) return;
+      const q = el.getBoundingClientRect(), x = q.left + q.width / 2, y = q.top + q.height / 2;
+      const dx = x - cx, dy = y - cy; let ok, sc;
+      if (key === 'ArrowRight') { ok = dx > 4;  sc = dx + 2.5 * Math.abs(dy); }
+      else if (key === 'ArrowLeft') { ok = dx < -4; sc = -dx + 2.5 * Math.abs(dy); }
+      else if (key === 'ArrowDown') { ok = dy > 4;  sc = dy + 2.5 * Math.abs(dx); }
+      else { ok = dy < -4; sc = -dy + 2.5 * Math.abs(dx); }
+      if (ok && sc < bs) { bs = sc; best = el; }
+    });
+    if (best) { best.focus(); return true; }
+    return false;
+  }
+  function _handleNavKeys(e, fromFrame) {
+    const doc = e.target && e.target.ownerDocument ? e.target.ownerDocument : document;
+    const cur = doc.activeElement;
+    const arrows = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
+    if (arrows.includes(e.key) && !e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
+      if (cur && cur.tagName === 'IFRAME') return false;           // el foco está dentro de un módulo: lo gestiona su documento
+      if (fromFrame && !(cur && cur !== doc.body && cur.matches && cur.matches(_CAND))) return false; // en módulos solo si ya hay un botón enfocado (Tab)
+      if (cur && /^(SELECT)$/.test(cur.tagName)) return false;
+      return _spatial(doc, e.key, cur) ? (e.preventDefault(), true) : false;
+    }
+    // Enter / Espacio sobre tarjetas o elementos con onclick que no son botones nativos
+    if ((e.key === 'Enter' || e.key === ' ') && cur && cur.getAttribute && cur.hasAttribute('onclick') &&
+        !/^(A|BUTTON|INPUT|SELECT|TEXTAREA|SUMMARY)$/.test(cur.tagName)) {
+      e.preventDefault(); cur.click(); return true;
+    }
+    return false;
+  }
   function onKey(e, fromFrame) {
     const menu = document.getElementById('share-menu');
     const menuOpen = menu && menu.classList.contains('open');
@@ -1303,6 +1376,7 @@ class OpenQConfigSyncReader {
     const am = document.getElementById('auth-modal');
     if (e.key === 'Escape' && am && am.classList.contains('open')) { e.preventDefault(); closeAuth(); return; }
     if (_typing(e) && !e.altKey) return;
+    if (!e.altKey && _handleNavKeys(e, fromFrame)) return;
     const c = _combo(e);
     // Atajos globales de base: Esc atrás, Alt+H inicio, Alt+S compartir
     if (c === 'escape') {
@@ -1320,18 +1394,26 @@ class OpenQConfigSyncReader {
   }
   document.addEventListener('keydown', e => onKey(e, false));
   // reescaneo periódico: módulos/apps que crean iframes o recargan su documento después
-  setInterval(() => { document.querySelectorAll('iframe').forEach(f => { try { attachKeys(f); } catch (e) {} }); }, 1500);
+  setInterval(() => {
+    _makeFocusable(document);
+    document.querySelectorAll('iframe').forEach(f => { try { attachKeys(f); } catch (e) {} });
+  }, 1500);
   // Teclas con el cursor DENTRO de un módulo (iframe del mismo origen): se escuchan también allí
   function attachKeys(iframe) {
     try {
       const d = iframe.contentDocument; if (!d) return;
       d.querySelectorAll('iframe').forEach(f => { try { attachKeys(f); } catch (e) {} });  // iframes anidados (Quantum Apps, etc.)
+      _makeFocusable(d);
       if (d.__openqKeys) return;
       d.__openqKeys = true;
       d.addEventListener('keydown', e => {
         if (e.defaultPrevented) return;
         // Esc dentro del módulo: solo si no hay nada enfocado (para no pisar sus propios modales)
-        if (e.key === 'Escape' && d.activeElement && d.activeElement !== d.body) return;
+        if (e.key === 'Escape') {
+          const ae = d.activeElement;
+          if (ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName) || (ae && ae.isContentEditable)) return;
+          if (d.querySelector('.modal-ov.open,.modal.open,.modal-overlay.open,.overlay.open,dialog[open],[role=dialog]')) return;
+        }
         onKey(e, true);
       });
     } catch (err) { /* iframe de otro origen: no accesible */ }
@@ -1376,6 +1458,17 @@ class OpenQConfigSyncReader {
 
   // ===== DEEP LINKS (#screen, #projects/nb/ID, #app/ID) =====
   let _routing = false;
+  // nombre legible en la URL: notebook/ID/mi-notebook-cuantico  (la herramienta solo usa el ID)
+  function _slug(t) {
+    return String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60);
+  }
+  function _withSlug(h, title) {
+    const parts = h.split('/');
+    const sl = _slug(title);
+    if (/^(notebook|app)$/.test(parts[0]) && parts[1] && sl) return parts[0] + '/' + parts[1] + '/' + sl;
+    return h;
+  }
   function _setHash(h) {
     try {
       const url = location.pathname + location.search + (h ? '#' + h : '');
@@ -1593,7 +1686,7 @@ class OpenQConfigSyncReader {
       const cls = (c.locked && !isAdm) ? 'menu-card locked' : 'menu-card';
       const lock = (c.locked && !isAdm)
         ? `<div style="font-size:.6rem;color:var(--rd);margin-top:.4rem;">🔒 Requires admin account</div>` : '';
-      return `<div class="${cls}" ${click} style="animation-delay:${c.delay}s">
+      return `<div class="${cls}" ${click} tabindex="0" role="button" style="animation-delay:${c.delay}s">
         ${c.badge ? `<div class="card-badge ${c.badge}">${c.badgeTxt}</div>` : ''}
         <div class="card-icon-box">${c.icon}</div>
         <div class="card-title">${c.title}</div>

@@ -261,6 +261,7 @@ async function execProj(id) {
       const row = await RepoSync.getContent(id);
       const cells = Array.isArray(row.content) ? row.content : [];
       const nb = {
+        id: id,
         title: row.title || 'Untitled',
         name:  row.title || 'Untitled',
         desc:  row.description || '',
