@@ -1118,7 +1118,7 @@ class OpenQConfigSyncReader {
             e.source.postMessage({ type: 'OPENQ_USER_UPDATE', user: curUser }, '*');
         } catch(err) {}
     }
-    if (d.type === 'OPENQ_SET_ROUTE' && d.hash) {
+    if (d.type === 'OPENQ_SET_ROUTE' && d.hash && !NO_LINK.some(x => String(d.hash).replace(/^#/, '').split('/')[0] === x)) {
       // un módulo informa que está mostrando un notebook/app concreto: #projects/nb/ID, #app/ID...
       _shareCtx = { hash: _withSlug(String(d.hash).replace(/^#/, ''), d.title || ''), title: d.title || '' };
       _setHash(_shareCtx.hash);
@@ -1253,7 +1253,7 @@ class OpenQConfigSyncReader {
     if (el) { el.classList.add('active'); }
     window.scrollTo(0, 0);
     if (s !== 'home') loadModule(s);
-    if (!_routing) { _shareCtx = null; _setHash(s === 'home' ? '' : s); try { document.title = 'Quolab'; } catch (e) {} }
+    if (!_routing) { _shareCtx = null; _setHash((s === 'home' || NO_LINK.includes(s)) ? '' : s); try { document.title = 'Quolab'; } catch (e) {} }
     _updateShareFab();
   }
 
@@ -1275,11 +1275,13 @@ class OpenQConfigSyncReader {
     const menu = document.getElementById('share-menu');
     if (!fab) return;
     const a = document.querySelector('.screen.active');
-    const show = a && a.id !== 'screen-home';
+    const show = a && a.id !== 'screen-home' && !NO_LINK.includes(a.id.replace(/^screen-/, ''));
     fab.style.display = show ? 'flex' : 'none';
     if (!show && menu) menu.classList.remove('open');
   }
   function toggleShare(forceClose) {
+    const cur = document.querySelector('.screen.active');
+    if (forceClose !== true && cur && NO_LINK.includes(cur.id.replace(/^screen-/, ''))) return;   // sin enlace en founder/account
     const menu = document.getElementById('share-menu');
     const fab = document.getElementById('share-fab');
     document.getElementById('share-url').textContent = _currentShareUrl();
@@ -1493,6 +1495,7 @@ class OpenQConfigSyncReader {
 
   // ===== DEEP LINKS (#screen, #projects/nb/ID, #app/ID) =====
   let _routing = false;
+  const NO_LINK = ['founder', 'account'];   // paneles privados: sin enlace directo ni botón de compartir
   // nombre legible en la URL: notebook/ID/mi-notebook-cuantico  (la herramienta solo usa el ID)
   function _slug(t) {
     return String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
@@ -1531,6 +1534,7 @@ class OpenQConfigSyncReader {
                     puzzle: 'quantum-puzzle', apps: 'quantum-puzzle', app: 'quantum-puzzle' };
     let screen = alias[head] || head;
     if (!MODULES[screen] && screen !== 'home') return;
+    if (NO_LINK.includes(screen)) { _setHash(''); return; }   // founder / account: nunca por enlace
     _routing = true;
     try { nav(screen); } finally { _routing = false; }
     // #projects/nb/ID  |  #app/ID  |  #notebook/ID
@@ -1721,8 +1725,7 @@ class OpenQConfigSyncReader {
       const cls = (c.locked && !isAdm) ? 'menu-card locked' : 'menu-card';
       const lock = (c.locked && !isAdm)
         ? `<div style="font-size:.6rem;color:var(--rd);margin-top:.4rem;">🔒 Requires admin account</div>` : '';
-      const shareBtn = (c.screen && !(c.locked && !isAdm))
-        ? `<button class="card-share" type="button" tabindex="-1" title="Share link / Compartir enlace (S)" onclick="event.stopPropagation();OpenQ.shareScreen('${c.screen}','${String(c.title).replace(/[^\w ]/g,'').trim()}')">🔗 SHARE</button>` : '';
+      const shareBtn = '';   // sin botón de compartir en las tarjetas: el enlace se obtiene dentro de cada herramienta
       return `<div class="${cls}" ${click} tabindex="0" role="button" style="animation-delay:${c.delay}s">${shareBtn}
         ${c.badge ? `<div class="card-badge ${c.badge}">${c.badgeTxt}</div>` : ''}
         <div class="card-icon-box">${c.icon}</div>
@@ -1887,8 +1890,14 @@ class OpenQConfigSyncReader {
       } catch(e) {
         document.getElementById('ai-loading').classList.remove('show');
         console.error('QuantumChat error:', e);
-        const why = (e && e.message) ? e.message : String(e);
-        const errMsg = 'Connection error with the assistant: ' + why + (/unsupported provider/i.test(why) ? ' — choose a supported provider in Configuration.' : '');
+        let why = (e && e.message) ? e.message : String(e);
+        if (/failed to fetch|networkerror|load failed|network request failed/i.test(why))
+          why = 'cannot reach ' + (aiCfg.provider || 'the AI provider') + ' (network blocked, CORS or VPN needed). Try another provider (Mistral / Groq / DeepSeek).';
+        else if (/timeout|aborted/i.test(why)) why = 'timeout — ' + (aiCfg.provider || 'the provider') + ' did not answer in 20 s.';
+        const k = aiCfg.key ? ('…' + String(aiCfg.key).slice(-4)) : 'NO KEY';
+        const errMsg = 'Connection error with the assistant: ' + why +
+          (/unsupported provider/i.test(why) ? ' — choose a supported provider in Configuration.' : '') +
+          '\n\n`[provider: ' + (aiCfg.provider || 'none') + ' · model: ' + (aiCfg.model || 'default') + ' · key: ' + k + ']`';
         addAIMsg(errMsg, 'bot');
         reply = errMsg;
       }
@@ -2111,7 +2120,7 @@ class OpenQConfigSyncReader {
 
 })();
 
-window.OPENQ_BUILD = '2026-10-22-k3 (teclado + enlaces con nombre)';
+window.OPENQ_BUILD = '2026-10-23-ai3 (sin share en tarjetas; founder/account sin enlace)';
 console.log('%cQuolab build ' + window.OPENQ_BUILD, 'color:#00ffdd');
 window.OpenQ = OpenQ;
 document.addEventListener('DOMContentLoaded', OpenQ.init);
