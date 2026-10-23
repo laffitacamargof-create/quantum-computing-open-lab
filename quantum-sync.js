@@ -164,17 +164,56 @@ class QuantumSync {
         return await response.json();
     }
 
+    // Borrado verificado: Supabase responde 204 "OK" aunque la política (RLS) impida borrar y no se borre NADA.
+    // Con Prefer: return=representation sabemos cuántas filas se borraron realmente.
     async _supabaseDelete(table, id) {
-        const response = await fetch(`${this.SUPABASE_URL}/rest/v1/${table}?id=eq.${id}`, {
+        const response = await fetch(`${this.SUPABASE_URL}/rest/v1/${table}?id=eq.${encodeURIComponent(id)}`, {
             method: 'DELETE',
             headers: {
                 'apikey': this.SUPABASE_ANON_KEY,
-                'Authorization': `Bearer ${this.SUPABASE_ANON_KEY}`
+                'Authorization': `Bearer ${this.SUPABASE_ANON_KEY}`,
+                'Prefer': 'return=representation'
             }
         });
-        
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        if (!response.ok) {
+            const t = await response.text();
+            throw new Error(`HTTP ${response.status}: ${t}`);
+        }
+        let rows = [];
+        try { rows = await response.json(); } catch (e) { rows = []; }
+        if (!Array.isArray(rows) || rows.length === 0) {
+            throw new Error('Supabase no borró nada: la tabla bloquea el DELETE (RLS) o el id no existe. ' +
+                            'Instala la función SQL quantum_delete_app (ver comentario al final de quantum-sync.js) y guarda la llave de fundador.');
+        }
         return true;
+    }
+
+    // Borrado como fundador: usa la función SQL protegida por la llave de fundador (la misma de Proyectos).
+    // Si la función no existe aún, recurre al DELETE directo (que fallará con un mensaje claro si hay RLS).
+    async _adminDelete(tableKey, table, id) {
+        let key = '';
+        try { key = localStorage.getItem('qcol_repo_founder_key') || ''; } catch (e) {}
+        if (key) {
+            const r = await fetch(`${this.SUPABASE_URL}/rest/v1/rpc/quantum_delete_app`, {
+                method: 'POST',
+                headers: {
+                    'apikey': this.SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${this.SUPABASE_ANON_KEY}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ p_table: tableKey, p_id: String(id), p_key: key })
+            });
+            if (r.ok) {
+                const ok = await r.json().catch(() => true);
+                if (ok === false) throw new Error('La app no existe o ya estaba borrada');
+                return true;
+            }
+            const txt = await r.text();
+            if (/forbidden/i.test(txt)) throw new Error('Llave de fundador incorrecta (Proyectos → llave de fundador)');
+            // función no instalada (404 / PGRST202 / "Could not find the function"): probar DELETE directo
+            if (!(r.status === 404 || /PGRST202|could not find the function/i.test(txt))) throw new Error(`HTTP ${r.status}: ${txt}`);
+        }
+        return this._supabaseDelete(table, id);
     }
 
     async syncAll(force = false) {
@@ -314,7 +353,7 @@ class QuantumSync {
             });
             
             await this._supabaseInsert(this.TABLES.PUBLISHED_APPS, publishedApp);
-            await this._supabaseDelete(this.TABLES.PENDING_APPS, appId);
+            await this._adminDelete('pending', this.TABLES.PENDING_APPS, appId);
             await this.syncAll(true);
             
             if (this.onAppPublished) this.onAppPublished(publishedApp);
@@ -328,7 +367,7 @@ class QuantumSync {
 
     async rejectApp(appId) {
         try {
-            await this._supabaseDelete(this.TABLES.PENDING_APPS, appId);
+            await this._adminDelete('pending', this.TABLES.PENDING_APPS, appId);
             await this.syncPendingApps();
             if (this.onAppRejected) this.onAppRejected(appId);
             console.log(`🗑️ App rejected`);
@@ -341,7 +380,7 @@ class QuantumSync {
 
     async deletePublishedApp(appId) {
         try {
-            await this._supabaseDelete(this.TABLES.PUBLISHED_APPS, appId);
+            await this._adminDelete('published', this.TABLES.PUBLISHED_APPS, appId);
             await this.syncPublishedApps();
             return true;
         } catch (error) {
@@ -376,3 +415,20 @@ class QuantumSync {
 }
 
 export default QuantumSync;
+
+/* ============================================================================
+   SQL PARA SUPABASE (ejecutar UNA vez en SQL Editor) — permite borrar apps solo con la llave de fundador
+   ----------------------------------------------------------------------------
+   create or replace function public.quantum_delete_app(p_table text, p_id text, p_key text)
+   returns boolean language plpgsql security definer set search_path = public as $$
+   declare n int;
+   begin
+     if not public.repo_is_founder(p_key) then raise exception 'forbidden'; end if;
+     if p_table = 'published' then delete from public.quantum_published_apps where id::text = p_id;
+     elsif p_table = 'pending' then delete from public.quantum_pending_apps where id::text = p_id;
+     else raise exception 'bad table'; end if;
+     get diagnostics n = row_count;
+     return n > 0;
+   end $$;
+   grant execute on function public.quantum_delete_app(text, text, text) to anon;
+   ============================================================================ */
