@@ -1384,6 +1384,31 @@ window.addEventListener('load', async () => {
     }
 });
 
+// ===== COMPATIBILIDAD CON EL NÚCLEO (index.html usa el prefijo OPENQ_, este módulo QCOL_) =====
+// Sin esto el Puzzle nunca se entera de que el usuario es fundador/admin: no aparece la barra de admin
+// y los botones PENDING / PUBLISH / REJECT quedan bloqueados.
+window.addEventListener('message', function _openqCompat(ev) {
+    const d = ev.data;
+    if (!d || typeof d.type !== 'string') return;
+    if (d.type === 'OPENQ_USER_UPDATE' || d.type === 'OPENQ_USER') d.type = 'QCOL_USER_UPDATE';
+    else if (d.type === 'OPENQ_COMPILER_URL') d.type = 'QCOL_COMPILER_URL';
+    else if (d.type === 'OPENQ_CONFIG' && d.user !== undefined) {
+        // la configuración también trae al usuario
+        window.postMessage({ type: 'QCOL_USER_UPDATE', user: d.user }, '*');
+    }
+}, true);
+// pedir al núcleo el usuario actual al arrancar (y reintentar por si el padre aún no está listo)
+(function _openqAskUser() {
+    let n = 0;
+    const ask = () => {
+        try { if (window.parent !== window) { parent.postMessage({ type: 'OPENQ_GET_USER' }, '*'); parent.postMessage({ type: 'OPENQ_GET_CONFIG' }, '*'); } } catch (e) {}
+        if (++n < 6 && !currentUser) setTimeout(ask, 800);
+    };
+    ask();
+})();
+// URL del compilador: el núcleo la guarda como openq_colab_url
+try { const u = localStorage.getItem('openq_colab_url'); if (u && !localStorage.getItem('qcol_colab_url')) localStorage.setItem('qcol_colab_url', u); } catch (e) {}
+
 // ===== DEEP LINK: #app/ID -> abre la Quantum App publicada ya ejecutándose =====
 window.addEventListener('message', function _openqDeepLinkApp(ev) {
     const d = ev.data;

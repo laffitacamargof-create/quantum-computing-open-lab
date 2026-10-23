@@ -682,13 +682,13 @@ function buildPalette() {
   if (!container) return;
   let html = '';
   html += '<div class="pal-sec"><div class="pal-sec-lbl">1 QUBIT</div><div class="pal-grid">';
-  GATES['1q'].forEach(g => { html += `<div class="pal-gate" draggable="true" data-gate="${g.id}" style="background:${g.bg};box-shadow:0 0 6px ${g.glow}" ondragstart="onDragStartPalette(event)" ondragend="onDragEndPalette()"><span class="pal-gate-sym">${g.sym}</span><span class="pal-gate-lbl">${g.id}</span></div>`; });
+  GATES['1q'].forEach(g => { html += `<div class="pal-gate" tabindex="0" role="button" aria-label="Gate ${g.id}: Enter to select" draggable="true" data-gate="${g.id}" style="background:${g.bg};box-shadow:0 0 6px ${g.glow}" ondragstart="onDragStartPalette(event)" ondragend="onDragEndPalette()"><span class="pal-gate-sym">${g.sym}</span><span class="pal-gate-lbl">${g.id}</span></div>`; });
   html += '</div></div><div class="pal-sec"><div class="pal-sec-lbl">2 QUBITS</div><div class="pal-grid">';
-  GATES['2q'].forEach(g => { html += `<div class="pal-gate" draggable="true" data-gate="${g.id}" style="background:${g.bg};box-shadow:0 0 6px ${g.glow}" ondragstart="onDragStartPalette(event)" ondragend="onDragEndPalette()"><span class="pal-gate-sym">${g.sym}</span><span class="pal-gate-lbl">${g.id}</span></div>`; });
+  GATES['2q'].forEach(g => { html += `<div class="pal-gate" tabindex="0" role="button" aria-label="Gate ${g.id}: Enter to select" draggable="true" data-gate="${g.id}" style="background:${g.bg};box-shadow:0 0 6px ${g.glow}" ondragstart="onDragStartPalette(event)" ondragend="onDragEndPalette()"><span class="pal-gate-sym">${g.sym}</span><span class="pal-gate-lbl">${g.id}</span></div>`; });
   html += '</div></div><div class="pal-sec"><div class="pal-sec-lbl">3 QUBITS</div><div class="pal-grid">';
-  GATES['3q'].forEach(g => { html += `<div class="pal-gate" draggable="true" data-gate="${g.id}" style="background:${g.bg};box-shadow:0 0 6px ${g.glow}" ondragstart="onDragStartPalette(event)" ondragend="onDragEndPalette()"><span class="pal-gate-sym">${g.sym}</span><span class="pal-gate-lbl">${g.id}</span></div>`; });
+  GATES['3q'].forEach(g => { html += `<div class="pal-gate" tabindex="0" role="button" aria-label="Gate ${g.id}: Enter to select" draggable="true" data-gate="${g.id}" style="background:${g.bg};box-shadow:0 0 6px ${g.glow}" ondragstart="onDragStartPalette(event)" ondragend="onDragEndPalette()"><span class="pal-gate-sym">${g.sym}</span><span class="pal-gate-lbl">${g.id}</span></div>`; });
   html += '</div></div><div class="pal-sec"><div class="pal-sec-lbl">MEASUREMENT</div><div class="pal-grid">';
-  GATES['meas'].forEach(g => { html += `<div class="pal-gate" draggable="true" data-gate="${g.id}" style="background:${g.bg};box-shadow:0 0 6px ${g.glow}" ondragstart="onDragStartPalette(event)" ondragend="onDragEndPalette()"><span class="pal-gate-sym">${g.sym}</span><span class="pal-gate-lbl">${g.id}</span></div>`; });
+  GATES['meas'].forEach(g => { html += `<div class="pal-gate" tabindex="0" role="button" aria-label="Gate ${g.id}: Enter to select" draggable="true" data-gate="${g.id}" style="background:${g.bg};box-shadow:0 0 6px ${g.glow}" ondragstart="onDragStartPalette(event)" ondragend="onDragEndPalette()"><span class="pal-gate-sym">${g.sym}</span><span class="pal-gate-lbl">${g.id}</span></div>`; });
   html += '</div></div>';
   container.innerHTML = html;
 }
@@ -972,7 +972,58 @@ function renderCircuit() {
   });
   html += `</div>`;
   container.innerHTML = html;
+  kbdDecorate();
 }
+
+
+// ═══════════════════════════════════════════════════════════
+// MODO TECLADO — usar el circuito sin ratón
+//   Tab → puerta de la paleta · Enter/Espacio → seleccionarla
+//   ↑/↓ → elegir qubit · Enter/Espacio → colocarla (sigue seleccionada) · Esc → cancelar
+//   Tab hasta una puerta colocada · Delete/Backspace → quitarla
+// ═══════════════════════════════════════════════════════════
+let kbdGate = null, kbdQ = 0;
+function kbdHighlight() {
+  document.querySelectorAll('#circuit-canvas .q-wire').forEach((w, i) => w.classList.toggle('dh', kbdGate !== null && i === kbdQ));
+}
+function kbdDecorate() {
+  document.querySelectorAll('#circuit-canvas [onclick]').forEach(el => {
+    el.setAttribute('tabindex', '0'); el.setAttribute('role', 'button');
+    el.setAttribute('aria-label', 'Placed gate — Delete to remove');
+  });
+  kbdHighlight();
+}
+function kbdStart(gateId) {
+  kbdGate = gateId;
+  if (kbdQ >= circuit.qubits) kbdQ = circuit.qubits - 1;
+  if (kbdQ < 0) kbdQ = 0;
+  kbdHighlight();
+  notify(`⌨ ${gateId} selected · ↑↓ choose qubit (q[${kbdQ}]) · Enter place · Esc cancel`);
+}
+function kbdCancel() { if (kbdGate !== null) { kbdGate = null; kbdHighlight(); notify('⌨ Selection cancelled'); } }
+document.addEventListener('keydown', function (e) {
+  const t = e.target;
+  const typing = t && (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.isContentEditable || (t.closest && t.closest('.cm-editor,.CodeMirror')));
+  if (typing) return;
+  const stop = () => { e.preventDefault(); e.stopImmediatePropagation(); };
+  // seleccionar puerta de la paleta
+  const pal = t && t.closest && t.closest('.pal-gate');
+  if (pal && (e.key === 'Enter' || e.key === ' ') && kbdGate === null) { stop(); kbdStart(pal.dataset.gate); return; }
+  if (kbdGate !== null) {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      stop(); kbdQ = Math.min(Math.max(kbdQ + (e.key === 'ArrowDown' ? 1 : -1), 0), circuit.qubits - 1);
+      kbdHighlight(); notify(`⌨ ${kbdGate} → q[${kbdQ}] (Enter to place)`); return;
+    }
+    if (e.key === 'Enter' || e.key === ' ') { stop(); const g = kbdGate; placeGate(g, kbdQ); kbdHighlight(); return; }
+    if (e.key === 'Escape') { stop(); kbdCancel(); return; }
+    if (e.key === 'Tab') { kbdCancel(); return; }
+  }
+  // borrar una puerta colocada
+  if ((e.key === 'Delete' || e.key === 'Backspace') && t && t.closest && t.closest('#circuit-canvas') && t.hasAttribute && t.hasAttribute('onclick')) {
+    stop(); t.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+    setTimeout(() => { const f = document.querySelector('#circuit-canvas [tabindex="0"]'); if (f) f.focus(); }, 30);
+  }
+}, true);
 
 function updateCircuitInfo() {
   const _mCount = circuit.gates.filter(g => g.id === 'M').length;

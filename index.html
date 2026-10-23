@@ -244,6 +244,9 @@ body::before{content:'';position:fixed;inset:0;
 #share-menu button:hover,#share-menu button:focus{background:rgba(0,136,255,.25);outline:none;}
 #openq-header .hbtn:focus-visible,.logo:focus-visible,.menu-card:focus{outline:2px solid #00ffdd;outline-offset:2px;}
 .menu-card:focus{transform:translateY(-5px);border-color:rgba(0,200,255,.7);}
+.card-share{position:absolute;bottom:.7rem;right:.7rem;z-index:3;display:flex;align-items:center;gap:.3rem;padding:.32rem .6rem;border-radius:999px;border:1px solid rgba(0,200,255,.4);background:rgba(4,16,30,.85);color:#00ccff;font-family:var(--orb);font-size:.5rem;letter-spacing:.06em;cursor:pointer;opacity:.85;transition:all .2s;}
+.card-share:hover,.card-share:focus-visible{opacity:1;background:rgba(0,136,255,.3);border-color:#00ccff;outline:none;}
+.menu-card:hover .card-share,.menu-card:focus .card-share{opacity:1;}
 #share-fab:focus-visible{outline:2px solid #00ffdd;outline-offset:2px;}
 </style>
 </head>
@@ -1249,8 +1252,16 @@ class OpenQConfigSyncReader {
 
   // ===== SHARE =====
   let _shareCtx = null; // {hash,title} enviado por un módulo (notebook/app específico)
+  let _shareOverride = null;   // enlace de una tarjeta (sin entrar en la herramienta)
   function _currentShareUrl() {
+    if (_shareOverride) return _shareOverride.url;
     return location.origin + location.pathname + location.search + (location.hash || '');
+  }
+  function shareScreen(screen, title) {
+    _shareOverride = { url: location.origin + location.pathname + location.search + '#' + screen, title: title || screen };
+    const menu = document.getElementById('share-menu');
+    if (menu.classList.contains('open')) menu.classList.remove('open');
+    toggleShare();
   }
   function _updateShareFab() {
     const fab = document.getElementById('share-fab');
@@ -1267,6 +1278,7 @@ class OpenQConfigSyncReader {
     document.getElementById('share-url').textContent = _currentShareUrl();
     const open = forceClose === true ? false : !menu.classList.contains('open');
     menu.classList.toggle('open', open);
+    if (!open) _shareOverride = null;
     fab.setAttribute('aria-expanded', open ? 'true' : 'false');
     if (open) { const b = menu.querySelector('button'); if (b) b.focus(); }
     else if (forceClose === true && document.activeElement && menu.contains(document.activeElement)) fab.focus();
@@ -1306,7 +1318,7 @@ class OpenQConfigSyncReader {
   function _isVisible(el) {
     const w = el.ownerDocument.defaultView; if (!w) return false;
     const r = el.getBoundingClientRect(); if (r.width < 2 || r.height < 2) return false;
-    if (r.bottom < 0 || r.right < 0 || r.top > w.innerHeight || r.left > w.innerWidth) return false;
+    if (r.right < 0 || r.left > w.innerWidth) return false;   // fuera por los lados (p. ej. panel cerrado); por abajo/arriba se llega con scroll
     const cs = w.getComputedStyle(el); return cs.visibility !== 'hidden' && cs.display !== 'none';
   }
   function _cands(doc) {
@@ -1323,7 +1335,8 @@ class OpenQConfigSyncReader {
     if (!cur || cur === doc.body || !list.includes(cur)) {
       // sin foco previo: primero lo de la pantalla activa (tarjetas del ecosistema), no el encabezado
       const inScreen = doc === document ? list.filter(el => el.closest('.screen.active')) : [];
-      (inScreen[0] || list[0]).focus(); return true;
+      const cards = inScreen.filter(el => el.classList.contains('menu-card'));
+      (cards[0] || inScreen[0] || list[0]).focus(); return true;
     }
     const r = cur.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
     let best = null, bs = Infinity;
@@ -1349,6 +1362,9 @@ class OpenQConfigSyncReader {
       if (fromFrame && !(cur && cur !== doc.body && cur.matches && cur.matches(_CAND))) return false; // en módulos solo si ya hay un botón enfocado (Tab)
       if (cur && /^(SELECT)$/.test(cur.tagName)) return false;
       return _spatial(doc, e.key, cur) ? (e.preventDefault(), true) : false;
+    }
+    if ((e.key === 's' || e.key === 'S') && !e.ctrlKey && !e.metaKey && !e.altKey && cur && cur.classList && cur.classList.contains('menu-card')) {
+      const b = cur.querySelector('.card-share'); if (b) { e.preventDefault(); b.click(); return true; }
     }
     // Enter / Espacio sobre tarjetas o elementos con onclick que no son botones nativos
     if ((e.key === 'Enter' || e.key === ' ') && cur && cur.getAttribute && cur.hasAttribute('onclick') &&
@@ -1386,7 +1402,16 @@ class OpenQConfigSyncReader {
       if (a && a.id !== 'screen-home') { e.preventDefault(); goBack(); }
       return;
     }
-    if (e.key === '?' || c === 'f1') { e.preventDefault(); notify('⌨ Flechas: mover · Enter/Espacio: abrir · Esc: atrás · Alt+S: compartir · Alt+H: inicio · Tab: botones', 7000); return; }
+    if (e.key === '?' || c === 'f1') { e.preventDefault(); notify('⌨ Flechas: mover · Enter/Espacio: abrir · Esc: atrás · S o Alt+S: compartir · H o Alt+H: inicio · S sobre una tarjeta: compartirla · Tab: botones', 7000); return; }
+    // Alternativas sin Alt (Firefox/Windows usa Alt+letra para sus menús): S = compartir, H = inicio (solo fuera de los módulos)
+    if (!fromFrame && !e.altKey && !e.ctrlKey && !e.metaKey && (e.key === 's' || e.key === 'S')) {
+      const a = document.querySelector('.screen.active');
+      if (a && a.id !== 'screen-home') { e.preventDefault(); toggleShare(); return; }
+    }
+    if (!fromFrame && !e.altKey && !e.ctrlKey && !e.metaKey && (e.key === 'h' || e.key === 'H')) {
+      const a = document.querySelector('.screen.active');
+      if (a && a.id !== 'screen-home') { e.preventDefault(); nav('home'); return; }
+    }
     if (c === 'alt+h') { e.preventDefault(); nav('home'); return; }
     if (c === 'alt+s' || c === 'alt+c') {
       const a = document.querySelector('.screen.active');
@@ -1432,7 +1457,7 @@ class OpenQConfigSyncReader {
   });
   async function share(how) {
     const url = _currentShareUrl();
-    const title = (_shareCtx && _shareCtx.title) || document.title || 'Quolab';
+    const title = (_shareOverride && _shareOverride.title) || (_shareCtx && _shareCtx.title) || document.title || 'Quolab';
     const u = encodeURIComponent(url), t = encodeURIComponent(title);
     if (how === 'copy') {
       try { await navigator.clipboard.writeText(url); }
@@ -1689,7 +1714,9 @@ class OpenQConfigSyncReader {
       const cls = (c.locked && !isAdm) ? 'menu-card locked' : 'menu-card';
       const lock = (c.locked && !isAdm)
         ? `<div style="font-size:.6rem;color:var(--rd);margin-top:.4rem;">🔒 Requires admin account</div>` : '';
-      return `<div class="${cls}" ${click} tabindex="0" role="button" style="animation-delay:${c.delay}s">
+      const shareBtn = (c.screen && !(c.locked && !isAdm))
+        ? `<button class="card-share" type="button" tabindex="-1" title="Share link / Compartir enlace (S)" onclick="event.stopPropagation();OpenQ.shareScreen('${c.screen}','${String(c.title).replace(/[^\w ]/g,'').trim()}')">🔗 SHARE</button>` : '';
+      return `<div class="${cls}" ${click} tabindex="0" role="button" style="animation-delay:${c.delay}s">${shareBtn}
         ${c.badge ? `<div class="card-badge ${c.badge}">${c.badgeTxt}</div>` : ''}
         <div class="card-icon-box">${c.icon}</div>
         <div class="card-title">${c.title}</div>
@@ -2043,7 +2070,7 @@ class OpenQConfigSyncReader {
   }
 
   return { 
-    nav, toggleShare, share, addShortcut, openAuth, closeAuth, doLogin, doRegister, doFounder, doLogout,
+    nav, toggleShare, share, shareScreen, addShortcut, openAuth, closeAuth, doLogin, doRegister, doFounder, doLogout,
     toggleAI, sendAI, notify, init, getUser:()=>curUser,
     _refreshUI: refreshUIFromConfig,
     _broadcastConfig: broadcastConfigToModules
