@@ -751,25 +751,25 @@ function renderOutput(outArea, d, elapsed, cellId){
     html+=buildBlochOut(d.bloch.probabilities);
   }
 
-  if(d.plot_png){
-    html+=`<div style="padding:.3rem .5rem;background:#04080e;border-top:1px solid rgba(0,136,255,.08);">
-      <div style="font-family:var(--orb);font-size:.4rem;color:var(--mu);padding:.2rem 0 .3rem;letter-spacing:.05em;">MATPLOTLIB PLOT</div>
-      <img class="out-img" src="data:image/png;base64,${d.plot_png}" alt="Plot">
+  // Gráficas: se muestran UNA sola vez cada una. Las capturadas por el cuaderno (todas las figuras abiertas)
+  // mandan; la del servidor (plot_png / plot_svg) solo se usa si no hay ninguna capturada, y se descartan duplicados exactos.
+  {
+    const _seen = new Set(), _list = [];
+    const _add = b64 => { const k = String(b64 || '').replace(/\s+/g, ''); if (k && !_seen.has(k)) { _seen.add(k); _list.push(k); } };
+    _plots.imgs.forEach(_add);
+    if (!_list.length && d.plot_png) _add(d.plot_png);
+    _list.forEach((b64, i) => {
+      html+=`<div style="padding:.3rem .5rem;background:#04080e;border-top:1px solid rgba(0,136,255,.08);">
+      <div style="font-family:var(--orb);font-size:.4rem;color:var(--mu);padding:.2rem 0 .3rem;letter-spacing:.05em;">MATPLOTLIB PLOT${_list.length>1?' '+(i+1):''}</div>
+      <img class="out-img" src="data:image/png;base64,${b64}" alt="Plot">
     </div>`;
-  }
-
-  if(!d.plot_png&&_plots.imgs.length){
-    _plots.imgs.forEach((b,i)=>{html+=`<div style="padding:.3rem .5rem;background:#04080e;border-top:1px solid rgba(0,136,255,.08);">
-      <div style="font-family:var(--orb);font-size:.4rem;color:var(--mu);padding:.2rem 0 .3rem;letter-spacing:.05em;">MATPLOTLIB PLOT${_plots.imgs.length>1?' '+(i+1):''}</div>
-      <img class="out-img" src="data:image/png;base64,${b}" alt="Plot">
-    </div>`;});
-  }
-
-  if(d.plot_svg){
-    html+=`<div style="padding:.3rem .5rem;background:#04080e;border-top:1px solid rgba(0,136,255,.08);">
+    });
+    if (!_list.length && d.plot_svg) {
+      html+=`<div style="padding:.3rem .5rem;background:#04080e;border-top:1px solid rgba(0,136,255,.08);">
       <div style="font-family:var(--orb);font-size:.4rem;color:var(--mu);padding:.2rem 0 .3rem;">SVG DIAGRAM</div>
       <div style="overflow-x:auto;">${d.plot_svg}</div>
     </div>`;
+    }
   }
 
   if(!isOk&&d.output){
