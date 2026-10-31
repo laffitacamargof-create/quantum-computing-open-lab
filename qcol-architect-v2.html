@@ -745,6 +745,7 @@ function findGateDef(id) { for (const cat of Object.values(GATES)) { const g = c
 // ═══════════════════════════════════════════════════════════
 function placeGate(gateId, qubit) {
   if (isUpdatingFromCode) return;
+  if (qcolLocked()) { qcolLockMsg(); return; }
   isUpdatingFromCircuit = true;
   const def = findGateDef(gateId);
   if (!def) { isUpdatingFromCircuit = false; return; }
@@ -795,6 +796,7 @@ function placeGate(gateId, qubit) {
 }
 
 function removeGate(uid) {
+  if (qcolLocked()) { qcolLockMsg(); return; }
   if (isUpdatingFromCode) return;
   isUpdatingFromCircuit = true;
   circuit.gates = circuit.gates.filter(g => g.uid !== uid);
@@ -806,6 +808,7 @@ function removeGate(uid) {
 }
 
 function moveExistingGate(uid, newQubit) {
+  if (qcolLocked()) { qcolLockMsg(); return; }
   if (isUpdatingFromCode) return;
   isUpdatingFromCircuit = true;
   const idx = circuit.gates.findIndex(g => g.uid === uid);
@@ -890,7 +893,8 @@ function renderCircuit() {
   const depth = Array(circuit.qubits).fill(0);
   const placed = circuit.gates.map(g => {
     let col;
-    if (g.q3 !== undefined) { col = Math.max(depth[g.q], depth[g.q2], depth[g.q3]); depth[g.q] = col + 1; depth[g.q2] = col + 1; depth[g.q3] = col + 1; }
+    if (g.block) { col = 0; for (let k = g.q; k <= g.q2; k++) col = Math.max(col, depth[k] || 0); const w = g.block.w || 1; for (let k = g.q; k <= g.q2; k++) depth[k] = col + w; }
+    else if (g.q3 !== undefined) { col = Math.max(depth[g.q], depth[g.q2], depth[g.q3]); depth[g.q] = col + 1; depth[g.q2] = col + 1; depth[g.q3] = col + 1; }
     else if (g.q2 !== undefined) { col = Math.max(depth[g.q], depth[g.q2]); depth[g.q] = col + 1; depth[g.q2] = col + 1; }
     else { col = depth[g.q]; depth[g.q]++; }
     return { ...g, col };
@@ -904,7 +908,11 @@ function renderCircuit() {
   }
   placed.forEach(g => {
     const left = g.col * step + 15;
-    if (g.q3 !== undefined) {
+    if (g.block) {
+      const bw = (g.block.w || 1) * step - 10, bh = (g.q2 - g.q + 1) * ROW_HEIGHT - 8;
+      html += `<div class="qcol-block" title="${escapeHtml(g.block.tip)}" aria-label="${escapeHtml(g.block.tip)}" tabindex="0" role="button" onclick="qcolBlockInfo(${g.uid})"
+        style="position:absolute;left:${left}px;top:${g.q * ROW_HEIGHT + 4}px;width:${bw}px;height:${bh}px;box-sizing:border-box;background:linear-gradient(135deg,#4a148c,#8e24aa);border:1.5px solid #ce93d8;border-radius:8px;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;font:700 12px monospace;text-align:center;cursor:help;overflow:hidden;padding:2px;">${escapeHtml(g.block.label)}<span style="font-weight:400;font-size:9px;opacity:.85;">${escapeHtml(g.block.sub)}</span></div>`;
+    } else if (g.q3 !== undefined) {
       const qs = [g.q, g.q2, g.q3].sort((a, b) => a - b);
       const topY = qs[0] * ROW_HEIGHT;
       const height = (qs[2] - qs[0]) * ROW_HEIGHT;
@@ -1056,6 +1064,7 @@ function updateBlochSelector() {
 // ═══════════════════════════════════════════════════════════
 function updateCodeFromCircuit() {
   if (isUpdatingFromCode) return;
+  if (qcolLocked()) return;   // nunca sobrescribir el código del usuario si hay bloques compuestos
   if (syncQubitCount()) { renderCircuit(); updateCircuitInfo(); }
   const n = circuit.qubits;
   let code = `from qiskit import QuantumCircuit\nimport numpy as np\nfrom qiskit_aer import AerSimulator\n\nqc = QuantumCircuit(${n}, ${n})\n\n`;
@@ -1075,7 +1084,7 @@ function updateCodeFromCircuit() {
 // UNIVERSAL QISKIT MOCK (sin cambios)
 // ═══════════════════════════════════════════════════════════
 const QISKIT_MOCK_CODE = `
-import sys, types, importlib
+import sys, types, importlib, importlib.util
 
 class _Stub:
     __slots__ = ('_name',)
@@ -1162,12 +1171,14 @@ class ClassicalRegister:
     def __iter__(self): return iter(range(self.size))
 
 class Operation:
-    __slots__ = ('name', 'qubits', 'params', 'operation')
-    def __init__(self, name, qubits, params=None):
+    __slots__ = ('name', 'qubits', 'params', 'operation', 'real', 'info')
+    def __init__(self, name, qubits, params=None, real=None, info=None):
         self.name = name
         self.qubits = qubits
         self.params = params or []
         self.operation = self
+        self.real = real or name
+        self.info = info
 
 def _safe_int(q):
     if isinstance(q, int): return q
@@ -1231,11 +1242,11 @@ class QuantumCircuit:
             self.num_qubits = val
             self._qubits_list = list(range(val))
 
-    def _add(self, name, qubits_raw, params=None):
+    def _add(self, name, qubits_raw, params=None, real=None, info=None):
         try:
             clean = _expand_qubits(qubits_raw)
             if clean:
-                self.data.append(Operation(name, clean, params or []))
+                self.data.append(Operation(name, clean, params or [], real, info))
         except:
             pass
         return self
@@ -1245,43 +1256,43 @@ class QuantumCircuit:
     def y(self, q, **kw): return self._add('y', [q])
     def z(self, q, **kw): return self._add('z', [q])
     def s(self, q, **kw): return self._add('s', [q])
-    def sdg(self, q, **kw): return self._add('s', [q])
+    def sdg(self, q, **kw): return self._add('s', [q], None, 'sdg')
     def t(self, q, **kw): return self._add('t', [q])
-    def tdg(self, q, **kw): return self._add('t', [q])
+    def tdg(self, q, **kw): return self._add('t', [q], None, 'tdg')
     def sx(self, q, **kw): return self._add('sx', [q])
-    def sxdg(self, q, **kw): return self._add('sx', [q])
-    def id(self, q, **kw): return self._add('h', [q])
-    def reset(self, q, **kw): return self._add('x', [q])
+    def sxdg(self, q, **kw): return self._add('sx', [q], None, 'sxdg')
+    def id(self, q, **kw): return self._add('h', [q], None, 'id')
+    def reset(self, q, **kw): return self._add('x', [q], None, 'reset')
 
     def rx(self, theta, q, **kw): return self._add('rx', [q], [theta])
     def ry(self, theta, q, **kw): return self._add('ry', [q], [theta])
     def rz(self, theta, q, **kw): return self._add('rz', [q], [theta])
-    def p(self, theta, q, **kw): return self._add('rz', [q], [theta])
-    def r(self, theta, phi, q, **kw): return self._add('rx', [q], [theta])
-    def u(self, theta, phi, lam, q, **kw): return self._add('rx', [q], [theta])
-    def u1(self, theta, q, **kw): return self._add('rz', [q], [theta])
-    def u2(self, phi, lam, q, **kw): return self._add('ry', [q], [phi])
-    def u3(self, theta, phi, lam, q, **kw): return self._add('rx', [q], [theta])
+    def p(self, theta, q, **kw): return self._add('rz', [q], [theta], 'p')
+    def r(self, theta, phi, q, **kw): return self._add('rx', [q], [theta], 'r')
+    def u(self, theta, phi, lam, q, **kw): return self._add('rx', [q], [theta], 'u')
+    def u1(self, theta, q, **kw): return self._add('rz', [q], [theta], 'u1')
+    def u2(self, phi, lam, q, **kw): return self._add('ry', [q], [phi], 'u2')
+    def u3(self, theta, phi, lam, q, **kw): return self._add('rx', [q], [theta], 'u3')
 
     def cx(self, c, t, **kw): return self._add('cx', [c, t])
     def cnot(self, c, t, **kw): return self._add('cx', [c, t])
     def cz(self, c, t, **kw): return self._add('cz', [c, t])
-    def cy(self, c, t, **kw): return self._add('cz', [c, t])
+    def cy(self, c, t, **kw): return self._add('cz', [c, t], None, 'cy')
     def swap(self, a, b, **kw): return self._add('swap', [a, b])
-    def iswap(self, a, b, **kw): return self._add('swap', [a, b])
+    def iswap(self, a, b, **kw): return self._add('swap', [a, b], None, 'iswap')
     def cp(self, theta, c, t, **kw): return self._add('cp', [c, t], [theta])
-    def crx(self, theta, c, t, **kw): return self._add('cx', [c, t])
-    def cry(self, theta, c, t, **kw): return self._add('cx', [c, t])
-    def crz(self, theta, c, t, **kw): return self._add('cx', [c, t])
-    def ecr(self, a, b, **kw): return self._add('cx', [a, b])
-    def dcx(self, a, b, **kw): return self._add('cx', [a, b])
-    def rzx(self, theta, a, b, **kw): return self._add('cx', [a, b])
+    def crx(self, theta, c, t, **kw): return self._add('cx', [c, t], None, 'crx')
+    def cry(self, theta, c, t, **kw): return self._add('cx', [c, t], None, 'cry')
+    def crz(self, theta, c, t, **kw): return self._add('cx', [c, t], None, 'crz')
+    def ecr(self, a, b, **kw): return self._add('cx', [a, b], None, 'ecr')
+    def dcx(self, a, b, **kw): return self._add('cx', [a, b], None, 'dcx')
+    def rzx(self, theta, a, b, **kw): return self._add('cx', [a, b], None, 'rzx')
 
     def ccx(self, a, b, t, **kw): return self._add('ccx', [a, b, t])
     def toffoli(self, a, b, t, **kw): return self._add('ccx', [a, b, t])
     def cswap(self, c, a, b, **kw): return self._add('cswap', [c, a, b])
     def fredkin(self, c, a, b, **kw): return self._add('cswap', [c, a, b])
-    def ccz(self, a, b, c, **kw): return self._add('ccx', [a, b, c])
+    def ccz(self, a, b, c, **kw): return self._add('ccx', [a, b, c], None, 'ccz')
 
     def mcx(self, controls, target, ancilla_qubits=None, **kw):
         try:
@@ -1293,6 +1304,14 @@ class QuantumCircuit:
         return self.mcx(controls, target)
 
     def append(self, gate, qubits, clbits=None, **kw):
+        if isinstance(gate, PauliEvolutionGate):
+            try:
+                qs = [qubits] if isinstance(qubits, int) else _expand_qubits([qubits])
+                if not qs:
+                    qs = list(range(gate.num_qubits))
+                return self._add('pauli_evolution', [qs], [gate.time], 'PauliEvolution', gate._info())
+            except Exception:
+                return self
         try:
             name = getattr(gate, 'name', None) or getattr(gate, '__name__', None) or str(gate).split('.')[-1].split('(')[0]
             name = name.lower() if isinstance(name, str) else 'h'
@@ -1373,6 +1392,125 @@ class QuantumCircuit:
             return self
         return _gate_fallback
 
+class Operator:
+    def __init__(self, data=None, *a, **kw):
+        self.data = data
+        try:
+            import numpy as _np
+            self.data = _np.array(data, dtype=complex)
+        except Exception:
+            pass
+    def to_matrix(self):
+        return self.data
+
+class SparsePauliOp:
+    def __init__(self, data=None, coeffs=None, *a, **kw):
+        labels = []
+        if isinstance(data, str):
+            labels = [data]
+        elif isinstance(data, (list, tuple)):
+            labels = [str(x) for x in data]
+        self._labels = labels
+        if coeffs is None:
+            coeffs = [1.0] * len(labels)
+        try:
+            self._coeffs = list(coeffs)
+        except Exception:
+            self._coeffs = [1.0] * len(labels)
+        self.num_qubits = len(labels[0]) if labels else 0
+    @classmethod
+    def from_operator(cls, obj, atol=None, rtol=None):
+        import numpy as _np, itertools as _it
+        M = _np.array(getattr(obj, 'data', obj), dtype=complex)
+        d = M.shape[0] if M.ndim == 2 else 0
+        n = int(round(_np.log2(d))) if d > 0 else 0
+        out = cls([], [])
+        out.num_qubits = n
+        if n < 1 or n > 6 or M.shape != (d, d):
+            return out
+        tol = 1e-8 if atol is None else atol
+        P = {'I': _np.eye(2, dtype=complex), 'X': _np.array([[0, 1], [1, 0]], dtype=complex),
+             'Y': _np.array([[0, -1j], [1j, 0]], dtype=complex), 'Z': _np.array([[1, 0], [0, -1]], dtype=complex)}
+        labels = []
+        coeffs = []
+        for combo in _it.product('IXYZ', repeat=n):
+            mat = P[combo[0]]
+            for ch in combo[1:]:
+                mat = _np.kron(mat, P[ch])
+            c = _np.trace(mat.conj().T @ M) / d
+            if abs(c) > tol:
+                labels.append(''.join(combo))
+                coeffs.append(complex(c))
+        out._labels = labels
+        out._coeffs = coeffs
+        return out
+    @classmethod
+    def from_list(cls, pairs, *a, **kw):
+        try:
+            return cls([p[0] for p in pairs], [p[1] for p in pairs])
+        except Exception:
+            return cls([], [])
+    def __len__(self):
+        return len(self._labels)
+    @property
+    def coeffs(self):
+        return self._coeffs
+    @property
+    def paulis(self):
+        return self._labels
+    def to_list(self):
+        return list(zip(self._labels, self._coeffs))
+    def simplify(self, *a, **kw):
+        return self
+
+class _Trotter:
+    def __init__(self, order=1, reps=1, *a, **kw):
+        self.order = order
+        try:
+            self.reps = int(reps)
+        except Exception:
+            self.reps = 1
+class LieTrotter(_Trotter):
+    def __init__(self, reps=1, *a, **kw):
+        _Trotter.__init__(self, 1, reps)
+class SuzukiTrotter(_Trotter):
+    def __init__(self, order=2, reps=1, *a, **kw):
+        _Trotter.__init__(self, order, reps)
+class QDrift(_Trotter):
+    def __init__(self, reps=1, *a, **kw):
+        _Trotter.__init__(self, 1, reps)
+
+class PauliEvolutionGate:
+    name = 'PauliEvolution'
+    def __init__(self, operator, time=1.0, label=None, synthesis=None):
+        self.operator = operator
+        try:
+            self.time = float(time)
+        except Exception:
+            self.time = 0.0
+        self.synthesis = synthesis
+        self.label = label
+        self.num_qubits = getattr(operator, 'num_qubits', 0)
+    def _info(self):
+        reps = getattr(self.synthesis, 'reps', 1) or 1
+        order = getattr(self.synthesis, 'order', 1) or 1
+        est = 0
+        try:
+            for lab in self.operator.paulis:
+                letters = [c for c in str(lab) if c != 'I']
+                w = len(letters)
+                if w == 0:
+                    continue
+                est += 2 * sum(1 for c in letters if c in 'XY') + 2 * (w - 1) + 1
+        except Exception:
+            pass
+        est = est * reps * (2 if order > 1 else 1)
+        try:
+            terms = len(self.operator)
+        except Exception:
+            terms = 0
+        return {'label': 'exp(-iHt)', 'terms': terms, 'reps': int(reps), 'order': int(order), 'time': self.time, 'n_gates_est': est}
+
 _KNOWN_QUANTUM_PKGS = {
     'qiskit', 'qiskit_aer', 'qiskit_ibm_runtime', 'qiskit_ibm_provider',
     'qiskit_algorithms', 'qiskit_optimization', 'qiskit_machine_learning',
@@ -1437,6 +1575,16 @@ for _mod_name in ['qiskit.circuit', 'qiskit.circuit.gate', 'qiskit.circuit.instr
         _m.QuantumRegister = QuantumRegister
         _m.ClassicalRegister = ClassicalRegister
 
+sys.modules['qiskit.quantum_info'].Operator = Operator
+sys.modules['qiskit.quantum_info'].SparsePauliOp = SparsePauliOp
+sys.modules['qiskit.circuit.library'].PauliEvolutionGate = PauliEvolutionGate
+for _sn in ['qiskit.synthesis', 'qiskit.synthesis.evolution']:
+    _sm = _DynamicModule(_sn, is_package=True)
+    _sm.LieTrotter = LieTrotter
+    _sm.SuzukiTrotter = SuzukiTrotter
+    _sm.QDrift = QDrift
+    sys.modules[_sn] = _sm
+
 _aer = _DynamicModule('qiskit_aer', is_package=True)
 class _AerSimStub:
     def __init__(self, *a, **kw): pass
@@ -1457,7 +1605,7 @@ _aer.Aer = _Stub('Aer')
 sys.modules['qiskit_aer'] = _aer
 sys.modules['qiskit_aer.backends'] = _DynamicModule('qiskit_aer.backends', True)
 
-print("[QCOL Mock v3] Universal system loaded.");
+print("[QCOL Mock v4] Universal system loaded.");
 `;
 
 let pyodide = null;
@@ -1504,6 +1652,177 @@ function mapOpNameToGateId(opName) {
         'measure': 'M'
     };
     return map[opName] || 'H';
+}
+
+
+// ═══════════════════════════════════════════════════════════
+// ESTRUCTURA DEL CIRCUITO: Pyodide (mock) y servidor (Qiskit real) producen la MISMA estructura
+//   ops = [{n:'h', d:'h', q:[0], info:null}, ...]  (n = nombre real de Qiskit, d = nombre para dibujar)
+// Se comparan al compilar; si difieren, MANDA EL SERVIDOR (respaldo) y el lienzo se reconstruye con él.
+// ═══════════════════════════════════════════════════════════
+let _pyStruct = null, _pyStructCode = '';
+const QCOL_PROBE_PY = [
+  '',
+  'try:',
+  '    import json as __qj',
+  '    from qiskit import QuantumCircuit as __QC',
+  '    __qc = None',
+  "    for __n in ['circuit','qc','circ','qcirc','circ1','qcircuit','qc1','main_circuit']:",
+  '        __o = globals().get(__n)',
+  '        if isinstance(__o, __QC):',
+  '            __qc = __o',
+  '            break',
+  '    if __qc is None:',
+  '        for __v in list(globals().values()):',
+  '            if isinstance(__v, __QC):',
+  '                __qc = __v',
+  '            elif isinstance(__v, (list, tuple)) and __v and all(isinstance(__x, __QC) for __x in __v):',
+  '                __qc = __v[-1]',
+  '    if __qc is not None:',
+  '        __ops = []',
+  '        for __ci in __qc.data:',
+  '            __op = __ci.operation',
+  "            if __op.name in ('barrier', 'delay'):",
+  '                continue',
+  "            __d = {'n': __op.name, 'q': [__qc.find_bit(__q).index for __q in __ci.qubits]}",
+  "            if __op.name == 'PauliEvolution':",
+  "                __info = {'label': 'exp(-iHt)'}",
+  '                try:',
+  "                    __info['terms'] = len(__op.operator)",
+  '                except Exception:',
+  '                    pass',
+  '                try:',
+  "                    __info['reps'] = int(__op.synthesis.reps)",
+  '                except Exception:',
+  '                    pass',
+  '                try:',
+  "                    __info['order'] = int(__op.synthesis.order)",
+  '                except Exception:',
+  '                    pass',
+  '                try:',
+  "                    __info['time'] = float(__op.time)",
+  '                except Exception:',
+  '                    pass',
+  '                try:',
+  '                    from qiskit import transpile as __tp',
+  "                    __dec = __tp(__op.definition, basis_gates=['h','sx','sxdg','rz','cx'], optimization_level=0)",
+  "                    __info['n_gates'] = int(sum(__dec.count_ops().values()))",
+  '                except Exception:',
+  '                    pass',
+  "                __d['info'] = __info",
+  '            __ops.append(__d)',
+  '            if len(__ops) >= 3000:',
+  '                break',
+  "        print('__QCOL_STRUCT__' + __qj.dumps({'nq': __qc.num_qubits, 'ops': __ops}))",
+  'except Exception:',
+  '    pass',
+  ''
+].join('\n');
+function qcolAppendProbe(code) { return code + '\n' + QCOL_PROBE_PY; }
+function qcolExtractStruct(output) {
+  let struct = null;
+  const text = String(output || '').replace(/__QCOL_STRUCT__(\{.*\})\n?/g, (m, js) => { try { struct = JSON.parse(js); } catch (e) {} return ''; });
+  return { text, struct };
+}
+const _BLOCK_DEF = { id: 'BLK', sym: '▦', bg: '#6a1b9a', glow: '#c06bff', desc: 'Composite block', code: '', block: true };
+function mapOpStrict(opName) {
+  const map = { 'h':'H','x':'X','y':'Y','z':'Z','s':'S','t':'T','sx':'SX','rx':'RX','ry':'RY','rz':'RZ','p':'RZ',
+                'cx':'CX','cz':'CZ','swap':'SWAP','cp':'CZ','ccx':'CCX','cswap':'CSW','mcx':'CCX' };
+  return map[opName] || null;
+}
+function _blockText(o) {
+  const i = o.info || {};
+  if (o.n === 'PauliEvolution' || o.n === 'pauli_evolution') {
+    const sub = [i.terms != null ? i.terms + ' terms' : '', i.reps ? '×' + i.reps + ' Trotter' : ''].filter(Boolean).join(' · ');
+    const n = i.n_gates || i.n_gates_est;
+    const tip = 'PauliEvolutionGate e^{-iHt}' + (i.time != null ? ' · t=' + i.time : '') + (i.terms != null ? ' · ' + i.terms + ' Pauli terms' : '') +
+                (i.reps ? ' · Lie-Trotter ×' + i.reps : '') + (n ? ' · ≈' + n + ' basis gates when decomposed' : '') + ' — edit it in the code';
+    return { label: 'e^(−iHt)', sub, tip };
+  }
+  return { label: String(o.n), sub: '', tip: 'Gate "' + o.n + '" has no visual symbol — edit it in the code' };
+}
+// ops -> puertas del lienzo (las desconocidas / compuestas se dibujan como BLOQUE, nunca como una H falsa)
+function qcolOpsToGates(ops) {
+  const gates = [];
+  for (const o of ops) {
+    const real = String(o.n || '');
+    if (real === 'barrier' || real === 'delay') continue;
+    if (gates.length >= MAX_GATES) break;
+    const qs = (o.q || []).filter(q => Number.isInteger(q) && q >= 0);
+    if (!qs.length) continue;
+    const uid = nextId++;
+    if (real === 'measure') { gates.push({ id: 'M', q: qs[0], def: findGateDef('M'), uid }); continue; }
+    const id = o.info ? null : mapOpStrict(String(o.d || real).toLowerCase());
+    if (!id) {
+      const lo = Math.min(...qs), hi = Math.max(...qs), bt = _blockText(o);
+      gates.push({ id: 'BLK', q: lo, q2: hi, qs, def: _BLOCK_DEF, uid, block: { label: bt.label, sub: bt.sub, tip: bt.tip, w: o.info ? 3 : 1 } });
+      continue;
+    }
+    const def = findGateDef(id);
+    if (!def) continue;
+    if (qs.length === 1) gates.push({ id, q: qs[0], def, uid });
+    else if (qs.length === 2) gates.push({ id, q: Math.min(qs[0], qs[1]), q2: Math.max(qs[0], qs[1]), def, uid });
+    else { const so = [...qs].sort((a, b) => a - b); gates.push({ id, q: so[0], q2: so[1], q3: so[2], def, uid }); }
+  }
+  return gates;
+}
+function qcolApplyStruct(struct, opts) {
+  opts = opts || {};
+  let ops = (struct.ops || []).slice();
+  if (opts.dropMeasures) ops = ops.filter(o => o.n !== 'measure');
+  circuit.qubits = Math.max(1, Math.min(struct.nq || 1, MAX_QUBITS));
+  circuit.gates = normalizeMeasurements(qcolOpsToGates(ops));
+  const req = computeRequiredQubits(); if (req > circuit.qubits) circuit.qubits = req;
+  renderCircuit(); updateCircuitInfo();
+}
+function qcolCanon(struct, opts) {
+  const seq = [], meas = [];
+  for (const o of (struct.ops || [])) {
+    const n = String(o.n || '');
+    if (n === 'barrier' || n === 'delay') continue;
+    if (n === 'measure') { (o.q || []).forEach(q => meas.push(q)); continue; }
+    let k = (n === 'pauli_evolution' ? 'PauliEvolution' : n).toLowerCase() + ':' + (o.q || []).join(',');
+    if (o.info) k += '|terms=' + (o.info.terms != null ? o.info.terms : '?') + '|reps=' + (o.info.reps != null ? o.info.reps : '?') + '|t=' + (o.info.time != null ? (+o.info.time).toFixed(4) : '?');
+    seq.push(k);
+  }
+  meas.sort((a, b) => a - b);
+  return { seq, meas: opts && opts.ignoreMeasure ? [] : meas };
+}
+function qcolCompare(py, srv, opts) {
+  const a = qcolCanon(py, opts), b = qcolCanon(srv, opts), diffs = [];
+  if ((py.nq || 0) !== (srv.nq || 0) && !(opts && opts.ignoreQubits)) diffs.push('qubits: Pyodide ' + py.nq + ' vs server ' + srv.nq);
+  const n = Math.max(a.seq.length, b.seq.length);
+  for (let i = 0; i < n && diffs.length < 4; i++) if (a.seq[i] !== b.seq[i]) diffs.push('op #' + (i + 1) + ': Pyodide ' + (a.seq[i] || '—') + ' vs server ' + (b.seq[i] || '—'));
+  if (a.meas.join() !== b.meas.join()) diffs.push('measurements: Pyodide [' + a.meas + '] vs server [' + b.meas + ']');
+  return { ok: diffs.length === 0, diffs, nOps: b.seq.length };
+}
+function qcolBlockInfo(uid) {
+  const g = circuit.gates.find(x => x.uid === uid);
+  if (g && g.block) notify('▦ ' + g.block.tip, 6000);
+}
+function qcolLocked() { return circuit.gates.some(g => g.block); }
+function qcolLockMsg() { notify('🔒 This circuit has composite blocks (e.g. PauliEvolutionGate). Edit it in the code.', 3500); }
+// Reconciliación al compilar: el servidor (Qiskit real) es la autoridad; Pyodide es la vista previa instantánea
+function qcolReconcile(srv, opts) {
+  const out = opts.out;
+  const codeNow = (document.getElementById('code-ta').value || '').trim();
+  const py = (_pyStruct && _pyStructCode === codeNow) ? _pyStruct : null;
+  const dropM = !!opts.added;
+  if (py) {
+    const cmp = qcolCompare(py, srv, { ignoreMeasure: dropM });
+    if (cmp.ok) {
+      out.innerHTML += `\n<span class="ok" style="font-size:.6rem;">✅ Verified: Pyodide and server agree (${cmp.nOps} ops · ${srv.nq} qubits)</span>`;
+      return 'match';
+    }
+    qcolApplyStruct(srv, { dropMeasures: dropM });
+    _pyStruct = srv; _pyStructCode = codeNow;
+    out.innerHTML += `\n<span class="er" style="font-size:.6rem;">⚠️ Pyodide ≠ server — canvas rebuilt from the server (Qiskit):<br>${cmp.diffs.map(escapeHtml).join('<br>')}</span>`;
+    return 'rebuilt';
+  }
+  qcolApplyStruct(srv, { dropMeasures: dropM });
+  _pyStruct = srv; _pyStructCode = codeNow;
+  out.innerHTML += `\n<span class="ok" style="font-size:.6rem;">🔧 Canvas built from the server circuit (${srv.ops.filter(o => o.n !== 'barrier').length} ops) — Pyodide preview unavailable</span>`;
+  return 'server-only';
 }
 
 function robustPreprocess(code) {
@@ -1559,7 +1878,12 @@ function robustPreprocess(code) {
         let isNonEssential = NON_ESSENTIAL.some(rx => rx.test(trimmed));
         
         if (isNonEssential) {
-            result.push(indent + 'pass  # omitted');
+            const _am = trimmed.match(/^([A-Za-z_]\w*(?:\s*,\s*[A-Za-z_]\w*)*)\s*=(?!=)/);
+            if (_am) {
+                result.push(indent + _am[1].split(',').map(x => x.trim()).join(' = ') + ' = _OMIT  # omitted');
+            } else {
+                result.push(indent + 'pass  # omitted');
+            }
             continue;
         }
         
@@ -1681,7 +2005,7 @@ async function syncFromServer(reason) {
     const out = document.getElementById('out-body');
     out.innerHTML += `<span class="inf">🔧 Corrector active (${reason}) — running on server...</span>\n`;
     const _ensC = ensureMeasurements(_cleanCodeForServer(rawCode));
-    const cleanCode = _ensC.code;
+    const cleanCode = qcolAppendProbe(_ensC.code);
     const isHF = engineURL.includes('hf.space') || engineURL.includes('huggingface');
     try {
         const res = await fetchWithRetry(
@@ -1700,7 +2024,14 @@ async function syncFromServer(reason) {
             out.innerHTML += `<span class="er">⚠️ Server: ${escapeHtml((d?.output||'error').slice(0,120))}</span>\n`;
             return false;
         }
+        const _stS = qcolExtractStruct(d.output || '');
+        d.output = _stS.text;
         _lastServerOutput = d.output || '';
+        if (_stS.struct && _stS.struct.ops && _stS.struct.ops.length) {
+            qcolReconcile(_stS.struct, { out, added: _ensC.added });
+            if (d.bloch?.probabilities) updateBlochFromProbs(d.bloch.probabilities);
+            return true;
+        }
         const parsed = _parseTextDraw(_lastServerOutput);
         if (parsed && parsed.gates.length > 0) {
             if (_ensC.added) parsed.gates = parsed.gates.filter(g => g.id !== 'M'); // mediciones auto-añadidas: no ensuciar el canvas
@@ -1769,6 +2100,8 @@ try:
     _ns['cos'] = _np.cos
     _ns['sqrt'] = _np.sqrt
 except: pass
+
+_ns['_OMIT'] = globals().get('_Stub')('omitted') if globals().get('_Stub') else None
 
 for _rname in ['q', 'qr', 'cr', 'c', 'anc', 'aux']:
     if _rname not in _ns:
@@ -1872,7 +2205,8 @@ def _safe_gate(op):
             params = [float(p) for p in (op.params or [])]
         except:
             pass
-        return [name, qubits, params]
+        _info = getattr(op, 'info', None)
+        return [name, qubits, params, str(getattr(op, 'real', name)), _info if isinstance(_info, dict) else None]
     except:
         return None
 
@@ -1891,30 +2225,10 @@ json.dumps({
         if (data.success && data.circuit_exists) {
             _errorLine = -1;
             
+            const _ops = data.gates.map(g => ({ n: g[3] || g[0], d: g[0], q: g[1], info: g[4] || null }));
             circuit.qubits = Math.min(data.num_qubits, MAX_QUBITS);
-            const newGates = [];
-            for (const gate of data.gates) {
-                if (newGates.length >= MAX_GATES) break;
-                const gateId = mapOpNameToGateId(gate[0]);
-                const def = findGateDef(gateId);
-                if (!def) continue;
-                const qubits = gate[1];
-                
-                const maxQ = Math.max(...qubits.filter(q => typeof q === 'number'));
-                if (!isNaN(maxQ) && maxQ >= circuit.qubits && maxQ < MAX_QUBITS) {
-                    circuit.qubits = maxQ + 1;
-                }
-                
-                const uid = nextId++;
-                if (qubits.length === 1) {
-                    newGates.push({ id: gateId, q: qubits[0], def: def, uid: uid });
-                } else if (qubits.length === 2) {
-                    newGates.push({ id: gateId, q: Math.min(qubits[0], qubits[1]), q2: Math.max(qubits[0], qubits[1]), def: def, uid: uid });
-                } else if (qubits.length >= 3) {
-                    const sorted = [...qubits].sort((a,b)=>a-b);
-                    newGates.push({ id: gateId, q: sorted[0], q2: sorted[1], q3: sorted[2], def: def, uid: uid });
-                }
-            }
+            _pyStruct = { nq: data.num_qubits, ops: _ops }; _pyStructCode = rawCode.trim();
+            const newGates = qcolOpsToGates(_ops);
             circuit.gates = normalizeMeasurements(newGates);
             
             // ✅ Asegurar que circuit.qubits refleja el máximo qubit usado
@@ -2159,7 +2473,7 @@ async function runServerCode() {
     out.innerHTML = `<span class="inf">Sending code to quantum compiler (Qiskit 1.0+)...\n</span>`;
 
     const _ens = ensureMeasurements(code);
-    const sendCode = qcolWithPlotCapture(_ens.code);
+    const sendCode = qcolAppendProbe(qcolWithPlotCapture(_ens.code));
     if (_ens.added) out.innerHTML += `<span class="inf">ℹ️ No measurements found — measuring all qubits for this run.\n</span>`;
     const isHF = engineURL.includes('hf.space') || engineURL.includes('huggingface');
     try {
@@ -2183,7 +2497,8 @@ async function runServerCode() {
         const el = ((Date.now() - t0) / 1000).toFixed(2);
         document.getElementById('out-elapsed').textContent = el + 's';
         const _plots = qcolExtractPlots(d.output);
-        d.output = _plots.text;
+        const _st = qcolExtractStruct(_plots.text);
+        d.output = _st.text;
         if (d.success) {
             out.innerHTML = `<span class="inf">╔════════════════════════════╗\n║  Compiler · ${el}s\n╚════════════════════════════╝\n\n</span><span class="ok">${escapeHtml(d.output)}</span>`;
             _plots.imgs.forEach((b, i) => { out.innerHTML += `\n<div style="margin:.4rem 0;"><div class="inf" style="font-size:.55rem;">📈 MATPLOTLIB PLOT ${_plots.imgs.length > 1 ? (i + 1) : ''}</div><img src="data:image/png;base64,${b}" alt="Plot" style="max-width:100%;background:#fff;border-radius:6px;"></div>`; });
@@ -2191,7 +2506,9 @@ async function runServerCode() {
             setRunSt('idle', 'Ready');
             logMonitorRun({ success: true, lib: curLib, qubits: circuit.qubits, time: parseFloat(el) });
             _lastServerOutput = d.output || '';
-            const _sp = _parseTextDraw(_lastServerOutput);
+            let _handled = false;
+            if (_st.struct && _st.struct.ops) { try { qcolReconcile(_st.struct, { out, added: _ens.added }); _handled = true; } catch (e) { console.warn('reconcile', e); } }
+            const _sp = _handled ? null : _parseTextDraw(_lastServerOutput);
             if (_sp && _sp.gates.length > 0) {
                 _sp.gates = normalizeMeasurements(_sp.gates);
                 // Solo se comparan las puertas que el dibujo de texto muestra en caja (sin SWAP/CZ/CSW)
