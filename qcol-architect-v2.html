@@ -3180,6 +3180,7 @@ function returnToNotebook(){
             q2:  g.q2,
             q3:  g.q3,
             uid: g.uid,
+            qs:  g.qs, block: g.block || null,
             def: {
                 bg:   g.def?.bg   || '#1a4a8a',
                 sym:  g.def?.sym  || g.id || '?',
@@ -3302,7 +3303,7 @@ window.addEventListener('message', e => {
             }
         } else if(d.circuitData && d.circuitData.gates){
             circuit.qubits = d.circuitData.qubits || 2;
-            circuit.gates  = d.circuitData.gates  || [];
+            circuit.gates  = (d.circuitData.gates || []).map(g => g.id === 'BLK' ? { ...g, def: _BLOCK_DEF } : g);
             circuit.gates = normalizeMeasurements(circuit.gates);
             renderCircuit();
             updateCircuitInfo();
