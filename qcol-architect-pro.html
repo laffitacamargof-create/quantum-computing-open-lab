@@ -268,7 +268,7 @@ body{display:flex;flex-direction:column;overflow:hidden;}
 body.expo-mode .nb-cell .cell-toolbar{display:none!important;}
 body.expo-mode .nb-cell.qk-cell:hover .cell-toolbar,
 body.expo-mode .nb-cell.qk-cell.active .cell-toolbar{display:flex!important;}
-body.expo-mode .nb-cell.qk-cell .cell-toolbar .ct-btn:not(.ct-run){display:none!important;}
+body.expo-mode .nb-cell.qk-cell .cell-toolbar .ct-btn:not(.ct-run):not(.ct-noise){display:none!important;}
 .ct-btn{width:18px;height:18px;border-radius:3px;
   background:rgba(8,11,20,.9);border:1px solid var(--bd2);
   color:var(--mu);font-size:.5rem;cursor:pointer;
@@ -521,6 +521,7 @@ s.blt{color:#ffb86c;}
 <script>window.MathJax={tex:{inlineMath:[['$','$'],['\\(','\\)']],displayMath:[['$$','$$'],['\\[','\\]']]},startup:{typeset:false}};</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" async></script>
 <script src="repo-sync.js"></script>
+<script src="qcol-noise.js"></script>
 <script>
 // ═══════════════════════════════════════════════════════════════
 // QCOL QUANTUM NOTEBOOK v5.0 — Full Output + Expo mode
@@ -1902,6 +1903,11 @@ print("\\nResults:", counts)
 function deleteCell(id){if(_expositionMode)return;if(cells.length<=1){notify('You must have at least 1 cell');return;}cells=cells.filter(c=>c.id!==id);if(curCellId===id)curCellId=cells[0]?.id||null;renderCells();updateStatus();}
 function moveCellUp(id){const i=cells.findIndex(c=>c.id===id);if(i<=0)return;[cells[i-1],cells[i]]=[cells[i],cells[i-1]];renderCells();focusCell(id);}
 function moveCellDown(id){const i=cells.findIndex(c=>c.id===id);if(i<0||i>=cells.length-1)return;[cells[i],cells[i+1]]=[cells[i+1],cells[i]];renderCells();focusCell(id);}
+function noiseCell(id,extra){
+  const cell=cells.find(c=>c.id===id);if(!cell)return;syncCellCode(id);
+  if(!window.QcolNoise){notify('Noise module not loaded');return;}
+  window.QcolNoise.open(Object.assign({getCode:()=>{const c=cells.find(x=>x.id===id);syncCellCode(id);return c?c.code:'';}},extra||{}));
+}
 function syncCellCode(id){const cell=cells.find(c=>c.id===id);if(!cell)return;const ta=document.getElementById('ta-'+id);const mta=document.getElementById('mta-'+id);if(ta)cell.code=ta.value;if(mta)cell.code=mta.value;}
 function focusCell(id){curCellId=id;document.querySelectorAll('.nb-cell').forEach(el=>{el.classList.toggle('active',el.dataset.id===id);});const ta=document.getElementById('ta-'+id)||document.getElementById('mta-'+id);if(ta)ta.focus();}
 function changeCellType(id){if(_expositionMode)return;const cell=cells.find(c=>c.id===id);if(!cell)return;cell.type=cell.type==='code'||cell.type==='qiskit'?'markdown':'code';cell.mdEdit=true;renderCells();focusCell(id);}
@@ -2031,9 +2037,10 @@ function buildCellEl(cell,i){
   const execLbl=cell.exec_count!==null?`[${cell.exec_count}]`:'[ ]';
 
   const toolbar=_expositionMode
-    ?`<div class="cell-toolbar">${isCode?`<button class="ct-btn ct-run" onclick="event.stopPropagation();runCell('${cell.id}')" title="Run">▶</button>`:''}
+    ?`<div class="cell-toolbar">${isCode?`<button class="ct-btn ct-run" onclick="event.stopPropagation();runCell('${cell.id}')" title="Run">▶</button>`:''}${isQk?`<button class="ct-btn ct-noise" onclick="event.stopPropagation();noiseCell('${cell.id}')" title="Simulate with noise">🔊</button>`:''}
       </div>`
     :`<div class="cell-toolbar">
+        ${isQk?`<button class="ct-btn ct-noise" onclick="event.stopPropagation();noiseCell('${cell.id}')" title="Simulate this circuit with noise">🔊</button>`:''}
         <button class="ct-btn" onclick="event.stopPropagation();moveCellUp('${cell.id}')" title="Move up">↑</button>
         <button class="ct-btn" onclick="event.stopPropagation();moveCellDown('${cell.id}')" title="Move down">↓</button>
         <button class="ct-btn" onclick="event.stopPropagation();changeCellType('${cell.id}')" title="Change type">${isCode?'Md':'{ }'}</button>
@@ -2429,6 +2436,29 @@ function initEngine(){
 }
 initEngine();
 setTimeout(()=>initMarkdown(),400);
+
+// ── Copiloto IA: contexto + acciones (solo mensajes del padre) ──
+window.addEventListener('message',e=>{
+  if(e.source!==window.parent)return;
+  const d=e.data||{};
+  try{
+    if(d.type==='OPENQ_GET_CONTEXT'){
+      const strip=s=>String(s||'').replace(/<[^>]*>/g,'').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&');
+      const nm=document.getElementById('nb-name-inp');
+      window.parent.postMessage({type:'OPENQ_CONTEXT',ctx:{tool:'notebook',name:nm?nm.value:'',exposition:!!_expositionMode,
+        current:Math.max(0,cells.findIndex(c=>c.id===curCellId)),
+        noise_last:(window.QcolNoise&&window.QcolNoise.last)||null,cells:cells.slice(0,30).map((c,i)=>({i,type:c.type,code:String(c.code||'').slice(0,1200),output:strip(c.output).slice(-800)}))}},'*');
+    }else if(d.type==='OPENQ_AI_SET_CODE'&&typeof d.code==='string'){
+      const c=cells[d.cellIndex];if(!c||c.type==='markdown'||_expositionMode&&false)return;
+      c.code=d.code;const ta=document.getElementById('ta-'+c.id);if(ta){ta.value=d.code;ta.dispatchEvent(new Event('input',{bubbles:true}));}
+      syncCellCode(c.id);
+    }else if(d.type==='OPENQ_AI_NOISE'){
+      const c=cells[d.cellIndex];if(c&&c.type!=='markdown')noiseCell(c.id,{noise:d.noise,engine:d.engine,shots:d.shots,autorun:true});
+    }else if(d.type==='OPENQ_AI_RUN'){
+      const c=cells[d.cellIndex];if(c&&c.type!=='markdown'){syncCellCode(c.id);runCell(c.id);}
+    }
+  }catch(err){console.warn('copilot hook',err);}
+});
 </script>
 </body>
 </html>

@@ -6,6 +6,7 @@
 <title>Quantum Architect</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=JetBrains+Mono:wght@400;500;600&family=Exo+2:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
+<script src="qcol-noise.js"></script>
 <style>
 /* ══════════════════════════════════════════════════
    QUANTUM ARCHITECT — Hybrid automatic
@@ -334,6 +335,7 @@ body { background:var(--bg); color:var(--tx); font-family:var(--ex); }
   <button class="bsm" id="btn-back-nb" style="display:none;background:rgba(0,255,136,.1);border-color:rgba(0,255,136,.4);color:#00ff88;font-weight:700;" onclick="returnToNotebook()">← SAVE AND RETURN</button>
   <div class="sep" id="sep-back-nb" style="display:none;"></div>
   <button class="btn-run" id="btn-run">▶ RUN</button>
+  <button class="btn-run" id="btn-noise" type="button" title="Simulate this circuit with realistic noise (MQT YAQS / Qiskit Aer)" style="background:linear-gradient(135deg,#7b2ff7,#ff7bd5);margin-left:.35rem;">🔊 NOISE</button>
   <button class="bsm" id="btn-sync">⟳ SYNC</button>
   <button class="bsm" id="btn-clear">🗑 Clear</button>
   <div class="sep"></div>
@@ -2929,6 +2931,37 @@ async function checkEngine() {
     setStatus('● NO COMPILER', 'badge-off');
     notify('❌ Could not connect after 3 attempts');
 }
+
+// ── Opción de ruido (usa qcol-noise.js) ──
+function openNoise(extra) {
+    if (!window.QcolNoise) { notify('Noise module not loaded'); return; }
+    window.QcolNoise.open(Object.assign({ getCode: () => (document.getElementById('code-ta') || {}).value || '' }, extra || {}));
+}
+(function () { const b = document.getElementById('btn-noise'); if (b) b.addEventListener('click', () => openNoise()); })();
+// ── Copiloto IA: contexto + acciones (solo mensajes del padre) ──
+window.addEventListener('message', e => {
+    if (e.source !== window.parent) return;
+    const d = e.data || {};
+    try {
+        if (d.type === 'OPENQ_GET_CONTEXT') {
+            const ta = document.getElementById('code-ta'), ob = document.getElementById('out-body');
+            window.parent.postMessage({ type: 'OPENQ_CONTEXT', ctx: {
+                tool: 'architect', engineOK: !!engineOK,
+                qubits: circuit && circuit.qubits, gates: circuit && circuit.gates ? circuit.gates.length : 0,
+                code: ta ? ta.value.slice(0, 4000) : '',
+                output: ob ? (ob.innerText || '').slice(-2500) : '',
+                noise_last: (window.QcolNoise && window.QcolNoise.last) || null
+            } }, '*');
+        } else if (d.type === 'OPENQ_AI_SET_CODE' && typeof d.code === 'string') {
+            const ta = document.getElementById('code-ta');
+            if (ta) { ta.value = d.code; if (typeof onCodeEdit === 'function') onCodeEdit(); }
+        } else if (d.type === 'OPENQ_AI_NOISE') {
+            openNoise({ noise: d.noise, engine: d.engine, shots: d.shots, autorun: true });
+        } else if (d.type === 'OPENQ_AI_RUN') {
+            if (typeof runServerCode === 'function') runServerCode();
+        }
+    } catch (err) { console.warn('copilot hook', err); }
+});
 
 window.addEventListener('message', e => {
     const d = e.data || {};
