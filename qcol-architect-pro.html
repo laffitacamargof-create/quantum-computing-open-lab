@@ -268,7 +268,7 @@ body{display:flex;flex-direction:column;overflow:hidden;}
 body.expo-mode .nb-cell .cell-toolbar{display:none!important;}
 body.expo-mode .nb-cell.qk-cell:hover .cell-toolbar,
 body.expo-mode .nb-cell.qk-cell.active .cell-toolbar{display:flex!important;}
-body.expo-mode .nb-cell.qk-cell .cell-toolbar .ct-btn:not(.ct-run):not(.ct-noise){display:none!important;}
+body.expo-mode .nb-cell.qk-cell .cell-toolbar .ct-btn:not(.ct-run):not(.ct-noise):not(.ct-noise-run){display:none!important;}
 .ct-btn{width:18px;height:18px;border-radius:3px;
   background:rgba(8,11,20,.9);border:1px solid var(--bd2);
   color:var(--mu);font-size:.5rem;cursor:pointer;
@@ -2146,10 +2146,10 @@ function buildCellEl(cell,i){
   const execLbl=cell.exec_count!==null?`[${cell.exec_count}]`:'[ ]';
 
   const toolbar=_expositionMode
-    ?`<div class="cell-toolbar">${isCode?`<button class="ct-btn ct-run" onclick="event.stopPropagation();runCell('${cell.id}')" title="Run">▶</button>`:''}${isQk?`<button class="ct-btn ct-noise" onclick="event.stopPropagation();noiseCell('${cell.id}')" title="Simulate with noise">🔊</button>`:''}
+    ?`<div class="cell-toolbar">${isCode?`<button class="ct-btn ct-run" onclick="event.stopPropagation();runCell('${cell.id}')" title="Run">▶</button>`:''}${isQk?`<button class="ct-btn ct-noise" onclick="event.stopPropagation();noiseCell('${cell.id}')" title="Adjust noise (presets and parameters)" aria-label="Adjust noise">⚙</button><button class="ct-btn ct-noise-run" onclick="event.stopPropagation();noiseCell('${cell.id}',{quick:true})" title="Run with noise now (saved settings)" aria-label="Run with noise">🔊▶</button>`:''}
       </div>`
     :`<div class="cell-toolbar">
-        ${isQk?`<button class="ct-btn ct-noise" onclick="event.stopPropagation();noiseCell('${cell.id}')" title="Simulate this circuit with noise">🔊</button>`:''}
+        ${isQk?`<button class="ct-btn ct-noise" onclick="event.stopPropagation();noiseCell('${cell.id}')" title="Adjust noise (presets and parameters)" aria-label="Adjust noise">⚙</button><button class="ct-btn ct-noise-run" onclick="event.stopPropagation();noiseCell('${cell.id}',{quick:true})" title="Run with noise now (saved settings)" aria-label="Run with noise">🔊▶</button>`:''}
         <button class="ct-btn" onclick="event.stopPropagation();moveCellUp('${cell.id}')" title="Move up">↑</button>
         <button class="ct-btn" onclick="event.stopPropagation();moveCellDown('${cell.id}')" title="Move down">↓</button>
         <button class="ct-btn" onclick="event.stopPropagation();changeCellType('${cell.id}')" title="Change type">${isCode?'Md':'{ }'}</button>
