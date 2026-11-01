@@ -1942,7 +1942,7 @@ CONTEXT: ${c}`;
       case 'set_code': return !!AI_TARGET[a.target] && typeof a.code === 'string' && a.code.length > 0 && a.code.length < 20000 && (a.target !== 'notebook' || Number.isInteger(a.cellIndex));
       case 'run': return !!AI_TARGET[a.target] && (a.target !== 'notebook' || Number.isInteger(a.cellIndex));
       case 'noise': return (a.target === 'architect' || (a.target === 'notebook' && Number.isInteger(a.cellIndex)))
-        && (a.engine === undefined || ['mqt-yaqs', 'qiskit-aer', 'both'].includes(a.engine))
+        && (a.engine === undefined || ['qcol-browser', 'mqt-yaqs', 'qiskit-aer', 'both', 'all'].includes(a.engine))
         && (a.shots === undefined || (Number.isInteger(a.shots) && a.shots >= 1 && a.shots <= 2048))
         && (a.noise === undefined || (a.noise && typeof a.noise === 'object' && a.noise.schema_version === '1.0' && Array.isArray(a.noise.channels) && JSON.stringify(a.noise).length < 5000));
     }
