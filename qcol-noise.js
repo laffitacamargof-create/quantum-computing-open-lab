@@ -164,23 +164,71 @@
     return null;
   }
   function mulberry(seed) { let a = (seed == null ? (Math.random() * 2 ** 32) : seed) >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
-  // Distribución exacta tras el ruido (sin muestreo)
-  function exactProbs(qasm, noise) {
+  // Coste en puertas NATIVAS {rz virtual, sx, x, cx}: cuántas puertas físicas de 1 qubit (por qubit) y qué pares de cx hay
+  const near = (a, b) => Math.abs(((a - b) % (2 * Math.PI) + 3 * Math.PI) % (2 * Math.PI) - Math.PI) < 1e-6;
+  function oneQ(name, p) {
+    if (['id', 'rz', 'z', 's', 'sdg', 't', 'tdg', 'p'].indexOf(name) >= 0) return 0;
+    if (['x', 'y', 'sx', 'h'].indexOf(name) >= 0) return 1;
+    const th = name === 'u' ? p[0] : p[0]; // rx, ry, u(θ,φ,λ)
+    if (name === 'rx' || name === 'ry' || name === 'u') { const a = Math.abs(th) % (2 * Math.PI); if (a < 1e-9 || Math.abs(a - 2 * Math.PI) < 1e-9) return 0; if (near(a, Math.PI / 2) || near(a, 3 * Math.PI / 2) || near(a, Math.PI)) return 1; return 2; }
+    return 1;
+  }
+  function nativeCost(op) {
+    const n = op.name, q = op.q;
+    if (q.length === 1) return { n1: { [q[0]]: oneQ(n, op.p) }, pairs: [] };
+    const t = q[q.length - 1];
+    const T = { cx: [1, 0], cz: [1, 2], cy: [1, 0], ch: [2, 4], cp: [2, 0], crz: [2, 0], crx: [2, 2], cry: [2, 4], swap: [3, 0] }[n];
+    if (T) { const pr = []; for (let k = 0; k < T[0]; k++) pr.push([q[0], q[1]]); return { n1: { [t]: T[1] }, pairs: pr }; }
+    if (n === 'ccx' || n === 'cswap') { const [a, b, c] = q, pr = [];
+      if (n === 'ccx') { for (let k = 0; k < 2; k++) pr.push([a, c], [b, c], [a, b]); return { n1: { [c]: 2 }, pairs: pr }; }
+      for (let k = 0; k < 2; k++) pr.push([b, c], [a, c], [a, b]); pr.push([c, b], [b, c]); return { n1: { [c]: 2 }, pairs: pr }; }
+    return { n1: {}, pairs: [[q[0], q[1]]] };
+  }
+  const pop = x => { x -= (x >>> 1) & 0x55555555; x = (x & 0x33333333) + ((x >>> 2) & 0x33333333); return (((x + (x >>> 4)) & 0x0F0F0F0F) * 0x01010101) >>> 24; };
+  // ρ ← Σ w_k P_k ρ P_k  (P = X^x Z^z). Depolarizante de 2 qubits CORRELACIONADO: 15 Paulis, cada uno p/15.
+  function pauliMix(st, list) {
+    const D = st.D, N = D * D, ar = new Float64Array(N), ai = new Float64Array(N);
+    for (const { w, x, z } of list) { for (let i = 0; i < D; i++) { const si = pop(i & z) & 1; for (let j = 0; j < D; j++) { const sg = (si ^ (pop(j & z) & 1)) ? -w : w, d = (i ^ x) * D + (j ^ x); ar[d] += sg * st.re[i * D + j]; ai[d] += sg * st.im[i * D + j]; } } }
+    st.re = ar; st.im = ai;
+  }
+  function dep2(st, a, b, p) {
+    const list = [{ w: 1 - p, x: 0, z: 0 }], xz = [[0, 0], [1, 0], [1, 1], [0, 1]];
+    for (let u = 0; u < 4; u++) for (let v = 0; v < 4; v++) { if (!u && !v) continue; list.push({ w: p / 15, x: (xz[u][0] << a) | (xz[v][0] << b), z: (xz[u][1] << a) | (xz[v][1] << b) }); }
+    pauliMix(st, list);
+  }
+  // Distribución exacta tras el ruido. extra = { native, idle:{T1,T2,tg1,tg2}, corr }  (realismo extra, solo motor del navegador)
+  function exactProbs(qasm, noise, extra) {
+    extra = extra || {};
     const { n, ops } = parseQasmOps(qasm); if (!n || n > BR.maxQ) throw new Error('The browser simulator supports 1–' + BR.maxQ + ' qubits.');
     const D = 1 << n, st = { D, re: new Float64Array(D * D), im: new Float64Array(D * D) }; st.re[0] = 1;
     const chans = (noise && noise.channels) || [], after1q = !(noise && noise.options && noise.options.noise_after_1q_gates === false), avisos = [];
     const gateCh = [], ro = [];
     chans.forEach((ch, idx) => { if (ch.type === 'readout') { ro.push(ch); return; } if (ch.type === 'crosstalk') { avisos.push('[' + idx + '] crosstalk is not supported by the browser simulator and was skipped.'); return; }
       const K = krausOf(ch); if (!K) throw new Error('Unknown channel ' + ch.type); gateCh.push({ ch, K }); });
-    for (const op of ops) {
-      applyUnitary(st, op);
-      if (op.q.length === 1 && !after1q) continue;
+    const idle = extra.idle && extra.idle.T1 > 0 && extra.idle.T2 > 0 ? extra.idle : null, tq = new Float64Array(n), idleK = {};
+    const relax = (q, gap) => { if (!idle || !(gap > 1e-12)) return; const key = gap.toPrecision(8); if (!idleK[key]) idleK[key] = krausOf({ type: 'thermal_relaxation', T1: idle.T1, T2: Math.min(idle.T2, 2 * idle.T1), gate_time: gap }); applyKraus(st, q, idleK[key]); };
+    // ruido de UNA puerta (nombre de puerta, qubits). logical = nombre de la puerta original
+    const noiseFor = (gname, qs, logical) => {
+      if (qs.length === 1 && !after1q) return;
       for (const { ch, K } of gateCh) {
         const sc_ = ch.scope || { kind: 'global' };
-        if (sc_.kind === 'gate' && sc_.gates.indexOf(op.name) < 0) continue;
-        for (const q of op.q) { if ((sc_.kind === 'qubit' || sc_.kind === 'pair') && (sc_.qubits || []).indexOf(q) < 0) continue; applyKraus(st, q, K); }
+        if (sc_.kind === 'gate' && sc_.gates.indexOf(gname) < 0 && sc_.gates.indexOf(logical) < 0) continue;
+        if (extra.corr && ch.type === 'depolarizing' && qs.length === 2 && (sc_.kind === 'global' || sc_.kind === 'gate')) { dep2(st, qs[0], qs[1], ch.p); continue; }
+        for (const q of qs) { if ((sc_.kind === 'qubit' || sc_.kind === 'pair') && (sc_.qubits || []).indexOf(q) < 0) continue; applyKraus(st, q, K); }
       }
+    };
+    for (const op of ops) {
+      const cost = extra.native ? nativeCost(op) : null;
+      const n1max = cost ? Math.max(0, ...Object.values(cost.n1)) : 0;
+      const dur = idle ? (cost ? n1max * idle.tg1 + cost.pairs.length * idle.tg2 : (op.q.length === 1 ? idle.tg1 : idle.tg2)) : 0;
+      const start = Math.max(...op.q.map(q => tq[q]));
+      op.q.forEach(q => { relax(q, start - tq[q]); tq[q] = start + dur; });
+      applyUnitary(st, op);
+      if (!cost) { noiseFor(op.name, op.q, op.name); continue; }
+      Object.keys(cost.n1).forEach(q => { for (let k = 0; k < cost.n1[q]; k++) noiseFor('sx', [+q], op.name); });
+      cost.pairs.forEach(pr => noiseFor('cx', pr, op.name));
     }
+    if (idle) { const tmax = Math.max(...tq); for (let q = 0; q < n; q++) relax(q, tmax - tq[q]); }
     let p = new Float64Array(D); for (let i = 0; i < D; i++) p[i] = Math.max(0, st.re[i * D + i]);
     ro.forEach(ch => { const sc_ = ch.scope || { kind: 'global' }, qs = sc_.kind === 'global' || sc_.kind === 'gate' ? [...Array(n).keys()] : (sc_.qubits || []);
       qs.forEach(q => { const bit = 1 << q, a = ch.p1_given_0, b = ch.p0_given_1;
@@ -188,11 +236,11 @@
     let s = 0; for (let i = 0; i < D; i++) s += p[i]; for (let i = 0; i < D; i++) p[i] /= s || 1;
     return { n, p, avisos };
   }
-  async function simulateBrowser(qasm, noise, shots, seed) {
+  async function simulateBrowser(qasm, noise, shots, seed, extra) {
     await new Promise(r => setTimeout(r, 15));   // deja pintar el aviso "ejecutando"
     const t0 = Date.now();
     try {
-      const { n, p, avisos } = exactProbs(qasm, noise), rnd = mulberry(seed), cdf = new Float64Array(p.length); let acc = 0; for (let i = 0; i < p.length; i++) { acc += p[i]; cdf[i] = acc; }
+      const { n, p, avisos } = exactProbs(qasm, noise, extra), rnd = mulberry(seed), cdf = new Float64Array(p.length); let acc = 0; for (let i = 0; i < p.length; i++) { acc += p[i]; cdf[i] = acc; }
       const counts = {}; for (let k = 0; k < shots; k++) { const u = rnd() * acc; let lo = 0, hi = p.length - 1; while (lo < hi) { const m = (lo + hi) >> 1; if (cdf[m] < u) lo = m + 1; else hi = m; } const key = lo.toString(2).padStart(n, '0'); counts[key] = (counts[key] || 0) + 1; }
       return { ok: true, counts: Object.fromEntries(Object.entries(counts).sort()), avisos, warnings: [], applied: [], degraded: [], meta: { engine: BR.id, n_qubits: n, shots, seed, elapsed_s: +((Date.now() - t0) / 1000).toFixed(2) } };
     } catch (e) { return { ok: false, error: 'fallo_motor', detalle: e.message }; }
@@ -208,7 +256,7 @@
       ideal: 'Also show the ideal (noise-free) result', adv: 'Advanced: noise JSON and OpenQASM', manual: 'Edit the JSON by hand (overrides the fields above)', run: '⚡ Run with noise', adjust: '⚙ Adjust noise',
       reset: 'Reset preset', running: 'Running… YAQS can take from seconds to a couple of minutes on the free server.', badjson: 'Fix the noise JSON first.', t2cap: 'T2 was limited to 2·T1 (physical limit).',
       ideal_l: 'Ideal', fid: 'Similarity to ideal (1 − TVD)', tvd: 'Total variation distance', typical: '≈0.03–0.07 is typical sampling noise', caps: 'max {q} qubits · {c} noise channels',
-      refEngine: 'reference · server', validator: 'validator · server', instant: 'instant · in your browser', srvOff: 'Reference server offline — the instant simulator keeps working.', netfail: 'Could not reach the noise server.', close: 'Close' },
+      refEngine: 'reference · server', validator: 'validator · server', instant: 'instant · in your browser', srvOff: 'Reference server offline — the instant simulator keeps working.', real: 'Extra realism (instant simulator)', save: '✔ Save for this cell', rNative: 'Count native gates (decompose into rz · sx · cx)', rIdle: 'Decoherence while qubits wait (idle, uses T1/T2)', rCorr: 'Correlated 2-qubit errors', netfail: 'Could not reach the noise server.', close: 'Close' },
     es: { title: '🔊 Ruido cuántico', sub: 'Simula tu circuito con ruido realista. El motor de referencia es MQT YAQS y puedes contrastar el resultado con otros simuladores.',
       srv: 'Servidor de ruido de QCOL', srvOk: 'Conectado', srvWake: 'Servidor de referencia (opcional): despertando… {s}s', srvDown: 'El servidor de ruido no responde ahora mismo. Inténtalo de nuevo en un minuto.',
       sim: 'Simulador', all: 'Comparar todos los simuladores', preset: 'Preconfiguración', presetNote: 'Órdenes de magnitud típicos de cada tecnología — no es la calibración en vivo de un dispositivo concreto. Puedes editar cualquier valor.',
@@ -217,7 +265,7 @@
       ideal: 'Mostrar también el resultado ideal (sin ruido)', adv: 'Avanzado: JSON de ruido y OpenQASM', manual: 'Editar el JSON a mano (anula los campos de arriba)', run: '⚡ Ejecutar con ruido', adjust: '⚙ Ajustar ruido',
       reset: 'Restablecer preconfiguración', running: 'Ejecutando… YAQS puede tardar de segundos a un par de minutos en el servidor gratuito.', badjson: 'Corrige primero el JSON de ruido.', t2cap: 'T2 se limitó a 2·T1 (límite físico).',
       ideal_l: 'Ideal', fid: 'Parecido al ideal (1 − TVD)', tvd: 'Distancia de variación total', typical: '≈0.03–0.07 es ruido de muestreo típico', caps: 'máx. {q} qubits · {c} canales de ruido',
-      refEngine: 'referencia · servidor', validator: 'validador · servidor', instant: 'instantáneo · en tu navegador', srvOff: 'Servidor de referencia sin conexión — el simulador instantáneo sigue funcionando.', netfail: 'No se pudo contactar con el servidor de ruido.', close: 'Cerrar' } };
+      refEngine: 'referencia · servidor', validator: 'validador · servidor', instant: 'instantáneo · en tu navegador', srvOff: 'Servidor de referencia sin conexión — el simulador instantáneo sigue funcionando.', real: 'Realismo extra (simulador instantáneo)', save: '✔ Guardar para esta celda', rNative: 'Contar puertas nativas (descompone en rz · sx · cx)', rIdle: 'Decoherencia mientras los qubits esperan (reposo, usa T1/T2)', rCorr: 'Errores de 2 qubits correlacionados', netfail: 'No se pudo contactar con el servidor de ruido.', close: 'Cerrar' } };
   const t = (k, v) => { let s = (TX[lang()][k] != null ? TX[lang()][k] : TX.en[k]) || k; if (v) Object.keys(v).forEach(x => { s = s.replace('{' + x + '}', v[x]); }); return s; };
 
   // ───────── Servidor (único, predeterminado) ─────────
@@ -248,7 +296,7 @@
   const tvd = (a, b) => { const na = Object.values(a).reduce((x, y) => x + y, 0), nb = Object.values(b).reduce((x, y) => x + y, 0); let s = 0; new Set([...Object.keys(a), ...Object.keys(b)]).forEach(k => { s += Math.abs((a[k] || 0) / na - (b[k] || 0) / nb); }); return s / 2; };
   const ENG_NAME = { 'qcol-browser': 'QCOL', 'mqt-yaqs': 'MQT YAQS', 'qiskit-aer': 'Qiskit Aer' }, ENG_ROLE = { 'qcol-browser': 'instant', 'mqt-yaqs': 'refEngine', 'qiskit-aer': 'validator' };
   const BROWSER = 'qcol-browser';
-  const runAny = o => o.engine === BROWSER ? simulateBrowser(o.qasm, o.noise, o.shots, o.seed) : run(o);
+  const runAny = o => o.engine === BROWSER ? simulateBrowser(o.qasm, o.noise, o.shots, o.seed, o.extra) : run(o);
   const engName = e => ENG_NAME[e] || e;
 
   // ───────── Preconfiguraciones (órdenes de magnitud típicos; NO calibración en vivo) ─────────
@@ -301,15 +349,72 @@
 .qn-bar{display:grid;grid-template-columns:64px 1fr 120px;gap:8px;align-items:center;margin:3px 0;font:11px ui-monospace,Menlo,monospace}
 .qn-t{height:14px;background:#0f1c33;border-radius:4px;position:relative;overflow:hidden}.qn-t div{height:7px;position:absolute;left:0}
 .qn-msg{padding:7px 10px;border-radius:8px;font-size:.76rem;margin:.35rem 0;border:1px solid}.qn-w{border-color:rgba(255,215,0,.4);background:rgba(255,215,0,.07);color:#ffd700}.qn-e{border-color:rgba(255,85,119,.5);background:rgba(255,85,119,.08);color:#ff5577}.qn-o{border-color:rgba(0,255,136,.4);background:rgba(0,255,136,.07);color:#00ff88}
-.qn-x{float:right}.qn-lg span{margin-right:12px;font-size:.7rem}.qn-lg i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px}`;
+.qn-inline{padding:.5rem .6rem;background:#020c18;border-top:1px solid rgba(0,136,255,.1);color:#d8ecff;font:12px ui-monospace,Menlo,Consolas,monospace}.qn-ih{font-size:.68rem;color:#00ccff;letter-spacing:.04em;margin-bottom:.35rem}.qn-x{float:right}.qn-lg span{margin-right:12px;font-size:.7rem}.qn-lg i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px}`;
   const PAL = ['linear-gradient(90deg,#0077ff,#00ccff)', 'linear-gradient(90deg,#b36bff,#ff7bd5)', 'linear-gradient(90deg,#ff9f1c,#ffd166)', 'linear-gradient(90deg,#06d6a0,#9bf6c8)', 'linear-gradient(90deg,#8d99ae,#d9e2ec)'];
   const IDEAL_CLR = 'linear-gradient(90deg,#46566f,#8fa3bf)';
   let last = null, ov = null, escFn = null;
+  function paintResults(T, rs, notes) {
+    const w = T.warns; w.textContent = ''; const add = (c, x) => { const d = document.createElement('div'); d.className = 'qn-msg ' + c; d.textContent = x; w.appendChild(d); };
+    (notes || []).forEach(n => add('qn-w', 'ℹ️ ' + n));
+    rs.forEach(r => { if (!r.res.ok) add('qn-e', '❌ ' + r.name + ': ' + r.res.error + ' — ' + (r.res.detalle || '')); else { (r.res.avisos || []).forEach(a => add('qn-w', '⚠️ ' + r.name + ' ' + a)); (r.res.warnings || []).forEach(a => add('qn-w', '⚠️ ' + r.name + ': ' + a)); } });
+    const oks = rs.filter(r => r.res.ok); if (!oks.length) return;
+    const clr = (r, i) => r.ideal ? IDEAL_CLR : PAL[i % PAL.length];
+    const lg = T.lg; lg.textContent = ''; oks.forEach((r, i) => { const s = document.createElement('span'), ic = document.createElement('i'); ic.style.background = clr(r, i); s.appendChild(ic); s.appendChild(document.createTextNode(r.name + ' (' + (r.res.meta && r.res.meta.elapsed_s) + ' s)')); lg.appendChild(s); });
+    const tot = r => Object.values(r.res.counts).reduce((a, b) => a + b, 0);
+    const keys = [...new Set(oks.flatMap(r => Object.keys(r.res.counts)))].sort((a, b) => oks.reduce((s, r) => s + (r.res.counts[b] || 0) / tot(r), 0) - oks.reduce((s, r) => s + (r.res.counts[a] || 0) / tot(r), 0)).slice(0, 16).sort();
+    const bars = T.bars; bars.textContent = '';
+    keys.forEach(k => { const row = document.createElement('div'); row.className = 'qn-bar'; const lab = document.createElement('span'); lab.textContent = k; const tr = document.createElement('div'); tr.className = 'qn-t'; tr.style.height = (oks.length * 8 + 2) + 'px';
+      oks.forEach((r, i) => { const f = document.createElement('div'); f.style.top = (i * 8 + 1) + 'px'; f.style.height = '6px'; f.style.width = (100 * (r.res.counts[k] || 0) / tot(r)).toFixed(1) + '%'; f.style.background = clr(r, i); tr.appendChild(f); });
+      const v = document.createElement('span'); v.textContent = oks.map(r => (100 * (r.res.counts[k] || 0) / tot(r)).toFixed(1) + '%').join(' / ');
+      row.appendChild(lab); row.appendChild(tr); row.appendChild(v); bars.appendChild(row); });
+    const noisy = oks.filter(r => !r.ideal), idl = oks.find(r => r.ideal);
+    if (idl) noisy.forEach(r => add('qn-o', r.name + ' — ' + t('fid') + ': ' + (1 - tvd(r.res.counts, idl.res.counts)).toFixed(3)));
+    if (noisy.length >= 2) add('qn-o', t('tvd') + ' ' + noisy[0].name + ' vs ' + noisy[1].name + ': ' + tvd(noisy[0].res.counts, noisy[1].res.counts).toFixed(4) + ' (' + t('typical') + ')');
+  }
+
+
+
+  // ───────── Ejecución DIRECTA (sin ventana): el resultado se pinta dentro de un contenedor, como un "run" normal ─────────
+  function ensureCss() { if (!document.getElementById('qn-css')) { const st = document.createElement('style'); st.id = 'qn-css'; st.textContent = CSS; document.head.appendChild(st); } }
+  async function executeCfg(cfg, q, opt) {
+    opt = opt || {};
+    const vals = Object.assign(presetVals(cfg.preset), cfg.vals || {}), rl = Object.assign({ native: true, idle: true, corr: true }, cfg.realism || {});
+    let noise, notes = []; if (opt.noise) noise = opt.noise; else { const b = buildNoise(vals); noise = b.noise; notes = b.notes; }
+    const shots = Math.max(1, parseInt(opt.shots || cfg.shots) || 512), seed = cfg.seed == null ? null : cfg.seed;
+    let eng = opt.engine || cfg.engine || BROWSER; if (eng === 'both') eng = 'all'; const results = []; let srvEngines = [];
+    if (eng !== BROWSER) { try { const h = await wake(opt.onWake); srvEngines = h.engines || []; } catch (e) { results.push({ name: t('srv'), res: { ok: false, error: 'servidor', detalle: t('srvOff') } }); eng = BROWSER; } }
+    const list = eng === 'all' ? [BROWSER].concat(srvEngines) : [eng];
+    const extra = { native: rl.native, corr: rl.corr, idle: rl.idle && vals.t1 > 0 && vals.t2 > 0 ? { T1: vals.t1, T2: vals.t2, tg1: vals.tg1, tg2: vals.tg2 } : null };
+    for (const e of list) results.push({ name: engName(e), res: await runAny({ engine: e, extra, qasm: q, noise, shots: e === BROWSER ? Math.min(shots, 50000) : Math.min(shots, 2048), seed }) });
+    if (cfg.ideal !== false && noise.channels && noise.channels.length) { try { results.push({ name: t('ideal_l'), res: await simulateBrowser(q, { schema_version: '1.0', channels: [] }, Math.min(Math.max(shots, 4096), 50000), seed), ideal: true }); } catch (e) {} }
+    return { results, notes, noise, shots, vals, rl, list };
+  }
+  async function inline(o) {
+    ensureCss(); const out = o.out; if (!out) return null; out.textContent = '';
+    const box = document.createElement('div'); box.className = 'qn-inline';
+    const hd = document.createElement('div'); hd.className = 'qn-ih'; const st = document.createElement('div'); const T = { warns: document.createElement('div'), lg: document.createElement('div'), bars: document.createElement('div') }; T.lg.className = 'qn-lg';
+    [hd, st, T.warns, T.lg, T.bars].forEach(e => box.appendChild(e)); out.appendChild(box);
+    const cfg = Object.assign({ preset: 'sc-modern', engine: BROWSER, shots: 512, seed: 42, ideal: true }, o.cfg || {});
+    const pn = (PRESETS.find(p => p.id === cfg.preset) || PRESETS[1]).n; hd.textContent = t('title') + ' · ' + (pn[lang()] || pn.en) + ' · ' + engName(cfg.engine === 'all' ? 'all' : (cfg.engine || BROWSER)) + ' · ' + (cfg.shots || 512) + ' shots';
+    const msg = (cls, x) => { st.textContent = ''; if (x) { const d = document.createElement('div'); d.className = 'qn-msg ' + cls; d.textContent = x; st.appendChild(d); } };
+    let q; try { q = codeToQasm(o.getCode()); } catch (e) { msg('qn-e', '❌ ' + e.message); return null; }
+    if ((cfg.engine || BROWSER) !== BROWSER) msg('qn-o', t('running'));
+    const t0 = Date.now();
+    try {
+      const r = await executeCfg(cfg, q, { noise: o.noise, engine: o.engine, shots: o.shots, onWake: s => msg('qn-w', t('srvWake', { s })) });
+      msg('', ''); paintResults(T, r.results, r.notes);
+      const flags = ['native', 'idle', 'corr'].filter(k => r.rl[k]).join(' · ');
+      hd.textContent += ' · ' + ((Date.now() - t0) / 1000).toFixed(2) + ' s' + (flags ? ' · ' + flags : '');
+      last = { circuit_qubits: (q.match(/qubit\[(\d+)\]/) || [])[1], shots: r.shots, preset: cfg.preset, noise_channels: (r.noise.channels || []).map(c => c.type), results: r.results.map(x => ({ engine: x.name, ok: x.res.ok, error: x.res.error, counts: x.res.counts, avisos: x.res.avisos })) };
+      window.QcolNoise.last = last; return r;
+    } catch (e) { msg('qn-e', '❌ ' + e.message); return null; }
+  }
 
   function open(o) {
     o = o || {}; close();
     if (!document.getElementById('qn-css')) { const st = document.createElement('style'); st.id = 'qn-css'; st.textContent = CSS; document.head.appendChild(st); }
-    const saved = Object.assign({ preset: 'sc-modern', engine: '', shots: 512, seed: 42, ideal: true }, loadCfg());
+    const saved = Object.assign({ preset: 'sc-modern', engine: '', shots: 512, seed: 42, ideal: true }, o.cfg !== undefined ? (o.cfg || {}) : loadCfg());
+    const persist = c => { if (o.onSave) o.onSave(c); else saveCfg(c); };
     const vals = Object.assign(presetVals(saved.preset), saved.vals || {});
     ov = document.createElement('div'); ov.className = 'qn-ov'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-modal', 'true');
     const fld = (k, extra) => `<div><label for="qn-${k}">${t(k)}</label><input id="qn-${k}" type="number" step="any" min="0" ${extra || ''}></div>`;
@@ -323,13 +428,17 @@
         <div class="qn-note">${t('presetNote')}</div>
         <div class="qn-sec">${t('params')}</div>
         <div class="qn-grid">${['p1', 'p2', 't1', 't2', 'tg1', 'tg2', 'r01', 'r10', 'amp', 'ph'].map(k => fld(k)).join('')}${fld('shots', 'min="1" max="50000" step="1"')}${fld('seed', 'step="1"')}</div>
+        <div class="qn-sec">${t('real')}</div>
+        <label class="qn-chk"><input id="qn-rnative" type="checkbox">${t('rNative')}</label>
+        <label class="qn-chk"><input id="qn-ridle" type="checkbox">${t('rIdle')}</label>
+        <label class="qn-chk"><input id="qn-rcorr" type="checkbox">${t('rCorr')}</label>
         <label class="qn-chk"><input id="qn-ideal" type="checkbox">${t('ideal')}</label>
         <details><summary style="cursor:pointer;color:#6f8fb0;font-size:.74rem">${t('adv')}</summary>
           <label class="qn-chk"><input id="qn-manual" type="checkbox">${t('manual')}</label>
           <textarea id="qn-noise" spellcheck="false" readonly></textarea>
           <textarea id="qn-qasm" readonly style="min-height:80px;margin-top:6px"></textarea></details>
       </details>
-      <div class="qn-row" style="margin-top:.7rem"><button type="button" class="qn-go" id="qn-run">${t('run')}</button><button type="button" id="qn-reset">${t('reset')}</button></div>
+      <div class="qn-row" style="margin-top:.7rem"><button type="button" class="qn-go" id="qn-run">${t('run')}</button><button type="button" id="qn-reset">${t('reset')}</button>${o.onSave ? `<button type="button" id="qn-save">${t('save')}</button>` : ''}</div>
       <div id="qn-warns"></div><div id="qn-lg" class="qn-lg"></div><div id="qn-bars"></div></div>`;
     document.body.appendChild(ov);
     const $ = id => ov.querySelector('#' + id);
@@ -340,7 +449,7 @@
     $('qn-preset').value = saved.preset;
     const fill = v => { FIELDS.forEach(k => { $('qn-' + k).value = v[k] === 0 ? '0' : String(v[k]); }); refreshJson(); };
     const readVals = () => { const v = {}; FIELDS.forEach(k => { let x = parseFloat($('qn-' + k).value); if (!isFinite(x) || x < 0) x = 0; if (['p1', 'p2', 'r01', 'r10', 'amp', 'ph'].indexOf(k) >= 0) x = Math.min(1, x); v[k] = x; }); return v; };
-    $('qn-shots').value = o.shots || saved.shots; $('qn-seed').value = saved.seed == null ? '' : saved.seed; $('qn-ideal').checked = saved.ideal !== false;
+    $('qn-shots').value = o.shots || saved.shots; $('qn-seed').value = saved.seed == null ? '' : saved.seed; $('qn-ideal').checked = saved.ideal !== false; const rl = Object.assign({ native: true, idle: true, corr: true }, saved.realism || {}); $('qn-rnative').checked = rl.native; $('qn-ridle').checked = rl.idle; $('qn-rcorr').checked = rl.corr;
     let qasm = ''; const getQasm = () => { qasm = codeToQasm(o.getCode ? o.getCode() : o.code); $('qn-qasm').value = qasm; return qasm; };
     let manualOverride = o.noise || null;      // ruido que llega ya hecho (copiloto): se usa tal cual en esta ejecución
     function refreshJson() { if ($('qn-manual').checked) return; const b = buildNoise(readVals()); $('qn-noise').value = JSON.stringify(manualOverride || b.noise, null, 2); }
@@ -371,20 +480,21 @@
     }
     async function showCaps() { const e = $('qn-eng').value; if (e === BROWSER) { $('qn-caps').textContent = t('caps', { q: BR.maxQ, c: 10 }); return; } const c = await caps(); const x = c && c[e]; $('qn-caps').textContent = (x && x.max_qubits) ? t('caps', { q: x.max_qubits, c: (x.channels || []).length }) : ''; }
     $('qn-eng').addEventListener('change', () => { wantEng = $('qn-eng').value; $('qn-eng').dataset.touched = '1'; showCaps(); });
-    function currentCfg() { return { preset: $('qn-preset').value, engine: $('qn-eng').value, shots: parseInt($('qn-shots').value) || 512, seed: $('qn-seed').value === '' ? null : parseInt($('qn-seed').value), ideal: $('qn-ideal').checked, vals: readVals() }; }
+    function currentCfg() { return { preset: $('qn-preset').value, engine: $('qn-eng').value, shots: parseInt($('qn-shots').value) || 512, seed: $('qn-seed').value === '' ? null : parseInt($('qn-seed').value), ideal: $('qn-ideal').checked, realism: { native: $('qn-rnative').checked, idle: $('qn-ridle').checked, corr: $('qn-rcorr').checked }, vals: readVals() }; }
     async function go() {
       let q; try { q = getQasm(); } catch (e) { set('qn-status', 'qn-e', '❌ ' + e.message); $('qn-settings').open = true; return; }
       let noise, notes = [];
       if ($('qn-manual').checked || manualOverride) { try { noise = JSON.parse($('qn-noise').value); } catch (e) { $('qn-noise').classList.add('bad'); set('qn-status', 'qn-e', t('badjson')); $('qn-settings').open = true; return; } }
       else { const b = buildNoise(readVals()); noise = b.noise; notes = b.notes; }
       if (wantEng !== BROWSER && !srvOK) { try { await (ready || connect()); } catch (e) {} fillEngines(); }
-      const cfg = currentCfg(); if (!manualOverride && !$('qn-manual').checked) saveCfg(cfg);
+      const cfg = currentCfg(); if (!manualOverride && !$('qn-manual').checked) persist(cfg);
       const shots = Math.max(1, Math.min(50000, cfg.shots)), seed = cfg.seed;
       $('qn-run').disabled = true; set('qn-warns', '', ''); $('qn-bars').textContent = ''; $('qn-lg').textContent = ''; set('qn-status', 'qn-o', (cfg.engine || BROWSER) === BROWSER ? '…' : t('running'));
       try {
         const eng = cfg.engine || BROWSER; let list = eng === 'all' ? engines.slice() : [eng]; const results = [];
         if (list.some(e => e !== BROWSER)) { try { await (ready || connect()); } catch (e) { list = list.filter(x => x === BROWSER); results.push({ name: t('srv'), res: { ok: false, error: 'servidor', detalle: t('srvOff') } }); if (!list.length) list = [BROWSER]; } }
-        for (const e of list) results.push({ name: engName(e), res: await runAny({ engine: e, qasm: q, noise, shots: e === BROWSER ? Math.min(shots, 50000) : Math.min(shots, 2048), seed }) });
+        const v_ = cfg.vals, extra = { native: cfg.realism.native, corr: cfg.realism.corr, idle: cfg.realism.idle && v_.t1 > 0 && v_.t2 > 0 ? { T1: v_.t1, T2: v_.t2, tg1: v_.tg1, tg2: v_.tg2 } : null };
+        for (const e of list) results.push({ name: engName(e), res: await runAny({ engine: e, extra, qasm: q, noise, shots: e === BROWSER ? Math.min(shots, 50000) : Math.min(shots, 2048), seed }) });
         if (cfg.ideal && noise.channels && noise.channels.length) {
           try { const r = await simulateBrowser(q, { schema_version: '1.0', channels: [] }, Math.min(Math.max(shots, 4096), 50000), seed); results.push({ name: t('ideal_l'), res: r, ideal: true }); } catch (e) {}
         }
@@ -394,24 +504,8 @@
       } catch (e) { set('qn-status', 'qn-e', '❌ ' + e.message); }
       $('qn-run').disabled = false;
     }
-    function render(rs, notes) {
-      const w = $('qn-warns'); w.textContent = ''; const add = (c, x) => { const d = document.createElement('div'); d.className = 'qn-msg ' + c; d.textContent = x; w.appendChild(d); };
-      (notes || []).forEach(n => add('qn-w', 'ℹ️ ' + n));
-      rs.forEach(r => { if (!r.res.ok) add('qn-e', '❌ ' + r.name + ': ' + r.res.error + ' — ' + (r.res.detalle || '')); else { (r.res.avisos || []).forEach(a => add('qn-w', '⚠️ ' + r.name + ' ' + a)); (r.res.warnings || []).forEach(a => add('qn-w', '⚠️ ' + r.name + ': ' + a)); } });
-      const oks = rs.filter(r => r.res.ok); if (!oks.length) return;
-      const clr = (r, i) => r.ideal ? IDEAL_CLR : PAL[i % PAL.length];
-      const lg = $('qn-lg'); lg.textContent = ''; oks.forEach((r, i) => { const s = document.createElement('span'), ic = document.createElement('i'); ic.style.background = clr(r, i); s.appendChild(ic); s.appendChild(document.createTextNode(r.name + ' (' + (r.res.meta && r.res.meta.elapsed_s) + ' s)')); lg.appendChild(s); });
-      const tot = r => Object.values(r.res.counts).reduce((a, b) => a + b, 0);
-      const keys = [...new Set(oks.flatMap(r => Object.keys(r.res.counts)))].sort((a, b) => oks.reduce((s, r) => s + (r.res.counts[b] || 0) / tot(r), 0) - oks.reduce((s, r) => s + (r.res.counts[a] || 0) / tot(r), 0)).slice(0, 16).sort();
-      const bars = $('qn-bars'); bars.textContent = '';
-      keys.forEach(k => { const row = document.createElement('div'); row.className = 'qn-bar'; const lab = document.createElement('span'); lab.textContent = k; const tr = document.createElement('div'); tr.className = 'qn-t'; tr.style.height = (oks.length * 8 + 2) + 'px';
-        oks.forEach((r, i) => { const f = document.createElement('div'); f.style.top = (i * 8 + 1) + 'px'; f.style.height = '6px'; f.style.width = (100 * (r.res.counts[k] || 0) / tot(r)).toFixed(1) + '%'; f.style.background = clr(r, i); tr.appendChild(f); });
-        const v = document.createElement('span'); v.textContent = oks.map(r => (100 * (r.res.counts[k] || 0) / tot(r)).toFixed(1) + '%').join(' / ');
-        row.appendChild(lab); row.appendChild(tr); row.appendChild(v); bars.appendChild(row); });
-      const noisy = oks.filter(r => !r.ideal), idl = oks.find(r => r.ideal);
-      if (idl) noisy.forEach(r => add('qn-o', r.name + ' — ' + t('fid') + ': ' + (1 - tvd(r.res.counts, idl.res.counts)).toFixed(3)));
-      if (noisy.length >= 2) add('qn-o', t('tvd') + ' ' + noisy[0].name + ' vs ' + noisy[1].name + ': ' + tvd(noisy[0].res.counts, noisy[1].res.counts).toFixed(4) + ' (' + t('typical') + ')');
-    }
+    function render(rs, notes) { paintResults({ warns: $('qn-warns'), lg: $('qn-lg'), bars: $('qn-bars') }, rs, notes); }
+    if ($('qn-save')) $('qn-save').onclick = () => { persist(currentCfg()); close(); };
     $('qn-run').onclick = go;
     try { getQasm(); } catch (e) { set('qn-status', 'qn-e', '❌ ' + e.message); }
     fillEngines(); connect().catch(() => {});
@@ -419,7 +513,7 @@
   }
   function close() { if (escFn) { document.removeEventListener('keydown', escFn, true); escFn = null; } if (ov && ov.parentNode) ov.parentNode.removeChild(ov); ov = null; }
   const quick = o => open(Object.assign({}, o || {}, { quick: true }));
-  window.QcolNoise = { open, quick, close, engines: () => [BROWSER], codeToQasm, run, api, wake, simulate: simulateBrowser, exactProbs, presets: PRESETS, buildNoise, last: null, version: '2.0' };
+  window.QcolNoise = { open, quick, inline, executeCfg, close, engines: () => [BROWSER], codeToQasm, run, api, wake, simulate: simulateBrowser, exactProbs, presets: PRESETS, buildNoise, last: null, version: '2.0' };
   // Pre-calienta el servidor gratuito (si estaba dormido) para que el primer uso sea rápido
   setTimeout(() => { try { if (document.visibilityState !== 'hidden') wake(null, 20000).catch(() => {}); } catch (e) {} }, 5000);
 })();

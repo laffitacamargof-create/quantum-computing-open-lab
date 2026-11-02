@@ -121,6 +121,11 @@ body{display:flex;flex-direction:column;overflow:hidden;}
 .qk-cell .cell-run-btn{border-color:rgba(0,255,221,.3);color:var(--cy);}
 .qk-cell.active .cell-run-btn{border-color:var(--cy);color:var(--cy);}
 .cell-run-btn:hover{background:rgba(0,136,255,.15);border-color:var(--bl);color:var(--bl2);transform:scale(1.12);}
+.cell-gutter.has-noise{width:104px;}
+.cell-btnrow{display:flex;gap:4px;align-items:center;}
+.cell-noise-btn{border-color:rgba(255,123,213,.55)!important;color:#ff7bd5!important;font-size:.6rem;}
+.cell-noise-cfg{border-color:rgba(255,159,28,.5)!important;color:#ff9f1c!important;font-size:.66rem;}
+.cell-noise-btn:hover,.cell-noise-cfg:hover{background:rgba(255,123,213,.16)!important;}
 .cell-run-btn.spinning{animation:sp .7s linear infinite;border-color:var(--gr);color:var(--gr);}
 @keyframes sp{to{transform:rotate(360deg);}}
 
@@ -422,7 +427,8 @@ s.blt{color:#ffb86c;}
 
 @media(max-width:700px){
   .nb-cell,.nb-bottom,.add-cell-row{width:99%;}
-  .cell-gutter{width:36px;}
+  .cell-gutter,.cell-gutter.has-noise{width:36px;}
+  .cell-btnrow{flex-direction:column;}
   .topbar{padding:0 .4rem;gap:.18rem;}
   .tbtn span{display:none;}
   .cell-linenos{width:24px;font-size:.54rem;}
@@ -1855,6 +1861,7 @@ function downloadNb(){
       const source = isCircuit ? [c.hiddenCode||'# Visual circuit cell'] : [c.code];
       const meta = {tags};
       if(isCircuit){ meta.hidden_code=c.hiddenCode||''; meta.circuit_data=c.circuitData||null; }
+      if(c.noiseCfg) meta.noise_cfg=c.noiseCfg;
       return {cell_type:c.type==='markdown'?'markdown':'code', source, metadata:meta, outputs:[], execution_count:c.exec_count};
     })};
   const blob=new Blob([JSON.stringify(nb,null,2)],{type:'application/json'});
@@ -1887,7 +1894,7 @@ function handleImport(e){
         const hiddenCode = c.metadata?.hidden_code || '';
         const circuitData = c.metadata?.circuit_data || null;
         cells.push({id:genId(),type,code:src,output:'',exec_count:null,
-          mdEdit:false,errorLine:null,hiddenCode,circuitData});
+          mdEdit:false,errorLine:null,hiddenCode,circuitData,noiseCfg:c.metadata?.noise_cfg||null});
       });
       if(cells.length===0)addCellAt(-1,'code');
       else{renderCells();focusCell(cells[0].id);}
@@ -1947,7 +1954,7 @@ async function publishNb(){
   const tags=document.getElementById('pub-tags').value.trim();
   if(!title){notify('Title is required');return;}
   // solo lo necesario: sin salidas (pueden pesar mucho) ni estados de edición
-  const clean=cells.map(c=>({type:c.type,code:c.code||'',hiddenCode:c.hiddenCode||'',circuitData:c.circuitData||null}));
+  const clean=cells.map(c=>({type:c.type,code:c.code||'',hiddenCode:c.hiddenCode||'',circuitData:c.circuitData||null,noiseCfg:c.noiseCfg||null}));
   const btn=document.getElementById('pub-btn');
   if(btn){btn.disabled=true;btn.textContent='⏳ Publishing...';}
   const authorName = (curUser && curUser.name) ? curUser.name : 'Anonymous';
@@ -2012,10 +2019,21 @@ print("\\nResults:", counts)
 function deleteCell(id){if(_expositionMode)return;if(cells.length<=1){notify('You must have at least 1 cell');return;}cells=cells.filter(c=>c.id!==id);if(curCellId===id)curCellId=cells[0]?.id||null;renderCells();updateStatus();}
 function moveCellUp(id){const i=cells.findIndex(c=>c.id===id);if(i<=0)return;[cells[i-1],cells[i]]=[cells[i],cells[i-1]];renderCells();focusCell(id);}
 function moveCellDown(id){const i=cells.findIndex(c=>c.id===id);if(i<0||i>=cells.length-1)return;[cells[i],cells[i+1]]=[cells[i+1],cells[i]];renderCells();focusCell(id);}
-function noiseCell(id,extra){
-  const cell=cells.find(c=>c.id===id);if(!cell)return;syncCellCode(id);
+function _noiseCode(id){const c=cells.find(x=>x.id===id);if(!c)return'';syncCellCode(id);return c.type==='circuit'?(c.hiddenCode||''):(c.code||'');}
+// 🔊 Ejecuta el ruido YA, con los ajustes de ESTA celda; el resultado sale en la salida de la celda (como un Run normal)
+function noiseRun(id,extra){
+  const cell=cells.find(c=>c.id===id);if(!cell||cell.type==='markdown'||cell.type==='code')return;
   if(!window.QcolNoise){notify('Noise module not loaded');return;}
-  window.QcolNoise.open(Object.assign({getCode:()=>{const c=cells.find(x=>x.id===id);syncCellCode(id);return c?c.code:'';}},extra||{}));
+  const out=document.getElementById('out-'+id);if(!out)return;
+  if(!_noiseCode(id).trim()){notify('⚛ Cell without code — edit the circuit first');return;}
+  execCounter++;cell.exec_count=execCounter;renderCellNum(id);
+  return window.QcolNoise.inline(Object.assign({out,cfg:cell.noiseCfg||null,getCode:()=>_noiseCode(id)},extra||{}));
+}
+// ⚙ Menú de ajuste del ruido de ESTA celda (mismo menú y opciones que Quantum Open Lab); se guarda en la celda
+function noiseCell(id,extra){
+  const cell=cells.find(c=>c.id===id);if(!cell)return;
+  if(!window.QcolNoise){notify('Noise module not loaded');return;}
+  window.QcolNoise.open(Object.assign({getCode:()=>_noiseCode(id),cfg:cell.noiseCfg||null,onSave:cfg=>{cell.noiseCfg=cfg;try{saveCurrentNb(false);}catch(e){}}},extra||{}));
 }
 function syncCellCode(id){const cell=cells.find(c=>c.id===id);if(!cell)return;const ta=document.getElementById('ta-'+id);const mta=document.getElementById('mta-'+id);if(ta)cell.code=ta.value;if(mta)cell.code=mta.value;}
 function focusCell(id){curCellId=id;document.querySelectorAll('.nb-cell').forEach(el=>{el.classList.toggle('active',el.dataset.id===id);});const ta=document.getElementById('ta-'+id)||document.getElementById('mta-'+id);if(ta)ta.focus();}
@@ -2146,10 +2164,10 @@ function buildCellEl(cell,i){
   const execLbl=cell.exec_count!==null?`[${cell.exec_count}]`:'[ ]';
 
   const toolbar=_expositionMode
-    ?`<div class="cell-toolbar">${isCode?`<button class="ct-btn ct-run" onclick="event.stopPropagation();runCell('${cell.id}')" title="Run">▶</button>`:''}${isQk?`<button class="ct-btn ct-noise" onclick="event.stopPropagation();noiseCell('${cell.id}')" title="Adjust noise (presets and parameters)" aria-label="Adjust noise">⚙</button><button class="ct-btn ct-noise-run" onclick="event.stopPropagation();noiseCell('${cell.id}',{quick:true})" title="Run with noise now (saved settings)" aria-label="Run with noise">🔊▶</button>`:''}
+    ?`<div class="cell-toolbar">${isCode?`<button class="ct-btn ct-run" onclick="event.stopPropagation();runCell('${cell.id}')" title="Run">▶</button>`:''}
       </div>`
     :`<div class="cell-toolbar">
-        ${isQk?`<button class="ct-btn ct-noise" onclick="event.stopPropagation();noiseCell('${cell.id}')" title="Adjust noise (presets and parameters)" aria-label="Adjust noise">⚙</button><button class="ct-btn ct-noise-run" onclick="event.stopPropagation();noiseCell('${cell.id}',{quick:true})" title="Run with noise now (saved settings)" aria-label="Run with noise">🔊▶</button>`:''}
+        
         <button class="ct-btn" onclick="event.stopPropagation();moveCellUp('${cell.id}')" title="Move up">↑</button>
         <button class="ct-btn" onclick="event.stopPropagation();moveCellDown('${cell.id}')" title="Move down">↓</button>
         <button class="ct-btn" onclick="event.stopPropagation();changeCellType('${cell.id}')" title="Change type">${isCode?'Md':'{ }'}</button>
@@ -2174,9 +2192,9 @@ function buildCellEl(cell,i){
     const restoreBtn=_expositionMode?`<button class="cell-restore-btn" onclick="event.stopPropagation();restoreCell('${cell.id}')">↺ Original</button>`:'';
     const outContent=cell.output?`<div class="out-stdout">${escH(cell.output)}</div>`:'';
     el.innerHTML=`${toolbar}
-      <div class="cell-gutter">
+      <div class="cell-gutter${isQk?' has-noise':''}">
         <div class="cell-num">${execLbl}</div>
-        <button class="cell-run-btn" id="rbtn-${cell.id}" onclick="event.stopPropagation();runCell('${cell.id}')">▶</button>
+        <div class="cell-btnrow"><button class="cell-run-btn" id="rbtn-${cell.id}" onclick="event.stopPropagation();runCell('${cell.id}')">▶</button>${isQk?`<button class="cell-run-btn cell-noise-btn" onclick="event.stopPropagation();noiseRun('${cell.id}')" title="Run with noise now (this cell's noise settings)" aria-label="Run with noise">🔊</button><button class="cell-run-btn cell-noise-cfg" onclick="event.stopPropagation();noiseCell('${cell.id}')" title="Noise settings for this cell" aria-label="Noise settings">⚙</button>`:''}</div>
       </div>
       <div class="cell-body">
         <div class="cell-type-badge ${badgeCls}">${badge}</div>
@@ -2211,10 +2229,10 @@ function buildCellEl(cell,i){
     const outContent = cell.output ? `<div class="cell-output-area" id="out-${cell.id}">${'<!-- output -->'}</div>` : '';
     el.className='nb-cell circ-cell'+(curCellId===cell.id?' active':'');
     el.innerHTML=`${circuitToolbar}
-      <div class="cell-gutter">
+      <div class="cell-gutter has-noise">
         <div class="cell-num">${cell.exec_count!==null?`[${cell.exec_count}]`:'[ ]'}</div>
-        <button class="cell-run-btn" id="rbtn-${cell.id}"
-          onclick="event.stopPropagation();runCell('${cell.id}')" title="${hasCode?'Run circuit':'Edit the circuit first'}">>▶</button>
+        <div class="cell-btnrow"><button class="cell-run-btn" id="rbtn-${cell.id}"
+          onclick="event.stopPropagation();runCell('${cell.id}')" title="${hasCode?'Run circuit':'Edit the circuit first'}">▶</button>${`<button class="cell-run-btn cell-noise-btn" onclick="event.stopPropagation();noiseRun('${cell.id}')" title="Run with noise now (this cell's noise settings)" aria-label="Run with noise">🔊</button><button class="cell-run-btn cell-noise-cfg" onclick="event.stopPropagation();noiseCell('${cell.id}')" title="Noise settings for this cell" aria-label="Noise settings">⚙</button>`}</div>
       </div>
       <div class="cell-body">
         <div class="cell-type-badge ctb-circ">
@@ -2230,13 +2248,6 @@ function buildCellEl(cell,i){
                 <span style="font-size:.4rem;color:rgba(0,200,100,.4);">Click to edit the visual circuit</span>
               </div>`
           }
-        </div>
-        <div style="display:flex;gap:.4rem;margin-top:.3rem;align-items:center;">
-          <button class="circ-edit-btn" onclick="event.stopPropagation();openCircuitEditor('${cell.id}')">
-            ✏ Edit Circuit
-          </button>
-          ${hasCode?`<button class="circ-edit-btn" style="background:rgba(0,136,255,.1);border-color:rgba(0,136,255,.3);color:var(--bl2);"
-            onclick="event.stopPropagation();runCell('${cell.id}')">▶ Run</button>`:''}
         </div>
         <div class="cell-output-area" id="out-${cell.id}">${cell.output?`<div class="out-stdout">${escH(cell.output)}</div>`:''}</div>
         ${restoreBtn}
@@ -2562,7 +2573,7 @@ window.addEventListener('message',e=>{
       c.code=d.code;const ta=document.getElementById('ta-'+c.id);if(ta){ta.value=d.code;ta.dispatchEvent(new Event('input',{bubbles:true}));}
       syncCellCode(c.id);
     }else if(d.type==='OPENQ_AI_NOISE'){
-      const c=cells[d.cellIndex];if(c&&c.type!=='markdown')noiseCell(c.id,{noise:d.noise,engine:d.engine,shots:d.shots,autorun:true});
+      const c=cells[d.cellIndex];if(c&&c.type!=='markdown'&&c.type!=='code')noiseRun(c.id,{noise:d.noise,engine:d.engine,shots:d.shots});
     }else if(d.type==='OPENQ_AI_RUN'){
       const c=cells[d.cellIndex];if(c&&c.type!=='markdown'){syncCellCode(c.id);runCell(c.id);}
     }
