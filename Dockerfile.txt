@@ -1,5 +1,5 @@
 # ═══════════════════════════════════════════════════
-# QCOL Motor — HuggingFace Space
+# QuOLab Nexus Motor — HuggingFace Space
 # Python 3.11 con compilador incluido
 # Compila: qiskit-aer, cirq, pennylane, qutip
 # ═══════════════════════════════════════════════════

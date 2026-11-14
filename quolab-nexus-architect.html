@@ -6,7 +6,7 @@
 <title>Quantum Architect</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=JetBrains+Mono:wght@400;500;600&family=Exo+2:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
-<script src="qcol-noise.js"></script>
+<script src="quolab-nexus-noise.js"></script>
 <style>
 /* ══════════════════════════════════════════════════
    QUANTUM ARCHITECT — Hybrid automatic
@@ -3250,7 +3250,7 @@ async function checkEngine() {
     notify('❌ Could not connect after 3 attempts');
 }
 
-// ── Opción de ruido (usa qcol-noise.js) ──
+// ── Opción de ruido (usa quolab-nexus-noise.js) ──
 function openNoise(extra) {
     if (!window.QcolNoise) { notify('Noise module not loaded'); return; }
     window.QcolNoise.open(Object.assign({ getCode: () => (document.getElementById('code-ta') || {}).value || '' }, extra || {}));

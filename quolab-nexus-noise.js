@@ -249,7 +249,7 @@
   // ───────── Textos (ES/EN) ─────────
   const TX = {
     en: { title: '🔊 Quantum noise', sub: 'Simulates your circuit with realistic noise. The reference engine is MQT YAQS and results can be cross-checked with other simulators.',
-      srv: 'QCOL noise server', srvOk: 'Connected', srvWake: 'Reference server (optional): waking up… {s}s', srvDown: 'The noise server is not answering right now. Try again in a minute.',
+      srv: 'QuOLab Nexus noise server', srvOk: 'Connected', srvWake: 'Reference server (optional): waking up… {s}s', srvDown: 'The noise server is not answering right now. Try again in a minute.',
       sim: 'Simulator', all: 'Compare all simulators', preset: 'Preset', presetNote: 'Typical orders of magnitude for each technology — not the live calibration of a specific device. Edit any value below.',
       params: 'Adjustable parameters', p1: '1-qubit gate error', p2: '2-qubit gate error', t1: 'T1 (µs)', t2: 'T2 (µs)', tg1: '1q gate time (µs)', tg2: '2q gate time (µs)',
       r01: 'Readout P(0 | 1)', r10: 'Readout P(1 | 0)', amp: 'Extra amplitude damping γ', ph: 'Extra phase damping λ', shots: 'Shots', seed: 'Seed (empty = random)',
@@ -258,7 +258,7 @@
       ideal_l: 'Ideal', fid: 'Similarity to ideal (1 − TVD)', tvd: 'Total variation distance', typical: '≈0.03–0.07 is typical sampling noise', caps: 'max {q} qubits · {c} noise channels',
       refEngine: 'reference · server', validator: 'validator · server', instant: 'instant · in your browser', srvOff: 'Reference server offline — the instant simulator keeps working.', real: 'Extra realism (instant simulator)', save: '✔ Save for this cell', rNative: 'Count native gates (decompose into rz · sx · cx)', rIdle: 'Decoherence while qubits wait (idle, uses T1/T2)', rCorr: 'Correlated 2-qubit errors', netfail: 'Could not reach the noise server.', close: 'Close' },
     es: { title: '🔊 Ruido cuántico', sub: 'Simula tu circuito con ruido realista. El motor de referencia es MQT YAQS y puedes contrastar el resultado con otros simuladores.',
-      srv: 'Servidor de ruido de QCOL', srvOk: 'Conectado', srvWake: 'Servidor de referencia (opcional): despertando… {s}s', srvDown: 'El servidor de ruido no responde ahora mismo. Inténtalo de nuevo en un minuto.',
+      srv: 'Servidor de ruido de QuOLab Nexus', srvOk: 'Conectado', srvWake: 'Servidor de referencia (opcional): despertando… {s}s', srvDown: 'El servidor de ruido no responde ahora mismo. Inténtalo de nuevo en un minuto.',
       sim: 'Simulador', all: 'Comparar todos los simuladores', preset: 'Preconfiguración', presetNote: 'Órdenes de magnitud típicos de cada tecnología — no es la calibración en vivo de un dispositivo concreto. Puedes editar cualquier valor.',
       params: 'Parámetros ajustables', p1: 'Error de puerta de 1 qubit', p2: 'Error de puerta de 2 qubits', t1: 'T1 (µs)', t2: 'T2 (µs)', tg1: 'Tiempo puerta 1q (µs)', tg2: 'Tiempo puerta 2q (µs)',
       r01: 'Lectura P(0 | 1)', r10: 'Lectura P(1 | 0)', amp: 'Amortiguamiento de amplitud extra γ', ph: 'Amortiguamiento de fase extra λ', shots: 'Disparos (shots)', seed: 'Semilla (vacío = aleatoria)',

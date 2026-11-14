@@ -1,8 +1,8 @@
 // ============================================================
-// QCOL CONFIG SYNC - Sincronización de configuración en la nube
+// QuOLab Nexus CONFIG SYNC - Sincronización de configuración en la nube
 // ============================================================
 
-class QcolConfigSync {
+class QuOLabNexusConfigSync {
     constructor(config) {
         this.SUPABASE_URL = config.supabaseUrl;
         this.SUPABASE_ANON_KEY = config.supabaseAnonKey;
@@ -321,4 +321,4 @@ class QcolConfigSync {
     }
 }
 
-export default QcolConfigSync;
+export default QuOLabNexusConfigSync;
