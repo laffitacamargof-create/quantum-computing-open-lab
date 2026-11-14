@@ -2,11 +2,10 @@
 // QUANTUM SYNC MODULE - VERSIÓN FINAL CORREGIDA
 // ============================================================
 
-class QuantumSync {
+class QuOLabNexusQuantumSync {
     constructor(config) {
         this.SUPABASE_URL = config.supabaseUrl;
         this.SUPABASE_ANON_KEY = config.supabaseAnonKey;
-        this.SUPABASE_SERVICE_KEY = config.supabaseServiceKey;
         
         this.TABLES = {
             PENDING_APPS: 'quantum_pending_apps',
@@ -43,21 +42,8 @@ class QuantumSync {
                 }
             });
             
-            if (testResponse.status === 401) {
-                const testResponse2 = await fetch(`${this.SUPABASE_URL}/rest/v1/${this.TABLES.PENDING_APPS}?select=id&limit=1`, {
-                    method: 'GET',
-                    headers: {
-                        'apikey': this.SUPABASE_SERVICE_KEY,
-                        'Authorization': `Bearer ${this.SUPABASE_SERVICE_KEY}`
-                    }
-                });
-                if (!testResponse2.ok) {
-                    console.warn(`⚠️ Error de conexión: HTTP ${testResponse2.status}`);
-                    this.isReady = false;
-                    return false;
-                }
-            } else if (!testResponse.ok) {
-                console.warn(`⚠️ Error de conexión: HTTP ${testResponse.status}`);
+            if (!testResponse.ok) {
+                console.warn(`⚠️ Supabase rechazó la clave pública o las políticas RLS: HTTP ${testResponse.status}`);
                 this.isReady = false;
                 return false;
             }
@@ -414,7 +400,7 @@ class QuantumSync {
     }
 }
 
-export default QuantumSync;
+export default QuOLabNexusQuantumSync;
 
 /* ============================================================================
    SQL PARA SUPABASE (ejecutar UNA vez en SQL Editor) — permite borrar apps solo con la llave de fundador

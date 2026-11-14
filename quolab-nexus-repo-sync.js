@@ -5,7 +5,7 @@
    Solo usa la clave PÚBLICA (publishable). Nunca pongas aquí
    la clave secret/service.
    Se carga como script clásico (etiqueta script con src="repo-sync.js")
-   y queda disponible como  window.RepoSync
+   y queda disponible como  window.QuOLabNexusRepoSync
    ============================================================ */
 (function (global) {
   'use strict';
@@ -211,7 +211,7 @@
     return m;
   }
 
-  global.RepoSync = {
+  global.QuOLabNexusRepoSync = global.RepoSync = {
     list: list, getCached: getCached, getOne: getOne, getContent: getContent,
     create: create, update: update, remove: remove,
     ownKey: ownKey, hasOwnKey: hasOwnKey,

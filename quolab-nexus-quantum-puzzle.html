@@ -551,28 +551,20 @@ body::before{
 // Cargar configuración y módulo de forma dinámica
 (async function initQuantumSync() {
     try {
-        const { SUPABASE_CONFIG } = await import('./quolab-nexus-supabase-config.js');
-        const { default: QuantumSync } = await import('./quolab-nexus-quantum-sync.js');
+        const { QUOLAB_NEXUS_SUPABASE_CONFIG } = await import('./quolab-nexus-supabase-config.js');
+        const { default: QuOLabNexusQuantumSync } = await import('./quolab-nexus-quantum-sync.js');
         
         console.log('📦 Módulos importados correctamente');
-        console.log('📌 SUPABASE_CONFIG:', SUPABASE_CONFIG);
+        console.log('📌 Supabase endpoint:', QUOLAB_NEXUS_SUPABASE_CONFIG.supabaseUrl);
         
-        window.quantumSync = new QuantumSync({
-            supabaseUrl: SUPABASE_CONFIG.supabaseUrl,
-            supabaseAnonKey: SUPABASE_CONFIG.supabaseAnonKey,
-            supabaseServiceKey: SUPABASE_CONFIG.supabaseServiceKey
-        });
+        window.quantumSync = new QuOLabNexusQuantumSync(QUOLAB_NEXUS_SUPABASE_CONFIG);
         
         console.log('📌 quantumSync creado:', window.quantumSync);
         await window.quantumSync.init();
         
         console.log('📌 quantumSync.isReady:', window.quantumSync.isReady);
         
-        window.quantumSync.setUser({
-            id: 'usuario-123',
-            name: 'Admin',
-            role: 'founder'
-        });
+        if (currentUser) window.quantumSync.setUser(currentUser);
         
         // ✅ Callbacks con DEBOUNCE para evitar parpadeo
         let renderTimer = null;
@@ -1250,6 +1242,7 @@ window.addEventListener('message', (e) => {
     }
     if(data.type === 'QCOL_USER_UPDATE') {
         currentUser = data.user;
+        if (window.quantumSync && window.quantumSync.isReady) window.quantumSync.setUser(currentUser);
         isAdmin = (currentUser?.role === 'admin' || currentUser?.role === 'founder');
         isFounder = (currentUser?.role === 'founder');
         const adminBar = document.getElementById('adminBar');

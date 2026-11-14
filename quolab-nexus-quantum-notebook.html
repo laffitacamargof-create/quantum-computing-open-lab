@@ -1868,7 +1868,8 @@ function downloadNb(){
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name.replace(/\.ipynb$/,'')+'.ipynb';a.click();
   notify('📥 '+a.download);
 }
-setInterval(()=>{if(!_expositionMode&&curUser&&cells.length>0){const mins=Math.floor((Date.now()-lastSaveTime)/60000);const ss=document.getElementById('sb-save-status');if(ss)ss.textContent=mins>0?`⏱️ ${mins}min ago`:'✓';}},60000);
+const nexusStatusTimer=setInterval(()=>{if(!_expositionMode&&curUser&&cells.length>0){const mins=Math.floor((Date.now()-lastSaveTime)/60000);const ss=document.getElementById('sb-save-status');if(ss)ss.textContent=mins>0?`⏱️ ${mins}min ago`:'✓';}},60000);
+window.addEventListener('pagehide',()=>clearInterval(nexusStatusTimer),{once:true});
 document.addEventListener('keydown',e=>{
   if((e.ctrlKey||e.metaKey)&&e.key==='s'){e.preventDefault();saveCurrentNb(true);}
   if((e.ctrlKey||e.metaKey)&&e.shiftKey&&e.key==='Enter'){e.preventDefault();runAll();}
