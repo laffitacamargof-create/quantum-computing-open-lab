@@ -129,10 +129,16 @@
 
   /* ---------- lectura ---------- */
   async function list() {
-    var rows = await request('repo_items?select=' + LIST_COLS + '&order=created_at.desc&limit=1000');
-    rows = rows || [];
-    lsSet(LS_CACHE, rows);
-    return rows;
+    try {
+      var rows = await request('repo_items?select=' + LIST_COLS + '&order=created_at.desc&limit=1000');
+      rows = rows || [];
+      lsSet(LS_CACHE, rows);
+      return rows;
+    } catch (error) {
+      var cached = getCached();
+      if (cached.length) return cached;
+      throw error;
+    }
   }
   function getCached() { return lsGet(LS_CACHE, []) || []; }
 
