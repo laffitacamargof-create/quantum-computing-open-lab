@@ -332,12 +332,20 @@ class QuOLabNexusConfigSyncCloud {
             
             const founderKey = localStorage.getItem('qcol_repo_founder_key') || '';
             if (!founderKey) throw new Error('Se requiere la llave de fundador del repositorio');
-            const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/quantum_config_save`, {
+            const response = await fetch(`${SUPABASE_URL}/functions/v1/quolab-nexus-admin`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` },
-                body: JSON.stringify({ p_key: key, p_value: stringValue, p_founder_key: founderKey })
+                headers: {
+                    'Content-Type': 'application/json',
+                    'apikey': SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                },
+                body: JSON.stringify({
+                    action: 'quantum_config_save',
+                    params: { p_key: key, p_value: stringValue, p_founder_key: founderKey }
+                })
             });
-            if (!response.ok) throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+            const result = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(result.error || `HTTP ${response.status}`);
             
             // 🔧 Actualizar hash después de guardar
             const allConfigs = await this._fetch('quantum_ecosystem_config');
