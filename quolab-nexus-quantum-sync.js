@@ -259,10 +259,19 @@ class QuOLabNexusQuantumSync {
                 order: { column: 'created_at', direction: 'desc' }
             });
             this.publishedApps = data || [];
+            try { localStorage.setItem('quolab_nexus_published_apps_cache', JSON.stringify(this.publishedApps)); } catch (e) {}
             if (this.onPublishedUpdate) this.onPublishedUpdate(this.publishedApps);
             return this.publishedApps;
         } catch (error) {
             console.error('Error syncing published:', error.message);
+            try {
+                const cached = JSON.parse(localStorage.getItem('quolab_nexus_published_apps_cache') || '[]');
+                if (Array.isArray(cached)) {
+                    this.publishedApps = cached;
+                    if (this.onPublishedUpdate) this.onPublishedUpdate(this.publishedApps);
+                    return this.publishedApps;
+                }
+            } catch (cacheError) {}
             return [];
         }
     }
