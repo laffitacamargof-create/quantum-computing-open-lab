@@ -297,7 +297,7 @@ body::before{content:'';position:fixed;inset:0;
       </svg>
     </div>
     <div class="splash-openq">
-      <span class="splash-c">Quo</span><span class="splash-q">lab</span>
+      <span class="splash-c">QuOLab</span><span class="splash-q"> Nexus</span>
     </div>
     <div class="splash-loading">
       <div class="splash-dot"></div>
@@ -329,7 +329,7 @@ body::before{content:'';position:fixed;inset:0;
     </svg>
     <div class="logo-text-wrap">
       <div class="logo-openq">
-        <span class="logo-col">Quo</span><span class="logo-q">lab</span>
+        <span class="logo-col">QuOLab</span><span class="logo-q"> Nexus</span>
       </div>
     </div>
   </div>
@@ -674,7 +674,7 @@ body::before{content:'';position:fixed;inset:0;
 //    FORZA founder_password COMO CADENA
 // ============================================================
 
-class OpenQConfigSyncReader {
+class QuOLabNexusConfigSyncReader {
     constructor(config) {
         this.SUPABASE_URL = config.supabaseUrl;
         this.SUPABASE_ANON_KEY = config.supabaseAnonKey;
@@ -869,7 +869,7 @@ class OpenQConfigSyncReader {
             supabaseAnonKey: 'sb_publishable_Uw4ViBXo3UvvlSHzOiAcDA_9Jn6eMcf'
         };
         
-        window.configSync = new OpenQConfigSyncReader({
+        window.configSync = new QuOLabNexusConfigSyncReader({
             supabaseUrl: SUPABASE_CONFIG.supabaseUrl,
             supabaseAnonKey: SUPABASE_CONFIG.supabaseAnonKey
         });
@@ -1035,6 +1035,7 @@ class OpenQConfigSyncReader {
 
   window.addEventListener('message', e => {
     const d = e.data; if (!d?.type) return;
+    if (e.origin !== location.origin && e.origin !== 'null') return;
     // Protocolo central QuOLab Nexus: acepta NEXUS_, OPENQ_ y QCOL_ durante la migración.
     if (window.QuOLabNexusCore) Object.assign(d, window.QuOLabNexusCore.normalizeIncoming(d));
     else if (typeof d.type === 'string' && /^(?:NEXUS|QCOL)_/.test(d.type)) d.type = 'OPENQ_' + d.type.replace(/^(?:NEXUS|QCOL)_/, '');
@@ -1457,11 +1458,22 @@ class OpenQConfigSyncReader {
     for (const sc of _shortcuts) if (sc.combo === c) { e.preventDefault(); sc.fn(e); return; }
   }
   document.addEventListener('keydown', e => onKey(e, false), true);   // fase de captura: ningún módulo puede bloquearlo
-  // reescaneo periódico: módulos/apps que crean iframes o recargan su documento después
-  setInterval(() => {
+  // Observa la creación y carga de iframes sin un setInterval infinito.
+  function scanFocusableFrames() {
     _makeFocusable(document);
-    document.querySelectorAll('iframe').forEach(f => { try { attachKeys(f); } catch (e) {} });
-  }, 1500);
+    document.querySelectorAll('iframe').forEach(f => {
+      try {
+        attachKeys(f);
+        if (!f.__nexusKeyLoadBound) {
+          f.__nexusKeyLoadBound = true;
+          f.addEventListener('load', () => { try { attachKeys(f); } catch (e) {} });
+        }
+      } catch (e) {}
+    });
+  }
+  scanFocusableFrames();
+  const frameObserver = new MutationObserver(() => scanFocusableFrames());
+  frameObserver.observe(document.documentElement, { childList: true, subtree: true });
   // Teclas con el cursor DENTRO de un módulo (iframe del mismo origen): se escuchan también allí
   function attachKeys(iframe) {
     try {
