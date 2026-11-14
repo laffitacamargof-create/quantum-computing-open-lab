@@ -405,7 +405,7 @@
       msg('', ''); paintResults(T, r.results, r.notes);
       const flags = ['native', 'idle', 'corr'].filter(k => r.rl[k]).join(' · ');
       hd.textContent += ' · ' + ((Date.now() - t0) / 1000).toFixed(2) + ' s' + (flags ? ' · ' + flags : '');
-      last = { circuit_qubits: (q.match(/qubit\[(\d+)\]/) || [])[1], shots: r.shots, preset: cfg.preset, noise_channels: (r.noise.channels || []).map(c => c.type), results: r.results.map(x => ({ engine: x.name, ok: x.res.ok, error: x.res.error, counts: x.res.counts, avisos: x.res.avisos })) };
+      last = { circuit_qubits: (q.match(/qubit\[(\d+)\]/) || [])[1], shots: r.shots, preset: cfg.preset, noise: r.noise, realism: r.rl, engines: r.list, noise_channels: (r.noise.channels || []).map(c => c.type), results: r.results.map(x => ({ engine: x.name, ok: x.res.ok, error: x.res.error, counts: x.res.counts, avisos: x.res.avisos })) };
       window.QuOLabNexusNoise.last = last; return r;
     } catch (e) { msg('qn-e', '❌ ' + e.message); return null; }
   }
@@ -513,7 +513,7 @@
   }
   function close() { if (escFn) { document.removeEventListener('keydown', escFn, true); escFn = null; } if (ov && ov.parentNode) ov.parentNode.removeChild(ov); ov = null; }
   const quick = o => open(Object.assign({}, o || {}, { quick: true }));
-  window.QuOLabNexusNoise = { open, quick, inline, executeCfg, close, engines: () => [BROWSER], codeToQasm, run, api, wake, simulate: simulateBrowser, exactProbs, presets: PRESETS, buildNoise, last: null, version: '2.0' };
+  window.QuOLabNexusNoise = { open, quick, inline, loadCfg, executeCfg, close, engines: () => [BROWSER], codeToQasm, run, api, wake, simulate: simulateBrowser, exactProbs, presets: PRESETS, buildNoise, last: null, version: '2.0' };
   // Pre-calienta el servidor gratuito (si estaba dormido) para que el primer uso sea rápido
   setTimeout(() => { try { if (document.visibilityState !== 'hidden') wake(null, 20000).catch(() => {}); } catch (e) {} }, 5000);
 })();
