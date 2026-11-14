@@ -3,7 +3,7 @@
    así un simulador nuevo aparece solo en el desplegable sin tocar las herramientas.
    API:  QuOLabNexusNoise.open({getCode})   -> ventana de AJUSTE de ruido (preconfiguraciones + parámetros) y ejecución
          QuOLabNexusNoise.quick({getCode})  -> EJECUTA YA con el ajuste guardado (sin pasar por la configuración; botón ⚙ para ajustar)
-   El servidor predeterminado pertenece a QuOLab Nexus: el usuario no necesita abrir Hugging Face ni escribir ninguna URL. */
+   El servidor es el predeterminado de QCOL: el usuario no necesita abrir Hugging Face ni escribir ninguna URL. */
 (function () {
   'use strict';
   if (window.QuOLabNexusNoise) return;
@@ -249,7 +249,7 @@
   // ───────── Textos (ES/EN) ─────────
   const TX = {
     en: { title: '🔊 Quantum noise', sub: 'Simulates your circuit with realistic noise. The reference engine is MQT YAQS and results can be cross-checked with other simulators.',
-      srv: 'QuOLab Nexus noise server', srvOk: 'Connected', srvWake: 'Reference server (optional): waking up… {s}s', srvDown: 'The noise server is not answering right now. Try again in a minute.',
+      srv: 'QCOL noise server', srvOk: 'Connected', srvWake: 'Reference server (optional): waking up… {s}s', srvDown: 'The noise server is not answering right now. Try again in a minute.',
       sim: 'Simulator', all: 'Compare all simulators', preset: 'Preset', presetNote: 'Typical orders of magnitude for each technology — not the live calibration of a specific device. Edit any value below.',
       params: 'Adjustable parameters', p1: '1-qubit gate error', p2: '2-qubit gate error', t1: 'T1 (µs)', t2: 'T2 (µs)', tg1: '1q gate time (µs)', tg2: '2q gate time (µs)',
       r01: 'Readout P(0 | 1)', r10: 'Readout P(1 | 0)', amp: 'Extra amplitude damping γ', ph: 'Extra phase damping λ', shots: 'Shots', seed: 'Seed (empty = random)',
@@ -258,7 +258,7 @@
       ideal_l: 'Ideal', fid: 'Similarity to ideal (1 − TVD)', tvd: 'Total variation distance', typical: '≈0.03–0.07 is typical sampling noise', caps: 'max {q} qubits · {c} noise channels',
       refEngine: 'reference · server', validator: 'validator · server', instant: 'instant · in your browser', srvOff: 'Reference server offline — the instant simulator keeps working.', real: 'Extra realism (instant simulator)', save: '✔ Save for this cell', rNative: 'Count native gates (decompose into rz · sx · cx)', rIdle: 'Decoherence while qubits wait (idle, uses T1/T2)', rCorr: 'Correlated 2-qubit errors', netfail: 'Could not reach the noise server.', close: 'Close' },
     es: { title: '🔊 Ruido cuántico', sub: 'Simula tu circuito con ruido realista. El motor de referencia es MQT YAQS y puedes contrastar el resultado con otros simuladores.',
-      srv: 'Servidor de ruido de QuOLab Nexus', srvOk: 'Conectado', srvWake: 'Servidor de referencia (opcional): despertando… {s}s', srvDown: 'El servidor de ruido no responde ahora mismo. Inténtalo de nuevo en un minuto.',
+      srv: 'Servidor de ruido de QCOL', srvOk: 'Conectado', srvWake: 'Servidor de referencia (opcional): despertando… {s}s', srvDown: 'El servidor de ruido no responde ahora mismo. Inténtalo de nuevo en un minuto.',
       sim: 'Simulador', all: 'Comparar todos los simuladores', preset: 'Preconfiguración', presetNote: 'Órdenes de magnitud típicos de cada tecnología — no es la calibración en vivo de un dispositivo concreto. Puedes editar cualquier valor.',
       params: 'Parámetros ajustables', p1: 'Error de puerta de 1 qubit', p2: 'Error de puerta de 2 qubits', t1: 'T1 (µs)', t2: 'T2 (µs)', tg1: 'Tiempo puerta 1q (µs)', tg2: 'Tiempo puerta 2q (µs)',
       r01: 'Lectura P(0 | 1)', r10: 'Lectura P(1 | 0)', amp: 'Amortiguamiento de amplitud extra γ', ph: 'Amortiguamiento de fase extra λ', shots: 'Disparos (shots)', seed: 'Semilla (vacío = aleatoria)',
@@ -294,7 +294,7 @@
   const run = o => api('/qcol/activar_ruido', { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=UTF-8' }, body: JSON.stringify({ motor: o.engine, circuito_qasm: o.qasm, noise: o.noise, shots: o.shots, seed: o.seed }) });
   async function caps() { if (_caps) return _caps; try { const r = await tfetch(baseUrl() + '/qcol/capabilities', {}, 20000); _caps = await r.json(); } catch (e) { _caps = {}; } return _caps; }
   const tvd = (a, b) => { const na = Object.values(a).reduce((x, y) => x + y, 0), nb = Object.values(b).reduce((x, y) => x + y, 0); let s = 0; new Set([...Object.keys(a), ...Object.keys(b)]).forEach(k => { s += Math.abs((a[k] || 0) / na - (b[k] || 0) / nb); }); return s / 2; };
-  const ENG_NAME = { 'qcol-browser': 'QuOLab Nexus', 'mqt-yaqs': 'MQT YAQS', 'qiskit-aer': 'Qiskit Aer' }, ENG_ROLE = { 'qcol-browser': 'instant', 'mqt-yaqs': 'refEngine', 'qiskit-aer': 'validator' };
+  const ENG_NAME = { 'qcol-browser': 'QCOL', 'mqt-yaqs': 'MQT YAQS', 'qiskit-aer': 'Qiskit Aer' }, ENG_ROLE = { 'qcol-browser': 'instant', 'mqt-yaqs': 'refEngine', 'qiskit-aer': 'validator' };
   const BROWSER = 'qcol-browser';
   const runAny = o => o.engine === BROWSER ? simulateBrowser(o.qasm, o.noise, o.shots, o.seed, o.extra) : run(o);
   const engName = e => ENG_NAME[e] || e;
@@ -405,7 +405,7 @@
       msg('', ''); paintResults(T, r.results, r.notes);
       const flags = ['native', 'idle', 'corr'].filter(k => r.rl[k]).join(' · ');
       hd.textContent += ' · ' + ((Date.now() - t0) / 1000).toFixed(2) + ' s' + (flags ? ' · ' + flags : '');
-      last = { circuit_qubits: (q.match(/qubit\[(\d+)\]/) || [])[1], shots: r.shots, preset: cfg.preset, noise_channels: (r.noise.channels || []).map(c => c.type), results: r.results.map(x => ({ engine: x.name, ok: x.res.ok, error: x.res.error, counts: x.res.counts, avisos: x.res.avisos })) };
+      last = { circuit_qubits: (q.match(/qubit\[(\d+)\]/) || [])[1], shots: r.shots, preset: cfg.preset, noise: r.noise, realism: r.rl, engines: r.list, noise_channels: (r.noise.channels || []).map(c => c.type), results: r.results.map(x => ({ engine: x.name, ok: x.res.ok, error: x.res.error, counts: x.res.counts, avisos: x.res.avisos })) };
       window.QuOLabNexusNoise.last = last; return r;
     } catch (e) { msg('qn-e', '❌ ' + e.message); return null; }
   }
@@ -513,7 +513,7 @@
   }
   function close() { if (escFn) { document.removeEventListener('keydown', escFn, true); escFn = null; } if (ov && ov.parentNode) ov.parentNode.removeChild(ov); ov = null; }
   const quick = o => open(Object.assign({}, o || {}, { quick: true }));
-  window.QuOLabNexusNoise = { open, quick, inline, executeCfg, close, engines: () => [BROWSER], codeToQasm, run, api, wake, simulate: simulateBrowser, exactProbs, presets: PRESETS, buildNoise, last: null, version: '2.0' };
+  window.QuOLabNexusNoise = { open, quick, inline, loadCfg, executeCfg, close, engines: () => [BROWSER], codeToQasm, run, api, wake, simulate: simulateBrowser, exactProbs, presets: PRESETS, buildNoise, last: null, version: '2.0' };
   // Pre-calienta el servidor gratuito (si estaba dormido) para que el primer uso sea rápido
   setTimeout(() => { try { if (document.visibilityState !== 'hidden') wake(null, 20000).catch(() => {}); } catch (e) {} }, 5000);
 })();
