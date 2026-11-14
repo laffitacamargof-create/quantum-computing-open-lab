@@ -1,12 +1,9 @@
-# Qubi — link and unlink the Qolour Bluetooth qubit models with the ecosystem.
-# This version only finds, links and unlinks devices and lets you inspect what a linked Qubi exposes
-# (services / characteristics). Reading, writing and subscriptions are exposed as generic actions so the
-# Qubi protocol can be added here once its Bluetooth profile is documented.
+# BLE sample connector (TEST FIXTURE ONLY — not shipped in the catalog). Scans, links and unlinks Bluetooth devices.
 from nexus import connector
 
 
 @connector.tool("open_lab", allow=["ble.scan", "ble.link"])
-async def scan(ctx, prefix="Qubi", timeout=4):
+async def scan(ctx, prefix="", timeout=4):
     """Nearby Bluetooth devices whose name starts with `prefix` (empty prefix = all devices)."""
     return await ctx.ble.scan(prefix=prefix, timeout=timeout)
 

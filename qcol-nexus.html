@@ -297,7 +297,7 @@ function render() {
   $('memBadge').textContent = '● ' + all.length + ' CONNECTION' + (all.length === 1 ? '' : 'S') + ' REMEMBERED';
 }
 function communityItems() {
-  const off = catalog.map(c => ({ key: 'o:' + c.id, id: c.id, origin: 'official', name: c.name, version: c.version, description: c.description, author: 'Quolab', perms: c.perms, entry: c }));
+  const off = catalog.map(c => ({ key: 'o:' + c.id, id: c.id, origin: 'official', name: c.name, version: c.version, description: c.description, author: 'Nexus', perms: c.perms, entry: c }));
   const com = comPub.map(c => ({ key: 'c:' + c.id, id: c.id, origin: 'community', name: c.name, version: c.version, description: c.description, author: c.author, perms: c.perms, row: c }));
   return off.concat(com);
 }
@@ -330,15 +330,15 @@ document.addEventListener('click', async (e) => {
   const b = e.target.closest('[data-a]'); if (!b) return;
   const card = b.closest('.card'), id = (card && card.dataset.id) || b.dataset.id, a = b.dataset.a;
   try {
-    if (a === 'del') return delConnector(id);
-    if (a === 'edit') return openW(S.get(id));
-    if (a === 'test') return testConn(id, b);
-    if (a === 'install') return installLocal(id, card);
-    if (a === 'uninstall') return uninstallLocal(id);
-    if (a === 'open' || a === 'copen') return openPanel(id);
-    if (a === 'share') return shareLocal(id);
-    if (a === 'cinstall') return installCommunity(card.dataset.key, card);
-    if (a === 'unpublish') return unpublish(card.dataset.key);
+    if (a === 'del') return await delConnector(id);
+    if (a === 'edit') return await openW(S.get(id));
+    if (a === 'test') return await testConn(id, b);
+    if (a === 'install') return await installLocal(id, card);
+    if (a === 'uninstall') return await uninstallLocal(id);
+    if (a === 'open' || a === 'copen') return await openPanel(id);
+    if (a === 'share') return await shareLocal(id);
+    if (a === 'cinstall') return await installCommunity(card.dataset.key, card);
+    if (a === 'unpublish') return await unpublish(card.dataset.key);
   } catch (err) { fail(err); }
 });
 
@@ -502,7 +502,7 @@ $('pendList').addEventListener('click', async (e) => {
   try {
     if (p.dataset.p === 'approve') { if (!confirm('Publish "' + it.name + '" for the whole community?')) return; await NC.Community.approve(id, key, author()); toast('✓ Published', 'ok'); }
     else { const reason = prompt('Reason for rejecting (the author will see it):', ''); if (reason === null) return; await NC.Community.reject(id, key, reason); toast('Rejected', 'ok'); }
-    await openPending(); await loadCommunity();
+    await openPending(); await loadCommunity(); await syncShares(); render();
   } catch (err) { fail(err); }
 });
 async function unpublish(key) {
