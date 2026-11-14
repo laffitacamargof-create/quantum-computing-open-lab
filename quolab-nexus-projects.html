@@ -121,7 +121,7 @@ textarea.fi{resize:vertical;min-height:70px;line-height:1.6;}
   </div>
 </div>
 
-<script src="repo-sync.js"></script>
+<script src="quolab-nexus-repo-sync.js"></script>
 <script>
 let curUser=null,isAdmin=false,isFounder=false,cfg={},filt='all';
 let editingProjId=null;
@@ -423,7 +423,7 @@ render();
 if(window.RepoSync){
   refreshFn=RepoSync.startPolling(applyRows,30000);
 }else{
-  loading=false;loadError=new Error('repo-sync.js not loaded');render();
+  loading=false;loadError=new Error('quolab-nexus-repo-sync.js not loaded');render();
 }
 </script>
 </body>

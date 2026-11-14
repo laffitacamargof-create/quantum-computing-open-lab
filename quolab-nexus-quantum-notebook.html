@@ -526,7 +526,7 @@ s.blt{color:#ffb86c;}
 
 <script>window.MathJax={tex:{inlineMath:[['$','$'],['\\(','\\)']],displayMath:[['$$','$$'],['\\[','\\]']]},startup:{typeset:false}};</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" async></script>
-<script src="repo-sync.js"></script>
+<script src="quolab-nexus-repo-sync.js"></script>
 <script src="quolab-nexus-noise.js"></script>
 <script>
 // ═══════════════════════════════════════════════════════════════
@@ -1939,7 +1939,7 @@ function closePublish(){document.getElementById('pub-modal').classList.remove('o
 async function publishNb(){
   if(_expositionMode)return;
   // ✅ Permitir publicar a CUALQUIER usuario (incluso sin login)
-  if(!window.RepoSync){notify('❌ Cloud module not loaded (repo-sync.js)');return;}
+  if(!window.RepoSync){notify('❌ Cloud module not loaded (quolab-nexus-repo-sync.js)');return;}
   // sincronizar lo escrito en los textareas
   cells.forEach(c=>{
     const ta=document.getElementById('ta-'+c.id);
