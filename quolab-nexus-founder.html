@@ -118,7 +118,7 @@ textarea.fi{resize:vertical;min-height:70px;line-height:1.6;}
 // 🔄 CONFIG SYNC - VERSIÓN CORREGIDA PARA SUPABASE
 // ============================================================
 const SUPABASE_URL = 'https://rtkcfbnoqbivylejhspv.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_Uw4ViBXo3UvvlSHzOiAcDA_9Jn6eMcf';
+const SUPABASE_ANON_KEY = 'sb_publishable_xo_Fyb_LQT3T5i3LQ1JNTw_NtLm2Zjd';
 
 let _configHash = '';  // 🔧 Hash para detectar cambios reales
 let _isLoadingFromCloud = false;
@@ -132,6 +132,7 @@ class QuOLabNexusConfigSyncCloud {
         this.onConfigUpdate = null;
         this.onSyncComplete = null;
         this._listeners = [];
+        this._pollTimer = null;
     }
 
     async init() {
@@ -161,7 +162,7 @@ class QuOLabNexusConfigSyncCloud {
             console.log('✅ Config Sync Cloud inicializado');
             
             // 🔧 Sincronizar cada 15 segundos pero solo si hay cambios reales
-            setInterval(() => {
+            this._pollTimer = setInterval(() => {
                 this.loadAllFromCloud().catch(e => console.warn('⚠️ Sync error:', e.message));
             }, 15000);
             
@@ -435,6 +436,10 @@ class QuOLabNexusConfigSyncCloud {
     }
 
     destroy() {
+        if (this._pollTimer) {
+            clearInterval(this._pollTimer);
+            this._pollTimer = null;
+        }
         this._listeners = [];
     }
 }
@@ -470,6 +475,9 @@ async function initConfigSync() {
 }
 
 initConfigSync();
+window.addEventListener('pagehide', () => {
+    if (configSync) configSync.destroy();
+}, { once: true });
 </script>
 
 <div class="tabs">
