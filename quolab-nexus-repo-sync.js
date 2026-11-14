@@ -12,7 +12,7 @@
 
   var CFG = {
     url: 'https://rtkcfbnoqbivylejhspv.supabase.co',
-    key: 'sb_publishable_Uw4ViBXo3UvvlSHzOiAcDA_9Jn6eMcf'
+    key: 'sb_publishable_xo_Fyb_LQT3T5i3LQ1JNTw_NtLm2Zjd'
   };
 
   var LS_KEYS    = 'qcol_repo_keys';        // { itemId: editKey }  (llaves de edición de MIS items)
