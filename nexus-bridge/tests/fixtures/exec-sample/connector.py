@@ -1,4 +1,4 @@
-# Local Python — lets the ecosystem run Python on THIS computer (the computer does the server's work).
+# Python-exec sample connector (TEST FIXTURE ONLY).
 # requires: numpy, scipy
 from nexus import connector
 

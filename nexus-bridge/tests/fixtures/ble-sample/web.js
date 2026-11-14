@@ -17,7 +17,7 @@ async function refreshLinked() { try { linked = await nexus.call('linked'); } ca
 
 $('qb-scan').onclick = async () => {
   say('Searching…'); $('qb-scan').disabled = true;
-  try { found = await nexus.call('scan', { prefix: $('qb-prefix').value.trim(), timeout: 4 }); await refreshLinked(); say(found.length ? found.length + ' device(s) found' : 'Nothing found. Is the Qubi on and close?'); }
+  try { found = await nexus.call('scan', { prefix: $('qb-prefix').value.trim(), timeout: 4 }); await refreshLinked(); say(found.length ? found.length + ' device(s) found' : 'Nothing found.'); }
   catch (e) { say(e.message, true); } finally { $('qb-scan').disabled = false; }
 };
 $('qb-list').onclick = async (e) => {
