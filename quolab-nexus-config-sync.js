@@ -123,15 +123,11 @@ class QuOLabNexusConfigSync {
         if (this._syncInProgress) return;
         this._syncInProgress = true;
         try {
-            // 🔧 TODAS las configuraciones incluyendo founder_password
+            // Solo sincronizar valores no sensibles. Las claves y contraseñas permanecen locales.
             await this._syncConfig('colab_url', 'qcol_colab_url');
-            await this._syncConfig('ai_config', 'qcol_ai');
-            await this._syncConfig('github_config', 'qcol_gh');
-            await this._syncConfig('deepseek_config', 'qcol_mistral');
             await this._syncConfig('system_config', 'qcol_sys');
             await this._syncConfig('platform_config', 'qcol_cfg');
             await this._syncConfig('monitor_config', 'qcol_monitor_cfg');
-            await this._syncConfig('founder_password', 'qcol_fp');  // ✅ NUEVO
             
             if (this.onSyncComplete) this.onSyncComplete();
         } catch (error) {
