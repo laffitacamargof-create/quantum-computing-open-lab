@@ -34,7 +34,7 @@ class QuOLabNexusQuantumSync {
             console.log('🔌 Probando conexión a Supabase...');
             console.log('📌 URL:', this.SUPABASE_URL);
             
-            const testResponse = await fetch(`${this.SUPABASE_URL}/rest/v1/${this.TABLES.PENDING_APPS}?select=id&limit=1`, {
+            const testResponse = await fetch(`${this.SUPABASE_URL}/rest/v1/${this.TABLES.PUBLISHED_APPS}?select=id&limit=1`, {
                 method: 'GET',
                 headers: {
                     'apikey': this.SUPABASE_ANON_KEY,
@@ -105,6 +105,15 @@ class QuOLabNexusQuantumSync {
         return await response.json();
     }
 
+    async _rpc(name, body) {
+        const response = await fetch(`${this.SUPABASE_URL}/rest/v1/rpc/${name}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'apikey': this.SUPABASE_ANON_KEY, 'Authorization': `Bearer ${this.SUPABASE_ANON_KEY}` },
+            body: JSON.stringify(body)
+        });
+        if (!response.ok) { const errorText = await response.text(); throw new Error(`HTTP ${response.status}: ${errorText}`); }
+        return await response.json();
+    }
     async _supabaseInsert(table, data) {
         console.log(`📤 Insertando en ${table}:`, {
             id: data.id,
@@ -219,16 +228,13 @@ class QuOLabNexusQuantumSync {
 
     async syncPendingApps() {
         try {
-            const data = await this._supabaseFetch(this.TABLES.PENDING_APPS, {
-                order: { column: 'created_at', direction: 'desc' }
-            });
+            const founderKey = localStorage.getItem('qcol_repo_founder_key') || '';
+            if (!founderKey) { this.pendingApps = []; if (this.onPendingUpdate) this.onPendingUpdate(this.pendingApps); return this.pendingApps; }
+            const data = await this._rpc('quantum_list_pending', { p_key: founderKey });
             this.pendingApps = data || [];
             if (this.onPendingUpdate) this.onPendingUpdate(this.pendingApps);
             return this.pendingApps;
-        } catch (error) {
-            console.error('Error syncing pending:', error.message);
-            return [];
-        }
+        } catch (error) { console.error('Error syncing pending:', error.message); return []; }
     }
 
     async syncPublishedApps() {
@@ -281,17 +287,8 @@ class QuOLabNexusQuantumSync {
         });
         
         try {
-            const existing = await this._supabaseFetch(this.TABLES.PENDING_APPS, {
-                eq: { id: pendingApp.id }
-            });
-            
-            if (existing && existing.length > 0) {
-                await this._supabaseUpdate(this.TABLES.PENDING_APPS, pendingApp.id, pendingApp);
-            } else {
-                await this._supabaseInsert(this.TABLES.PENDING_APPS, pendingApp);
-            }
-            
-            await this.syncPendingApps();
+            const createdId = await this._rpc('quantum_submit_app', { p_app: pendingApp });
+            pendingApp.id = createdId;
             console.log(`📤 App "${pendingApp.title}" submitted for approval`);
             return pendingApp;
         } catch (error) {
@@ -302,77 +299,34 @@ class QuOLabNexusQuantumSync {
 
     async approveApp(appId) {
         try {
-            console.log(`📤 Aprobando app: ${appId}`);
-            
-            const pendingApps = await this._supabaseFetch(this.TABLES.PENDING_APPS, {
-                eq: { id: appId }
-            });
-            
-            if (!pendingApps || pendingApps.length === 0) {
-                throw new Error('App not found');
-            }
-            
-            const pendingApp = pendingApps[0];
-            
-            const publishedApp = {
-                id: pendingApp.id,
-                name: pendingApp.name || pendingApp.title || 'Untitled',
-                title: pendingApp.title || pendingApp.name || 'Untitled',
-                description: pendingApp.description || '',
-                tags: pendingApp.tags || '',
-                duration: parseInt(pendingApp.duration) || 8,
-                python_code: pendingApp.python_code || pendingApp.pythonCode || '',
-                html_code: pendingApp.html_code || pendingApp.htmlCode || '',
-                server_url: pendingApp.server_url || '',
-                created_by: pendingApp.created_by || 'anonymous',
-                created_at: pendingApp.created_at || new Date().toISOString(),
-                published_by: this.currentUser?.id || 'admin',
-                published_at: new Date().toISOString(),
-                version: 1,
-                is_active: true
-            };
-            
-            console.log('📤 Publicando app:', {
-                title: publishedApp.title,
-                python_len: publishedApp.python_code?.length || 0,
-                html_len: publishedApp.html_code?.length || 0
-            });
-            
-            await this._supabaseInsert(this.TABLES.PUBLISHED_APPS, publishedApp);
-            await this._adminDelete('pending', this.TABLES.PENDING_APPS, appId);
+            const founderKey = localStorage.getItem('qcol_repo_founder_key') || '';
+            if (!founderKey) throw new Error('Se requiere la llave de fundador');
+            const publishedApp = await this._rpc('quantum_approve_app', { p_id: String(appId), p_key: founderKey });
             await this.syncAll(true);
-            
             if (this.onAppPublished) this.onAppPublished(publishedApp);
-            console.log(`✅ App "${pendingApp.title}" published!`);
             return publishedApp;
-        } catch (error) {
-            console.error('Error approving:', error.message);
-            throw error;
-        }
+        } catch (error) { console.error('Error approving:', error.message); throw error; }
     }
 
     async rejectApp(appId) {
         try {
-            await this._adminDelete('pending', this.TABLES.PENDING_APPS, appId);
+            const founderKey = localStorage.getItem('qcol_repo_founder_key') || '';
+            if (!founderKey) throw new Error('Se requiere la llave de fundador');
+            await this._rpc('quantum_reject_app', { p_id: String(appId), p_key: founderKey });
             await this.syncPendingApps();
             if (this.onAppRejected) this.onAppRejected(appId);
-            console.log(`🗑️ App rejected`);
             return true;
-        } catch (error) {
-            console.error('Error rejecting:', error.message);
-            throw error;
-        }
+        } catch (error) { console.error('Error rejecting:', error.message); throw error; }
     }
 
     async deletePublishedApp(appId) {
         try {
-            await this._adminDelete('published', this.TABLES.PUBLISHED_APPS, appId);
+            const founderKey = localStorage.getItem('qcol_repo_founder_key') || '';
+            if (!founderKey) throw new Error('Se requiere la llave de fundador');
+            await this._rpc('quantum_delete_published_app', { p_id: String(appId), p_key: founderKey });
             await this.syncPublishedApps();
             return true;
-        } catch (error) {
-            console.error('Error deleting:', error.message);
-            throw error;
-        }
+        } catch (error) { console.error('Error deleting:', error.message); throw error; }
     }
 
     _generateId() {
