@@ -70,7 +70,7 @@ class QuOLabNexusConfigSync {
         }, 15000);
     }
 
-    async _fetchWithRetry(url, options = {}, attempts = 3) {
+    async _fetchWithRetry(url, options = {}, attempts = ((options.method || 'GET').toUpperCase() === 'GET' ? 3 : 1)) {
         let lastError;
         for (let attempt = 0; attempt < attempts; attempt++) {
             try {
