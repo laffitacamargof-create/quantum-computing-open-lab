@@ -1177,47 +1177,15 @@ async function delUser(un){if(confirm('¿Eliminar '+un+'?')){const all=getUsers(
 async function changeFounderPass() {
   const cur = document.getElementById('fp-cur').value;
   const nw = document.getElementById('fp-new').value;
-  
-  let stored = '1027';
-  if (window.configSync && window.configSync.isReady) {
-    const cloudFp = window.configSync.getConfig('founder_password');
-    if (cloudFp) stored = String(cloudFp);
-  } else {
-    stored = localStorage.getItem('qcol_fp') || '1027';
-  }
-  
-  if (String(cur) !== String(stored)) { 
-    notify('❌ Contraseña actual incorrecta'); 
-    return; 
-  }
-  if (!nw) { 
-    notify('⚠️ Ingresa la nueva contraseña'); 
-    return; 
-  }
-  
+  const stored = localStorage.getItem('qcol_fp') || '';
+  if (!stored) { notify('No hay contraseña local configurada. No se permite usar una contraseña predeterminada.'); return; }
+  if (String(cur) !== String(stored)) { notify('❌ Contraseña actual incorrecta'); return; }
+  if (!nw || String(nw).length < 12) { notify('⚠️ La nueva contraseña debe tener al menos 12 caracteres'); return; }
   const newPassword = String(nw);
-  
   localStorage.setItem('qcol_fp', newPassword);
   localStorage.setItem('qcol_fp_timestamp', new Date().toISOString());
-  
-  if (window.configSync && window.configSync.isReady) {
-    const success = await window.configSync.saveToCloud('founder_password', newPassword);
-    if (success) {
-      notify('✅ Contraseña del fundador actualizada en la nube');
-      addSysLog('Contraseña fundador cambiada en la nube', 'ok');
-      window.parent.postMessage({ 
-        type: 'QCOL_SAVE', 
-        key: 'qcol_fp', 
-        val: newPassword 
-      }, '*');
-    } else {
-      notify('❌ Error guardando en la nube');
-    }
-  } else {
-    notify('⚠️ Config Sync no disponible, guardado solo local');
-    addSysLog('Contraseña fundador cambiada (solo local)', 'warn');
-  }
-  
+  notify('Contraseña local actualizada. No se sincroniza en la nube por seguridad.');
+  addSysLog('Contraseña local del fundador actualizada', 'ok');
   ['fp-cur', 'fp-new'].forEach(id => document.getElementById(id).value = '');
 }
 
