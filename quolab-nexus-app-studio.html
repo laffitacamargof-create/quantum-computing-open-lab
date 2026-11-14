@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>Quantum App Studio · Connected to Founder</title>
+    <title>QuOLab Nexus — Quantum App Studio</title>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -354,9 +354,9 @@
 
     function generateId() { return Date.now() + '-' + Math.random().toString(36).substring(2, 10); }
     function escapeHtml(str) { return String(str).replace(/[&<>]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;'})[m]); }
-    function sendToParent(msg) { 
-        if (window.parent && window.parent !== window && parentOrigin) {
-            try { window.parent.postMessage(msg, parentOrigin); } catch(e) {}
+    function sendToParent(msg) {
+        if (window.top && window.top !== window) {
+            try { window.top.postMessage({ type: 'NEXUS_STUDIO_EVENT', message: msg }, window.location.origin); } catch(e) {}
         }
     }
 
@@ -1079,8 +1079,14 @@
         if (savedUrl) setServerUrl(savedUrl);
     }
     
-    setInterval(() => {
-        if (window.parent !== window && !receivedUrl && parentOrigin) sendToParent({ type: 'QCOL_REQUEST_COMPILER_URL' });
+    let compilerRequestAttempts = 0;
+    const compilerRequestTimer = setInterval(() => {
+        if (window.parent === window || receivedUrl || !parentOrigin || compilerRequestAttempts >= 10) {
+            clearInterval(compilerRequestTimer);
+            return;
+        }
+        compilerRequestAttempts++;
+        sendToParent({ type: 'QCOL_REQUEST_COMPILER_URL' });
     }, 3000);
     
     notify("Quantum App Studio · Protected against over-reading · Origins validated", 4000);

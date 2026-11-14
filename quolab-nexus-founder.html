@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>QCOL — Panel Fundador</title>
+<title>QuOLab Nexus — Panel Fundador</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=JetBrains+Mono:wght@400;500&family=Exo+2:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.5/dist/purify.min.js"></script>
@@ -118,12 +118,12 @@ textarea.fi{resize:vertical;min-height:70px;line-height:1.6;}
 // 🔄 CONFIG SYNC - VERSIÓN CORREGIDA PARA SUPABASE
 // ============================================================
 const SUPABASE_URL = 'https://rtkcfbnoqbivylejhspv.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_Uw4ViBXo3UvvlSHzOiAcDA_9Jn6eMcf';
+const SUPABASE_ANON_KEY = 'sb_publishable_xo_Fyb_LQT3T5i3LQ1JNTw_NtLm2Zjd';
 
 let _configHash = '';  // 🔧 Hash para detectar cambios reales
 let _isLoadingFromCloud = false;
 
-class QcolConfigSyncCloud {
+class QuOLabNexusConfigSyncCloud {
     constructor() {
         this.isReady = false;
         this._cache = {};
@@ -132,6 +132,7 @@ class QcolConfigSyncCloud {
         this.onConfigUpdate = null;
         this.onSyncComplete = null;
         this._listeners = [];
+        this._pollTimer = null;
     }
 
     async init() {
@@ -161,7 +162,7 @@ class QcolConfigSyncCloud {
             console.log('✅ Config Sync Cloud inicializado');
             
             // 🔧 Sincronizar cada 15 segundos pero solo si hay cambios reales
-            setInterval(() => {
+            this._pollTimer = setInterval(() => {
                 this.loadAllFromCloud().catch(e => console.warn('⚠️ Sync error:', e.message));
             }, 15000);
             
@@ -329,16 +330,22 @@ class QcolConfigSyncCloud {
                 updated_at: new Date().toISOString()
             };
             
-            const existing = await this._fetch('quantum_ecosystem_config', {
-                eq: { key: key }
+            const founderKey = localStorage.getItem('qcol_repo_founder_key') || '';
+            if (!founderKey) throw new Error('Se requiere la llave de fundador del repositorio');
+            const response = await fetch(`${SUPABASE_URL}/functions/v1/quolab-nexus-admin`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'apikey': SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                },
+                body: JSON.stringify({
+                    action: 'quantum_config_save',
+                    params: { p_key: key, p_value: stringValue, p_founder_key: founderKey }
+                })
             });
-            
-            if (existing && existing.length > 0) {
-                await this._update('quantum_ecosystem_config', key, data);
-            } else {
-                data.created_at = new Date().toISOString();
-                await this._insert('quantum_ecosystem_config', data);
-            }
+            const result = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(result.error || `HTTP ${response.status}`);
             
             // 🔧 Actualizar hash después de guardar
             const allConfigs = await this._fetch('quantum_ecosystem_config');
@@ -437,6 +444,10 @@ class QcolConfigSyncCloud {
     }
 
     destroy() {
+        if (this._pollTimer) {
+            clearInterval(this._pollTimer);
+            this._pollTimer = null;
+        }
         this._listeners = [];
     }
 }
@@ -445,7 +456,7 @@ let configSync = null;
 
 async function initConfigSync() {
     try {
-        configSync = new QcolConfigSyncCloud();
+        configSync = new QuOLabNexusConfigSyncCloud();
         await configSync.init();
         
         configSync.onConfigUpdate = (configMap) => {
@@ -472,6 +483,9 @@ async function initConfigSync() {
 }
 
 initConfigSync();
+window.addEventListener('pagehide', () => {
+    if (configSync) configSync.destroy();
+}, { once: true });
 </script>
 
 <div class="tabs">
@@ -496,12 +510,12 @@ initConfigSync();
       <thead><tr><th>MÓDULO</th><th>ARCHIVO</th><th>FUNCIÓN</th><th>ESTADO</th><th>ACCIONES</th> </thead>
       <tbody>
         <tr><td style="font-family:var(--mono);font-size:.6rem;color:var(--gr);">index.html</td><td style="font-size:.62rem;color:var(--mu);">Núcleo — une todo el ecosistema</td><td><span class="rb rba">ACTIVO</span></td><td><button class="bsm" onclick="downloadModule('core')">📥 Core</button></td> </tr>
-        <tr><td style="font-family:var(--mono);font-size:.6rem;color:var(--gr);">qcol-projects.html</td><td style="font-size:.62rem;color:var(--mu);">Notebooks desde GitHub</td><td><span class="rb" id="st-projects" style="background:rgba(255,184,0,.12);color:#ffb800;border:1px solid rgba(255,184,0,.3);">PENDIENTE</span></td><td><button class="bsm" onclick="downloadModule('projects')">📥</button></td> </tr>
-        <tr><td style="font-family:var(--mono);font-size:.6rem;color:var(--gr);">qcol-architect.html</td><td style="font-size:.62rem;color:var(--mu);">Editor Qiskit · Cirq · QuTiP + GPU HuggingFace</td><td><span class="rb" id="st-architect" style="background:rgba(255,184,0,.12);color:#ffb800;border:1px solid rgba(255,184,0,.3);">PENDIENTE</span></td><td><button class="bsm" onclick="downloadModule('architect')">📥</button></td> </tr>
-        <tr><td style="font-family:var(--mono);font-size:.6rem;color:var(--gr);">qcol-architect-pro.html</td><td style="font-size:.62rem;color:var(--mu);">Notebooks completos — Admin+</td><td><span class="rb" id="st-archpro" style="background:rgba(255,184,0,.12);color:#ffb800;border:1px solid rgba(255,184,0,.3);">PENDIENTE</span></td><td><button class="bsm" onclick="downloadModule('architect-pro')">📥</button></td> </tr>
-        <tr><td style="font-family:var(--mono);font-size:.6rem;color:var(--gr);">qcol-library.html</td><td style="font-size:.62rem;color:var(--mu);">Recursos educativos desde GitHub</td><td><span class="rb" id="st-library" style="background:rgba(255,184,0,.12);color:#ffb800;border:1px solid rgba(255,184,0,.3);">PENDIENTE</span></td><td><button class="bsm" onclick="downloadModule('library')">📥</button></td> </tr>
-        <tr><td style="font-family:var(--mono);font-size:.6rem;color:var(--gr);">qcol-account.html</td><td style="font-size:.62rem;color:var(--mu);">Perfil y circuitos guardados</td><td><span class="rb" id="st-account" style="background:rgba(255,184,0,.12);color:#ffb800;border:1px solid rgba(255,184,0,.3);">PENDIENTE</span></td><td><button class="bsm" onclick="downloadModule('account')">📥</button></td> </tr>
-        <tr><td style="font-family:var(--mono);font-size:.6rem;color:var(--gr);">qcol-help.html</td><td style="font-size:.62rem;color:var(--mu);">Documentación del ecosistema</td><td><span class="rb" id="st-help" style="background:rgba(255,184,0,.12);color:#ffb800;border:1px solid rgba(255,184,0,.3);">PENDIENTE</span></td><td><button class="bsm" onclick="downloadModule('help')">📥</button></td> </tr>
+        <tr><td style="font-family:var(--mono);font-size:.6rem;color:var(--gr);">quolab-nexus-projects.html</td><td style="font-size:.62rem;color:var(--mu);">Notebooks desde GitHub</td><td><span class="rb" id="st-projects" style="background:rgba(255,184,0,.12);color:#ffb800;border:1px solid rgba(255,184,0,.3);">PENDIENTE</span></td><td><button class="bsm" onclick="downloadModule('projects')">📥</button></td> </tr>
+        <tr><td style="font-family:var(--mono);font-size:.6rem;color:var(--gr);">quolab-nexus-architect.html</td><td style="font-size:.62rem;color:var(--mu);">Editor Qiskit · Cirq · QuTiP + GPU HuggingFace</td><td><span class="rb" id="st-architect" style="background:rgba(255,184,0,.12);color:#ffb800;border:1px solid rgba(255,184,0,.3);">PENDIENTE</span></td><td><button class="bsm" onclick="downloadModule('architect')">📥</button></td> </tr>
+        <tr><td style="font-family:var(--mono);font-size:.6rem;color:var(--gr);">quolab-nexus-quantum-notebook.html</td><td style="font-size:.62rem;color:var(--mu);">Notebooks completos — Admin+</td><td><span class="rb" id="st-archpro" style="background:rgba(255,184,0,.12);color:#ffb800;border:1px solid rgba(255,184,0,.3);">PENDIENTE</span></td><td><button class="bsm" onclick="downloadModule('architect-pro')">📥</button></td> </tr>
+        <tr><td style="font-family:var(--mono);font-size:.6rem;color:var(--gr);">quolab-nexus-library.html</td><td style="font-size:.62rem;color:var(--mu);">Recursos educativos desde GitHub</td><td><span class="rb" id="st-library" style="background:rgba(255,184,0,.12);color:#ffb800;border:1px solid rgba(255,184,0,.3);">PENDIENTE</span></td><td><button class="bsm" onclick="downloadModule('library')">📥</button></td> </tr>
+        <tr><td style="font-family:var(--mono);font-size:.6rem;color:var(--gr);">quolab-nexus-account.html</td><td style="font-size:.62rem;color:var(--mu);">Perfil y circuitos guardados</td><td><span class="rb" id="st-account" style="background:rgba(255,184,0,.12);color:#ffb800;border:1px solid rgba(255,184,0,.3);">PENDIENTE</span></td><td><button class="bsm" onclick="downloadModule('account')">📥</button></td> </tr>
+        <tr><td style="font-family:var(--mono);font-size:.6rem;color:var(--gr);">quolab-nexus-help.html</td><td style="font-size:.62rem;color:var(--mu);">Documentación del ecosistema</td><td><span class="rb" id="st-help" style="background:rgba(255,184,0,.12);color:#ffb800;border:1px solid rgba(255,184,0,.3);">PENDIENTE</span></td><td><button class="bsm" onclick="downloadModule('help')">📥</button></td> </tr>
         <tr><td style="font-family:var(--mono);font-size:.6rem;color:var(--cy);">quantum-app-studio.html</td><td style="font-size:.62rem;color:var(--mu);">Editor visual de aplicaciones cuánticas con backend remoto</td><td><span class="rb" id="st-quantumapp" style="background:rgba(255,184,0,.12);color:#ffb800;border:1px solid rgba(255,184,0,.3);">PENDIENTE</span></td><td><button class="bsm" onclick="downloadModule('quantumapp')">📥</button></td> </tr>
       </tbody>
     </table>
@@ -511,7 +525,7 @@ initConfigSync();
     <div class="sec-title">➕ Crear nuevo módulo personalizado</div>
     <div class="alert alert-info">Agrega módulos propios al ecosistema. Cada módulo es un archivo HTML que se carga en el menú principal. Crea el archivo HTML, súbelo a GitHub con el nombre que especifiques, y aparecerá automáticamente.</div>
     <div class="grid2">
-      <div><div class="fg"><label class="fl">NOMBRE DEL MÓDULO</label><input class="fi" id="nm-name" placeholder="Mi Módulo"></div><div class="fg"><label class="fl">IDENTIFICADOR (sin espacios)</label><input class="fi" id="nm-id" placeholder="mi-modulo"></div><div class="fg"><label class="fl">ARCHIVO HTML</label><input class="fi" id="nm-file" placeholder="qcol-mi-modulo.html"></div></div>
+      <div><div class="fg"><label class="fl">NOMBRE DEL MÓDULO</label><input class="fi" id="nm-name" placeholder="Mi Módulo"></div><div class="fg"><label class="fl">IDENTIFICADOR (sin espacios)</label><input class="fi" id="nm-id" placeholder="mi-modulo"></div><div class="fg"><label class="fl">ARCHIVO HTML</label><input class="fi" id="nm-file" placeholder="quolab-nexus-mi-modulo.html"></div></div>
       <div><div class="fg"><label class="fl">ÍCONO (emoji)</label><input class="fi" id="nm-icon" placeholder="🔬" style="width:80px;text-align:center;font-size:1.2rem;"></div><div class="fg"><label class="fl">DESCRIPCIÓN</label><input class="fi" id="nm-desc" placeholder="Descripción del módulo"></div><div class="fg"><label class="fl">ACCESO MÍNIMO</label><select class="fi" id="nm-role"><option value="guest">Todos los usuarios</option><option value="user">Solo usuarios con sesión</option><option value="admin">Solo Admin / Fundador</option></select></div></div>
     </div>
     <div class="btn-row"><button class="btn btn-pri" onclick="createModule()">➕ Crear módulo</button></div>
@@ -663,16 +677,16 @@ initConfigSync();
 
 <!-- ════════════ INTERNET ════════════ -->
 <div class="panel" id="tab-deploy">
-  <div class="sec"><div class="sec-title">🌐 Publicar en Internet — GitHub Pages</div><div class="alert alert-ok">✅ GitHub Pages es la forma más fácil. Tu ecosistema queda en: <strong>laffitacamargof-create.github.io/quantum-computing-open-lab</strong></div><div style="font-size:.68rem;color:var(--mu);line-height:1.9;margin-bottom:1rem;"><strong style="color:var(--bl2); font-family:var(--orb);">PASO 1 — Subir archivos a GitHub</strong><br>Sube estos archivos a tu repositorio: <code style="color:var(--gr);">index.html</code>, <code style="color:var(--gr);">qcol-founder.html</code>, y todos los módulos que hayas descargado.</div><div style="font-size:.68rem;color:var(--mu);line-height:1.9;margin-bottom:1rem;"><strong style="color:var(--bl2); font-family:var(--orb);">PASO 2 — Activar GitHub Pages</strong><br>En tu repositorio: Settings → Pages → Source: "Deploy from a branch" → Branch: main → Save</div><div style="font-size:.68rem;color:var(--mu);line-height:1.9;margin-bottom:1rem;"><strong style="color:var(--bl2); font-family:var(--orb);">PASO 3 — Compilador HuggingFace</strong><br>Ve a la pestaña <strong>🤗 Compilador HuggingFace</strong> → sigue los pasos → pega tu URL del Space.</div><div style="font-size:.68rem;color:var(--mu);line-height:1.9;margin-bottom:1rem;"><strong style="color:var(--bl2); font-family:var(--orb);">PASO 4 — Configurar IA (opcional)</strong><br>Crea cuenta en Groq → Obtén API key gratuita → Configura en pestaña IA</div><div style="font-size:.68rem;color:var(--mu);line-height:1.9;margin-bottom:1.2rem;"><strong style="color:var(--bl2); font-family:var(--orb);">PASO 5 — ¡Listo!</strong><br>Tu ecosistema está en internet. Comparte la URL con cualquiera.</div><div class="btn-row"><button class="btn btn-pri" onclick="window.open('https://github.com/laffitacamargof-create/quantum-computing-open-lab/upload/main','_blank')">📤 Subir a GitHub ↗</button><button class="btn btn-sec" onclick="window.open('https://github.com/laffitacamargof-create/quantum-computing-open-lab/settings/pages','_blank')">⚙️ Activar Pages ↗</button></div></div>
+  <div class="sec"><div class="sec-title">🌐 Publicar en Internet — GitHub Pages</div><div class="alert alert-ok">✅ GitHub Pages es la forma más fácil. Tu ecosistema queda en: <strong>laffitacamargof-create.github.io/quantum-computing-open-lab</strong></div><div style="font-size:.68rem;color:var(--mu);line-height:1.9;margin-bottom:1rem;"><strong style="color:var(--bl2); font-family:var(--orb);">PASO 1 — Subir archivos a GitHub</strong><br>Sube estos archivos a tu repositorio: <code style="color:var(--gr);">index.html</code>, <code style="color:var(--gr);">quolab-nexus-founder.html</code>, y todos los módulos que hayas descargado.</div><div style="font-size:.68rem;color:var(--mu);line-height:1.9;margin-bottom:1rem;"><strong style="color:var(--bl2); font-family:var(--orb);">PASO 2 — Activar GitHub Pages</strong><br>En tu repositorio: Settings → Pages → Source: "Deploy from a branch" → Branch: main → Save</div><div style="font-size:.68rem;color:var(--mu);line-height:1.9;margin-bottom:1rem;"><strong style="color:var(--bl2); font-family:var(--orb);">PASO 3 — Compilador HuggingFace</strong><br>Ve a la pestaña <strong>🤗 Compilador HuggingFace</strong> → sigue los pasos → pega tu URL del Space.</div><div style="font-size:.68rem;color:var(--mu);line-height:1.9;margin-bottom:1rem;"><strong style="color:var(--bl2); font-family:var(--orb);">PASO 4 — Configurar IA (opcional)</strong><br>Crea cuenta en Groq → Obtén API key gratuita → Configura en pestaña IA</div><div style="font-size:.68rem;color:var(--mu);line-height:1.9;margin-bottom:1.2rem;"><strong style="color:var(--bl2); font-family:var(--orb);">PASO 5 — ¡Listo!</strong><br>Tu ecosistema está en internet. Comparte la URL con cualquiera.</div><div class="btn-row"><button class="btn btn-pri" onclick="window.open('https://github.com/laffitacamargof-create/quantum-computing-open-lab/upload/main','_blank')">📤 Subir a GitHub ↗</button><button class="btn btn-sec" onclick="window.open('https://github.com/laffitacamargof-create/quantum-computing-open-lab/settings/pages','_blank')">⚙️ Activar Pages ↗</button></div></div>
   <div class="sec"><div class="sec-title">📦 Estructura de archivos en GitHub</div><div class="codebox">quantum-computing-open-lab/
 ├── index.html              ← Core del ecosistema (SUBE ESTE PRIMERO)
-├── qcol-founder.html       ← Panel fundador
-├── qcol-projects.html      ← Módulo proyectos
-├── qcol-architect.html     ← Módulo arquitecto
-├── qcol-architect-pro.html ← Módulo arquitecto profesional
-├── qcol-library.html       ← Módulo librería
-├── qcol-account.html       ← Módulo mi cuenta
-├── qcol-help.html          ← Módulo ayuda
+├── quolab-nexus-founder.html       ← Panel fundador
+├── quolab-nexus-projects.html      ← Módulo proyectos
+├── quolab-nexus-architect.html     ← Módulo arquitecto
+├── quolab-nexus-quantum-notebook.html ← Módulo arquitecto profesional
+├── quolab-nexus-library.html       ← Módulo librería
+├── quolab-nexus-account.html       ← Módulo mi cuenta
+├── quolab-nexus-help.html          ← Módulo ayuda
 ├── quantum-app-studio.html ← ⚛️ Quantum App Studio (EDITOR VISUAL)
 ├── notebooks/              ← Tus notebooks .ipynb
 │   ├── circuito_bell.ipynb
@@ -691,7 +705,8 @@ initConfigSync();
 <script>
 // ══ TODAS LAS FUNCIONES ORIGINALES SE MANTIENEN ══
 function postToCore(type, data = {}) {
-  window.parent.postMessage({ type, ...data }, '*');
+  const name = String(type || '').replace(/^(?:OPENQ|QCOL|NEXUS)_/, '');
+  window.parent.postMessage({ type: 'NEXUS_' + name, protocol: 'QUOLAB_NEXUS_V1', ...data }, location.origin);
 }
 
 window.addEventListener('message', (e) => {
@@ -1178,47 +1193,15 @@ async function delUser(un){if(confirm('¿Eliminar '+un+'?')){const all=getUsers(
 async function changeFounderPass() {
   const cur = document.getElementById('fp-cur').value;
   const nw = document.getElementById('fp-new').value;
-  
-  let stored = '1027';
-  if (window.configSync && window.configSync.isReady) {
-    const cloudFp = window.configSync.getConfig('founder_password');
-    if (cloudFp) stored = String(cloudFp);
-  } else {
-    stored = localStorage.getItem('qcol_fp') || '1027';
-  }
-  
-  if (String(cur) !== String(stored)) { 
-    notify('❌ Contraseña actual incorrecta'); 
-    return; 
-  }
-  if (!nw) { 
-    notify('⚠️ Ingresa la nueva contraseña'); 
-    return; 
-  }
-  
+  const stored = localStorage.getItem('qcol_fp') || '';
+  if (!stored) { notify('No hay contraseña local configurada. No se permite usar una contraseña predeterminada.'); return; }
+  if (String(cur) !== String(stored)) { notify('❌ Contraseña actual incorrecta'); return; }
+  if (!nw || String(nw).length < 12) { notify('⚠️ La nueva contraseña debe tener al menos 12 caracteres'); return; }
   const newPassword = String(nw);
-  
   localStorage.setItem('qcol_fp', newPassword);
   localStorage.setItem('qcol_fp_timestamp', new Date().toISOString());
-  
-  if (window.configSync && window.configSync.isReady) {
-    const success = await window.configSync.saveToCloud('founder_password', newPassword);
-    if (success) {
-      notify('✅ Contraseña del fundador actualizada en la nube');
-      addSysLog('Contraseña fundador cambiada en la nube', 'ok');
-      window.parent.postMessage({ 
-        type: 'QCOL_SAVE', 
-        key: 'qcol_fp', 
-        val: newPassword 
-      }, '*');
-    } else {
-      notify('❌ Error guardando en la nube');
-    }
-  } else {
-    notify('⚠️ Config Sync no disponible, guardado solo local');
-    addSysLog('Contraseña fundador cambiada (solo local)', 'warn');
-  }
-  
+  notify('Contraseña local actualizada. No se sincroniza en la nube por seguridad.');
+  addSysLog('Contraseña local del fundador actualizada', 'ok');
   ['fp-cur', 'fp-new'].forEach(id => document.getElementById(id).value = '');
 }
 
@@ -1451,7 +1434,7 @@ async function uploadToGitHub(){
 // 🔧 Inicialización: cargar una sola vez al inicio
 loadSaved(true);
 addSysLog('Configuración del ecosistema iniciada (MODO NUBE)','info');
-addSysLog('QCOL v3.0.0 — Sistema modular con sincronización en nube','info');
+addSysLog('QuOLab Nexus v3.0.0 — Sistema modular con sincronización en nube','info');
 renderCustomModules();
 loadMonitorConfig();
 refreshMonitor();
@@ -1473,17 +1456,26 @@ function broadcastCompilerUrlToModules() {
     broadcastConfigToAllIframes();
 }
 
-const observer = new MutationObserver((mutations) => {
-    mutations.forEach((mutation) => {
-        mutation.addedNodes.forEach((node) => {
-            if (node.nodeName === 'IFRAME') { setTimeout(() => broadcastConfigToAllIframes(), 500); }
+function bindNexusIframe(iframe) {
+    if (!iframe || iframe.nodeName !== 'IFRAME') return;
+    if (!iframe.__nexusConfigBound) {
+        iframe.__nexusConfigBound = true;
+        iframe.addEventListener('load', () => {
+            broadcastConfigToAllIframes();
+            broadcastCompilerUrlToModules();
         });
-    });
+    }
+    setTimeout(() => { broadcastConfigToAllIframes(); broadcastCompilerUrlToModules(); }, 500);
+}
+document.querySelectorAll('iframe').forEach(bindNexusIframe);
+const observer = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => mutation.addedNodes.forEach((node) => {
+        if (node.nodeName === 'IFRAME') bindNexusIframe(node);
+        if (node.querySelectorAll) node.querySelectorAll('iframe').forEach(bindNexusIframe);
+    }));
 });
 observer.observe(document.body, { childList: true, subtree: true });
-
-setInterval(() => { broadcastConfigToAllIframes(); broadcastCompilerUrlToModules(); }, 5000);
-setTimeout(() => broadcastConfigToAllIframes(), 1000);
+setTimeout(() => { broadcastConfigToAllIframes(); broadcastCompilerUrlToModules(); }, 1000);
 
 async function executePythonRemoteFull(codeToExec, serverUrl) {
     if (!serverUrl) throw new Error("No hay URL de servidor configurada");
@@ -1619,7 +1611,7 @@ const PROMPTS = {
   quantum: 'Eres el asistente de QCOL (Quantum Computing Open Lab), creado por Franci Laffita Camargo, estudiante de Física Nuclear. Ayudas con Qiskit, Cirq, PennyLane, QuTiP, circuitos cuánticos y física cuántica. Responde en español, de forma concisa y técnicamente precisa. Puedes usar formato Markdown.', 
   teacher: 'Eres un profesor experto en computación cuántica del ecosistema QCOL. Explicas conceptos de forma clara y pedagógica, con ejemplos prácticos. Usas analogías para hacer accesibles los conceptos difíciles. Responde siempre en español. Usa Markdown para mejorar la legibilidad.', 
   concise: 'Eres el asistente cuántico de QCOL. Responde siempre en español, de forma muy concisa. Máximo 3-4 líneas por respuesta. Solo lo esencial. Para código Qiskit, muestra directamente el código.', 
-  bilingual: 'You are the QCOL quantum computing assistant. Respond in both Spanish and English. First answer in Spanish, then provide the English translation. Be concise and technically precise. Use Markdown formatting.', 
+  bilingual: 'You are the QuOLab Nexus quantum computing assistant. Respond in both Spanish and English. First answer in Spanish, then provide the English translation. Be concise and technically precise. Use Markdown formatting.', 
   code: 'Eres el asistente de código cuántico de QCOL. Tu especialidad es generar código Qiskit y Cirq. Cuando te pidan un circuito o algoritmo, responde directamente con el código Python funcional, con comentarios breves. Usa siempre sintaxis moderna de Qiskit 1.x. Muestra el código en bloques de Markdown con triple backticks y el lenguaje especificado.' 
 };
 

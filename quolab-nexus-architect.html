@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>Quantum Architect</title>
+<title>QuOLab Nexus — Quantum Architect</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=JetBrains+Mono:wght@400;500;600&family=Exo+2:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
-<script src="qcol-noise.js"></script>
+<script src="quolab-nexus-noise.js"></script>
 <style>
 /* ══════════════════════════════════════════════════
    QUANTUM ARCHITECT — Hybrid automatic
@@ -745,7 +745,7 @@ function findGateDef(id) { for (const cat of Object.values(GATES)) { const g = c
 // ═══════════════════════════════════════════════════════════
 function placeGate(gateId, qubit) {
   if (isUpdatingFromCode) return;
-  if (qcolLocked()) { qcolLockMsg(); return; }
+  if (nexusLocked()) { nexusLockMsg(); return; }
   isUpdatingFromCircuit = true;
   const def = findGateDef(gateId);
   if (!def) { isUpdatingFromCircuit = false; return; }
@@ -796,7 +796,7 @@ function placeGate(gateId, qubit) {
 }
 
 function removeGate(uid) {
-  if (qcolLocked()) { qcolLockMsg(); return; }
+  if (nexusLocked()) { nexusLockMsg(); return; }
   if (isUpdatingFromCode) return;
   isUpdatingFromCircuit = true;
   circuit.gates = circuit.gates.filter(g => g.uid !== uid);
@@ -808,7 +808,7 @@ function removeGate(uid) {
 }
 
 function moveExistingGate(uid, newQubit) {
-  if (qcolLocked()) { qcolLockMsg(); return; }
+  if (nexusLocked()) { nexusLockMsg(); return; }
   if (isUpdatingFromCode) return;
   isUpdatingFromCircuit = true;
   const idx = circuit.gates.findIndex(g => g.uid === uid);
@@ -910,7 +910,7 @@ function renderCircuit() {
     const left = g.col * step + 15;
     if (g.block) {
       const bw = (g.block.w || 1) * step - 10, bh = (g.q2 - g.q + 1) * ROW_HEIGHT - 8;
-      html += `<div class="qcol-block" title="${escapeHtml(g.block.tip)}" aria-label="${escapeHtml(g.block.tip)}" tabindex="0" role="button" onclick="qcolBlockInfo(${g.uid})"
+      html += `<div class="qcol-block" title="${escapeHtml(g.block.tip)}" aria-label="${escapeHtml(g.block.tip)}" tabindex="0" role="button" onclick="nexusBlockInfo(${g.uid})"
         style="position:absolute;left:${left}px;top:${g.q * ROW_HEIGHT + 4}px;width:${bw}px;height:${bh}px;box-sizing:border-box;background:linear-gradient(135deg,#4a148c,#8e24aa);border:1.5px solid #ce93d8;border-radius:8px;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;font:700 12px monospace;text-align:center;cursor:help;overflow:hidden;padding:2px;">${escapeHtml(g.block.label)}<span style="font-weight:400;font-size:9px;opacity:.85;">${escapeHtml(g.block.sub)}</span></div>`;
     } else if (g.q3 !== undefined) {
       const qs = [g.q, g.q2, g.q3].sort((a, b) => a - b);
@@ -1064,7 +1064,7 @@ function updateBlochSelector() {
 // ═══════════════════════════════════════════════════════════
 function updateCodeFromCircuit() {
   if (isUpdatingFromCode) return;
-  if (qcolLocked()) return;   // nunca sobrescribir el código del usuario si hay bloques compuestos
+  if (nexusLocked()) return;   // nunca sobrescribir el código del usuario si hay bloques compuestos
   if (syncQubitCount()) { renderCircuit(); updateCircuitInfo(); }
   const n = circuit.qubits;
   let code = `from qiskit import QuantumCircuit\nimport numpy as np\nfrom qiskit_aer import AerSimulator\n\nqc = QuantumCircuit(${n}, ${n})\n\n`;
@@ -1614,7 +1614,7 @@ let pyodideLoading = false;
 async function initPyodide() {
     if (pyodide !== null) return pyodide;
     if (pyodideLoading) {
-        await new Promise(resolve => { const check = setInterval(() => { if (pyodide !== null) { clearInterval(check); resolve(); } }, 100); });
+        await new Promise((resolve, reject) => { const started = Date.now(); const check = setInterval(() => { if (pyodide !== null) { clearInterval(check); resolve(); } else if (Date.now() - started > 60000) { clearInterval(check); reject(new Error('Pyodide initialization timed out after 60 seconds')); } }, 100); });
         return pyodide;
     }
     pyodideLoading = true;
@@ -1718,8 +1718,8 @@ const QCOL_PROBE_PY = [
   '    pass',
   ''
 ].join('\n');
-function qcolAppendProbe(code) { return code + '\n' + QCOL_PROBE_PY; }
-function qcolExtractStruct(output) {
+function nexusAppendProbe(code) { return code + '\n' + QCOL_PROBE_PY; }
+function nexusExtractStruct(output) {
   let struct = null;
   const text = String(output || '').replace(/__QCOL_STRUCT__(\{.*\})\n?/g, (m, js) => { try { struct = JSON.parse(js); } catch (e) {} return ''; });
   return { text, struct };
@@ -1742,7 +1742,7 @@ function _blockText(o) {
   return { label: String(o.n), sub: '', tip: 'Gate "' + o.n + '" has no visual symbol — edit it in the code' };
 }
 // ops -> puertas del lienzo (las desconocidas / compuestas se dibujan como BLOQUE, nunca como una H falsa)
-function qcolOpsToGates(ops) {
+function nexusOpsToGates(ops) {
   const gates = [];
   for (const o of ops) {
     const real = String(o.n || '');
@@ -1766,16 +1766,16 @@ function qcolOpsToGates(ops) {
   }
   return gates;
 }
-function qcolApplyStruct(struct, opts) {
+function nexusApplyStruct(struct, opts) {
   opts = opts || {};
   let ops = (struct.ops || []).slice();
   if (opts.dropMeasures) ops = ops.filter(o => o.n !== 'measure');
   circuit.qubits = Math.max(1, Math.min(struct.nq || 1, MAX_QUBITS));
-  circuit.gates = normalizeMeasurements(qcolOpsToGates(ops));
+  circuit.gates = normalizeMeasurements(nexusOpsToGates(ops));
   const req = computeRequiredQubits(); if (req > circuit.qubits) circuit.qubits = req;
   renderCircuit(); updateCircuitInfo();
 }
-function qcolCanon(struct, opts) {
+function nexusCanon(struct, opts) {
   const seq = [], meas = [];
   for (const o of (struct.ops || [])) {
     const n = String(o.n || '');
@@ -1788,38 +1788,38 @@ function qcolCanon(struct, opts) {
   meas.sort((a, b) => a - b);
   return { seq, meas: opts && opts.ignoreMeasure ? [] : meas };
 }
-function qcolCompare(py, srv, opts) {
-  const a = qcolCanon(py, opts), b = qcolCanon(srv, opts), diffs = [];
+function nexusCompare(py, srv, opts) {
+  const a = nexusCanon(py, opts), b = nexusCanon(srv, opts), diffs = [];
   if ((py.nq || 0) !== (srv.nq || 0) && !(opts && opts.ignoreQubits)) diffs.push('qubits: Pyodide ' + py.nq + ' vs server ' + srv.nq);
   const n = Math.max(a.seq.length, b.seq.length);
   for (let i = 0; i < n && diffs.length < 4; i++) if (a.seq[i] !== b.seq[i]) diffs.push('op #' + (i + 1) + ': Pyodide ' + (a.seq[i] || '—') + ' vs server ' + (b.seq[i] || '—'));
   if (a.meas.join() !== b.meas.join()) diffs.push('measurements: Pyodide [' + a.meas + '] vs server [' + b.meas + ']');
   return { ok: diffs.length === 0, diffs, nOps: b.seq.length };
 }
-function qcolBlockInfo(uid) {
+function nexusBlockInfo(uid) {
   const g = circuit.gates.find(x => x.uid === uid);
   if (g && g.block) notify('▦ ' + g.block.tip, 6000);
 }
-function qcolLocked() { return circuit.gates.some(g => g.block); }
-function qcolLockMsg() { notify('🔒 This circuit has composite blocks (e.g. PauliEvolutionGate). Edit it in the code.', 3500); }
+function nexusLocked() { return circuit.gates.some(g => g.block); }
+function nexusLockMsg() { notify('🔒 This circuit has composite blocks (e.g. PauliEvolutionGate). Edit it in the code.', 3500); }
 // Reconciliación al compilar: el servidor (Qiskit real) es la autoridad; Pyodide es la vista previa instantánea
-function qcolReconcile(srv, opts) {
+function nexusReconcile(srv, opts) {
   const out = opts.out;
   const codeNow = (document.getElementById('code-ta').value || '').trim();
   const py = (_pyStruct && _pyStructCode === codeNow) ? _pyStruct : null;
   const dropM = !!opts.added;
   if (py) {
-    const cmp = qcolCompare(py, srv, { ignoreMeasure: dropM });
+    const cmp = nexusCompare(py, srv, { ignoreMeasure: dropM });
     if (cmp.ok) {
       out.innerHTML += `\n<span class="ok" style="font-size:.6rem;">✅ Verified: Pyodide and server agree (${cmp.nOps} ops · ${srv.nq} qubits)</span>`;
       return 'match';
     }
-    qcolApplyStruct(srv, { dropMeasures: dropM });
+    nexusApplyStruct(srv, { dropMeasures: dropM });
     _pyStruct = srv; _pyStructCode = codeNow;
     out.innerHTML += `\n<span class="er" style="font-size:.6rem;">⚠️ Pyodide ≠ server — canvas rebuilt from the server (Qiskit):<br>${cmp.diffs.map(escapeHtml).join('<br>')}</span>`;
     return 'rebuilt';
   }
-  qcolApplyStruct(srv, { dropMeasures: dropM });
+  nexusApplyStruct(srv, { dropMeasures: dropM });
   _pyStruct = srv; _pyStructCode = codeNow;
   out.innerHTML += `\n<span class="ok" style="font-size:.6rem;">🔧 Canvas built from the server circuit (${srv.ops.filter(o => o.n !== 'barrier').length} ops) — Pyodide preview unavailable</span>`;
   return 'server-only';
@@ -2005,7 +2005,7 @@ async function syncFromServer(reason) {
     const out = document.getElementById('out-body');
     out.innerHTML += `<span class="inf">🔧 Corrector active (${reason}) — running on server...</span>\n`;
     const _ensC = ensureMeasurements(_cleanCodeForServer(rawCode));
-    const cleanCode = qcolAppendProbe(_ensC.code);
+    const cleanCode = nexusAppendProbe(_ensC.code);
     const isHF = engineURL.includes('hf.space') || engineURL.includes('huggingface');
     try {
         const res = await fetchWithRetry(
@@ -2024,11 +2024,11 @@ async function syncFromServer(reason) {
             out.innerHTML += `<span class="er">⚠️ Server: ${escapeHtml((d?.output||'error').slice(0,120))}</span>\n`;
             return false;
         }
-        const _stS = qcolExtractStruct(d.output || '');
+        const _stS = nexusExtractStruct(d.output || '');
         d.output = _stS.text;
         _lastServerOutput = d.output || '';
         if (_stS.struct && _stS.struct.ops && _stS.struct.ops.length) {
-            qcolReconcile(_stS.struct, { out, added: _ensC.added });
+            nexusReconcile(_stS.struct, { out, added: _ensC.added });
             if (d.bloch?.probabilities) updateBlochFromProbs(d.bloch.probabilities);
             return true;
         }
@@ -2228,7 +2228,7 @@ json.dumps({
             const _ops = data.gates.map(g => ({ n: g[3] || g[0], d: g[0], q: g[1], info: g[4] || null }));
             circuit.qubits = Math.min(data.num_qubits, MAX_QUBITS);
             _pyStruct = { nq: data.num_qubits, ops: _ops }; _pyStructCode = rawCode.trim();
-            const newGates = qcolOpsToGates(_ops);
+            const newGates = nexusOpsToGates(_ops);
             circuit.gates = normalizeMeasurements(newGates);
             
             // ✅ Asegurar que circuit.qubits refleja el máximo qubit usado
@@ -2443,10 +2443,10 @@ const QCOL_PLOT_SUFFIX = [
   '    pass',
   ''
 ].join('\n');
-function qcolWithPlotCapture(code) {
+function nexusWithPlotCapture(code) {
   return /matplotlib|pyplot|\bplt\s*\./.test(code) ? code + '\n' + QCOL_PLOT_SUFFIX : code;
 }
-function qcolExtractPlots(output) {
+function nexusExtractPlots(output) {
   const imgs = [];
   const text = String(output || '').replace(/@@QCOLPLOT@@([A-Za-z0-9+\/=]+)@@END@@\n?/g, (m, b64) => { if (!imgs.includes(b64)) imgs.push(b64); return ''; });  // figuras idénticas se muestran una sola vez
   return { text, imgs };
@@ -2473,7 +2473,7 @@ async function runServerCode() {
     out.innerHTML = `<span class="inf">Sending code to quantum compiler (Qiskit 1.0+)...\n</span>`;
 
     const _ens = ensureMeasurements(code);
-    const sendCode = qcolAppendProbe(qcolWithPlotCapture(_ens.code));
+    const sendCode = nexusAppendProbe(nexusWithPlotCapture(_ens.code));
     if (_ens.added) out.innerHTML += `<span class="inf">ℹ️ No measurements found — measuring all qubits for this run.\n</span>`;
     const isHF = engineURL.includes('hf.space') || engineURL.includes('huggingface');
     try {
@@ -2496,8 +2496,8 @@ async function runServerCode() {
         }
         const el = ((Date.now() - t0) / 1000).toFixed(2);
         document.getElementById('out-elapsed').textContent = el + 's';
-        const _plots = qcolExtractPlots(d.output);
-        const _st = qcolExtractStruct(_plots.text);
+        const _plots = nexusExtractPlots(d.output);
+        const _st = nexusExtractStruct(_plots.text);
         d.output = _st.text;
         if (d.success) {
             out.innerHTML = `<span class="inf">╔════════════════════════════╗\n║  Compiler · ${el}s\n╚════════════════════════════╝\n\n</span><span class="ok">${escapeHtml(d.output)}</span>`;
@@ -2507,7 +2507,7 @@ async function runServerCode() {
             logMonitorRun({ success: true, lib: curLib, qubits: circuit.qubits, time: parseFloat(el) });
             _lastServerOutput = d.output || '';
             let _handled = false;
-            if (_st.struct && _st.struct.ops) { try { qcolReconcile(_st.struct, { out, added: _ens.added }); _handled = true; } catch (e) { console.warn('reconcile', e); } }
+            if (_st.struct && _st.struct.ops) { try { nexusReconcile(_st.struct, { out, added: _ens.added }); _handled = true; } catch (e) { console.warn('reconcile', e); } }
             const _sp = _handled ? null : _parseTextDraw(_lastServerOutput);
             if (_sp && _sp.gates.length > 0) {
                 _sp.gates = normalizeMeasurements(_sp.gates);
@@ -3250,14 +3250,14 @@ async function checkEngine() {
     notify('❌ Could not connect after 3 attempts');
 }
 
-// ── Opción de ruido (usa qcol-noise.js) ──
+// ── Opción de ruido (usa quolab-nexus-noise.js) ──
 function openNoise(extra) {
-    if (!window.QcolNoise) { notify('Noise module not loaded'); return; }
-    window.QcolNoise.open(Object.assign({ getCode: () => (document.getElementById('code-ta') || {}).value || '' }, extra || {}));
+    if (!window.QuOLabNexusNoise) { notify('Noise module not loaded'); return; }
+    window.QuOLabNexusNoise.open(Object.assign({ getCode: () => (document.getElementById('code-ta') || {}).value || '' }, extra || {}));
 }
 function quickNoise(extra) {
-    if (!window.QcolNoise) { notify('Noise module not loaded'); return; }
-    window.QcolNoise.quick(Object.assign({ getCode: () => (document.getElementById('code-ta') || {}).value || '' }, extra || {}));
+    if (!window.QuOLabNexusNoise) { notify('Noise module not loaded'); return; }
+    window.QuOLabNexusNoise.quick(Object.assign({ getCode: () => (document.getElementById('code-ta') || {}).value || '' }, extra || {}));
 }
 (function () { const b = document.getElementById('btn-noise'); if (b) b.addEventListener('click', () => openNoise()); const r = document.getElementById('btn-noise-run'); if (r) r.addEventListener('click', () => quickNoise()); })();
 // ── Copiloto IA: contexto + acciones (solo mensajes del padre) ──
@@ -3272,7 +3272,7 @@ window.addEventListener('message', e => {
                 qubits: circuit && circuit.qubits, gates: circuit && circuit.gates ? circuit.gates.length : 0,
                 code: ta ? ta.value.slice(0, 4000) : '',
                 output: ob ? (ob.innerText || '').slice(-2500) : '',
-                noise_last: (window.QcolNoise && window.QcolNoise.last) || null
+                noise_last: (window.QuOLabNexusNoise && window.QuOLabNexusNoise.last) || null
             } }, '*');
         } else if (d.type === 'OPENQ_AI_SET_CODE' && typeof d.code === 'string') {
             const ta = document.getElementById('code-ta');

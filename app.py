@@ -1,4 +1,4 @@
-# QCOL Motor — Servidor cuántico completo
+# QuOLab Nexus Motor — Servidor cuántico completo
 import sys, io, time, json
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -72,7 +72,7 @@ try:
 except Exception:
     pass
 
-print(f"QCOL Motor OK — {len(LIBS)} libs: {', '.join(LIBS.keys())}")
+print(f"QuOLab Nexus Motor OK — {len(LIBS)} libs: {', '.join(LIBS.keys())}")
 
 # Seguridad
 BLOCKED = ['import os','import subprocess','import socket','os.system','shutil.','os.popen']
@@ -151,7 +151,7 @@ def health_response():
     return {"status":"ok","engine":"QCOL-CPU","libs":list(LIBS.keys()),"versions":LIBS}
 
 # FastAPI
-app = FastAPI(title="QCOL Motor")
+app = FastAPI(title="QuOLab Nexus Motor")
 app.add_middleware(CORSMiddleware,
     allow_origins=["*"],allow_methods=["*"],allow_headers=["*"])
 

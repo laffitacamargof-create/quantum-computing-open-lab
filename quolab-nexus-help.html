@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>QCOL Ayuda</title>
+<title>QuOLab Nexus — Ayuda</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=JetBrains+Mono:wght@400;500&family=Exo+2:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#010608;--s:#071220;--s2:#0c1c30;--b:#0d2a4a;--b2:#1a3a5c;--bl:#0088ff;--bl2:#00ccff;--gr:#00ff88;--gd:#ffd700;--rd:#ff4466;--tx:#ddeeff;--mu:#4a7a9b;--orb:'Orbitron',monospace;--mono:'JetBrains Mono',monospace;--exo:'Exo 2',sans-serif;}
@@ -22,7 +22,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 </head>
 <body>
 <div class="wrap">
-<div class="hdr">❓ AYUDA — QCOL Quantum Computing Open Lab</div>
+<div class="hdr">❓ AYUDA — QuOLab Nexus</div>
 
 <div class="sec-title">🌐 USO GENERAL</div>
 
@@ -98,11 +98,11 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 </div>
 
 <div style="text-align:center;padding:2rem 0;color:var(--mu);font-size:.65rem;">
-  QCOL v2.1 · Creado por <span style="color:var(--bl2);">Franci Laffita Camargo</span> · Estudiante de Física Nuclear
+  QuOLab Nexus v2.1 · Creado por <span style="color:var(--bl2);">Franci Laffita Camargo</span> · Estudiante de Física Nuclear
 </div>
 </div>
 <script>
-function postCore(t,d={}){window.parent.postMessage({type:t,...d},'*');}
+function postCore(t,d={}){const name=String(t||'').replace(/^(?:OPENQ|QCOL|NEXUS)_/,'');window.parent.postMessage({type:'NEXUS_'+name,protocol:'QUOLAB_NEXUS_V1',...d},location.origin);}
 postCore('QCOL_GET_CONFIG');
 </script>
 </body>

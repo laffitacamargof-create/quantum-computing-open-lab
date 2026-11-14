@@ -2,11 +2,10 @@
 // QUANTUM SYNC MODULE - VERSIÓN FINAL CORREGIDA
 // ============================================================
 
-class QuantumSync {
+class QuOLabNexusQuantumSync {
     constructor(config) {
         this.SUPABASE_URL = config.supabaseUrl;
         this.SUPABASE_ANON_KEY = config.supabaseAnonKey;
-        this.SUPABASE_SERVICE_KEY = config.supabaseServiceKey;
         
         this.TABLES = {
             PENDING_APPS: 'quantum_pending_apps',
@@ -35,7 +34,7 @@ class QuantumSync {
             console.log('🔌 Probando conexión a Supabase...');
             console.log('📌 URL:', this.SUPABASE_URL);
             
-            const testResponse = await fetch(`${this.SUPABASE_URL}/rest/v1/${this.TABLES.PENDING_APPS}?select=id&limit=1`, {
+            const testResponse = await fetch(`${this.SUPABASE_URL}/rest/v1/${this.TABLES.PUBLISHED_APPS}?select=id&limit=1`, {
                 method: 'GET',
                 headers: {
                     'apikey': this.SUPABASE_ANON_KEY,
@@ -43,21 +42,8 @@ class QuantumSync {
                 }
             });
             
-            if (testResponse.status === 401) {
-                const testResponse2 = await fetch(`${this.SUPABASE_URL}/rest/v1/${this.TABLES.PENDING_APPS}?select=id&limit=1`, {
-                    method: 'GET',
-                    headers: {
-                        'apikey': this.SUPABASE_SERVICE_KEY,
-                        'Authorization': `Bearer ${this.SUPABASE_SERVICE_KEY}`
-                    }
-                });
-                if (!testResponse2.ok) {
-                    console.warn(`⚠️ Error de conexión: HTTP ${testResponse2.status}`);
-                    this.isReady = false;
-                    return false;
-                }
-            } else if (!testResponse.ok) {
-                console.warn(`⚠️ Error de conexión: HTTP ${testResponse.status}`);
+            if (!testResponse.ok) {
+                console.warn(`⚠️ Supabase rechazó la clave pública o las políticas RLS: HTTP ${testResponse.status}`);
                 this.isReady = false;
                 return false;
             }
@@ -119,6 +105,20 @@ class QuantumSync {
         return await response.json();
     }
 
+    async _rpc(name, body) {
+        const response = await fetch(`${this.SUPABASE_URL}/functions/v1/quolab-nexus-admin`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'apikey': this.SUPABASE_ANON_KEY,
+                'Authorization': `Bearer ${this.SUPABASE_ANON_KEY}`
+            },
+            body: JSON.stringify({ action: name, params: body })
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload.error || `HTTP ${response.status}`);
+        return payload.data;
+    }
     async _supabaseInsert(table, data) {
         console.log(`📤 Insertando en ${table}:`, {
             id: data.id,
@@ -188,32 +188,19 @@ class QuantumSync {
         return true;
     }
 
-    // Borrado como fundador: usa la función SQL protegida por la llave de fundador (la misma de Proyectos).
-    // Si la función no existe aún, recurre al DELETE directo (que fallará con un mensaje claro si hay RLS).
+    // Borrado administrativo centralizado en la Edge Function segura.
     async _adminDelete(tableKey, table, id) {
-        let key = '';
-        try { key = localStorage.getItem('qcol_repo_founder_key') || ''; } catch (e) {}
-        if (key) {
-            const r = await fetch(`${this.SUPABASE_URL}/rest/v1/rpc/quantum_delete_app`, {
-                method: 'POST',
-                headers: {
-                    'apikey': this.SUPABASE_ANON_KEY,
-                    'Authorization': `Bearer ${this.SUPABASE_ANON_KEY}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ p_table: tableKey, p_id: String(id), p_key: key })
-            });
-            if (r.ok) {
-                const ok = await r.json().catch(() => true);
-                if (ok === false) throw new Error('La app no existe o ya estaba borrada');
-                return true;
-            }
-            const txt = await r.text();
-            if (/forbidden/i.test(txt)) throw new Error('Llave de fundador incorrecta (Proyectos → llave de fundador)');
-            // función no instalada (404 / PGRST202 / "Could not find the function"): probar DELETE directo
-            if (!(r.status === 404 || /PGRST202|could not find the function/i.test(txt))) throw new Error(`HTTP ${r.status}: ${txt}`);
+        const founderKey = localStorage.getItem('qcol_repo_founder_key') || '';
+        if (!founderKey) throw new Error('Se requiere la llave de fundador');
+        if (tableKey === 'pending') {
+            await this._rpc('quantum_reject_app', { p_id: String(id), p_key: founderKey });
+            return true;
         }
-        return this._supabaseDelete(table, id);
+        if (tableKey === 'published') {
+            await this._rpc('quantum_delete_published_app', { p_id: String(id), p_key: founderKey });
+            return true;
+        }
+        throw new Error('Tipo de aplicación no permitido');
     }
 
     async syncAll(force = false) {
@@ -233,16 +220,13 @@ class QuantumSync {
 
     async syncPendingApps() {
         try {
-            const data = await this._supabaseFetch(this.TABLES.PENDING_APPS, {
-                order: { column: 'created_at', direction: 'desc' }
-            });
+            const founderKey = localStorage.getItem('qcol_repo_founder_key') || '';
+            if (!founderKey) { this.pendingApps = []; if (this.onPendingUpdate) this.onPendingUpdate(this.pendingApps); return this.pendingApps; }
+            const data = await this._rpc('quantum_list_pending', { p_key: founderKey });
             this.pendingApps = data || [];
             if (this.onPendingUpdate) this.onPendingUpdate(this.pendingApps);
             return this.pendingApps;
-        } catch (error) {
-            console.error('Error syncing pending:', error.message);
-            return [];
-        }
+        } catch (error) { console.error('Error syncing pending:', error.message); return []; }
     }
 
     async syncPublishedApps() {
@@ -295,17 +279,8 @@ class QuantumSync {
         });
         
         try {
-            const existing = await this._supabaseFetch(this.TABLES.PENDING_APPS, {
-                eq: { id: pendingApp.id }
-            });
-            
-            if (existing && existing.length > 0) {
-                await this._supabaseUpdate(this.TABLES.PENDING_APPS, pendingApp.id, pendingApp);
-            } else {
-                await this._supabaseInsert(this.TABLES.PENDING_APPS, pendingApp);
-            }
-            
-            await this.syncPendingApps();
+            const createdId = await this._rpc('quantum_submit_app', { p_app: pendingApp });
+            pendingApp.id = createdId;
             console.log(`📤 App "${pendingApp.title}" submitted for approval`);
             return pendingApp;
         } catch (error) {
@@ -316,77 +291,34 @@ class QuantumSync {
 
     async approveApp(appId) {
         try {
-            console.log(`📤 Aprobando app: ${appId}`);
-            
-            const pendingApps = await this._supabaseFetch(this.TABLES.PENDING_APPS, {
-                eq: { id: appId }
-            });
-            
-            if (!pendingApps || pendingApps.length === 0) {
-                throw new Error('App not found');
-            }
-            
-            const pendingApp = pendingApps[0];
-            
-            const publishedApp = {
-                id: pendingApp.id,
-                name: pendingApp.name || pendingApp.title || 'Untitled',
-                title: pendingApp.title || pendingApp.name || 'Untitled',
-                description: pendingApp.description || '',
-                tags: pendingApp.tags || '',
-                duration: parseInt(pendingApp.duration) || 8,
-                python_code: pendingApp.python_code || pendingApp.pythonCode || '',
-                html_code: pendingApp.html_code || pendingApp.htmlCode || '',
-                server_url: pendingApp.server_url || '',
-                created_by: pendingApp.created_by || 'anonymous',
-                created_at: pendingApp.created_at || new Date().toISOString(),
-                published_by: this.currentUser?.id || 'admin',
-                published_at: new Date().toISOString(),
-                version: 1,
-                is_active: true
-            };
-            
-            console.log('📤 Publicando app:', {
-                title: publishedApp.title,
-                python_len: publishedApp.python_code?.length || 0,
-                html_len: publishedApp.html_code?.length || 0
-            });
-            
-            await this._supabaseInsert(this.TABLES.PUBLISHED_APPS, publishedApp);
-            await this._adminDelete('pending', this.TABLES.PENDING_APPS, appId);
+            const founderKey = localStorage.getItem('qcol_repo_founder_key') || '';
+            if (!founderKey) throw new Error('Se requiere la llave de fundador');
+            const publishedApp = await this._rpc('quantum_approve_app', { p_id: String(appId), p_key: founderKey });
             await this.syncAll(true);
-            
             if (this.onAppPublished) this.onAppPublished(publishedApp);
-            console.log(`✅ App "${pendingApp.title}" published!`);
             return publishedApp;
-        } catch (error) {
-            console.error('Error approving:', error.message);
-            throw error;
-        }
+        } catch (error) { console.error('Error approving:', error.message); throw error; }
     }
 
     async rejectApp(appId) {
         try {
-            await this._adminDelete('pending', this.TABLES.PENDING_APPS, appId);
+            const founderKey = localStorage.getItem('qcol_repo_founder_key') || '';
+            if (!founderKey) throw new Error('Se requiere la llave de fundador');
+            await this._rpc('quantum_reject_app', { p_id: String(appId), p_key: founderKey });
             await this.syncPendingApps();
             if (this.onAppRejected) this.onAppRejected(appId);
-            console.log(`🗑️ App rejected`);
             return true;
-        } catch (error) {
-            console.error('Error rejecting:', error.message);
-            throw error;
-        }
+        } catch (error) { console.error('Error rejecting:', error.message); throw error; }
     }
 
     async deletePublishedApp(appId) {
         try {
-            await this._adminDelete('published', this.TABLES.PUBLISHED_APPS, appId);
+            const founderKey = localStorage.getItem('qcol_repo_founder_key') || '';
+            if (!founderKey) throw new Error('Se requiere la llave de fundador');
+            await this._rpc('quantum_delete_published_app', { p_id: String(appId), p_key: founderKey });
             await this.syncPublishedApps();
             return true;
-        } catch (error) {
-            console.error('Error deleting:', error.message);
-            throw error;
-        }
+        } catch (error) { console.error('Error deleting:', error.message); throw error; }
     }
 
     _generateId() {
@@ -414,7 +346,7 @@ class QuantumSync {
     }
 }
 
-export default QuantumSync;
+export default QuOLabNexusQuantumSync;
 
 /* ============================================================================
    SQL PARA SUPABASE (ejecutar UNA vez en SQL Editor) — permite borrar apps solo con la llave de fundador

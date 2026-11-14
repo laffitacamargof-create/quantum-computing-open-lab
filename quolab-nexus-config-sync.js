@@ -1,8 +1,8 @@
 // ============================================================
-// QCOL CONFIG SYNC - Sincronización de configuración en la nube
+// QuOLab Nexus CONFIG SYNC - Sincronización de configuración en la nube
 // ============================================================
 
-class QcolConfigSync {
+class QuOLabNexusConfigSync {
     constructor(config) {
         this.SUPABASE_URL = config.supabaseUrl;
         this.SUPABASE_ANON_KEY = config.supabaseAnonKey;
@@ -123,15 +123,11 @@ class QcolConfigSync {
         if (this._syncInProgress) return;
         this._syncInProgress = true;
         try {
-            // 🔧 TODAS las configuraciones incluyendo founder_password
+            // Solo sincronizar valores no sensibles. Las claves y contraseñas permanecen locales.
             await this._syncConfig('colab_url', 'qcol_colab_url');
-            await this._syncConfig('ai_config', 'qcol_ai');
-            await this._syncConfig('github_config', 'qcol_gh');
-            await this._syncConfig('deepseek_config', 'qcol_mistral');
             await this._syncConfig('system_config', 'qcol_sys');
             await this._syncConfig('platform_config', 'qcol_cfg');
             await this._syncConfig('monitor_config', 'qcol_monitor_cfg');
-            await this._syncConfig('founder_password', 'qcol_fp');  // ✅ NUEVO
             
             if (this.onSyncComplete) this.onSyncComplete();
         } catch (error) {
@@ -221,37 +217,25 @@ class QcolConfigSync {
     }
 
     async _updateOrInsert(key, value) {
-        // 🔧 FORZAR founder_password como cadena JSON con comillas
-        let stringValue;
-        if (key === 'founder_password') {
-            stringValue = JSON.stringify(String(value));  // '"1027"'
-        } else {
-            stringValue = typeof value === 'string' ? value : JSON.stringify(value);
-        }
-        
-        const data = {
-            id: 'cfg-' + key,
-            key: key,
-            value: stringValue,
-            updated_by: this.currentUser?.id || 'anonymous',
-            updated_at: new Date().toISOString()
-        };
-        
-        try {
-            const existing = await this._fetch('quantum_ecosystem_config', {
-                eq: { key: key }
-            });
-            
-            if (existing && existing.length > 0) {
-                await this._update('quantum_ecosystem_config', key, data);
-            } else {
-                data.created_at = new Date().toISOString();
-                await this._insert('quantum_ecosystem_config', data);
-            }
-        } catch (error) {
-            console.error('Error updating config:', error);
-            throw error;
-        }
+        const allowed = ['colab_url', 'system_config', 'platform_config', 'monitor_config'];
+        if (!allowed.includes(key)) throw new Error('Sensitive configuration is local-only');
+        const founderKey = localStorage.getItem('qcol_repo_founder_key') || '';
+        if (!founderKey) throw new Error('Founder key required to update shared configuration');
+        const stringValue = typeof value === 'string' ? value : JSON.stringify(value);
+        const response = await fetch(`${this.SUPABASE_URL}/functions/v1/quolab-nexus-admin`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'apikey': this.SUPABASE_ANON_KEY,
+                'Authorization': `Bearer ${this.SUPABASE_ANON_KEY}`
+            },
+            body: JSON.stringify({
+                action: 'quantum_config_save',
+                params: { p_key: key, p_value: stringValue, p_founder_key: founderKey }
+            })
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.error || `HTTP ${response.status}`);
     }
 
     // ==================== OBTENER CONFIGURACIÓN ====================
@@ -321,4 +305,4 @@ class QcolConfigSync {
     }
 }
 
-export default QcolConfigSync;
+export default QuOLabNexusConfigSync;

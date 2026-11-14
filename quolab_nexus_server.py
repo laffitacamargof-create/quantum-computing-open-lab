@@ -18,7 +18,7 @@ def is_safe(code):
 @app.route('/')
 def index():
     return jsonify({
-        'name': 'QCOL Motor',
+        'name': 'QuOLab Nexus Motor',
         'status': 'online',
         'version': '2.0',
         'endpoints': ['/health', '/run', '/version']
@@ -169,5 +169,5 @@ def run():
 if __name__ == '__main__':
     import os
     port = int(os.environ.get('PORT', 5000))
-    print(f'🚀 QCOL Motor iniciando en puerto {port}')
+    print(f'🚀 QuOLab Nexus Motor iniciando en puerto {port}')
     app.run(host='0.0.0.0', port=port)

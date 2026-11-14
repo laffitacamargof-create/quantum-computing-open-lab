@@ -1,18 +1,18 @@
 /* ============================================================
-   repo-sync.js — QCOL Cloud Repository
+   QuOLab Nexus — Cloud Repository
    Base común en Supabase para Notebooks / PDFs / Videos.
    Sin moderación: lo que se publica queda visible al instante.
    Solo usa la clave PÚBLICA (publishable). Nunca pongas aquí
    la clave secret/service.
    Se carga como script clásico (etiqueta script con src="repo-sync.js")
-   y queda disponible como  window.RepoSync
+   y queda disponible como  window.QuOLabNexusRepoSync
    ============================================================ */
 (function (global) {
   'use strict';
 
   var CFG = {
     url: 'https://rtkcfbnoqbivylejhspv.supabase.co',
-    key: 'sb_publishable_Uw4ViBXo3UvvlSHzOiAcDA_9Jn6eMcf'
+    key: 'sb_publishable_xo_Fyb_LQT3T5i3LQ1JNTw_NtLm2Zjd'
   };
 
   var LS_KEYS    = 'qcol_repo_keys';        // { itemId: editKey }  (llaves de edición de MIS items)
@@ -48,7 +48,14 @@
     var ctrl = new AbortController();
     var timer = setTimeout(function () { ctrl.abort(); }, opts.timeout || 25000);
     try {
-      var res = await fetch(CFG.url + '/rest/v1/' + path, {
+      var isRpc = path.indexOf('rpc/') === 0;
+      var url = isRpc
+        ? CFG.url + '/functions/v1/quolab-nexus-admin'
+        : CFG.url + '/rest/v1/' + path;
+      var requestBody = isRpc
+        ? { action: path.slice(4), params: opts.body || {} }
+        : opts.body;
+      var res = await fetch(url, {
         method: opts.method || 'GET',
         cache: 'no-store',
         headers: {
@@ -56,19 +63,19 @@
           'Authorization': 'Bearer ' + CFG.key,
           'Content-Type': 'application/json'
         },
-        body: opts.body ? JSON.stringify(opts.body) : undefined,
+        body: requestBody ? JSON.stringify(requestBody) : undefined,
         signal: ctrl.signal
       });
       var text = await res.text();
       var data = null;
       try { data = text ? JSON.parse(text) : null; } catch (e) { data = text; }
       if (!res.ok) {
-        var msg = (data && data.message) ? data.message : ('HTTP ' + res.status);
+        var msg = (data && (data.error || data.message)) ? (data.error || data.message) : ('HTTP ' + res.status);
         var err = new Error(msg);
         err.status = res.status;
         throw err;
       }
-      return data;
+      return isRpc ? data.data : data;
     } catch (e) {
       if (e && e.name === 'AbortError') throw new Error('Request timed out');
       throw e;
@@ -211,7 +218,7 @@
     return m;
   }
 
-  global.RepoSync = {
+  global.QuOLabNexusRepoSync = global.RepoSync = {
     list: list, getCached: getCached, getOne: getOne, getContent: getContent,
     create: create, update: update, remove: remove,
     ownKey: ownKey, hasOwnKey: hasOwnKey,

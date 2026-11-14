@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-<title>Quantum Puzzle · RouteQ · Quantum Apps Lab</title>
+<title>QuOLab Nexus — Quantum Puzzle</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;800&family=JetBrains+Mono:wght@400;500&family=Exo+2:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
@@ -551,28 +551,20 @@ body::before{
 // Cargar configuración y módulo de forma dinámica
 (async function initQuantumSync() {
     try {
-        const { SUPABASE_CONFIG } = await import('./supabase-config.js');
-        const { default: QuantumSync } = await import('./quantum-sync.js');
+        const { QUOLAB_NEXUS_SUPABASE_CONFIG } = await import('./quolab-nexus-supabase-config.js');
+        const { default: QuOLabNexusQuantumSync } = await import('./quolab-nexus-quantum-sync.js');
         
         console.log('📦 Módulos importados correctamente');
-        console.log('📌 SUPABASE_CONFIG:', SUPABASE_CONFIG);
+        console.log('📌 Supabase endpoint:', QUOLAB_NEXUS_SUPABASE_CONFIG.supabaseUrl);
         
-        window.quantumSync = new QuantumSync({
-            supabaseUrl: SUPABASE_CONFIG.supabaseUrl,
-            supabaseAnonKey: SUPABASE_CONFIG.supabaseAnonKey,
-            supabaseServiceKey: SUPABASE_CONFIG.supabaseServiceKey
-        });
+        window.quantumSync = new QuOLabNexusQuantumSync(QUOLAB_NEXUS_SUPABASE_CONFIG);
         
         console.log('📌 quantumSync creado:', window.quantumSync);
         await window.quantumSync.init();
         
         console.log('📌 quantumSync.isReady:', window.quantumSync.isReady);
         
-        window.quantumSync.setUser({
-            id: 'usuario-123',
-            name: 'Admin',
-            role: 'founder'
-        });
+        if (currentUser) window.quantumSync.setUser(currentUser);
         
         // ✅ Callbacks con DEBOUNCE para evitar parpadeo
         let renderTimer = null;
@@ -675,7 +667,7 @@ body::before{
             <span>🌀 QUANTUM APP STUDIO · Quantum application editor</span>
             <button class="btn-cancel" onclick="closeStudioModal()" style="margin:0;">CLOSE</button>
         </div>
-        <iframe id="studioIframe" class="studio-iframe" src="qcol-quantum-app-studio.html" sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-modals allow-same-origin"></iframe>
+        <iframe id="studioIframe" class="studio-iframe" src="quolab-nexus-app-studio.html" sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-modals allow-same-origin"></iframe>
     </div>
 </div>
 
@@ -952,13 +944,13 @@ async function renderPendingList() {
 // ========== EXECUTE APP USING QUANTUM APP STUDIO ==========
 
 // ===== ENLACE DIRECTO (copiar) =====
-function qcolSlug(t){return String(t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,60);}
-function qcolDirectLink(kind,id,title){
+function nexusSlug(t){return String(t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,60);}
+function nexusDirectLink(kind,id,title){
   let L; try{ L=(window.parent!==window)?window.parent.location:window.location; }catch(e){ L=window.location; }
-  const sl=qcolSlug(title);
+  const sl=nexusSlug(title);
   return L.origin+L.pathname.replace(/[^\/]*$/,'')+'#'+kind+'/'+encodeURIComponent(id)+(sl?'/'+sl:'');
 }
-async function qcolCopyText(txt){
+async function nexusCopyText(txt){
   try{ await navigator.clipboard.writeText(txt); return true; }catch(e){}
   try{ const ta=document.createElement('textarea'); ta.value=txt; ta.style.position='fixed'; ta.style.opacity='0'; document.body.appendChild(ta); ta.select(); const ok=document.execCommand('copy'); ta.remove(); if(ok) return true; }catch(e){}
   try{ window.prompt('Copy this link / Copia este enlace:',txt); }catch(e){}
@@ -966,8 +958,8 @@ async function qcolCopyText(txt){
 }
 async function copyAppLink(appId){
   const apps=(window.quantumSync&&window.quantumSync.publishedApps)||[]; const a=apps.find(x=>String(x.id)===String(appId));
-  const url=qcolDirectLink('app',appId,a&&(a.title||a.name));
-  const ok=await qcolCopyText(url); showNotification(ok?'🔗 Direct link copied':'🔗 '+url);
+  const url=nexusDirectLink('app',appId,a&&(a.title||a.name));
+  const ok=await nexusCopyText(url); showNotification(ok?'🔗 Direct link copied':'🔗 '+url);
 }
 window.copyAppLink=copyAppLink;
 function executeQuantumApp(appId) {
@@ -1133,12 +1125,12 @@ function openQuantumAppStudio() {
     setTimeout(function() {
         var sf = document.getElementById('studioIframe');
         if (sf && sf.contentWindow) {
-            sf.contentWindow.postMessage({ type: 'QCOL_REQUEST_STUDIO_CONNECTION' }, '*');
+            parent.postMessage({ type: 'NEXUS_STUDIO_COMMAND', message: { type: 'QCOL_REQUEST_STUDIO_CONNECTION' } }, location.origin);
             if (window.quantumSync && window.quantumSync.isReady) {
                 window.quantumSync.connectStudio(sf);
                 const url = compilerUrl || localStorage.getItem('qcol_colab_url') || '';
                 if (url) {
-                    sf.contentWindow.postMessage({ type: 'QCOL_SET_COMPILER_URL', url: url }, '*');
+                    parent.postMessage({ type: 'NEXUS_STUDIO_COMMAND', message: { type: 'QCOL_SET_COMPILER_URL', url: url } }, location.origin);
                 }
             }
         }
@@ -1250,6 +1242,7 @@ window.addEventListener('message', (e) => {
     }
     if(data.type === 'QCOL_USER_UPDATE') {
         currentUser = data.user;
+        if (window.quantumSync && window.quantumSync.isReady) window.quantumSync.setUser(currentUser);
         isAdmin = (currentUser?.role === 'admin' || currentUser?.role === 'founder');
         isFounder = (currentUser?.role === 'founder');
         const adminBar = document.getElementById('adminBar');

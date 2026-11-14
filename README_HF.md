@@ -1,17 +1,17 @@
 ---
-title: QCOL Motor Cuantico
+title: QuOLab Nexus Quantum Motor
 emoji: ⚛
 colorFrom: blue
 colorTo: cyan
 sdk: docker
 app_port: 7860
 pinned: true
-short_description: Motor Qiskit + Cirq + QuTiP + PennyLane para QCOL
+short_description: Motor Qiskit + Cirq + QuTiP + PennyLane para QuOLab Nexus
 ---
 
-# ⚛ QCOL Motor Cuántico
+# ⚛ QuOLab Nexus Quantum Motor
 
-Motor de ejecución cuántica para [QCOL — Quantum Computing Open Lab](https://laffitacamargof-create.github.io/quantum-computing-open-lab)
+Motor de ejecución cuántica para [QuOLab Nexus — Quantum Computing Open Lab](https://laffitacamargof-create.github.io/quantum-computing-open-lab)
 
 Creado por **Franci Laffita Camargo** — Estudiante de Física Nuclear, Cuba.
 
@@ -27,7 +27,7 @@ Creado por **Franci Laffita Camargo** — Estudiante de Física Nuclear, Cuba.
 | NumPy/SciPy | latest | Matemáticas |
 | Matplotlib | latest | Gráficas |
 
-## API para el ecosistema QCOL
+## API para el ecosistema QuOLab Nexus
 
 **Ejecutar código Python/Qiskit:**
 ```
