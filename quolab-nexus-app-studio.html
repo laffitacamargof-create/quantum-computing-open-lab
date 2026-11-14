@@ -354,9 +354,9 @@
 
     function generateId() { return Date.now() + '-' + Math.random().toString(36).substring(2, 10); }
     function escapeHtml(str) { return String(str).replace(/[&<>]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;'})[m]); }
-    function sendToParent(msg) { 
-        if (window.parent && window.parent !== window && parentOrigin) {
-            try { window.parent.postMessage(msg, parentOrigin); } catch(e) {}
+    function sendToParent(msg) {
+        if (window.top && window.top !== window) {
+            try { window.top.postMessage({ type: 'NEXUS_STUDIO_EVENT', message: msg }, window.location.origin); } catch(e) {}
         }
     }
 

@@ -1133,12 +1133,12 @@ function openQuantumAppStudio() {
     setTimeout(function() {
         var sf = document.getElementById('studioIframe');
         if (sf && sf.contentWindow) {
-            sf.contentWindow.postMessage({ type: 'QCOL_REQUEST_STUDIO_CONNECTION' }, '*');
+            parent.postMessage({ type: 'NEXUS_STUDIO_COMMAND', message: { type: 'QCOL_REQUEST_STUDIO_CONNECTION' } }, location.origin);
             if (window.quantumSync && window.quantumSync.isReady) {
                 window.quantumSync.connectStudio(sf);
                 const url = compilerUrl || localStorage.getItem('qcol_colab_url') || '';
                 if (url) {
-                    sf.contentWindow.postMessage({ type: 'QCOL_SET_COMPILER_URL', url: url }, '*');
+                    parent.postMessage({ type: 'NEXUS_STUDIO_COMMAND', message: { type: 'QCOL_SET_COMPILER_URL', url: url } }, location.origin);
                 }
             }
         }

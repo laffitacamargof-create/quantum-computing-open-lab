@@ -699,7 +699,7 @@ function renderOutput(outArea, d, elapsed, cellId){
   const shotsFromCode   = extractShots(srcCode);
   const realShots = shotsFromServer || shotsFromCode || 1024;
 
-  const _plots=qcolExtractPlots(d.output);
+  const _plots=nexusExtractPlots(d.output);
   d.output=_plots.text;
   const isOk=d.success!==false;
   const hdrCls=isOk?'out-header-ok':'out-header-err';
@@ -711,14 +711,14 @@ function renderOutput(outArea, d, elapsed, cellId){
     let circuitBlock=[];
     let textBlock=[];
     let inCircuit=false;
-    const _stc = (d._struct && d._struct.ops && qcolHasComposite(d._struct)) ? d._struct : null;
+    const _stc = (d._struct && d._struct.ops && nexusHasComposite(d._struct)) ? d._struct : null;
     const circHtml = (blk) => {
       if(_stc){
         const nW = blk.filter(l=>/^\s*(q_?\d+|q\[\d+\]|qr\[\d+\])\s*:/.test(l)).length;
         if(nW > 0 && nW % _stc.nq === 0){
           return `<div style="padding:.45rem .55rem .7rem;background:#020c18;border-top:1px solid rgba(0,136,255,.1);overflow-x:auto;">
             <div style="font-family:var(--orb);font-size:.4rem;color:var(--mu);padding:.1rem 0 .3rem;">⚛ CIRCUIT · verified by server (Qiskit) · composite gates as blocks</div>
-            ${buildCircuitFromData(qcolStructToData(_stc))}</div>`;
+            ${buildCircuitFromData(nexusStructToData(_stc))}</div>`;
         }
       }
       return buildCircuitOut(blk.join('\n'));
@@ -1667,10 +1667,10 @@ const QCOL_PLOT_SUFFIX = [
   '    pass',
   ''
 ].join('\n');
-function qcolWithPlotCapture(code) {
+function nexusWithPlotCapture(code) {
   return /matplotlib|pyplot|\bplt\s*\./.test(code) ? code + '\n' + QCOL_PLOT_SUFFIX : code;
 }
-function qcolExtractPlots(output) {
+function nexusExtractPlots(output) {
   const imgs = [];
   const text = String(output || '').replace(/@@QCOLPLOT@@([A-Za-z0-9+\/=]+)@@END@@\n?/g, (m, b64) => { imgs.push(b64); return ''; });
   return { text, imgs };
@@ -1734,16 +1734,16 @@ const QCOL_PROBE_PY = [
   ''
 ].join('\n');
 
-function qcolAppendProbe(code) { return code + '\n' + QCOL_PROBE_PY; }
-function qcolExtractStruct(output) {
+function nexusAppendProbe(code) { return code + '\n' + QCOL_PROBE_PY; }
+function nexusExtractStruct(output) {
   let struct = null;
   const text = String(output || '').replace(/__QCOL_STRUCT__(\{.*\})\n?/g, (m, js) => { try { struct = JSON.parse(js); } catch (e) {} return ''; });
   return { text, struct };
 }
 const _QOP_MAP = { h:'H', x:'X', y:'Y', z:'Z', s:'S', t:'T', sx:'SX', rx:'RX', ry:'RY', rz:'RZ', p:'RZ', cx:'CX', cz:'CZ', swap:'SWAP', cp:'CZ', ccx:'CCX', cswap:'CSW', mcx:'CCX' };
 const _QOP_CLR = { H:'#1a5fb4', X:'#c01c28', Y:'#7a3e99', Z:'#1c71d8', S:'#c64600', T:'#26a269', SX:'#c01c28', RX:'#0077c2', RY:'#005f6a', RZ:'#5e35b1', CX:'#007070', CZ:'#00695c', SWAP:'#1565c0', CCX:'#005f6a', CSW:'#283593', M:'#6d4c41' };
-function qcolHasComposite(st) { return (st.ops || []).some(o => o.info || (o.n !== 'measure' && !_QOP_MAP[String(o.n).toLowerCase()])); }
-function qcolBlockLabel(o) {
+function nexusHasComposite(st) { return (st.ops || []).some(o => o.info || (o.n !== 'measure' && !_QOP_MAP[String(o.n).toLowerCase()])); }
+function nexusBlockLabel(o) {
   const i = o.info || {};
   if (o.n === 'PauliEvolution') {
     const sub = [i.terms != null ? i.terms + ' terms' : '', i.reps ? '×' + i.reps + ' Trotter' : ''].filter(Boolean).join(' · ');
@@ -1752,14 +1752,14 @@ function qcolBlockLabel(o) {
   }
   return { label: String(o.n), sub: '', tip: 'Gate "' + o.n + '"' };
 }
-function qcolStructToData(st) {
+function nexusStructToData(st) {
   const gates = [];
   for (const o of st.ops || []) {
     if (o.n === 'barrier' || o.n === 'delay') continue;
     const qs = (o.q || []).filter(q => Number.isInteger(q) && q >= 0); if (!qs.length) continue;
     if (o.n === 'measure') { gates.push({ id:'M', q:qs[0], def:{ bg:_QOP_CLR.M, sym:'M' } }); continue; }
     const id = o.info ? null : _QOP_MAP[String(o.n).toLowerCase()];
-    if (!id) { const bt = qcolBlockLabel(o); gates.push({ id:'BLK', q:Math.min(...qs), q2:Math.max(...qs), qs, def:{ bg:'#6a1b9a', sym:'▦' }, block:{ label:bt.label, sub:bt.sub, tip:bt.tip, w:o.info ? 3 : 1 } }); continue; }
+    if (!id) { const bt = nexusBlockLabel(o); gates.push({ id:'BLK', q:Math.min(...qs), q2:Math.max(...qs), qs, def:{ bg:'#6a1b9a', sym:'▦' }, block:{ label:bt.label, sub:bt.sub, tip:bt.tip, w:o.info ? 3 : 1 } }); continue; }
     const def = { bg:_QOP_CLR[id] || '#1a4a8a', sym:id };
     if (qs.length === 1) gates.push({ id, q:qs[0], def });
     else if (qs.length === 2) gates.push({ id, q:Math.min(qs[0], qs[1]), q2:Math.max(qs[0], qs[1]), def });
@@ -1790,12 +1790,12 @@ async function runCell(id){
     if(engineOK&&engineURL){
       const resp=await fetch(engineURL+'/run/predict',{
         method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({data:[qcolAppendProbe(qcolWithPlotCapture(code))],fn_index:1}),
+        body:JSON.stringify({data:[nexusAppendProbe(nexusWithPlotCapture(code))],fn_index:1}),
         signal:AbortSignal.timeout(90000)
       });
       const raw=await resp.json();
       const d=parseServerResponse(raw);
-      const _stN=qcolExtractStruct(d.output); d.output=_stN.text; d._struct=_stN.struct;
+      const _stN=nexusExtractStruct(d.output); d.output=_stN.text; d._struct=_stN.struct;
       execCounter++;cell.exec_count=execCounter;
       const elapsed=((Date.now()-t0)/1000).toFixed(2);
       renderOutput(outArea,d,elapsed,id);
@@ -2023,17 +2023,17 @@ function _noiseCode(id){const c=cells.find(x=>x.id===id);if(!c)return'';syncCell
 // 🔊 Ejecuta el ruido YA, con los ajustes de ESTA celda; el resultado sale en la salida de la celda (como un Run normal)
 function noiseRun(id,extra){
   const cell=cells.find(c=>c.id===id);if(!cell||cell.type==='markdown'||cell.type==='code')return;
-  if(!window.QcolNoise){notify('Noise module not loaded');return;}
+  if(!window.QuOLabNexusNoise){notify('Noise module not loaded');return;}
   const out=document.getElementById('out-'+id);if(!out)return;
   if(!_noiseCode(id).trim()){notify('⚛ Cell without code — edit the circuit first');return;}
   execCounter++;cell.exec_count=execCounter;renderCellNum(id);
-  return window.QcolNoise.inline(Object.assign({out,cfg:cell.noiseCfg||null,getCode:()=>_noiseCode(id)},extra||{}));
+  return window.QuOLabNexusNoise.inline(Object.assign({out,cfg:cell.noiseCfg||null,getCode:()=>_noiseCode(id)},extra||{}));
 }
 // ⚙ Menú de ajuste del ruido de ESTA celda (mismo menú y opciones que Quantum Open Lab); se guarda en la celda
 function noiseCell(id,extra){
   const cell=cells.find(c=>c.id===id);if(!cell)return;
-  if(!window.QcolNoise){notify('Noise module not loaded');return;}
-  window.QcolNoise.open(Object.assign({getCode:()=>_noiseCode(id),cfg:cell.noiseCfg||null,onSave:cfg=>{cell.noiseCfg=cfg;try{saveCurrentNb(false);}catch(e){}}},extra||{}));
+  if(!window.QuOLabNexusNoise){notify('Noise module not loaded');return;}
+  window.QuOLabNexusNoise.open(Object.assign({getCode:()=>_noiseCode(id),cfg:cell.noiseCfg||null,onSave:cfg=>{cell.noiseCfg=cfg;try{saveCurrentNb(false);}catch(e){}}},extra||{}));
 }
 function syncCellCode(id){const cell=cells.find(c=>c.id===id);if(!cell)return;const ta=document.getElementById('ta-'+id);const mta=document.getElementById('mta-'+id);if(ta)cell.code=ta.value;if(mta)cell.code=mta.value;}
 function focusCell(id){curCellId=id;document.querySelectorAll('.nb-cell').forEach(el=>{el.classList.toggle('active',el.dataset.id===id);});const ta=document.getElementById('ta-'+id)||document.getElementById('mta-'+id);if(ta)ta.focus();}
@@ -2567,7 +2567,7 @@ window.addEventListener('message',e=>{
       const nm=document.getElementById('nb-name-inp');
       window.parent.postMessage({type:'OPENQ_CONTEXT',ctx:{tool:'notebook',name:nm?nm.value:'',exposition:!!_expositionMode,
         current:Math.max(0,cells.findIndex(c=>c.id===curCellId)),
-        noise_last:(window.QcolNoise&&window.QcolNoise.last)||null,cells:cells.slice(0,30).map((c,i)=>({i,type:c.type,code:String(c.code||'').slice(0,1200),output:strip(c.output).slice(-800)}))}},'*');
+        noise_last:(window.QuOLabNexusNoise&&window.QuOLabNexusNoise.last)||null,cells:cells.slice(0,30).map((c,i)=>({i,type:c.type,code:String(c.code||'').slice(0,1200),output:strip(c.output).slice(-800)}))}},'*');
     }else if(d.type==='OPENQ_AI_SET_CODE'&&typeof d.code==='string'){
       const c=cells[d.cellIndex];if(!c||c.type==='markdown'||_expositionMode&&false)return;
       c.code=d.code;const ta=document.getElementById('ta-'+c.id);if(ta){ta.value=d.code;ta.dispatchEvent(new Event('input',{bubbles:true}));}

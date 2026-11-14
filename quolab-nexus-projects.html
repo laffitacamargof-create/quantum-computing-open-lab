@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>QuOLab Nexus — Projects</title>
+<title>QuOLab Nexus Nexus — Projects</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=JetBrains+Mono:wght@400;500&family=Exo+2:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#010608;--s:#071220;--s2:#0c1c30;--b:#0d2a4a;--b2:#1a3a5c;--bl:#0088ff;--bl2:#00ccff;--gr:#00ff88;--gd:#ffd700;--rd:#ff4466;--tx:#ddeeff;--mu:#4a7a9b;--orb:'Orbitron',monospace;--mono:'JetBrains Mono',monospace;--exo:'Exo 2',sans-serif;}
@@ -254,21 +254,21 @@ function escapeHtml(str){if(!str)return '';return String(str).replace(/[&<>"']/g
 // ==================== EJECUTAR / ABRIR ====================
 
 // ===== ENLACE DIRECTO (copiar) =====
-function qcolSlug(t){return String(t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,60);}
-function qcolDirectLink(kind,id,title){
+function nexusSlug(t){return String(t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,60);}
+function nexusDirectLink(kind,id,title){
   let L; try{ L=(window.parent!==window)?window.parent.location:window.location; }catch(e){ L=window.location; }
-  const sl=qcolSlug(title);
+  const sl=nexusSlug(title);
   return L.origin+L.pathname.replace(/[^\/]*$/,'')+'#'+kind+'/'+encodeURIComponent(id)+(sl?'/'+sl:'');
 }
-async function qcolCopyText(txt){
+async function nexusCopyText(txt){
   try{ await navigator.clipboard.writeText(txt); return true; }catch(e){}
   try{ const ta=document.createElement('textarea'); ta.value=txt; ta.style.position='fixed'; ta.style.opacity='0'; document.body.appendChild(ta); ta.select(); const ok=document.execCommand('copy'); ta.remove(); if(ok) return true; }catch(e){}
   try{ window.prompt('Copy this link / Copia este enlace:',txt); }catch(e){}
   return false;
 }
 async function copyNbLink(id){
-  const p=items.find(x=>x.id===id); const url=qcolDirectLink('notebook',id,p&&p.title);
-  const ok=await qcolCopyText(url); notify(ok?'🔗 Direct link copied':'🔗 '+url);
+  const p=items.find(x=>x.id===id); const url=nexusDirectLink('notebook',id,p&&p.title);
+  const ok=await nexusCopyText(url); notify(ok?'🔗 Direct link copied':'🔗 '+url);
 }
 async function execProj(id) {
   const p = items.find(x => x.id === id);

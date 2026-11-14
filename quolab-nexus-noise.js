@@ -1,12 +1,12 @@
 /* QCOL Noise v2 — ruido cuántico como OPCIÓN de cualquier herramienta (Architect/Open Lab, Notebook, ...).
    Misma interfaz para cualquier simulador: la lista de motores y sus capacidades las da el servidor (/qcol/health, /qcol/capabilities),
    así un simulador nuevo aparece solo en el desplegable sin tocar las herramientas.
-   API:  QcolNoise.open({getCode})   -> ventana de AJUSTE de ruido (preconfiguraciones + parámetros) y ejecución
-         QcolNoise.quick({getCode})  -> EJECUTA YA con el ajuste guardado (sin pasar por la configuración; botón ⚙ para ajustar)
+   API:  QuOLabNexusNoise.open({getCode})   -> ventana de AJUSTE de ruido (preconfiguraciones + parámetros) y ejecución
+         QuOLabNexusNoise.quick({getCode})  -> EJECUTA YA con el ajuste guardado (sin pasar por la configuración; botón ⚙ para ajustar)
    El servidor es el predeterminado de QCOL: el usuario no necesita abrir Hugging Face ni escribir ninguna URL. */
 (function () {
   'use strict';
-  if (window.QcolNoise) return;
+  if (window.QuOLabNexusNoise) return;
   const DEFAULT_URL = 'https://francilaffita1027-qcol-noise-lab.hf.space';   // servidor de QCOL (único). Para pruebas: window.QCOL_NOISE_URL = '...'
   const LS = { get(k) { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} } };
   const lang = () => { const l = String(LS.get('openq_lang') || document.documentElement.lang || navigator.language || 'en').toLowerCase(); return l.indexOf('es') === 0 ? 'es' : 'en'; };
@@ -406,7 +406,7 @@
       const flags = ['native', 'idle', 'corr'].filter(k => r.rl[k]).join(' · ');
       hd.textContent += ' · ' + ((Date.now() - t0) / 1000).toFixed(2) + ' s' + (flags ? ' · ' + flags : '');
       last = { circuit_qubits: (q.match(/qubit\[(\d+)\]/) || [])[1], shots: r.shots, preset: cfg.preset, noise_channels: (r.noise.channels || []).map(c => c.type), results: r.results.map(x => ({ engine: x.name, ok: x.res.ok, error: x.res.error, counts: x.res.counts, avisos: x.res.avisos })) };
-      window.QcolNoise.last = last; return r;
+      window.QuOLabNexusNoise.last = last; return r;
     } catch (e) { msg('qn-e', '❌ ' + e.message); return null; }
   }
 
@@ -500,7 +500,7 @@
         }
         render(results, notes); set('qn-status', '', '');
         last = { circuit_qubits: (q.match(/qubit\[(\d+)\]/) || [])[1], shots, preset: cfg.preset, noise_channels: (noise.channels || []).map(c => c.type), results: results.map(r => ({ engine: r.name, ok: r.res.ok, error: r.res.error, counts: r.res.counts, avisos: r.res.avisos })) };
-        window.QcolNoise.last = last;
+        window.QuOLabNexusNoise.last = last;
       } catch (e) { set('qn-status', 'qn-e', '❌ ' + e.message); }
       $('qn-run').disabled = false;
     }
@@ -513,7 +513,7 @@
   }
   function close() { if (escFn) { document.removeEventListener('keydown', escFn, true); escFn = null; } if (ov && ov.parentNode) ov.parentNode.removeChild(ov); ov = null; }
   const quick = o => open(Object.assign({}, o || {}, { quick: true }));
-  window.QcolNoise = { open, quick, inline, executeCfg, close, engines: () => [BROWSER], codeToQasm, run, api, wake, simulate: simulateBrowser, exactProbs, presets: PRESETS, buildNoise, last: null, version: '2.0' };
+  window.QuOLabNexusNoise = { open, quick, inline, executeCfg, close, engines: () => [BROWSER], codeToQasm, run, api, wake, simulate: simulateBrowser, exactProbs, presets: PRESETS, buildNoise, last: null, version: '2.0' };
   // Pre-calienta el servidor gratuito (si estaba dormido) para que el primer uso sea rápido
   setTimeout(() => { try { if (document.visibilityState !== 'hidden') wake(null, 20000).catch(() => {}); } catch (e) {} }, 5000);
 })();
