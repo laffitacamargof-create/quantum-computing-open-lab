@@ -14,6 +14,8 @@ class QuOLabNexusConfigSync {
         this.syncInterval = null;
         this._syncInProgress = false;
         this._syncingKeys = new Set();
+        this._onlineHandler = () => { if (!this._syncInProgress) this.init(); };
+        window.addEventListener('online', this._onlineHandler);
         
         // Callbacks
         this.onConfigUpdate = null;
@@ -26,7 +28,7 @@ class QuOLabNexusConfigSync {
         try {
             console.log('🔌 Config Sync: Probando conexión...');
             
-            const testResponse = await fetch(`${this.SUPABASE_URL}/rest/v1/quantum_ecosystem_config?select=key&limit=1`, {
+            const testResponse = await this._fetchWithRetry(`${this.SUPABASE_URL}/rest/v1/quantum_ecosystem_config?select=key&limit=1`, {
                 method: 'GET',
                 headers: {
                     'apikey': this.SUPABASE_ANON_KEY,
@@ -37,6 +39,7 @@ class QuOLabNexusConfigSync {
             if (!testResponse.ok && testResponse.status !== 404) {
                 console.warn('⚠️ Config Sync: Error de conexión');
                 this.isReady = false;
+                this._startRetryPolling();
                 return false;
             }
             
@@ -46,14 +49,38 @@ class QuOLabNexusConfigSync {
             this.isReady = true;
             console.log('✅ Config Sync inicializado');
             
-            this.syncInterval = setInterval(() => this.syncAll(), 10000);
+            this._startRetryPolling();
             
             return true;
         } catch (error) {
             console.error('❌ Config Sync error:', error.message);
             this.isReady = false;
+            this._startRetryPolling();
             return false;
         }
+    }
+
+    _startRetryPolling() {
+        if (this.syncInterval) return;
+        this.syncInterval = setInterval(() => {
+            if (navigator.onLine) {
+                if (!this.isReady) this.init();
+                else this.syncAll();
+            }
+        }, 15000);
+    }
+
+    async _fetchWithRetry(url, options = {}, attempts = 3) {
+        let lastError;
+        for (let attempt = 0; attempt < attempts; attempt++) {
+            try {
+                const response = await this._fetchWithRetry(url, options);
+                if (response.status < 500 && response.status !== 408 && response.status !== 429) return response;
+                lastError = new Error('HTTP ' + response.status);
+            } catch (error) { lastError = error; }
+            if (attempt < attempts - 1) await new Promise(resolve => setTimeout(resolve, 800 * Math.pow(2, attempt)));
+        }
+        throw lastError || new Error('Network unavailable');
     }
 
     // ==================== FUNCIONES BASE ====================
@@ -67,7 +94,7 @@ class QuOLabNexusConfigSync {
             });
         }
         
-        const response = await fetch(url, {
+        const response = await this._fetchWithRetry(url, {
             method: 'GET',
             headers: {
                 'apikey': this.SUPABASE_ANON_KEY,
@@ -82,7 +109,7 @@ class QuOLabNexusConfigSync {
     }
 
     async _insert(table, data) {
-        const response = await fetch(`${this.SUPABASE_URL}/rest/v1/${table}`, {
+        const response = await this._fetchWithRetry(`${this.SUPABASE_URL}/rest/v1/${table}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -100,7 +127,7 @@ class QuOLabNexusConfigSync {
     }
 
     async _update(table, key, data) {
-        const response = await fetch(`${this.SUPABASE_URL}/rest/v1/${table}?key=eq.${key}`, {
+        const response = await this._fetchWithRetry(`${this.SUPABASE_URL}/rest/v1/${table}?key=eq.${key}`, {
             method: 'PATCH',
             headers: {
                 'Content-Type': 'application/json',
@@ -222,7 +249,7 @@ class QuOLabNexusConfigSync {
         const founderKey = localStorage.getItem('qcol_repo_founder_key') || '';
         if (!founderKey) throw new Error('Founder key required to update shared configuration');
         const stringValue = typeof value === 'string' ? value : JSON.stringify(value);
-        const response = await fetch(`${this.SUPABASE_URL}/functions/v1/quolab-nexus-admin`, {
+        const response = await this._fetchWithRetry(`${this.SUPABASE_URL}/functions/v1/quolab-nexus-admin`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -302,6 +329,7 @@ class QuOLabNexusConfigSync {
             clearInterval(this.syncInterval);
             this.syncInterval = null;
         }
+        if (this._onlineHandler) window.removeEventListener('online', this._onlineHandler);
     }
 }
 
