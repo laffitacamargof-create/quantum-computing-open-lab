@@ -106,13 +106,18 @@ class QuOLabNexusQuantumSync {
     }
 
     async _rpc(name, body) {
-        const response = await fetch(`${this.SUPABASE_URL}/rest/v1/rpc/${name}`, {
+        const response = await fetch(`${this.SUPABASE_URL}/functions/v1/quolab-nexus-admin`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'apikey': this.SUPABASE_ANON_KEY, 'Authorization': `Bearer ${this.SUPABASE_ANON_KEY}` },
-            body: JSON.stringify(body)
+            headers: {
+                'Content-Type': 'application/json',
+                'apikey': this.SUPABASE_ANON_KEY,
+                'Authorization': `Bearer ${this.SUPABASE_ANON_KEY}`
+            },
+            body: JSON.stringify({ action: name, params: body })
         });
-        if (!response.ok) { const errorText = await response.text(); throw new Error(`HTTP ${response.status}: ${errorText}`); }
-        return await response.json();
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload.error || `HTTP ${response.status}`);
+        return payload.data;
     }
     async _supabaseInsert(table, data) {
         console.log(`📤 Insertando en ${table}:`, {
@@ -183,32 +188,19 @@ class QuOLabNexusQuantumSync {
         return true;
     }
 
-    // Borrado como fundador: usa la función SQL protegida por la llave de fundador (la misma de Proyectos).
-    // Si la función no existe aún, recurre al DELETE directo (que fallará con un mensaje claro si hay RLS).
+    // Borrado administrativo centralizado en la Edge Function segura.
     async _adminDelete(tableKey, table, id) {
-        let key = '';
-        try { key = localStorage.getItem('qcol_repo_founder_key') || ''; } catch (e) {}
-        if (key) {
-            const r = await fetch(`${this.SUPABASE_URL}/rest/v1/rpc/quantum_delete_app`, {
-                method: 'POST',
-                headers: {
-                    'apikey': this.SUPABASE_ANON_KEY,
-                    'Authorization': `Bearer ${this.SUPABASE_ANON_KEY}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ p_table: tableKey, p_id: String(id), p_key: key })
-            });
-            if (r.ok) {
-                const ok = await r.json().catch(() => true);
-                if (ok === false) throw new Error('La app no existe o ya estaba borrada');
-                return true;
-            }
-            const txt = await r.text();
-            if (/forbidden/i.test(txt)) throw new Error('Llave de fundador incorrecta (Proyectos → llave de fundador)');
-            // función no instalada (404 / PGRST202 / "Could not find the function"): probar DELETE directo
-            if (!(r.status === 404 || /PGRST202|could not find the function/i.test(txt))) throw new Error(`HTTP ${r.status}: ${txt}`);
+        const founderKey = localStorage.getItem('qcol_repo_founder_key') || '';
+        if (!founderKey) throw new Error('Se requiere la llave de fundador');
+        if (tableKey === 'pending') {
+            await this._rpc('quantum_reject_app', { p_id: String(id), p_key: founderKey });
+            return true;
         }
-        return this._supabaseDelete(table, id);
+        if (tableKey === 'published') {
+            await this._rpc('quantum_delete_published_app', { p_id: String(id), p_key: founderKey });
+            return true;
+        }
+        throw new Error('Tipo de aplicación no permitido');
     }
 
     async syncAll(force = false) {
