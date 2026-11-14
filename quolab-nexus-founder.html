@@ -511,7 +511,7 @@ initConfigSync();
     <div class="sec-title">➕ Crear nuevo módulo personalizado</div>
     <div class="alert alert-info">Agrega módulos propios al ecosistema. Cada módulo es un archivo HTML que se carga en el menú principal. Crea el archivo HTML, súbelo a GitHub con el nombre que especifiques, y aparecerá automáticamente.</div>
     <div class="grid2">
-      <div><div class="fg"><label class="fl">NOMBRE DEL MÓDULO</label><input class="fi" id="nm-name" placeholder="Mi Módulo"></div><div class="fg"><label class="fl">IDENTIFICADOR (sin espacios)</label><input class="fi" id="nm-id" placeholder="mi-modulo"></div><div class="fg"><label class="fl">ARCHIVO HTML</label><input class="fi" id="nm-file" placeholder="qcol-mi-modulo.html"></div></div>
+      <div><div class="fg"><label class="fl">NOMBRE DEL MÓDULO</label><input class="fi" id="nm-name" placeholder="Mi Módulo"></div><div class="fg"><label class="fl">IDENTIFICADOR (sin espacios)</label><input class="fi" id="nm-id" placeholder="mi-modulo"></div><div class="fg"><label class="fl">ARCHIVO HTML</label><input class="fi" id="nm-file" placeholder="quolab-nexus-mi-modulo.html"></div></div>
       <div><div class="fg"><label class="fl">ÍCONO (emoji)</label><input class="fi" id="nm-icon" placeholder="🔬" style="width:80px;text-align:center;font-size:1.2rem;"></div><div class="fg"><label class="fl">DESCRIPCIÓN</label><input class="fi" id="nm-desc" placeholder="Descripción del módulo"></div><div class="fg"><label class="fl">ACCESO MÍNIMO</label><select class="fi" id="nm-role"><option value="guest">Todos los usuarios</option><option value="user">Solo usuarios con sesión</option><option value="admin">Solo Admin / Fundador</option></select></div></div>
     </div>
     <div class="btn-row"><button class="btn btn-pri" onclick="createModule()">➕ Crear módulo</button></div>
@@ -1451,7 +1451,7 @@ async function uploadToGitHub(){
 // 🔧 Inicialización: cargar una sola vez al inicio
 loadSaved(true);
 addSysLog('Configuración del ecosistema iniciada (MODO NUBE)','info');
-addSysLog('QCOL v3.0.0 — Sistema modular con sincronización en nube','info');
+addSysLog('QuOLab Nexus v3.0.0 — Sistema modular con sincronización en nube','info');
 renderCustomModules();
 loadMonitorConfig();
 refreshMonitor();
@@ -1619,7 +1619,7 @@ const PROMPTS = {
   quantum: 'Eres el asistente de QCOL (Quantum Computing Open Lab), creado por Franci Laffita Camargo, estudiante de Física Nuclear. Ayudas con Qiskit, Cirq, PennyLane, QuTiP, circuitos cuánticos y física cuántica. Responde en español, de forma concisa y técnicamente precisa. Puedes usar formato Markdown.', 
   teacher: 'Eres un profesor experto en computación cuántica del ecosistema QCOL. Explicas conceptos de forma clara y pedagógica, con ejemplos prácticos. Usas analogías para hacer accesibles los conceptos difíciles. Responde siempre en español. Usa Markdown para mejorar la legibilidad.', 
   concise: 'Eres el asistente cuántico de QCOL. Responde siempre en español, de forma muy concisa. Máximo 3-4 líneas por respuesta. Solo lo esencial. Para código Qiskit, muestra directamente el código.', 
-  bilingual: 'You are the QCOL quantum computing assistant. Respond in both Spanish and English. First answer in Spanish, then provide the English translation. Be concise and technically precise. Use Markdown formatting.', 
+  bilingual: 'You are the QuOLab Nexus quantum computing assistant. Respond in both Spanish and English. First answer in Spanish, then provide the English translation. Be concise and technically precise. Use Markdown formatting.', 
   code: 'Eres el asistente de código cuántico de QCOL. Tu especialidad es generar código Qiskit y Cirq. Cuando te pidan un circuito o algoritmo, responde directamente con el código Python funcional, con comentarios breves. Usa siempre sintaxis moderna de Qiskit 1.x. Muestra el código en bloques de Markdown con triple backticks y el lenguaje especificado.' 
 };
 
