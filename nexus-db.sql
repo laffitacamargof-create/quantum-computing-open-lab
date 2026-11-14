@@ -1,0 +1,148 @@
+-- =====================================================================
+-- Nexus · community local connectors  (same model as Quantum Puzzle)
+-- Run ONCE in Supabase → SQL Editor. Safe to run again.
+--
+--   author submits  →  nexus_pending_connectors (nobody can read it directly)
+--   founder/admin   →  reviews in Nexus ("PENDING") and approves or rejects
+--   approved        →  nexus_published_connectors (everybody can read it)
+--
+-- Reviewing needs the founder key. This file reuses the repo_is_founder(p_key)
+-- function you already created for Quantum Puzzle. If you named it differently,
+-- change the single line inside nexus_is_founder().
+-- =====================================================================
+
+create table if not exists public.nexus_pending_connectors (
+  id            text primary key,
+  name          text not null,
+  version       text not null default '0.1.0',
+  description   text not null default '',
+  author        text not null default 'anonymous',
+  perms         jsonb not null default '{}'::jsonb,
+  requires      jsonb not null default '[]'::jsonb,
+  ui            text not null default '',
+  web           text not null default '',
+  py            text not null,
+  hash          text not null default '',
+  status        text not null default 'pending' check (status in ('pending','rejected')),
+  reason        text not null default '',
+  submitted_at  timestamptz not null default now(),
+  reviewed_at   timestamptz
+);
+
+create table if not exists public.nexus_published_connectors (
+  id            text primary key,
+  name          text not null,
+  version       text not null,
+  description   text not null default '',
+  author        text not null default 'anonymous',
+  perms         jsonb not null default '{}'::jsonb,
+  requires      jsonb not null default '[]'::jsonb,
+  ui            text not null default '',
+  web           text not null default '',
+  py            text not null,
+  hash          text not null default '',
+  published_at  timestamptz not null default now(),
+  reviewer      text not null default ''
+);
+
+alter table public.nexus_pending_connectors   enable row level security;
+alter table public.nexus_published_connectors enable row level security;
+
+-- pending: no policies at all → only the functions below can touch it
+revoke all on public.nexus_pending_connectors from anon, authenticated;
+-- published: everybody can read, nobody can write directly
+revoke all on public.nexus_published_connectors from anon, authenticated;
+grant select on public.nexus_published_connectors to anon, authenticated;
+drop policy if exists nexus_published_read on public.nexus_published_connectors;
+create policy nexus_published_read on public.nexus_published_connectors for select using (true);
+
+-- ---------------------------------------------------------------------
+create or replace function public.nexus_is_founder(p_key text)
+returns boolean language plpgsql security definer set search_path = public as $$
+begin
+  return coalesce(public.repo_is_founder(p_key), false);   -- ← your existing Quantum Puzzle helper
+end $$;
+revoke all on function public.nexus_is_founder(text) from public, anon, authenticated;
+
+-- ---------------------------------------------------------------------
+create or replace function public.nexus_submit_connector(p_data jsonb)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare
+  v_id text := p_data->>'id';
+  v_py text := coalesce(p_data->>'py','');
+begin
+  if v_id is null or v_id !~ '^[A-Za-z0-9_-]{1,64}$' then raise exception 'invalid id'; end if;
+  if coalesce(p_data->>'name','') = '' or length(p_data->>'name') > 80 then raise exception 'invalid name'; end if;
+  if length(v_py) = 0 or length(v_py) > 60000 or position('@connector.tool' in v_py) = 0 then raise exception 'invalid python code'; end if;
+  if length(coalesce(p_data->>'ui','')) > 60000 or length(coalesce(p_data->>'web','')) > 60000 then raise exception 'code too large'; end if;
+  if jsonb_typeof(coalesce(p_data->'perms','{}'::jsonb)) <> 'object' then raise exception 'invalid permissions'; end if;
+  if (select count(*) from public.nexus_pending_connectors where status = 'pending') >= 200 then raise exception 'the review queue is full, try later'; end if;
+
+  insert into public.nexus_pending_connectors as t (id, name, version, description, author, perms, requires, ui, web, py, hash, status, reason, submitted_at, reviewed_at)
+  values (v_id, left(p_data->>'name', 80), left(coalesce(p_data->>'version','0.1.0'), 20), left(coalesce(p_data->>'description',''), 400),
+          left(coalesce(p_data->>'author','anonymous'), 60), coalesce(p_data->'perms','{}'::jsonb), coalesce(p_data->'requires','[]'::jsonb),
+          coalesce(p_data->>'ui',''), coalesce(p_data->>'web',''), v_py, left(coalesce(p_data->>'hash',''), 80), 'pending', '', now(), null)
+  on conflict (id) do update set
+    name = excluded.name, version = excluded.version, description = excluded.description, author = excluded.author, perms = excluded.perms,
+    requires = excluded.requires, ui = excluded.ui, web = excluded.web, py = excluded.py, hash = excluded.hash,
+    status = 'pending', reason = '', submitted_at = now(), reviewed_at = null;
+  return jsonb_build_object('ok', true, 'id', v_id);
+end $$;
+
+create or replace function public.nexus_submission_status(p_ids text[])
+returns table(id text, status text, reason text) language sql security definer set search_path = public as $$
+  select p.id, p.status, p.reason from public.nexus_pending_connectors p where p.id = any(p_ids)
+  union all
+  select b.id, 'published', '' from public.nexus_published_connectors b
+   where b.id = any(p_ids) and not exists (select 1 from public.nexus_pending_connectors p where p.id = b.id);
+$$;
+
+create or replace function public.nexus_list_pending(p_key text)
+returns setof public.nexus_pending_connectors language plpgsql security definer set search_path = public as $$
+begin
+  if not public.nexus_is_founder(p_key) then raise exception 'forbidden'; end if;
+  return query select * from public.nexus_pending_connectors where status = 'pending' order by submitted_at;
+end $$;
+
+create or replace function public.nexus_approve_connector(p_id text, p_key text, p_reviewer text default '')
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare r public.nexus_pending_connectors;
+begin
+  if not public.nexus_is_founder(p_key) then raise exception 'forbidden'; end if;
+  select * into r from public.nexus_pending_connectors where id = p_id and status = 'pending';
+  if not found then raise exception 'not found'; end if;
+  insert into public.nexus_published_connectors as b (id, name, version, description, author, perms, requires, ui, web, py, hash, published_at, reviewer)
+  values (r.id, r.name, r.version, r.description, r.author, r.perms, r.requires, r.ui, r.web, r.py, r.hash, now(), left(coalesce(p_reviewer,''), 60))
+  on conflict (id) do update set name = excluded.name, version = excluded.version, description = excluded.description, author = excluded.author,
+    perms = excluded.perms, requires = excluded.requires, ui = excluded.ui, web = excluded.web, py = excluded.py, hash = excluded.hash,
+    published_at = now(), reviewer = excluded.reviewer;
+  delete from public.nexus_pending_connectors where id = p_id;
+  return jsonb_build_object('ok', true);
+end $$;
+
+create or replace function public.nexus_reject_connector(p_id text, p_key text, p_reason text default '')
+returns jsonb language plpgsql security definer set search_path = public as $$
+begin
+  if not public.nexus_is_founder(p_key) then raise exception 'forbidden'; end if;
+  update public.nexus_pending_connectors set status = 'rejected', reason = left(coalesce(p_reason,''), 400), reviewed_at = now() where id = p_id;
+  return jsonb_build_object('ok', true);
+end $$;
+
+create or replace function public.nexus_delete_connector(p_table text, p_id text, p_key text)
+returns jsonb language plpgsql security definer set search_path = public as $$
+begin
+  if not public.nexus_is_founder(p_key) then raise exception 'forbidden'; end if;
+  if p_table = 'published' then delete from public.nexus_published_connectors where id = p_id;
+  elsif p_table = 'pending' then delete from public.nexus_pending_connectors where id = p_id;
+  else raise exception 'invalid table'; end if;
+  return jsonb_build_object('ok', true);
+end $$;
+
+grant execute on function public.nexus_submit_connector(jsonb)               to anon, authenticated;
+grant execute on function public.nexus_submission_status(text[])             to anon, authenticated;
+grant execute on function public.nexus_list_pending(text)                    to anon, authenticated;
+grant execute on function public.nexus_approve_connector(text, text, text)   to anon, authenticated;
+grant execute on function public.nexus_reject_connector(text, text, text)    to anon, authenticated;
+grant execute on function public.nexus_delete_connector(text, text, text)    to anon, authenticated;
+
+notify pgrst, 'reload schema';

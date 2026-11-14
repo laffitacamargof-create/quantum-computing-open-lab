@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nexus — connector hub</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=JetBrains+Mono:wght@400;500&family=Exo+2:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#010608;--s:#071220;--s2:#0c1c30;--s3:#112240;--b:#0d2a4a;--b2:#1a3a5c;--bl:#0088ff;--bl2:#00ccff;--cy:#00ffdd;--gr:#00ff88;--gd:#ffd700;--rd:#ff4466;--pu:#bd93f9;--tx:#ddeeff;--mu:#4a7a9b;--mu2:#2a4a6a;--orb:'Orbitron',monospace;--mono:'JetBrains Mono',monospace;--exo:'Exo 2',sans-serif}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{min-height:100%}
+body{background:var(--bg);color:var(--tx);font-family:var(--exo);overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,136,255,.03)1px,transparent 1px),linear-gradient(90deg,rgba(0,136,255,.03)1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0}
+header{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:.8rem;padding:.7rem 1.4rem;background:rgba(3,8,16,.97);border-bottom:1px solid var(--b);backdrop-filter:blur(30px);height:58px}
+.logo{font-family:var(--orb);font-weight:900;letter-spacing:.12em;color:var(--bl2)}
+.mod{font-family:var(--orb);font-size:.62rem;letter-spacing:.2em;color:var(--cy);padding:.2rem .6rem;border:1px solid rgba(0,255,221,.35);border-radius:4px;background:rgba(0,255,221,.06)}
+.sp{flex:1}
+.mem{font-family:var(--orb);font-size:.5rem;color:var(--gr);padding:.25rem .6rem;border:1px solid rgba(0,255,136,.3);border-radius:4px;background:rgba(0,255,136,.07)}
+.tag{font-family:var(--mono);font-size:.62rem;color:var(--mu)}
+main{position:relative;z-index:1;max-width:1180px;margin:0 auto;padding:1.4rem 1.4rem 4rem}
+.intro{color:var(--mu);font-size:.86rem;margin:.2rem 0 1.4rem;max-width:760px}
+.sec{margin:1.6rem 0 .7rem;display:flex;align-items:center;gap:.7rem}
+.sec h2{font-family:var(--orb);font-size:.72rem;letter-spacing:.16em}
+.sec .n{font-family:var(--mono);font-size:.62rem;color:var(--mu)}
+.sec .line{flex:1;height:1px;background:linear-gradient(90deg,var(--b2),transparent)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:.9rem}
+/* tarjetas base */
+.card{position:relative;background:var(--s);border:1px solid var(--b);padding:.9rem .95rem;display:flex;flex-direction:column;gap:.55rem;transition:.2s}
+.card:hover{transform:translateY(-2px)}
+.ico{width:34px;height:34px;display:grid;place-items:center;font-size:1.05rem;flex:none}
+.top{display:flex;gap:.65rem;align-items:center}
+.nm{font-weight:600;font-size:.95rem;line-height:1.15}
+.sub{font-family:var(--mono);font-size:.62rem;color:var(--mu)}
+.chips{display:flex;flex-wrap:wrap;gap:.3rem}
+.chip{font-family:var(--mono);font-size:.58rem;padding:.12rem .45rem;border-radius:99px;border:1px solid var(--b2);color:var(--mu)}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--b2);border-radius:7px;overflow:hidden}
+.seg button{background:transparent;border:0;color:var(--mu);font-family:var(--orb);font-size:.5rem;letter-spacing:.06em;padding:.45rem .2rem;cursor:pointer}
+.seg button+button{border-left:1px solid var(--b2)}
+.seg button.on{color:#001018;font-weight:700}
+.btn{font-family:var(--orb);font-size:.54rem;letter-spacing:.08em;padding:.5rem .8rem;border-radius:7px;border:1px solid;background:transparent;cursor:pointer;color:inherit}
+.row{display:flex;gap:.45rem;align-items:center}
+.row .sp{flex:1}
+.state{font-family:var(--mono);font-size:.6rem}
+/* API IA: morado, esquinas redondas, brillo suave */
+.ai{border-radius:14px;border-color:rgba(189,147,249,.35);background:linear-gradient(160deg,rgba(189,147,249,.09),var(--s) 60%)}
+.ai:hover{box-shadow:0 0 22px rgba(189,147,249,.18)}
+.ai .ico{border-radius:50%;background:rgba(189,147,249,.14);border:1px solid rgba(189,147,249,.5);color:var(--pu)}
+.ai .seg button.on{background:var(--pu)}
+.ai .chip.k{color:var(--pu);border-color:rgba(189,147,249,.4)}
+/* API externas: dorado, borde izquierdo grueso, formato "ficha" */
+.ext{border-radius:4px;border-left:4px solid var(--gd);border-color:var(--b);background:linear-gradient(90deg,rgba(255,215,0,.07),var(--s) 55%)}
+.ext:hover{box-shadow:0 0 22px rgba(255,215,0,.13)}
+.ext .ico{border-radius:4px;background:rgba(255,215,0,.1);border:1px solid rgba(255,215,0,.45);color:var(--gd)}
+.ext .seg button.on{background:var(--gd)}
+.ext .chip.k{color:var(--gd);border-color:rgba(255,215,0,.4)}
+/* conectores locales: cian/verde, esquinas cortadas, circuit lines */
+.loc{--c:14px;border:0;background:linear-gradient(135deg,rgba(0,255,221,.1),var(--s2) 60%);clip-path:polygon(var(--c) 0,100% 0,100% calc(100% - var(--c)),calc(100% - var(--c)) 100%,0 100%,0 var(--c));box-shadow:inset 0 0 0 1px rgba(0,255,221,.35)}
+.loc::after{content:'';position:absolute;right:10px;top:10px;width:46px;height:2px;background:linear-gradient(90deg,transparent,var(--cy));opacity:.6}
+.loc .ico{clip-path:polygon(25% 0,75% 0,100% 50%,75% 100%,25% 100%,0 50%);background:rgba(0,255,221,.16);color:var(--cy);width:38px;height:38px}
+.loc .btn.p{background:var(--cy);color:#001018;border-color:var(--cy);font-weight:700}
+.loc .btn.g{border-color:rgba(0,255,221,.45);color:var(--cy)}
+.loc .chip.k{color:var(--cy);border-color:rgba(0,255,221,.4)}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:.35rem;background:var(--mu2)}
+.dot.on{background:var(--gr);box-shadow:0 0 8px var(--gr)}.dot.wait{background:var(--gd)}
+.bar{height:3px;background:var(--b);border-radius:3px;overflow:hidden;display:none}.bar i{display:block;height:100%;width:0;background:var(--cy);transition:width .15s}
+/* "+" card */
+.add{min-height:150px;border:1.5px dashed rgba(0,204,255,.38);background:transparent;border-radius:14px;display:grid;place-items:center;cursor:pointer;color:var(--bl2);padding:0}
+.add:hover{background:rgba(0,204,255,.05);border-color:var(--bl2);transform:none}
+.add .plus{width:54px;height:54px;border:1.5px solid currentColor;border-radius:9px;display:grid;place-items:center;font-size:1.8rem;font-weight:300;line-height:1}
+.add small{display:block;margin-top:.55rem;font-family:var(--orb);font-size:.52rem;letter-spacing:.12em;color:var(--mu);text-align:center}
+.addwrap{display:flex;flex-direction:column;align-items:center}
+/* creation window */
+.ov{position:fixed;inset:0;z-index:50;background:rgba(1,6,8,.78);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;padding:1rem}
+.ov.show{display:flex}
+.win{width:min(760px,100%);max-height:92vh;overflow:auto;background:var(--s);border:1px solid var(--b2);border-radius:12px;box-shadow:0 20px 70px rgba(0,0,0,.6)}
+.wh{display:flex;align-items:center;gap:.7rem;padding:.8rem 1.1rem;border-bottom:1px solid var(--b)}
+.wh h3{font-family:var(--orb);font-size:.7rem;letter-spacing:.16em}
+.x{background:none;border:0;color:var(--mu);font-size:1.3rem;cursor:pointer}
+.tabs{display:grid;grid-template-columns:repeat(3,1fr);border-bottom:1px solid var(--b)}
+.tab{background:none;border:0;border-bottom:2px solid transparent;color:var(--mu);font-family:var(--orb);font-size:.58rem;letter-spacing:.08em;padding:.8rem .3rem;cursor:pointer}
+.tab.on[data-t=ai]{color:var(--pu);border-color:var(--pu);background:rgba(189,147,249,.06)}
+.tab.on[data-t=ext]{color:var(--gd);border-color:var(--gd);background:rgba(255,215,0,.05)}
+.tab.on[data-t=loc]{color:var(--cy);border-color:var(--cy);background:rgba(0,255,221,.05)}
+.pane{display:none;padding:1.1rem;gap:.8rem;flex-direction:column}.pane.show{display:flex}
+label{font-family:var(--orb);font-size:.5rem;letter-spacing:.12em;color:var(--mu);display:block;margin-bottom:.3rem}
+input,select,textarea{width:100%;background:var(--bg);border:1px solid var(--b2);border-radius:7px;color:var(--tx);font-family:var(--mono);font-size:.74rem;padding:.55rem .65rem}
+textarea{min-height:120px;resize:vertical;line-height:1.5}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--bl2)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:.7rem}
+.note{font-size:.76rem;color:var(--mu);border-left:2px solid var(--b2);padding-left:.7rem}
+.wf{padding:.8rem 1.1rem;border-top:1px solid var(--b);display:flex;gap:.6rem;align-items:center;flex-wrap:wrap}
+.tools{display:flex;flex-wrap:wrap;gap:.4rem}.tl{font-family:var(--mono);font-size:.64rem;padding:.3rem .6rem;border-radius:99px;border:1px solid var(--b2);background:transparent;color:var(--mu);cursor:pointer}.tl.on{color:var(--tx);border-color:var(--bl2);background:rgba(0,204,255,.1)}
+.detect{border:1px solid var(--b2);border-radius:8px;padding:.6rem .7rem;background:rgba(0,255,221,.03);display:flex;flex-direction:column;gap:.4rem}.detect .ln{display:flex;flex-wrap:wrap;gap:.35rem;align-items:center;font-family:var(--mono);font-size:.64rem}.detect .tn{color:var(--cy);min-width:84px}.vmsg{font-family:var(--mono);font-size:.64rem}.vmsg.ok{color:var(--gr)}.vmsg.bad{color:var(--rd)}
+.btn:disabled{opacity:.35;cursor:not-allowed}
+.tl2{font-family:var(--mono);font-size:.58rem;color:var(--mu)}.tl2 b{color:var(--cy);font-weight:500}
+.perm{display:flex;flex-wrap:wrap;gap:.45rem}
+.perm label{display:flex;align-items:center;gap:.35rem;margin:0;font-family:var(--mono);font-size:.64rem;letter-spacing:0;color:var(--tx);border:1px solid var(--b2);border-radius:6px;padding:.3rem .55rem;cursor:pointer}
+.perm input{width:auto}
+.stabs{display:flex;gap:.4rem;border-bottom:1px solid var(--b2)}.stab{background:none;border:0;border-bottom:2px solid transparent;color:var(--mu);font-family:var(--orb);font-size:.52rem;letter-spacing:.1em;padding:.6rem .8rem;cursor:pointer}.stab.on{color:var(--cy);border-color:var(--cy)}.spane{display:none;flex-direction:column;gap:.6rem}.spane.show{display:flex}.spane textarea{min-height:190px;font-size:.72rem}
+@media(max-width:700px){main{padding:1rem 1rem 3rem}.two{grid-template-columns:1fr}header{padding:.6rem 1rem}.tag{display:none}}
+/* ===== additions for the working module (the original look above is unchanged) ===== */
+.stat{font-family:var(--orb);font-size:.5rem;letter-spacing:.06em;padding:.3rem .6rem;border-radius:4px;border:1px solid var(--b2);background:transparent;color:var(--mu);cursor:pointer}
+.stat.ok{color:var(--gr);border-color:rgba(0,255,136,.35);background:rgba(0,255,136,.07)}
+.stat.warn{color:var(--gd);border-color:rgba(255,215,0,.4);background:rgba(255,215,0,.06)}
+.stat.bad{color:var(--rd);border-color:rgba(255,68,102,.4);background:rgba(255,68,102,.06)}
+.cx{position:absolute;top:8px;right:10px;display:flex;gap:.2rem;z-index:2}
+.cx button{background:transparent;border:1px solid transparent;color:var(--mu);width:24px;height:24px;border-radius:5px;cursor:pointer;font-size:.8rem;line-height:1}
+.cx button:hover{border-color:var(--b2);color:var(--tx)}
+.card:has(.cx) .top{padding-right:78px}
+.loc .cx{top:18px;right:16px}
+.empty{font-family:var(--mono);font-size:.68rem;color:var(--mu2);padding:.6rem .2rem;grid-column:1/-1}
+.chip.st-ok{color:var(--gr);border-color:rgba(0,255,136,.4)}.chip.st-wait{color:var(--gd);border-color:rgba(255,215,0,.4)}.chip.st-bad{color:var(--rd);border-color:rgba(255,68,102,.4)}.chip.off{color:var(--cy);border-color:rgba(0,255,221,.4)}
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(20px);opacity:0;z-index:99;background:var(--s3);border:1px solid var(--b2);border-radius:8px;padding:.6rem 1rem;font-size:.8rem;max-width:min(560px,92vw);pointer-events:none;transition:.25s}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}.toast.bad{border-color:var(--rd);color:#ffd2da}.toast.ok{border-color:var(--gr)}
+.chk{display:flex;gap:.55rem;align-items:flex-start;font-family:var(--exo);font-size:.78rem;letter-spacing:0;color:var(--tx);margin:0;cursor:pointer;text-transform:none}
+.chk input{width:auto;margin-top:.2rem}
+.sm{font-size:.7rem;color:var(--mu);font-family:var(--mono)}
+.ovw{width:min(900px,100%)}
+.item{border:1px solid var(--b2);border-radius:10px;padding:.8rem;margin:.6rem 0;background:var(--s2)}
+.item h4{font-size:.95rem;font-weight:600}
+.item pre{background:var(--bg);border:1px solid var(--b2);border-radius:7px;padding:.6rem;max-height:240px;overflow:auto;font:11px/1.5 var(--mono);white-space:pre-wrap;word-break:break-word}
+.rv{display:flex;gap:.4rem;flex-wrap:wrap;margin:.5rem 0}
+.rv button{font-family:var(--orb);font-size:.5rem;letter-spacing:.08em;padding:.4rem .6rem;border:1px solid var(--b2);background:transparent;color:var(--mu);border-radius:6px;cursor:pointer}
+.rv button.on{color:var(--cy);border-color:var(--cy)}
+.panelframe{width:100%;height:min(560px,64vh);border:0;background:#050b14;border-radius:0 0 12px 12px}
+.cmd{font:11px/1.5 var(--mono);background:var(--bg);border:1px solid var(--b2);border-radius:7px;padding:.55rem .7rem;word-break:break-all;color:var(--cy)}
+.modelrow[hidden],.hide{display:none!important}
+.tab.dis{opacity:.3;pointer-events:none}
+.sec .sm2{font-family:var(--mono);font-size:.6rem;color:var(--mu2)}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">NEXUS</div><div class="mod">CONNECTORS</div>
+  <div class="sp"></div>
+  <button class="stat" id="bBridge" title="Local bridge (this computer)">🔌 BRIDGE · …</button>
+  <span class="stat" id="stDb" title="Community database">☁ COMMUNITY · …</span>
+  <button class="btn" id="bPending" style="display:none;border-color:var(--gd);color:var(--gd)">📋 PENDING (0)</button>
+  <div class="mem" id="memBadge" title="Services the ecosystem remembers">● 0 CONNECTIONS REMEMBERED</div>
+</header>
+<main>
+  <p class="intro">Connector repository. Every service you subscribe to or connect is remembered here, with its name, its usage mode and its credentials stored only on this device.</p>
+
+  <div class="sec"><h2 style="color:var(--pu)">◉ API · AI</h2><span class="n" id="n-ai">0</span><span class="line"></span></div>
+  <div class="grid" id="g-ai"></div>
+
+  <div class="sec"><h2 style="color:var(--gd)">▣ API · EXTERNAL</h2><span class="n" id="n-ext">0</span><span class="line"></span></div>
+  <div class="grid" id="g-ext"></div>
+
+  <div class="sec"><h2 style="color:var(--cy)">⬢ LOCAL CONNECTORS</h2><span class="n" id="n-loc">0</span><span class="line"></span></div>
+  <div class="grid" id="g-loc"></div>
+
+  <div class="sec"><h2 style="color:var(--cy)">◇ COMMUNITY · LOCAL CONNECTORS</h2><span class="n" id="n-com">0</span><span class="sm2" id="comNote"></span><span class="line"></span></div>
+  <div class="grid" id="g-com"></div>
+
+  <div class="grid" style="margin-top:1.4rem">
+    <button class="card add" id="bAdd" aria-label="Create connector"><div class="addwrap"><div class="plus">+</div><small>CREATE CONNECTOR</small></div></button>
+  </div>
+</main>
+
+<div class="ov" id="ov">
+ <div class="win" role="dialog" aria-label="Create connector">
+  <div class="wh"><h3 id="wTitle">NEW CONNECTOR</h3><div style="flex:1"></div><button class="x" id="bX">×</button></div>
+  <div class="tabs">
+    <button class="tab on" data-t="ai">◉ API · AI</button>
+    <button class="tab" data-t="ext">▣ API · EXTERNAL</button>
+    <button class="tab" data-t="loc">⬢ LOCAL CONNECTOR</button>
+  </div>
+
+  <div class="pane show" id="p-ai">
+    <p class="note">You only need a key. Give it a name and choose how it is used.</p>
+    <div class="two"><div><label>CONNECTOR NAME</label><input id="ai-name" placeholder="My assistant" maxlength="60"></div>
+      <div><label>PROVIDER</label><select id="ai-prov"><option value="deepseek">DeepSeek</option><option value="groq">Groq</option><option value="cerebras">Cerebras</option><option value="other">Other (compatible URL)</option></select></div></div>
+    <div class="two"><div><label>MODEL (optional)</label><input id="ai-model" placeholder="default of the provider"></div>
+      <div class="modelrow" id="ai-urlrow" hidden><label>COMPATIBLE URL (HTTPS)</label><input id="ai-url" placeholder="https://host/v1/chat/completions"></div></div>
+    <div><label>API KEY</label><input type="password" id="ai-key" autocomplete="off" placeholder="paste your key"></div>
+    <div><label>WORKS WITH (ONE OR SEVERAL TOOLS)</label><div class="tools" data-tools id="ai-tools"></div></div>
+    <div><label>USAGE</label><div class="seg" data-u id="ai-use"><button data-v="once">ONCE</button><button data-v="always" class="on">ALWAYS</button><button data-v="off">OFF</button></div></div>
+  </div>
+
+  <div class="pane" id="p-ext">
+    <p class="note">Services you subscribe to: cloud quantum hardware, remote classical hardware or other APIs. Their credentials are stored encrypted on this device.</p>
+    <div class="two"><div><label>CONNECTOR NAME</label><input id="ex-name" placeholder="My quantum hardware account" maxlength="60"></div>
+      <div><label>CATEGORY</label><select id="ex-cat"><option value="quantum">Quantum hardware (cloud)</option><option value="classical">Remote classical hardware</option><option value="other">Other service</option></select></div></div>
+    <div><label>BASE URL (HTTPS)</label><input id="ex-url" placeholder="https://api.provider.com/v1"></div>
+    <div class="two"><div><label>AUTHENTICATION</label><select id="ex-auth"><option value="apikey">API key</option><option value="bearer">Bearer token</option><option value="basic">Username and password</option></select></div>
+      <div id="ex-secrow"><label>SECRET</label><input type="password" id="ex-secret" autocomplete="off" placeholder="paste the secret"></div></div>
+    <div class="two" id="ex-hdrrow"><div><label>HEADER NAME (API key)</label><input id="ex-hdr" placeholder="X-API-Key"></div>
+      <div><label>ROUTE</label><select id="ex-via"><option value="auto">Direct (bridge fallback for reads)</option><option value="bridge">Always through the local bridge</option></select></div></div>
+    <div><label>WORKS WITH (ONE OR SEVERAL TOOLS)</label><div class="tools" data-tools id="ex-tools"></div></div>
+    <div class="two" id="ex-userrow"><div><label>USERNAME / ACCOUNT</label><input id="ex-user" placeholder="account@email.com" autocomplete="off"></div><div><label>PASSWORD</label><input type="password" id="ex-pass" autocomplete="off" placeholder="••••••••"></div></div>
+    <div><label>USAGE</label><div class="seg" data-u id="ex-use"><button data-v="once">ONCE</button><button data-v="always" class="on">ALWAYS</button><button data-v="off">OFF</button></div></div>
+  </div>
+
+  <div class="pane" id="p-loc">
+    <p class="note">Connector studio: build the interface, the web logic and the local logic. A connector can serve one or several tools. Permissions are declared in the code, per tool, and can never overlap between tools.</p>
+    <div class="two"><div><label>NAME</label><input id="lc-name" placeholder="qubi" maxlength="40"></div><div><label>VERSION</label><input id="lc-ver" value="0.1.0"></div></div>
+    <div><label>DESCRIPTION</label><input id="lc-desc" placeholder="What does this connector do?" maxlength="160"></div>
+    <div><label>DETECTED FROM CODE (TOOLS AND THEIR PERMISSIONS)</label><div class="detect" id="detect"></div><div class="vmsg" id="vmsg"></div></div>
+    <div class="stabs"><button class="stab on" data-s="ui">① INTERFACE</button><button class="stab" data-s="web">② WEB LOGIC</button><button class="stab" data-s="py">③ LOCAL LOGIC</button></div>
+    <div class="spane show" id="s-ui"><p class="note">What the user sees inside Nexus (HTML / CSS).</p><textarea spellcheck="false" id="lc-ui"></textarea></div>
+    <div class="spane" id="s-web"><p class="note">How the interface talks to Nexus and to the local package (JavaScript).</p><textarea spellcheck="false" id="lc-web"></textarea></div>
+    <div class="spane" id="s-py"><p class="note">The Python package that runs in the local bridge. Each <code>@connector.tool</code> declares one tool and the only permissions it gets. Add <code># requires: numpy</code> for extra packages.</p><textarea spellcheck="false" id="pyCode"></textarea></div>
+    <label class="chk"><input type="checkbox" id="lc-share"><span><b>Share with the community.</b> A founder or administrator reviews it before it appears for everybody. Unchecked, the connector stays only on this device.</span></label>
+  </div>
+  <div class="wf"><span class="tag" id="wnote">Credentials never leave this device.</span><div style="flex:1"></div>
+    <button class="btn" style="border-color:var(--b2);color:var(--mu)" id="bC">CANCEL</button>
+    <button class="btn" id="bS" style="border-color:var(--pu);color:var(--pu)">SAVE CONNECTOR</button></div>
+ </div>
+</div>
+
+<!-- local bridge -->
+<div class="ov" id="brOv"><div class="win">
+  <div class="wh"><h3>LOCAL BRIDGE</h3><div style="flex:1"></div><button class="x" data-close="brOv">×</button></div>
+  <div class="pane show" style="display:flex">
+    <p class="note">Local connectors (Bluetooth devices, code that runs on this computer) need a small program running on <b>this computer</b>: the Nexus bridge. It only talks to this website, with a pairing code, and installs connectors only when you ask.</p>
+    <div id="brState" class="vmsg"></div>
+    <div><label>1 · DOWNLOAD AND START IT</label><div class="cmd" id="brCmd"></div><div class="sm" style="margin-top:.4rem"><a id="brDl" href="nexus-bridge/nexus_bridge.py" download style="color:var(--cy)">⬇ nexus_bridge.py</a> · needs Python 3.9 or newer. It prints a pairing code.</div></div>
+    <div class="two"><div><label>2 · ADDRESS</label><input id="brUrl" value="http://127.0.0.1:8765"></div><div><label>PAIRING CODE</label><input id="brTok" placeholder="printed by the bridge" autocomplete="off"></div></div>
+    <div id="brInfo" class="sm"></div>
+  </div>
+  <div class="wf"><div style="flex:1"></div><button class="btn" style="border-color:var(--b2);color:var(--mu)" data-close="brOv">CLOSE</button><button class="btn" id="brGo" style="border-color:var(--cy);color:var(--cy)">PAIR / CHECK</button></div>
+</div></div>
+
+<!-- connector panel -->
+<div class="ov" id="panelOv"><div class="win ovw">
+  <div class="wh"><h3 id="panelTitle">CONNECTOR</h3><div style="flex:1"></div><button class="x" data-close="panelOv">×</button></div>
+  <iframe class="panelframe" id="panelFrame" sandbox="allow-scripts"></iframe>
+</div></div>
+
+<!-- pending approval -->
+<div class="ov" id="pendOv"><div class="win ovw">
+  <div class="wh"><h3>📋 CONNECTORS PENDING APPROVAL</h3><div style="flex:1"></div><button class="x" data-close="pendOv">×</button></div>
+  <div class="pane show" style="display:flex"><div id="pendList"></div></div>
+  <div class="wf"><span class="tag">Approving publishes the connector for the whole community. Read the code first.</span><div style="flex:1"></div><button class="btn" style="border-color:var(--b2);color:var(--mu)" data-close="pendOv">CLOSE</button></div>
+</div></div>
+
+<div class="toast" id="toast"></div>
+
+<script src="nexus-core.js"></script>
+<script>
+(function () {
+'use strict';
+const NC = window.NexusCore, S = NC.Store, T = NC.TOOLS, P = NC.PROVIDERS;
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const U = ['once', 'always', 'off'], UL = ['ONCE', 'ALWAYS', 'OFF'];
+let user = null, isAdm = false, isFounder = false;
+let bridge = { state: 'offline' }, dbState = 'checking', comPub = [], catalog = [], pend = [], editing = null;
+
+/* ───────── small helpers ───────── */
+let toastT;
+function toast(msg, cls) { const t = $('toast'); t.textContent = msg; t.className = 'toast show ' + (cls || ''); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), cls === 'bad' ? 6500 : 3200); }
+const fail = (e) => toast((e && e.message) || String(e), 'bad');
+const founderKey = () => { try { return localStorage.getItem('qcol_repo_founder_key') || ''; } catch (e) { return ''; } };
+const author = () => (user && (user.name || user.username || user.id)) || 'anonymous';
+const toolsTxt = (r) => (r.tools || []).length ? r.tools.map(t => T[t] || t).join(' · ') : 'none';
+const seg = (r) => `<div class="seg" data-id="${r.id}">${U.map((v, j) => `<button data-v="${v}" class="${r.usage === v ? 'on' : ''}">${UL[j]}</button>`).join('')}</div>`;
+const host = (u) => { try { return new URL(u).host; } catch (e) { return u || ''; } };
+const CATS = { quantum: ['Quantum · cloud', '⚛'], classical: ['Classical · remote', '▦'], other: ['Other service', '☁'] };
+const AUTHS = { apikey: 'API key', bearer: 'Bearer token', basic: 'user + password' };
+
+/* ───────── rendering ───────── */
+function permLines(perms) { return Object.keys(perms || {}).map(t => `<div class="tl2"><b>${esc(T[t] || t)}</b> → ${esc(perms[t].join(', '))}</div>`).join(''); }
+function render() {
+  const all = S.all(), ai = all.filter(r => r.kind === 'ai'), ex = all.filter(r => r.kind === 'ext'), lc = all.filter(r => r.kind === 'loc');
+  $('g-ai').innerHTML = ai.map(r => {
+    const pv = P[r.ai.provider] || P.other;
+    return `<div class="card ai" data-id="${r.id}"><div class="cx"><button data-a="test" title="Test connection">⚡</button><button data-a="edit" title="Edit">✎</button><button data-a="del" title="Delete">✕</button></div>
+      <div class="top"><div class="ico">✦</div><div><div class="nm">${esc(r.name)}</div><div class="sub">${esc(pv.label)} · ${esc(r.ai.model || pv.model || '—')}</div></div></div>
+      <div class="chips"><span class="chip k">🔑 ${esc(r.secrets && r.secrets.apiKey ? r.secrets.apiKey.hint : 'no key')}</span>${r.usedAt ? '<span class="chip">used once</span>' : ''}</div>
+      <div class="tl2">tools: <b>${esc(toolsTxt(r))}</b></div>${seg(r)}</div>`;
+  }).join('') || '<div class="empty">No AI connector yet. Use + to add one.</div>';
+  $('g-ext').innerHTML = ex.map(r => {
+    const c = CATS[r.ext.category] || CATS.other;
+    return `<div class="card ext" data-id="${r.id}"><div class="cx"><button data-a="test" title="Test connection">⚡</button><button data-a="edit" title="Edit">✎</button><button data-a="del" title="Delete">✕</button></div>
+      <div class="top"><div class="ico">${c[1]}</div><div><div class="nm">${esc(r.name)}</div><div class="sub">${esc(c[0])} · ${esc(host(r.ext.baseUrl))}</div></div></div>
+      <div class="chips"><span class="chip k">🔐 ${esc(AUTHS[r.ext.auth] || '')}</span><span class="chip">encrypted locally</span>${r.ext.via === 'bridge' ? '<span class="chip">via bridge</span>' : ''}${r.usedAt ? '<span class="chip">used once</span>' : ''}</div>
+      <div class="tl2">tools: <b>${esc(toolsTxt(r))}</b></div>${seg(r)}</div>`;
+  }).join('') || '<div class="empty">No external API yet. Use + to add one.</div>';
+  $('g-loc').innerHTML = lc.map(r => {
+    const L = r.loc, inst = !!L.installed, mine = L.origin === 'private';
+    const shareChip = !mine ? '' : L.share === 'pending' ? '<span class="chip st-wait">pending approval</span>' : L.share === 'published' ? '<span class="chip st-ok">shared</span>' : L.share === 'rejected' ? `<span class="chip st-bad" title="${esc(L.rejectReason || '')}">rejected</span>` : '<span class="chip">only on this device</span>';
+    const org = L.origin === 'official' ? '<span class="chip off">OFFICIAL</span>' : L.origin === 'community' ? '<span class="chip off">COMMUNITY</span>' : '';
+    return `<div class="card loc" data-id="${r.id}"><div class="cx">${mine ? '<button data-a="edit" title="Edit">✎</button>' : ''}<button data-a="del" title="Delete from this device">✕</button></div>
+      <div class="top"><div class="ico">◈</div><div><div class="nm">${esc(r.name)}</div><div class="sub">${esc(L.description || 'Local connector')}</div></div></div>
+      <div class="chips"><span class="chip">v${esc(L.version)}</span>${org}${shareChip}</div>
+      ${permLines(L.perms)}
+      <div class="state"><span class="dot ${inst ? 'on' : ''}"></span><span class="st">${inst ? 'Installed' : 'Not installed'}</span></div>
+      <div class="bar"><i></i></div>
+      <div class="row">${inst ? '<button class="btn g" data-a="open">OPEN</button>' : '<button class="btn p" data-a="install">INSTALL</button>'}
+        ${mine && L.share !== 'pending' && L.share !== 'published' ? '<button class="btn g" data-a="share" title="Send to the community for approval">SHARE</button>' : ''}
+        ${inst ? '<button class="btn g" data-a="uninstall" style="margin-left:auto;opacity:.7" title="Remove from this computer (the code stays here)">REMOVE</button>' : ''}</div></div>`;
+  }).join('') || '<div class="empty">No local connector yet. Create one with + or install one from the community list below.</div>';
+  renderCommunity();
+  $('n-ai').textContent = ai.length; $('n-ext').textContent = ex.length; $('n-loc').textContent = lc.length;
+  $('memBadge').textContent = '● ' + all.length + ' CONNECTION' + (all.length === 1 ? '' : 'S') + ' REMEMBERED';
+}
+function communityItems() {
+  const off = catalog.map(c => ({ key: 'o:' + c.id, id: c.id, origin: 'official', name: c.name, version: c.version, description: c.description, author: 'Nexus', perms: c.perms, entry: c }));
+  const com = comPub.map(c => ({ key: 'c:' + c.id, id: c.id, origin: 'community', name: c.name, version: c.version, description: c.description, author: c.author, perms: c.perms, row: c }));
+  return off.concat(com);
+}
+function renderCommunity() {
+  const items = communityItems(), mine = S.all().filter(r => r.kind === 'loc');
+  $('n-com').textContent = items.length;
+  $('comNote').textContent = dbState === 'ok' ? '' : dbState === 'offline' ? 'community database not reachable — official connectors only' : dbState === 'missing' ? 'database not prepared (run nexus-db.sql)' : '';
+  $('g-com').innerHTML = items.map(it => {
+    const rec = mine.find(r => r.loc.catalogId === it.id), inst = rec && rec.loc.installed;
+    return `<div class="card loc" data-key="${esc(it.key)}">${isAdm && it.origin === 'community' ? '<div class="cx"><button data-a="unpublish" title="Unpublish (founder key)">✕</button></div>' : ''}
+      <div class="top"><div class="ico">◈</div><div><div class="nm">${esc(it.name)}</div><div class="sub">${esc(it.description || '')}</div></div></div>
+      <div class="chips"><span class="chip">v${esc(it.version)}</span><span class="chip off">${it.origin === 'official' ? 'OFFICIAL' : 'COMMUNITY'}</span><span class="chip">by ${esc(it.author || '—')}</span></div>
+      ${permLines(it.perms)}
+      <div class="state"><span class="dot ${inst ? 'on' : ''}"></span><span class="st">${inst ? 'Installed' : rec ? 'Added · not installed' : 'Available'}</span></div>
+      <div class="bar"><i></i></div>
+      <div class="row">${inst ? `<button class="btn g" data-a="copen" data-id="${rec.id}">OPEN</button>` : '<button class="btn p" data-a="cinstall">INSTALL</button>'}</div></div>`;
+  }).join('') || '<div class="empty">Nothing published yet.</div>';
+}
+
+/* ───────── usage selector, card actions ───────── */
+document.addEventListener('click', async (e) => {
+  const sb = e.target.closest('.seg button');
+  if (sb) {
+    const seg = sb.parentElement;
+    seg.querySelectorAll('button').forEach(x => x.classList.remove('on')); sb.classList.add('on');
+    if (seg.dataset.id) S.patch(seg.dataset.id, r => { r.usage = sb.dataset.v; if (sb.dataset.v !== 'off') delete r.usedAt; });
+    return;
+  }
+  const tl = e.target.closest('.tl'); if (tl) { tl.classList.toggle('on'); return; }
+  const b = e.target.closest('[data-a]'); if (!b) return;
+  const card = b.closest('.card'), id = (card && card.dataset.id) || b.dataset.id, a = b.dataset.a;
+  try {
+    if (a === 'del') return await delConnector(id);
+    if (a === 'edit') return await openW(S.get(id));
+    if (a === 'test') return await testConn(id, b);
+    if (a === 'install') return await installLocal(id, card);
+    if (a === 'uninstall') return await uninstallLocal(id);
+    if (a === 'open' || a === 'copen') return await openPanel(id);
+    if (a === 'share') return await shareLocal(id);
+    if (a === 'cinstall') return await installCommunity(card.dataset.key, card);
+    if (a === 'unpublish') return await unpublish(card.dataset.key);
+  } catch (err) { fail(err); }
+});
+
+function delConnector(id) {
+  const r = S.get(id); if (!r) return;
+  const warn = r.kind === 'loc' ? ' The connector code is deleted from this device' + (r.loc.installed ? ' and it is uninstalled from the bridge' : '') + '.' : ' Its saved credentials are erased.';
+  if (!confirm('Delete "' + r.name + '"?' + warn)) return;
+  (async () => { if (r.kind === 'loc' && r.loc.installed) { try { await NC.Installer.uninstall(id); } catch (e) { fail(e); return; } } S.remove(id); })();
+}
+async function testConn(id, btn) {
+  const r = S.get(id); btn.disabled = true; const old = btn.textContent; btn.textContent = '…';
+  try {
+    const o = r.kind === 'ai' ? await NC.ai.test(id) : await NC.ext.test(id);
+    toast('✓ ' + r.name + ' answered in ' + o.ms + ' ms' + (o.status ? ' (HTTP ' + o.status + ')' : ''), 'ok');
+  } catch (e) { fail(e); } finally { btn.disabled = false; btn.textContent = old; }
+}
+
+/* ───────── local connectors: install / remove / open / share ───────── */
+function progress(card) {
+  const bar = card.querySelector('.bar'), i = bar.firstElementChild, st = card.querySelector('.st'), dot = card.querySelector('.dot'); let w = 6;
+  bar.style.display = 'block'; i.style.width = w + '%'; dot.className = 'dot wait';
+  card.querySelectorAll('.btn').forEach(x => x.disabled = true);
+  return { log(l) { w = Math.min(92, w + 9); i.style.width = w + '%'; st.textContent = String(l).slice(0, 70); }, done() { i.style.width = '100%'; } };
+}
+async function installLocal(id, card) {
+  if (bridge.state !== 'ok') { openBridge(); throw new Error(bridge.state === 'offline' ? 'Start the local bridge first' : 'Pair the local bridge first'); }
+  const pr = progress(card);
+  try { await NC.Installer.install(id, (l) => pr.log(l)); pr.done(); toast('✓ Installed', 'ok'); }
+  catch (e) { render(); throw e; }
+}
+async function uninstallLocal(id) { await NC.Installer.uninstall(id); toast('Removed from this computer. The code is still saved here.', 'ok'); }
+async function installCommunity(key, card) {
+  const it = communityItems().find(x => x.key === key); if (!it) return;
+  if (bridge.state !== 'ok') { openBridge(); throw new Error(bridge.state === 'offline' ? 'Start the local bridge first' : 'Pair the local bridge first'); }
+  const pr = progress(card); let rec;
+  try {
+    rec = S.all().find(r => r.kind === 'loc' && r.loc.catalogId === it.id);
+    if (!rec) {
+      let pkg;
+      if (it.origin === 'official') pkg = await NC.Catalog.fetchPackage(it.entry);
+      else { pkg = { ui: it.row.ui, web: it.row.web, py: it.row.py }; if (!(await NC.Community.verify(Object.assign({ hash: it.row.hash }, pkg)))) throw new Error('The downloaded connector does not match its checksum. Not installed.'); }
+      const a = NC.Analyze.python(pkg.py, { strict: it.origin === 'community' });
+      if (!a.ok) throw new Error('Rejected by the safety rules: ' + a.errors.join(' · '));
+      rec = NC.Make.loc({ name: it.name, version: it.version, description: it.description, ui: pkg.ui, web: pkg.web, py: pkg.py, loc: { origin: it.origin, catalogId: it.id, author: it.author } });
+      S.upsert(rec);
+    }
+    await NC.Installer.install(rec.id, (l) => pr.log(l)); pr.done(); toast('✓ ' + it.name + ' installed', 'ok');
+  } catch (e) { render(); throw e; }
+}
+async function shareLocal(id) {
+  const rec = S.get(id); if (!rec) return;
+  if (!(await NC.Community.init())) throw new Error('The community database is not configured on this site');
+  const payload = await NC.Community.prepare(rec, author());
+  await NC.Community.submit(payload);
+  S.patch(id, r => { r.loc.share = 'pending'; r.loc.shareId = payload.id; r.loc.sharedAt = NC.util.now(); r.loc.rejectReason = ''; });
+  toast('Sent for approval. It appears for everybody once a founder or admin publishes it.', 'ok'); refreshPending();
+}
+async function syncShares() {
+  const mine = S.all().filter(r => r.kind === 'loc' && r.loc.share === 'pending' && r.loc.shareId);
+  if (!mine.length || !(await NC.Community.init())) return;
+  try {
+    const rows = await NC.Community.statusOf(mine.map(r => r.loc.shareId));
+    (rows || []).forEach(x => { const r = mine.find(m => m.loc.shareId === x.id); if (!r) return;
+      if (x.status === 'published') S.patch(r.id, q => { q.loc.share = 'published'; });
+      else if (x.status === 'rejected') S.patch(r.id, q => { q.loc.share = 'rejected'; q.loc.rejectReason = x.reason || ''; }); });
+  } catch (e) {}
+}
+
+/* connector panel (sandboxed iframe) */
+const SHIM = `(function(){var pend={},n=0,ls={};window.nexus={call:function(a,args){return new Promise(function(res,rej){var id=++n;pend[id]={res:res,rej:rej};parent.postMessage({nexus:'call',id:id,action:a,args:args||{}},'*')})},on:function(e,cb){(ls[e]=ls[e]||[]).push(cb)}};
+window.addEventListener('message',function(ev){var d=ev.data||{};if(d.nexus==='result'){var p=pend[d.id];if(p){delete pend[d.id];d.ok?p.res(d.result):p.rej(new Error(d.error))}}else if(d.nexus==='event'){(ls[d.event]||[]).forEach(function(f){try{f(d.data)}catch(e){}})}});})();`;
+const PANEL_CSS = 'body{margin:0;padding:16px;background:#050b14;color:#ddeeff;font:14px system-ui,sans-serif}button{background:#0e1d33;color:#ddeeff;border:1px solid #1a3a5c;border-radius:7px;padding:.45rem .8rem;cursor:pointer}button:hover{border-color:#00ffdd}input,select{background:#010608;color:#ddeeff;border:1px solid #1a3a5c;border-radius:7px;padding:.4rem .6rem}pre{background:#010608;border:1px solid #1a3a5c;border-radius:7px;padding:.6rem;overflow:auto;white-space:pre-wrap}h3{margin:.2rem 0 .8rem;color:#00ffdd}';
+let panelRec = null, panelStop = null;
+function openPanel(id) {
+  const rec = S.get(id); if (!rec) return; panelRec = rec;
+  const safe = (s) => String(s || '').replace(/<\/script/gi, '<\\/script');
+  $('panelTitle').textContent = rec.name.toUpperCase();
+  $('panelFrame').srcdoc = '<!doctype html><html><head><meta charset="utf-8"><style>' + PANEL_CSS + '</style></head><body>' + (rec.loc.ui || '') + '<script>' + SHIM + '<\/script><script>' + safe(rec.loc.web) + '<\/script></body></html>';
+  $('panelOv').classList.add('show');
+  if (panelStop) panelStop(); panelStop = NC.loc.events(rec.id, (ev) => { try { $('panelFrame').contentWindow.postMessage({ nexus: 'event', event: ev.event, data: ev.data }, '*'); } catch (e) {} });
+}
+function closePanel() { $('panelOv').classList.remove('show'); $('panelFrame').srcdoc = ''; if (panelStop) { panelStop(); panelStop = null; } panelRec = null; }
+window.addEventListener('message', async (e) => {
+  const d = e.data || {};
+  if (d.nexus === 'call' && e.source === $('panelFrame').contentWindow && panelRec) {
+    const reply = (m) => { try { e.source.postMessage(Object.assign({ nexus: 'result', id: d.id }, m), '*'); } catch (x) {} };
+    try {
+      let tool, action = String(d.action || '');
+      if (action.includes('.')) { [tool, action] = action.split('.'); }
+      else { const t = NC.Analyze.actions(panelRec.loc.py)[action] || []; if (!t.length) throw new Error('Unknown action "' + action + '"'); if (t.length > 1) throw new Error('"' + action + '" exists in several tools; call it as "tool.' + action + '"'); tool = t[0]; }
+      reply({ ok: true, result: await NC.loc.call({ connector: panelRec.id, tool, action, args: d.args }) });
+    } catch (err) { reply({ ok: false, error: err.message }); }
+    return;
+  }
+  // shell → module
+  if (d.type === 'OPENQ_USER' || d.type === 'OPENQ_USER_UPDATE') setUser(d.user);
+});
+
+/* ───────── bridge status + pairing ───────── */
+async function refreshBridge() {
+  bridge = await NC.Bridge.status();
+  const b = $('bBridge');
+  const m = { ok: ['ok', '🔌 BRIDGE · CONNECTED'], unpaired: ['warn', '🔌 BRIDGE · PAIR IT'], offline: ['', '🔌 BRIDGE · OFFLINE'] }[bridge.state];
+  b.className = 'stat ' + m[0]; b.textContent = m[1];
+  if ($('brOv').classList.contains('show')) paintBridge();
+}
+function paintBridge() {
+  const c = NC.Bridge.cfg(); $('brUrl').value = c.url; if (document.activeElement !== $('brTok')) $('brTok').value = c.token;
+  const o = location.origin && location.origin !== 'null' ? ' --origin ' + location.origin : '';
+  $('brCmd').textContent = 'python nexus_bridge.py' + o;
+  const s = $('brState');
+  if (bridge.state === 'ok') { s.className = 'vmsg ok'; s.textContent = '✓ Connected and paired'; const i = bridge.info || {}; $('brInfo').textContent = (i.platform || '') + ' · Python ' + (i.python || '') + ' · Bluetooth: ' + (i.ble && i.ble.available ? 'available' : 'not available' + (i.ble && i.ble.reason ? ' (' + i.ble.reason + ')' : '')); }
+  else if (bridge.state === 'unpaired') { s.className = 'vmsg bad'; s.textContent = bridge.error ? '✗ ' + bridge.error : '✗ Bridge found. Enter its pairing code.'; $('brInfo').textContent = ''; }
+  else { s.className = 'vmsg bad'; s.textContent = '✗ No bridge answers at this address'; $('brInfo').textContent = ''; }
+}
+function openBridge() { $('brOv').classList.add('show'); paintBridge(); }
+$('bBridge').onclick = openBridge;
+$('brGo').onclick = async () => { NC.Bridge.setCfg({ url: $('brUrl').value.trim() || 'http://127.0.0.1:8765', token: $('brTok').value.trim() }); await refreshBridge(); paintBridge(); if (bridge.state === 'ok') toast('✓ Bridge paired', 'ok'); };
+
+/* ───────── community + pending approval ───────── */
+async function loadCommunity() {
+  catalog = await NC.Catalog.load(true).then(c => c.map(x => Object.assign({ perms: x.perms || {} }, x))).catch(() => []);
+  const st = $('stDb');
+  try { comPub = await NC.Community.listPublished(); dbState = 'ok'; st.className = 'stat ok'; st.textContent = '☁ COMMUNITY · ONLINE'; }
+  catch (e) { comPub = []; dbState = e.code === 'db-missing' ? 'missing' : 'offline'; st.className = 'stat ' + (dbState === 'missing' ? 'warn' : 'bad'); st.textContent = dbState === 'missing' ? '☁ COMMUNITY · SETUP NEEDED' : '☁ COMMUNITY · OFFLINE'; }
+  renderCommunity();
+}
+async function refreshPending() {
+  $('bPending').style.display = isAdm ? '' : 'none';
+  if (!isAdm || !founderKey() || dbState !== 'ok') return;
+  try { pend = await NC.Community.listPending(founderKey()) || []; $('bPending').textContent = '📋 PENDING (' + pend.length + ')'; } catch (e) {}
+}
+function codeTabs(it) {
+  return `<div class="rv" data-for="${esc(it.id)}"><button class="on" data-f="py">PYTHON</button><button data-f="web">WEB LOGIC</button><button data-f="ui">INTERFACE</button></div><pre data-pre="${esc(it.id)}">${esc(it.py)}</pre>`;
+}
+async function openPending() {
+  if (!isAdm) return toast('Founders and administrators only', 'bad');
+  if (!founderKey()) return toast('Founder key needed (Projects → founder key) to review and publish', 'bad');
+  $('pendOv').classList.add('show'); $('pendList').innerHTML = '<div class="empty">Loading…</div>';
+  try { pend = await NC.Community.listPending(founderKey()) || []; } catch (e) { $('pendList').innerHTML = ''; return fail(e); }
+  $('bPending').textContent = '📋 PENDING (' + pend.length + ')';
+  const rows = await Promise.all(pend.map(async it => {
+    const a = NC.Analyze.python(it.py, { strict: true }); const okHash = await NC.Community.verify(it);
+    const declared = JSON.stringify(it.perms || {}), actual = JSON.stringify(a.tools);
+    const issues = a.errors.slice(); if (!okHash) issues.push('Checksum does not match the code'); if (declared !== actual) issues.push('Declared permissions differ from the code');
+    return `<div class="item" data-id="${esc(it.id)}"><h4>${esc(it.name)} <span class="sm">v${esc(it.version)} · by ${esc(it.author)} · ${esc(String(it.submitted_at || '').slice(0, 10))}</span></h4>
+      <div class="sm" style="margin:.2rem 0 .4rem">${esc(it.description || '')}</div>
+      ${permLines(a.tools)}${a.requires.length ? `<div class="tl2">packages: <b>${esc(a.requires.join(', '))}</b></div>` : ''}
+      <div class="vmsg ${issues.length ? 'bad' : 'ok'}" style="margin:.4rem 0">${issues.length ? '✗ ' + esc(issues.join(' · ')) : '✓ Safety rules pass · checksum matches'}</div>
+      ${codeTabs(it)}
+      <div class="row" style="margin-top:.5rem"><button class="btn g" data-p="approve" ${issues.length ? 'title="Has issues — you can still approve at your own risk"' : ''}>APPROVE AND PUBLISH</button><button class="btn g" data-p="reject" style="color:var(--rd);border-color:rgba(255,68,102,.5)">REJECT</button></div></div>`;
+  }));
+  $('pendList').innerHTML = rows.join('') || '<div class="empty">📭 No connectors pending approval.</div>';
+}
+$('bPending').onclick = openPending;
+$('pendList').addEventListener('click', async (e) => {
+  const f = e.target.closest('[data-f]');
+  if (f) { const box = f.closest('.rv'), id = box.dataset.for, it = pend.find(x => x.id === id); box.querySelectorAll('button').forEach(x => x.classList.remove('on')); f.classList.add('on'); box.parentElement.querySelector('pre').textContent = it[f.dataset.f] || ''; return; }
+  const p = e.target.closest('[data-p]'); if (!p) return;
+  const id = p.closest('.item').dataset.id, it = pend.find(x => x.id === id), key = founderKey();
+  try {
+    if (p.dataset.p === 'approve') { if (!confirm('Publish "' + it.name + '" for the whole community?')) return; await NC.Community.approve(id, key, author()); toast('✓ Published', 'ok'); }
+    else { const reason = prompt('Reason for rejecting (the author will see it):', ''); if (reason === null) return; await NC.Community.reject(id, key, reason); toast('Rejected', 'ok'); }
+    await openPending(); await loadCommunity(); await syncShares(); render();
+  } catch (err) { fail(err); }
+});
+async function unpublish(key) {
+  const it = communityItems().find(x => x.key === key); if (!it || !confirm('Unpublish "' + it.name + '" from the community?')) return;
+  await NC.Community.remove('published', it.id, founderKey()); toast('Unpublished', 'ok'); await loadCommunity();
+}
+function setUser(u) {
+  user = u || null; isAdm = !!u && (u.role === 'admin' || u.role === 'founder'); isFounder = !!u && u.role === 'founder';
+  refreshPending();
+}
+
+/* ───────── creation / edit window ───────── */
+const ov = $('ov'), colors = { ai: 'var(--pu)', ext: 'var(--gd)', loc: 'var(--cy)' };
+const LOC_DEFAULT = {
+  ui: '<div id="panel">\n  <h3>My connector</h3>\n  <button id="go">Run</button>\n  <pre id="out"></pre>\n</div>',
+  web: "go.onclick = async () => {\n  out.textContent = JSON.stringify(await nexus.call('hello'), null, 2)\n}",
+  py: 'from nexus import connector\n\n@connector.tool("notebook", allow=["file.read"])\nasync def hello(ctx):\n    return {"message": "Hello from this computer", "files": ctx.fs.list()}\n',
+};
+function toolChips(el, sel) { el.innerHTML = Object.keys(T).map(k => `<button type="button" class="tl${(sel || []).includes(k) ? ' on' : ''}" data-tool="${k}">${esc(T[k])}</button>`).join(''); }
+const picked = (el) => [...el.querySelectorAll('.tl.on')].map(b => b.dataset.tool);
+const setUse = (el, v) => el.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === v));
+const getUse = (el) => (el.querySelector('button.on') || {}).dataset.v || 'always';
+function showTab(t) {
+  document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x.dataset.t === t));
+  document.querySelectorAll('.pane').forEach(p => p.classList.toggle('show', p.id === 'p-' + t));
+  $('bS').style.color = $('bS').style.borderColor = colors[t]; updSave();
+}
+function authUI() { const a = $('ex-auth').value; $('ex-secrow').classList.toggle('hide', a === 'basic'); $('ex-userrow').classList.toggle('hide', a !== 'basic'); $('ex-hdrrow').firstElementChild.classList.toggle('hide', a !== 'apikey'); }
+function provUI() { const o = $('ai-prov').value === 'other'; $('ai-urlrow').hidden = !o; $('ai-model').placeholder = o ? 'model name (required)' : (P[$('ai-prov').value].model + ' (default)'); }
+function resetForms() {
+  ['ai-name', 'ai-model', 'ai-url', 'ai-key', 'ex-name', 'ex-url', 'ex-secret', 'ex-hdr', 'ex-user', 'ex-pass', 'lc-name', 'lc-desc'].forEach(i => $(i).value = '');
+  $('ai-prov').value = 'deepseek'; $('ex-cat').value = 'quantum'; $('ex-auth').value = 'apikey'; $('ex-via').value = 'auto'; $('lc-ver').value = '0.1.0';
+  toolChips($('ai-tools'), []); toolChips($('ex-tools'), []); setUse($('ai-use'), 'always'); setUse($('ex-use'), 'always');
+  $('lc-ui').value = LOC_DEFAULT.ui; $('lc-web').value = LOC_DEFAULT.web; $('pyCode').value = LOC_DEFAULT.py; $('lc-share').checked = false; $('lc-share').disabled = false;
+  document.querySelectorAll('.tab').forEach(x => x.classList.remove('dis'));
+  provUI(); authUI(); analyze();
+}
+function openW(rec) {
+  resetForms(); editing = rec || null; $('wTitle').textContent = rec ? 'EDIT CONNECTOR' : 'NEW CONNECTOR'; $('bS').textContent = rec ? 'SAVE CHANGES' : 'SAVE CONNECTOR';
+  if (rec) {
+    document.querySelectorAll('.tab').forEach(x => x.classList.toggle('dis', x.dataset.t !== rec.kind));
+    if (rec.kind === 'ai') { $('ai-name').value = rec.name; $('ai-prov').value = rec.ai.provider; $('ai-model').value = rec.ai.model; $('ai-url').value = rec.ai.baseUrl; $('ai-key').placeholder = 'saved — leave empty to keep it'; toolChips($('ai-tools'), rec.tools); setUse($('ai-use'), rec.usage); provUI(); }
+    if (rec.kind === 'ext') { $('ex-name').value = rec.name; $('ex-cat').value = rec.ext.category; $('ex-url').value = rec.ext.baseUrl; $('ex-auth').value = rec.ext.auth; $('ex-hdr').value = rec.ext.headerName; $('ex-via').value = rec.ext.via; $('ex-secret').placeholder = $('ex-user').placeholder = $('ex-pass').placeholder = 'saved — leave empty to keep it'; toolChips($('ex-tools'), rec.tools); setUse($('ex-use'), rec.usage); authUI(); }
+    if (rec.kind === 'loc') { $('lc-name').value = rec.name; $('lc-ver').value = rec.loc.version; $('lc-desc').value = rec.loc.description || ''; $('lc-ui').value = rec.loc.ui; $('lc-web').value = rec.loc.web; $('pyCode').value = rec.loc.py; analyze(); }
+    showTab(rec.kind);
+  } else { $('ai-key').placeholder = 'paste your key'; showTab('ai'); }
+  $('lc-share').checked = false; $('lc-share').disabled = !!(rec && rec.kind === 'loc' && (rec.loc.share === 'pending' || rec.loc.share === 'published'));
+  ov.classList.add('show');
+}
+function closeW() { ov.classList.remove('show'); editing = null; }
+function analyze() {
+  const r = NC.Analyze.python($('pyCode').value);
+  $('detect').innerHTML = Object.keys(r.tools).length ? Object.keys(r.tools).map(n => `<div class="ln"><span class="tn">${esc(n)}</span>${r.tools[n].map(p => `<span class="chip k" title="${esc(NC.PERMS[p] || 'unknown permission')}">${esc(p)}</span>`).join('')}</div>`).join('') : '<div class="ln" style="color:var(--mu)">No tool declared yet</div>';
+  const v = $('vmsg'), n = Object.keys(r.tools).length;
+  if (!r.ok) { v.className = 'vmsg bad'; v.textContent = '✗ ' + r.errors[0] + (r.errors.length > 1 ? ' (+' + (r.errors.length - 1) + ' more)' : ''); }
+  else { v.className = 'vmsg ok'; v.textContent = '✓ ' + n + ' tool' + (n > 1 ? 's' : '') + ' · permissions do not overlap'; }
+  updSave(); return r;
+}
+function updSave() { const t = (document.querySelector('.tab.on') || {}).dataset; $('bS').disabled = !!t && t.t === 'loc' && $('vmsg').classList.contains('bad'); }
+async function save() {
+  const t = document.querySelector('.tab.on').dataset.t, old = editing;
+  try {
+    if (t === 'ai') {
+      const name = $('ai-name').value.trim(), prov = $('ai-prov').value, key = $('ai-key').value.trim(), tools = picked($('ai-tools'));
+      if (!name) throw new Error('Give the connector a name');
+      if (prov === 'other' && !/^https:\/\//i.test($('ai-url').value.trim())) throw new Error('The compatible URL must start with https://');
+      if (prov === 'other' && !$('ai-model').value.trim()) throw new Error('Other providers need a model name');
+      if (!old && !key) throw new Error('Paste the API key');
+      if (!tools.length) throw new Error('Choose at least one tool');
+      S.upsert(await NC.Make.ai({ id: old && old.id, createdAt: old && old.createdAt, name, provider: prov, model: $('ai-model').value.trim(), baseUrl: $('ai-url').value.trim(), apiKey: key, secrets: old ? old.secrets : {}, tools, usage: getUse($('ai-use')) }));
+    } else if (t === 'ext') {
+      const name = $('ex-name').value.trim(), url = $('ex-url').value.trim(), auth = $('ex-auth').value, tools = picked($('ex-tools'));
+      if (!name) throw new Error('Give the connector a name');
+      if (!/^https:\/\//i.test(url)) throw new Error('The base URL must start with https://');
+      const has = (k) => old && old.secrets && old.secrets[k];
+      if (auth === 'basic') { if (!($('ex-user').value.trim() || has('user')) || !($('ex-pass').value || has('pass'))) throw new Error('Enter the username and the password'); }
+      else if (!($('ex-secret').value || has('secret'))) throw new Error('Enter the secret');
+      if (!tools.length) throw new Error('Choose at least one tool');
+      S.upsert(await NC.Make.ext({ id: old && old.id, createdAt: old && old.createdAt, name, category: $('ex-cat').value, baseUrl: url, auth, headerName: $('ex-hdr').value.trim(), via: $('ex-via').value, secret: $('ex-secret').value, user: $('ex-user').value.trim(), pass: $('ex-pass').value, secrets: old ? old.secrets : {}, tools, usage: getUse($('ex-use')) }));
+    } else {
+      const a = analyze(); if (!a.ok) throw new Error(a.errors[0]);
+      const name = $('lc-name').value.trim(), ver = $('lc-ver').value.trim();
+      if (!name) throw new Error('Give the connector a name');
+      if (!/^\d+\.\d+\.\d+$/.test(ver)) throw new Error('Version must look like 0.1.0');
+      const f = { id: old && old.id, createdAt: old && old.createdAt, name, version: ver, description: $('lc-desc').value.trim(), ui: $('lc-ui').value, web: $('lc-web').value, py: $('pyCode').value };
+      const rec = NC.Make.loc(f);
+      if (old) {
+        const changed = old.loc.py !== rec.loc.py || old.loc.ui !== rec.loc.ui || old.loc.web !== rec.loc.web || old.loc.version !== rec.loc.version;
+        rec.loc = Object.assign({}, old.loc, { version: rec.loc.version, description: rec.loc.description, ui: rec.loc.ui, web: rec.loc.web, py: rec.loc.py, perms: rec.loc.perms, requires: rec.loc.requires });
+        if (changed) { if (old.loc.installed) rec.loc.installed = false; if (old.loc.share !== 'none') { rec.loc.share = 'none'; } }
+        if (changed && old.loc.installed) toast('Saved. Install it again to apply the changes.', 'ok');
+      }
+      S.upsert(rec);
+      if ($('lc-share').checked) { try { await shareLocal(rec.id); } catch (e) { fail(e); } }
+    }
+    closeW();
+  } catch (e) { fail(e); }
+}
+$('bAdd').onclick = () => openW(); $('bX').onclick = closeW; $('bC').onclick = closeW; $('bS').onclick = save;
+ov.onclick = (e) => { if (e.target === ov) closeW(); };
+document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => { const id = b.dataset.close; if (id === 'panelOv') closePanel(); else $(id).classList.remove('show'); });
+['brOv', 'pendOv', 'panelOv'].forEach(i => $(i).addEventListener('click', (e) => { if (e.target === $(i)) { if (i === 'panelOv') closePanel(); else $(i).classList.remove('show'); } }));
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeW(); closePanel(); $('brOv').classList.remove('show'); $('pendOv').classList.remove('show'); } });
+document.querySelectorAll('.tab').forEach(t => t.onclick = () => { if (!editing) showTab(t.dataset.t); });
+document.querySelectorAll('.stab').forEach(t => t.onclick = () => { document.querySelectorAll('.stab').forEach(x => x.classList.remove('on')); t.classList.add('on'); document.querySelectorAll('.spane').forEach(p => p.classList.remove('show')); $('s-' + t.dataset.s).classList.add('show'); });
+$('pyCode').addEventListener('input', analyze); $('ai-prov').onchange = provUI; $('ex-auth').onchange = authUI;
+const st = document.createElement('style'); st.textContent = '#p-ai .seg button.on{background:var(--pu)}#p-ext .seg button.on{background:var(--gd)}'; document.head.appendChild(st);
+
+/* ───────── start ───────── */
+S.subscribe(render);
+resetForms(); render();
+try { if (window.parent !== window) parent.postMessage({ type: 'OPENQ_GET_USER' }, '*'); } catch (e) {}
+refreshBridge(); setInterval(() => { if (!document.hidden) refreshBridge(); }, 10000);
+loadCommunity().then(async () => { await syncShares(); await refreshPending(); });
+setInterval(() => { if (!document.hidden) { syncShares(); refreshPending(); } }, 60000);
+window.NexusModule = { render, openW, save, analyze, refreshBridge, loadCommunity, openPending, setUser, _state: () => ({ user, isAdm, bridge, dbState, comPub, catalog, pend }) };
+})();
+</script>
+</body>
+</html>

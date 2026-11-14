@@ -334,6 +334,7 @@ body::before{content:'';position:fixed;inset:0;
   </div>
   <div class="hdr-right">
     <div id="hdr-engine-badge" style="display:none;padding:.22rem .55rem;background:rgba(0,255,136,.08);border:1px solid rgba(0,255,136,.3);border-radius:4px;font-family:var(--orb);font-size:.46rem;color:var(--gr);">● COMPILER</div>
+    <button class="hbtn" id="hdr-sources" onclick="OpenQ.openSources()" title="Choose where the AI and each module's APIs come from: the founder defaults or your own Nexus connectors">🔌 SOURCES</button>
     <button class="hbtn ai-btn" onclick="OpenQ.toggleAI()">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" style="vertical-align:middle;">
         <circle cx="12" cy="12" r="10" stroke="#00ffdd" stroke-width="1.4"/>
@@ -383,6 +384,18 @@ body::before{content:'';position:fixed;inset:0;
         <label class="ai-opt" title="Share what you are doing (screen, code, last output) with the assistant so it can advise you"><input type="checkbox" id="ai-opt-ctx" onchange="OpenQ.aiOpt('ctx',this.checked)"> 👁 Context</label>
         <label class="ai-opt" title="Let the assistant apply its suggested actions without asking (it can change code and run it)"><input type="checkbox" id="ai-opt-auto" onchange="OpenQ.aiOpt('auto',this.checked)"> ⚡ Auto</label>
       </span>
+    </div>
+  </div>
+</div>
+
+<div class="modal-ov" id="src-modal" onclick="if(event.target===this)OpenQ.closeSources()">
+  <div class="modal" style="width:min(560px,94vw);max-height:86vh;overflow:auto;">
+    <div class="modal-title">API SOURCES</div>
+    <div class="modal-sub">Each tool reads its APIs from the <b>founder defaults</b> or from <b>your own Nexus connectors</b>. This choice is saved on this device only.</div>
+    <div id="src-body"></div>
+    <div style="display:flex;gap:.6rem;margin-top:1.1rem;justify-content:space-between;">
+      <button class="hbtn" onclick="OpenQ.closeSources();OpenQ.nav('nexus')">Manage connectors →</button>
+      <button class="hbtn" onclick="OpenQ.closeSources()">Close</button>
     </div>
   </div>
 </div>
@@ -665,6 +678,18 @@ body::before{content:'';position:fixed;inset:0;
     </div>
   </div>
 
+  <!-- MODULE: NEXUS (connectors) -->
+  <div class="screen" id="screen-nexus">
+    <div class="screen-hdr">
+      <button class="btn-back" onclick="OpenQ.nav('home')">← MENU</button>
+      <div class="screen-title">🔌 NEXUS</div>
+      <button class="hbtn" onclick="OpenQ.openSources()">🔌 SOURCES</button>
+    </div>
+    <div class="module-iframe-wrap" id="nexus-wrap">
+      <div id="nexus-ph"></div>
+    </div>
+  </div>
+
 </div>
 
 <script>
@@ -896,6 +921,7 @@ class OpenQConfigSyncReader {
 })();
 </script>
 
+<script src="nexus-core.js"></script>
 <script type="module">
   import { EditorView, basicSetup } from 'codemirror';
   import { markdown } from '@codemirror/lang-markdown';
@@ -915,6 +941,7 @@ class OpenQConfigSyncReader {
     founder:        'qcol-founder.html',
     help:           'qcol-help.html',
     'quantum-puzzle':'qcol-quantum-puzzle.html',
+    nexus:          'qcol-nexus.html',
   };
 
   let curUser = null;
@@ -1118,6 +1145,7 @@ class OpenQConfigSyncReader {
       return;
     }
 
+    if (d.type === 'OPENQ_API_REGISTER' || d.type === 'OPENQ_GET_API_ROUTES' || d.type === 'OPENQ_AI_CHAT' || d.type === 'OPENQ_API_REQUEST') { handleModuleMsg(e, d); return; }
     if (d.type === 'OPENQ_NAV')          nav(d.screen);
     if (d.type === 'OPENQ_NOTIFY')       notify(d.msg);
     if (d.type === 'OPENQ_LOGIN')        openAuth('login');
@@ -1542,7 +1570,7 @@ class OpenQConfigSyncReader {
     const parts = raw.split('/').filter(Boolean);
     const head = parts[0].toLowerCase().replace(/_/g, '-');
     const alias = { notebook: 'architect-pro', 'quantum-notebook': 'architect-pro',
-                    puzzle: 'quantum-puzzle', apps: 'quantum-puzzle', app: 'quantum-puzzle' };
+                    puzzle: 'quantum-puzzle', apps: 'quantum-puzzle', app: 'quantum-puzzle', connectors: 'nexus' };
     let screen = alias[head] || head;
     if (!MODULES[screen] && screen !== 'home') return;
     if (NO_LINK.includes(screen)) { _setHash(''); return; }   // founder / account: nunca por enlace
@@ -1599,6 +1627,7 @@ class OpenQConfigSyncReader {
       account:        { icon:'👤', title:'MY ACCOUNT',              desc:'Your profile and saved circuits.' },
       founder:        { icon:'👑', title:'FOUNDER PANEL',         desc:'Ecosystem configuration and management.' },
       help:           { icon:'❓', title:'HELP',                  desc:'Ecosystem usage guide.' },
+      nexus:          { icon:'🔌', title:'NEXUS',                 desc:'Your connectors: AI keys, external APIs and local connectors.' },
       'quantum-puzzle':{ icon:'🧩', title:'QUANTUM PUZZLE',        desc:'Quantum app store: run real programs on the compiler without installation.' },
     };
     const i = info[screen] || { icon:'📦', title:'MODULE', desc:'' };
@@ -1727,6 +1756,18 @@ class OpenQConfigSyncReader {
         desc:'Quantum app store: run real programs on the compiler without installation. Create, share and run your own experiments.',
         delay:.4, show:true,
       },
+      {
+        screen:'nexus',
+        icon:`<svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="12" r="3" stroke="#00ffdd" stroke-width="1.6"/>
+          <circle cx="4.5" cy="5" r="1.8" stroke="#00ffdd" stroke-width="1.3"/><circle cx="19.5" cy="5" r="1.8" stroke="#00ffdd" stroke-width="1.3"/>
+          <circle cx="4.5" cy="19" r="1.8" stroke="#00ffdd" stroke-width="1.3"/><circle cx="19.5" cy="19" r="1.8" stroke="#00ffdd" stroke-width="1.3"/>
+          <path d="M6 6.2l4 3.8M18 6.2l-4 3.8M6 17.8l4-3.8M18 17.8l-4-3.8" stroke="#00ffdd" stroke-width="1.2" stroke-linecap="round"/>
+        </svg>`,
+        title:'🔌 NEXUS', badge:'badge-new', badgeTxt:'CONNECTORS',
+        desc:'Your connector hub: AI keys, external APIs and local connectors that give the ecosystem access to your own devices.',
+        delay:.45, show:true,
+      },
     ];
 
     document.getElementById('menu-grid').innerHTML = cards.filter(c => c.show).map(c => {
@@ -1853,9 +1894,10 @@ class OpenQConfigSyncReader {
     const dot = document.getElementById('ai-sdot');
     const txt = document.getElementById('ai-stxt');
     const lbl = document.getElementById('ai-prov-lbl');
-    if (aiCfg.key && aiCfg.provider !== 'none') {
+    const nx = aiNexusRec();
+    if (nx || (aiCfg.key && aiCfg.provider !== 'none')) {
       if (dot) dot.className = 'ai-status-dot ok';
-      if (txt) txt.textContent = 'Quantum assistant active';
+      if (txt) txt.textContent = nx ? 'Quantum assistant · Nexus: ' + nx.name : 'Quantum assistant active';
       if (lbl) lbl.textContent = '';
     } else {
       if (dot) dot.className = 'ai-status-dot';
@@ -2019,7 +2061,7 @@ CONTEXT: ${c}`;
 
     let reply = '';
 
-    if (aiCfg.key && aiCfg.provider !== 'none') {
+    if (aiReady()) {
       try {
         const ctx = await gatherAIContext();
         const resp0 = await callAI(msg, ctx);
@@ -2066,6 +2108,126 @@ CONTEXT: ${c}`;
     }
   }
 
+  // ═══════════════ NEXUS: de dónde sale la IA y cada API ═══════════════
+  // Regla: todas las APIs (menos la IA) pasan por los conectores Nexus del usuario o usan el valor por defecto del fundador.
+  // La IA se elige aquí, en el índice: IA del fundador o un conector de IA de Nexus. Las claves nunca salen del Vault de Nexus.
+  const NXC = () => window.NexusCore || null;
+  const AI_SRC_KEY = 'openq_ai_source';          // 'founder' | 'nexus:<id>'
+  const API_KEY = 'openq_api_routes';            // { 'modulo.slot': 'founder' | 'nexus:<id>' }
+  const TOOL_OF = { architect: 'open_lab', 'architect-pro': 'notebook', 'quantum-puzzle': 'apps', 'app-studio': 'app_studio' };
+  const lsGet = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : v; } catch (e) { return d; } };
+  const lsJson = (k) => { try { return JSON.parse(localStorage.getItem(k) || '{}') || {}; } catch (e) { return {}; } };
+  const aiSource = () => lsGet(AI_SRC_KEY, 'founder');
+  function aiNexusRec() { const sv = aiSource(); if (sv.indexOf('nexus:') !== 0 || !NXC()) return null; const r = NXC().Store.get(sv.slice(6)); return r && r.kind === 'ai' ? r : null; }
+  const aiFounderReady = () => !!(aiCfg.key && aiCfg.provider !== 'none');
+  const aiReady = () => !!aiNexusRec() || aiFounderReady();
+  function setAISource(v) { try { localStorage.setItem(AI_SRC_KEY, v); } catch (e) {} setupAI(); renderSources(); }
+
+  async function aiComplete(msgs, o) {
+    o = o || {};
+    const rec = aiNexusRec();
+    if (rec) {
+      try {
+        const r = await NXC().ai.chat({ tool: o.tool || 'chat', connector: rec.id, messages: msgs, max_tokens: o.tokens, temperature: o.temp });
+        return r.text;
+      } catch (e) {
+        // conector apagado / no habilitado para esta herramienta → se usa el del fundador si existe; cualquier otro error se muestra
+        if (!(e && e.code === 'no-connector')) throw e;
+        if (!aiFounderReady()) throw new Error(e.message + '. Turn it ON for this tool in Nexus, or choose the founder default in 🔌 SOURCES.');
+        console.warn('Nexus AI connector not available for', o.tool, '→ founder default');
+      }
+    }
+    if (!aiFounderReady()) throw new Error('No AI available: choose a source in 🔌 SOURCES.');
+    return aiFounderComplete(msgs, o.temp || 0.7, o.tokens || 1200, o.sys || '');
+  }
+
+  // Espacios de API por módulo. Cada módulo puede registrar los suyos (OPENQ_API_REGISTER).
+  const apiSlots = {
+    'architect.engine':       { label: 'Quantum Open Lab · compiler engine', founder: 'engine' },
+    'architect-pro.engine':   { label: 'Quantum Notebook · compiler engine', founder: 'engine' },
+    'quantum-puzzle.engine':  { label: 'Quantum Puzzle · compiler engine',   founder: 'engine' },
+  };
+  function moduleOf(win) { return Object.keys(iframes).find(k => iframes[k] && iframes[k].contentWindow === win) || null; }
+  function founderBase(key) { const f = (apiSlots[key] || {}).founder; if (f === 'engine') return lsGet('openq_colab_url', ''); return /^https:\/\//i.test(f || '') ? f : ''; }
+  function apiRoute(key) {
+    const v = lsJson(API_KEY)[key] || 'founder';
+    if (v.indexOf('nexus:') === 0 && NXC()) { const r = NXC().Store.get(v.slice(6)); if (r && r.kind === 'ext') return { source: 'nexus', rec: r }; }
+    return { source: 'founder' };
+  }
+  function setApiRoute(key, v) { const m = lsJson(API_KEY); if (v === 'founder') delete m[key]; else m[key] = v; try { localStorage.setItem(API_KEY, JSON.stringify(m)); } catch (e) {} renderSources(); broadcast({ type: 'OPENQ_API_ROUTES_CHANGED' }); }
+  function routesFor(mod) {
+    const out = {};
+    Object.keys(apiSlots).filter(k => k.indexOf(mod + '.') === 0).forEach(k => { const r = apiRoute(k); out[k.slice(mod.length + 1)] = { source: r.source, name: r.rec ? r.rec.name : 'Founder default', label: apiSlots[k].label }; });
+    return out;
+  }
+  async function handleModuleMsg(e, d) {
+    const mod = moduleOf(e.source); if (!mod) return;
+    const reply = (m) => { try { e.source.postMessage(m, '*'); } catch (x) {} };
+    if (d.type === 'OPENQ_API_REGISTER') {
+      const slot = String(d.slot || '').replace(/[^\w-]/g, '').slice(0, 40); if (!slot) return;
+      const f = d.founder === 'engine' || /^https:\/\//i.test(d.founder || '') ? d.founder : '';
+      apiSlots[mod + '.' + slot] = { label: String(d.label || (mod + ' · ' + slot)).slice(0, 80), founder: f };
+      renderSources(); reply({ type: 'OPENQ_API_ROUTES', routes: routesFor(mod) }); return;
+    }
+    if (d.type === 'OPENQ_GET_API_ROUTES') { reply({ type: 'OPENQ_API_ROUTES', routes: routesFor(mod) }); return; }
+    if (d.type === 'OPENQ_AI_CHAT') {
+      try {
+        const m = Array.isArray(d.messages) ? d.messages.slice(0, 40) : [];
+        if (!m.length || !m.every(x => x && typeof x.content === 'string' && ['system', 'user', 'assistant'].includes(x.role) && x.content.length < 60000)) throw new Error('Bad messages');
+        const text = await aiComplete(m, { tool: TOOL_OF[mod] || 'chat', temp: d.temperature, tokens: d.max_tokens });
+        reply({ type: 'OPENQ_AI_RESULT', id: d.id, ok: true, text, source: aiNexusRec() ? 'nexus' : 'founder' });
+      } catch (err) { reply({ type: 'OPENQ_AI_RESULT', id: d.id, ok: false, error: (err && err.message) || String(err) }); }
+      return;
+    }
+    if (d.type === 'OPENQ_API_REQUEST') {
+      const key = mod + '.' + String(d.slot || '');
+      try {
+        if (!apiSlots[key]) throw new Error('Unknown API slot "' + d.slot + '" (register it first)');
+        const rt = apiRoute(key), method = String(d.method || 'GET').toUpperCase();
+        if (rt.source === 'nexus') {
+          const r = await NXC().ext.request({ tool: TOOL_OF[mod] || 'chat', connector: rt.rec.id, path: d.path || '', method, headers: d.headers, body: d.body, timeout: d.timeout });
+          reply({ type: 'OPENQ_API_RESULT', id: d.id, ok: true, status: r.status, headers: r.headers, text: r.text, source: 'nexus' });
+        } else {
+          const base = founderBase(key); if (!base) throw new Error('The founder has not configured a default for this API');
+          const b = new URL(base); const u = new URL(String(d.path || ''), b.href.endsWith('/') ? b.href : b.href + '/');
+          if (u.origin !== b.origin) throw new Error('Path leaves the configured API address');
+          const r = await fetch(u.href, { method, headers: d.headers || {}, body: d.body && typeof d.body === 'object' ? JSON.stringify(d.body) : d.body || undefined, signal: AbortSignal.timeout(d.timeout || 30000) });
+          const hs = {}; r.headers.forEach((v, k) => hs[k] = v);
+          reply({ type: 'OPENQ_API_RESULT', id: d.id, ok: true, status: r.status, headers: hs, text: await r.text(), source: 'founder' });
+        }
+      } catch (err) { reply({ type: 'OPENQ_API_RESULT', id: d.id, ok: false, error: (err && err.message) || String(err) }); }
+    }
+  }
+
+  // Diálogo 🔌 SOURCES
+  const esc2 = (t) => String(t == null ? '' : t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  function renderSources() {
+    const box = document.getElementById('src-body'); if (!box) return;
+    const nx = NXC(), ais = nx ? nx.Store.byKind('ai') : [], exs = nx ? nx.Store.byKind('ext') : [];
+    const fprov = aiFounderReady() ? (aiCfg.provider || 'configured') : 'not configured';
+    const row = (label, sub, id, val, opts) => `<div style="padding:.7rem .8rem;border:1px solid var(--b2);border-radius:10px;margin-bottom:.55rem;">
+      <div style="font-size:.74rem;color:var(--tx,#ddeeff);">${label}</div><div style="font-size:.6rem;color:var(--mu);margin:.15rem 0 .45rem;">${sub}</div>
+      <select id="${id}" style="width:100%;background:var(--bg,#050b14);color:inherit;border:1px solid var(--b2);border-radius:7px;padding:.4rem;">${opts}</select></div>`;
+    const sel = (v, cur) => v === cur ? ' selected' : '';
+    const aiCur = aiNexusRec() ? aiSource() : 'founder';
+    let h = row('🤖 AI · QuantumChat and every module', 'Founder default: ' + esc2(fprov) + '. A Nexus AI connector must be enabled for the tool that asks (ONCE / ALWAYS).', 'src-ai', aiCur,
+      '<option value="founder"' + sel('founder', aiCur) + '>Founder default</option>' + ais.map(r => `<option value="nexus:${r.id}"${sel('nexus:' + r.id, aiCur)}>Nexus · ${esc2(r.name)} (${esc2(r.usage)})</option>`).join(''));
+    const keys = Object.keys(apiSlots);
+    keys.forEach((k, i) => {
+      const cur = (lsJson(API_KEY)[k] && apiRoute(k).source === 'nexus') ? lsJson(API_KEY)[k] : 'founder';
+      const fb = founderBase(k);
+      h += row('🔗 ' + esc2(apiSlots[k].label), 'Founder default: ' + (fb ? esc2(new URL(fb).host) : 'not configured'), 'src-api-' + i, cur,
+        '<option value="founder"' + sel('founder', cur) + '>Founder default</option>' + exs.map(r => `<option value="nexus:${r.id}"${sel('nexus:' + r.id, cur)}>Nexus · ${esc2(r.name)} (${esc2(r.usage)})</option>`).join(''));
+    });
+    if (!ais.length && !exs.length) h += '<div style="font-size:.62rem;color:var(--mu);">You have no connectors yet. Add them in Nexus and they will appear here.</div>';
+    box.innerHTML = h;
+    const a = document.getElementById('src-ai'); if (a) a.onchange = () => setAISource(a.value);
+    keys.forEach((k, i) => { const el = document.getElementById('src-api-' + i); if (el) el.onchange = () => setApiRoute(k, el.value); });
+  }
+  function openSources() { renderSources(); document.getElementById('src-modal').classList.add('open'); }
+  function closeSources() { document.getElementById('src-modal').classList.remove('open'); }
+  try { NXC() && NXC().Store.subscribe(() => { renderSources(); setupAI(); }); } catch (e) {}
+
   async function callAI(msg, ctx) {
     const temp   = aiCfg.temp   || 0.7;
     const tokens = Math.max(aiCfg.tokens || 600, 1200);
@@ -2079,6 +2241,12 @@ CONTEXT: ${c}`;
       ...aiHistory.slice(-6),
       { role:'user', content:msg },
     ];
+    return aiComplete(msgs, { tool: 'chat', temp, tokens, sys });
+  }
+
+  // Proveedor por defecto del fundador (openq_ai / qcol_ai)
+  async function aiFounderComplete(msgs, temp, tokens, sys) {
+    if (!sys) sys = ((msgs || []).find(m => m.role === 'system') || {}).content || '';
     const endpoints = {
       mistral:     'https://api.mistral.ai/v1/chat/completions',
       groq:        'https://api.groq.com/openai/v1/chat/completions',
@@ -2261,6 +2429,7 @@ CONTEXT: ${c}`;
   return { 
     nav, toggleShare, share, shareScreen, addShortcut, aiOpt, openAuth, closeAuth, doLogin, doRegister, doFounder, doLogout,
     toggleAI, sendAI, notify, init, getUser:()=>curUser,
+    openSources, closeSources, setAISource, setApiRoute,
     _refreshUI: refreshUIFromConfig,
     _broadcastConfig: broadcastConfigToModules
   };
