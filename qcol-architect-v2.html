@@ -1623,11 +1623,7 @@ async function initPyodide() {
     try {
         pyodide = await loadPyodide();
         await pyodide.runPythonAsync(QISKIT_MOCK_CODE);
-        await pyodide.loadPackage('numpy');
-        await pyodide.loadPackage('scipy');
-        await pyodide.loadPackage('matplotlib');
-        await pyodide.loadPackage('pandas');
-        await pyodide.loadPackage('scikit-learn');
+        await pyodide.loadPackage('numpy');   // solo numpy al arrancar; scipy/matplotlib/pandas/sklearn se cargan SOLO si el código los importa
         await injectIgnoredAttrsIntoPython(pyodide);
         out.innerHTML = '<span class="ok">✅ Pyodide ready</span>\n';
         notify('✅ Pyodide ready');
@@ -1741,13 +1737,31 @@ function _blockText(o) {
   }
   return { label: String(o.n), sub: '', tip: 'Gate "' + o.n + '" has no visual symbol — edit it in the code' };
 }
+// ── LÍMITES DEL LIENZO: 20 qubits y 150 puertas. Si el código los supera NO se dibuja nada (un dibujo parcial sería falso) ──
+function qcolOverLimit(nq, nGates) {
+  const r = [];
+  if (nq > MAX_QUBITS) r.push(`${nq} qubits (max ${MAX_QUBITS})`);
+  if (nGates > MAX_GATES) r.push(`${nGates} gates (max ${MAX_GATES})`);
+  return r.length ? r.join(' and ') : null;
+}
+function qcolCountGates(ops) { return (ops || []).filter(o => { const n = String(o.n || o.d || ''); return n !== 'measure' && n !== 'barrier' && n !== 'delay'; }).length; }
+function qcolRefuse(why, out) {
+  circuit.gates = [];
+  circuit.qubits = Math.max(2, Math.min(circuit.qubits, MAX_QUBITS));
+  _pyStruct = null; _pyStructCode = '';
+  renderCircuit(); updateCircuitInfo();
+  const msg = `⛔ Visual circuit disabled: your code uses ${why}. Reduce it to ≤ ${MAX_QUBITS} qubits and ≤ ${MAX_GATES} gates to see the diagram (the code itself is untouched).`;
+  notify(msg, 7000);
+  if (out) out.innerHTML += `<span class="er">${escapeHtml(msg)}</span>\n`;
+  const b = document.getElementById('qcount-badge'); if (b) b.textContent = `⛔ over limit: ${why}`;
+  return true;
+}
 // ops -> puertas del lienzo (las desconocidas / compuestas se dibujan como BLOQUE, nunca como una H falsa)
 function qcolOpsToGates(ops) {
   const gates = [];
   for (const o of ops) {
     const real = String(o.n || '');
     if (real === 'barrier' || real === 'delay') continue;
-    if (gates.length >= MAX_GATES) break;
     const qs = (o.q || []).filter(q => Number.isInteger(q) && q >= 0);
     if (!qs.length) continue;
     const uid = nextId++;
@@ -1770,6 +1784,7 @@ function qcolApplyStruct(struct, opts) {
   opts = opts || {};
   let ops = (struct.ops || []).slice();
   if (opts.dropMeasures) ops = ops.filter(o => o.n !== 'measure');
+  { const _w = qcolOverLimit(Math.max(struct.nq || 1, ...ops.flatMap(o => (o.q || []).map(q => q + 1)), 1), qcolCountGates(ops)); if (_w) { qcolRefuse(_w, document.getElementById('out-body')); return false; } }
   circuit.qubits = Math.max(1, Math.min(struct.nq || 1, MAX_QUBITS));
   circuit.gates = normalizeMeasurements(qcolOpsToGates(ops));
   const req = computeRequiredQubits(); if (req > circuit.qubits) circuit.qubits = req;
@@ -1982,7 +1997,7 @@ function _parseTextDraw(text) {
             if (name === 'M') continue;               // las mediciones se cuentan abajo
             const gid = symMap[name] || mapOpNameToGateId(name.toLowerCase());
             const def = findGateDef(gid);
-            if (def && gates.length < MAX_GATES) {
+            if (def) {
                 gates.push({ id: gid, q: qi, def, uid: nextId++ });
             }
         }
@@ -2047,6 +2062,7 @@ async function syncFromServer(reason) {
                     return false;
                 }
             }
+            { const _w = qcolOverLimit(parsed.numQubits, parsed.gates.filter(g => g.id !== 'M').length); if (_w) { qcolRefuse(_w, out); return false; } }
             parsed.gates = normalizeMeasurements(parsed.gates);
             circuit.qubits = Math.min(parsed.numQubits, MAX_QUBITS);
             circuit.gates = parsed.gates;
@@ -2078,6 +2094,7 @@ async function syncWithPyodide(retryCount = 0) {
         const py = await initPyodide();
         const code = robustPreprocess(rawCode);
         py.globals.set('_pending_user_code', code);
+        try { await py.loadPackagesFromImports(code); } catch (e) { console.warn('pyodide pkgs', e); }
         const result = await py.runPythonAsync(`
 import json, traceback, re, sys, ast as _ast
 
@@ -2226,6 +2243,7 @@ json.dumps({
             _errorLine = -1;
             
             const _ops = data.gates.map(g => ({ n: g[3] || g[0], d: g[0], q: g[1], info: g[4] || null }));
+            { const _w = qcolOverLimit(data.num_qubits, qcolCountGates(_ops)); if (_w) { qcolRefuse(_w, out); isUpdatingFromCircuit = false; return; } }
             circuit.qubits = Math.min(data.num_qubits, MAX_QUBITS);
             _pyStruct = { nq: data.num_qubits, ops: _ops }; _pyStructCode = rawCode.trim();
             const newGates = qcolOpsToGates(_ops);
@@ -2510,6 +2528,7 @@ async function runServerCode() {
             if (_st.struct && _st.struct.ops) { try { qcolReconcile(_st.struct, { out, added: _ens.added }); _handled = true; } catch (e) { console.warn('reconcile', e); } }
             const _sp = _handled ? null : _parseTextDraw(_lastServerOutput);
             if (_sp && _sp.gates.length > 0) {
+                { const _w = qcolOverLimit(_sp.numQubits, _sp.gates.filter(g => g.id !== 'M').length); if (_w) { qcolRefuse(_w, out); return; } }
                 _sp.gates = normalizeMeasurements(_sp.gates);
                 // Solo se comparan las puertas que el dibujo de texto muestra en caja (sin SWAP/CZ/CSW)
                 const _vg = circuit.gates.filter(g => g.id !== 'M' && !_NO_BOX_IDS.has(g.id)).length;
@@ -3255,9 +3274,16 @@ function openNoise(extra) {
     if (!window.QcolNoise) { notify('Noise module not loaded'); return; }
     window.QcolNoise.open(Object.assign({ getCode: () => (document.getElementById('code-ta') || {}).value || '' }, extra || {}));
 }
+// 🔊 ▶ : ejecuta el ruido YA (sin menú). El resultado sale en la pestaña de salida, como un RUN normal.
 function quickNoise(extra) {
     if (!window.QcolNoise) { notify('Noise module not loaded'); return; }
-    window.QcolNoise.quick(Object.assign({ getCode: () => (document.getElementById('code-ta') || {}).value || '' }, extra || {}));
+    const getCode = () => (document.getElementById('code-ta') || {}).value || '';
+    if (!getCode().trim()) { notify('Write code first'); return; }
+    setTab('out');
+    const out = document.getElementById('out-body'); if (!out) return;
+    const t0 = Date.now();
+    return Promise.resolve(window.QcolNoise.inline(Object.assign({ out, cfg: window.QcolNoise.loadCfg(), getCode }, extra || {}))).then(r => {
+        const el = document.getElementById('out-elapsed'); if (el) el.textContent = ((Date.now() - t0) / 1000).toFixed(2) + 's'; return r; });
 }
 (function () { const b = document.getElementById('btn-noise'); if (b) b.addEventListener('click', () => openNoise()); const r = document.getElementById('btn-noise-run'); if (r) r.addEventListener('click', () => quickNoise()); })();
 // ── Copiloto IA: contexto + acciones (solo mensajes del padre) ──
@@ -3278,7 +3304,7 @@ window.addEventListener('message', e => {
             const ta = document.getElementById('code-ta');
             if (ta) { ta.value = d.code; if (typeof onCodeEdit === 'function') onCodeEdit(); }
         } else if (d.type === 'OPENQ_AI_NOISE') {
-            openNoise({ noise: d.noise, engine: d.engine, shots: d.shots, autorun: true });
+            quickNoise({ noise: d.noise, engine: d.engine, shots: d.shots });
         } else if (d.type === 'OPENQ_AI_RUN') {
             if (typeof runServerCode === 'function') runServerCode();
         }
