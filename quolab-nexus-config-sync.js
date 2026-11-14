@@ -217,37 +217,17 @@ class QuOLabNexusConfigSync {
     }
 
     async _updateOrInsert(key, value) {
-        // 🔧 FORZAR founder_password como cadena JSON con comillas
-        let stringValue;
-        if (key === 'founder_password') {
-            stringValue = JSON.stringify(String(value));  // '"1027"'
-        } else {
-            stringValue = typeof value === 'string' ? value : JSON.stringify(value);
-        }
-        
-        const data = {
-            id: 'cfg-' + key,
-            key: key,
-            value: stringValue,
-            updated_by: this.currentUser?.id || 'anonymous',
-            updated_at: new Date().toISOString()
-        };
-        
-        try {
-            const existing = await this._fetch('quantum_ecosystem_config', {
-                eq: { key: key }
-            });
-            
-            if (existing && existing.length > 0) {
-                await this._update('quantum_ecosystem_config', key, data);
-            } else {
-                data.created_at = new Date().toISOString();
-                await this._insert('quantum_ecosystem_config', data);
-            }
-        } catch (error) {
-            console.error('Error updating config:', error);
-            throw error;
-        }
+        const allowed = ['colab_url', 'system_config', 'platform_config', 'monitor_config'];
+        if (!allowed.includes(key)) throw new Error('Sensitive configuration is local-only');
+        const founderKey = localStorage.getItem('qcol_repo_founder_key') || '';
+        if (!founderKey) throw new Error('Founder key required to update shared configuration');
+        const stringValue = typeof value === 'string' ? value : JSON.stringify(value);
+        const response = await fetch(`${this.SUPABASE_URL}/rest/v1/rpc/quantum_config_save`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'apikey': this.SUPABASE_ANON_KEY, 'Authorization': `Bearer ${this.SUPABASE_ANON_KEY}` },
+            body: JSON.stringify({ p_key: key, p_value: stringValue, p_founder_key: founderKey })
+        });
+        if (!response.ok) throw new Error(`HTTP ${response.status}: ${await response.text()}`);
     }
 
     // ==================== OBTENER CONFIGURACIÓN ====================
