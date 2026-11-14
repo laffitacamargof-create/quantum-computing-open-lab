@@ -691,7 +691,8 @@ initConfigSync();
 <script>
 // ══ TODAS LAS FUNCIONES ORIGINALES SE MANTIENEN ══
 function postToCore(type, data = {}) {
-  window.parent.postMessage({ type, ...data }, '*');
+  const name = String(type || '').replace(/^(?:OPENQ|QCOL|NEXUS)_/, '');
+  window.parent.postMessage({ type: 'NEXUS_' + name, protocol: 'QUOLAB_NEXUS_V1', ...data }, location.origin);
 }
 
 window.addEventListener('message', (e) => {

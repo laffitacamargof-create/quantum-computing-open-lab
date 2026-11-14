@@ -90,7 +90,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 
 <script>
 let curUser=null;
-function postCore(t,d={}){window.parent.postMessage({type:t,...d},'*');}
+function postCore(t,d={}){const name=String(t||'').replace(/^(?:OPENQ|QCOL|NEXUS)_/,'');window.parent.postMessage({type:'NEXUS_'+name,protocol:'QUOLAB_NEXUS_V1',...d},location.origin);}
 function notify(msg){const n=document.getElementById('notif');n.textContent=msg;n.classList.add('show');clearTimeout(n._t);n._t=setTimeout(()=>n.classList.remove('show'),3000);}
 window.addEventListener('message',e=>{
   const d=e.data;if(!d?.type)return;

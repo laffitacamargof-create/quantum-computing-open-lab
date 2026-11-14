@@ -102,7 +102,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 </div>
 </div>
 <script>
-function postCore(t,d={}){window.parent.postMessage({type:t,...d},'*');}
+function postCore(t,d={}){const name=String(t||'').replace(/^(?:OPENQ|QCOL|NEXUS)_/,'');window.parent.postMessage({type:'NEXUS_'+name,protocol:'QUOLAB_NEXUS_V1',...d},location.origin);}
 postCore('QCOL_GET_CONFIG');
 </script>
 </body>

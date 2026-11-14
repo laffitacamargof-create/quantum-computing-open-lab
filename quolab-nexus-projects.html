@@ -127,7 +127,7 @@ let curUser=null,isAdmin=false,isFounder=false,cfg={},filt='all';
 let editingProjId=null;
 let items=[],loading=true,loadError=null,refreshFn=null;
 
-function postCore(t,d={}){window.parent.postMessage({type:t,...d},'*');}
+function postCore(t,d={}){const name=String(t||'').replace(/^(?:OPENQ|QCOL|NEXUS)_/,'');window.parent.postMessage({type:'NEXUS_'+name,protocol:'QUOLAB_NEXUS_V1',...d},location.origin);}
 function notify(msg){const n=document.getElementById('notif');n.textContent=msg;n.classList.add('show');clearTimeout(n._t);n._t=setTimeout(()=>n.classList.remove('show'),3000);postCore('OPENQ_NOTIFY',{msg});}
 function errMsg(e){return RepoSync.friendlyError(e);}
 
@@ -292,7 +292,7 @@ async function execProj(id) {
         }]
       };
       // El core enruta este mensaje al Quantum Notebook (modo exposición)
-      window.parent.postMessage({ type:'OPENQ_OPEN_NB_EXPOSITION', nb:nb, expositionMode:true }, '*');
+      window.parent.postMessage({ type:'NEXUS_OPEN_NB_EXPOSITION', nb:nb, expositionMode:true }, '*');
       notify('👁 Opening in exposition mode...');
     }catch(e){
       notify(e.message==='not_found' ? '⚠️ This notebook no longer exists' : '❌ '+errMsg(e));
@@ -359,7 +359,7 @@ async function editProj(id){
       };
       // Enviar al core: abrir Quantum Notebook SIN modo exposición (modo edición)
       window.parent.postMessage({
-        type:'OPENQ_OPEN_NB_EDIT',
+        type:'NEXUS_OPEN_NB_EDIT',
         nb: nb,
         repoId: id
       }, '*');
