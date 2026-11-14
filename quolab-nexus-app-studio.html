@@ -1079,8 +1079,14 @@
         if (savedUrl) setServerUrl(savedUrl);
     }
     
-    setInterval(() => {
-        if (window.parent !== window && !receivedUrl && parentOrigin) sendToParent({ type: 'QCOL_REQUEST_COMPILER_URL' });
+    let compilerRequestAttempts = 0;
+    const compilerRequestTimer = setInterval(() => {
+        if (window.parent === window || receivedUrl || !parentOrigin || compilerRequestAttempts >= 10) {
+            clearInterval(compilerRequestTimer);
+            return;
+        }
+        compilerRequestAttempts++;
+        sendToParent({ type: 'QCOL_REQUEST_COMPILER_URL' });
     }, 3000);
     
     notify("Quantum App Studio · Protected against over-reading · Origins validated", 4000);

@@ -1614,7 +1614,7 @@ let pyodideLoading = false;
 async function initPyodide() {
     if (pyodide !== null) return pyodide;
     if (pyodideLoading) {
-        await new Promise(resolve => { const check = setInterval(() => { if (pyodide !== null) { clearInterval(check); resolve(); } }, 100); });
+        await new Promise((resolve, reject) => { const started = Date.now(); const check = setInterval(() => { if (pyodide !== null) { clearInterval(check); resolve(); } else if (Date.now() - started > 60000) { clearInterval(check); reject(new Error('Pyodide initialization timed out after 60 seconds')); } }, 100); });
         return pyodide;
     }
     pyodideLoading = true;

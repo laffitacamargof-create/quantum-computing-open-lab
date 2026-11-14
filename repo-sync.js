@@ -1,5 +1,5 @@
 /* ============================================================
-   repo-sync.js — QCOL Cloud Repository
+   QuOLab Nexus — Cloud Repository
    Base común en Supabase para Notebooks / PDFs / Videos.
    Sin moderación: lo que se publica queda visible al instante.
    Solo usa la clave PÚBLICA (publishable). Nunca pongas aquí

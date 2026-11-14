@@ -1,9 +1,9 @@
-/* QCOL Noise v2 — ruido cuántico como OPCIÓN de cualquier herramienta (Architect/Open Lab, Notebook, ...).
+/* QuOLab Nexus Noise v2 — ruido cuántico como OPCIÓN de cualquier herramienta (Architect/Open Lab, Notebook, ...).
    Misma interfaz para cualquier simulador: la lista de motores y sus capacidades las da el servidor (/qcol/health, /qcol/capabilities),
    así un simulador nuevo aparece solo en el desplegable sin tocar las herramientas.
    API:  QuOLabNexusNoise.open({getCode})   -> ventana de AJUSTE de ruido (preconfiguraciones + parámetros) y ejecución
          QuOLabNexusNoise.quick({getCode})  -> EJECUTA YA con el ajuste guardado (sin pasar por la configuración; botón ⚙ para ajustar)
-   El servidor es el predeterminado de QCOL: el usuario no necesita abrir Hugging Face ni escribir ninguna URL. */
+   El servidor predeterminado pertenece a QuOLab Nexus: el usuario no necesita abrir Hugging Face ni escribir ninguna URL. */
 (function () {
   'use strict';
   if (window.QuOLabNexusNoise) return;
@@ -294,7 +294,7 @@
   const run = o => api('/qcol/activar_ruido', { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=UTF-8' }, body: JSON.stringify({ motor: o.engine, circuito_qasm: o.qasm, noise: o.noise, shots: o.shots, seed: o.seed }) });
   async function caps() { if (_caps) return _caps; try { const r = await tfetch(baseUrl() + '/qcol/capabilities', {}, 20000); _caps = await r.json(); } catch (e) { _caps = {}; } return _caps; }
   const tvd = (a, b) => { const na = Object.values(a).reduce((x, y) => x + y, 0), nb = Object.values(b).reduce((x, y) => x + y, 0); let s = 0; new Set([...Object.keys(a), ...Object.keys(b)]).forEach(k => { s += Math.abs((a[k] || 0) / na - (b[k] || 0) / nb); }); return s / 2; };
-  const ENG_NAME = { 'qcol-browser': 'QCOL', 'mqt-yaqs': 'MQT YAQS', 'qiskit-aer': 'Qiskit Aer' }, ENG_ROLE = { 'qcol-browser': 'instant', 'mqt-yaqs': 'refEngine', 'qiskit-aer': 'validator' };
+  const ENG_NAME = { 'qcol-browser': 'QuOLab Nexus', 'mqt-yaqs': 'MQT YAQS', 'qiskit-aer': 'Qiskit Aer' }, ENG_ROLE = { 'qcol-browser': 'instant', 'mqt-yaqs': 'refEngine', 'qiskit-aer': 'validator' };
   const BROWSER = 'qcol-browser';
   const runAny = o => o.engine === BROWSER ? simulateBrowser(o.qasm, o.noise, o.shots, o.seed, o.extra) : run(o);
   const engName = e => ENG_NAME[e] || e;

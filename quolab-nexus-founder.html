@@ -1474,17 +1474,26 @@ function broadcastCompilerUrlToModules() {
     broadcastConfigToAllIframes();
 }
 
-const observer = new MutationObserver((mutations) => {
-    mutations.forEach((mutation) => {
-        mutation.addedNodes.forEach((node) => {
-            if (node.nodeName === 'IFRAME') { setTimeout(() => broadcastConfigToAllIframes(), 500); }
+function bindNexusIframe(iframe) {
+    if (!iframe || iframe.nodeName !== 'IFRAME') return;
+    if (!iframe.__nexusConfigBound) {
+        iframe.__nexusConfigBound = true;
+        iframe.addEventListener('load', () => {
+            broadcastConfigToAllIframes();
+            broadcastCompilerUrlToModules();
         });
-    });
+    }
+    setTimeout(() => { broadcastConfigToAllIframes(); broadcastCompilerUrlToModules(); }, 500);
+}
+document.querySelectorAll('iframe').forEach(bindNexusIframe);
+const observer = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => mutation.addedNodes.forEach((node) => {
+        if (node.nodeName === 'IFRAME') bindNexusIframe(node);
+        if (node.querySelectorAll) node.querySelectorAll('iframe').forEach(bindNexusIframe);
+    }));
 });
 observer.observe(document.body, { childList: true, subtree: true });
-
-setInterval(() => { broadcastConfigToAllIframes(); broadcastCompilerUrlToModules(); }, 5000);
-setTimeout(() => broadcastConfigToAllIframes(), 1000);
+setTimeout(() => { broadcastConfigToAllIframes(); broadcastCompilerUrlToModules(); }, 1000);
 
 async function executePythonRemoteFull(codeToExec, serverUrl) {
     if (!serverUrl) throw new Error("No hay URL de servidor configurada");
