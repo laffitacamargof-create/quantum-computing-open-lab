@@ -74,7 +74,7 @@ class QuOLabNexusConfigSync {
         let lastError;
         for (let attempt = 0; attempt < attempts; attempt++) {
             try {
-                const response = await this._fetchWithRetry(url, options);
+                const response = await fetch(url, options);
                 if (response.status < 500 && response.status !== 408 && response.status !== 429) return response;
                 lastError = new Error('HTTP ' + response.status);
             } catch (error) { lastError = error; }
