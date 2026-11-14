@@ -21,6 +21,8 @@ class QuOLabNexusQuantumSync {
         this.publishedApps = [];
         this._syncInProgress = false;
         this._lastSync = 0;
+        this._onlineHandler = () => { if (!this._syncInProgress) this.init(); };
+        window.addEventListener('online', this._onlineHandler);
         
         this.onPendingUpdate = null;
         this.onPublishedUpdate = null;
@@ -34,7 +36,7 @@ class QuOLabNexusQuantumSync {
             console.log('🔌 Probando conexión a Supabase...');
             console.log('📌 URL:', this.SUPABASE_URL);
             
-            const testResponse = await fetch(`${this.SUPABASE_URL}/rest/v1/${this.TABLES.PUBLISHED_APPS}?select=id&limit=1`, {
+            const testResponse = await this._fetchWithRetry(`${this.SUPABASE_URL}/rest/v1/${this.TABLES.PUBLISHED_APPS}?select=id&limit=1`, {
                 method: 'GET',
                 headers: {
                     'apikey': this.SUPABASE_ANON_KEY,
@@ -45,6 +47,7 @@ class QuOLabNexusQuantumSync {
             if (!testResponse.ok) {
                 console.warn(`⚠️ Supabase rechazó la clave pública o las políticas RLS: HTTP ${testResponse.status}`);
                 this.isReady = false;
+                this._startRetryPolling();
                 return false;
             }
             
@@ -55,17 +58,38 @@ class QuOLabNexusQuantumSync {
             this.isReady = true;
             console.log('✅ Quantum Sync Module initialized');
             
-            this.syncInterval = setInterval(() => {
-                this.syncAll();
-                if (this.onSyncComplete) this.onSyncComplete();
-            }, 10000);
+            this._startRetryPolling();
             
             return true;
         } catch (error) {
             console.error('❌ Error initializing Quantum Sync:', error.message);
             this.isReady = false;
+            this._startRetryPolling();
             return false;
         }
+    }
+
+    _startRetryPolling() {
+        if (this.syncInterval) return;
+        this.syncInterval = setInterval(() => {
+            if (navigator.onLine) {
+                if (!this.isReady) this.init();
+                else this.syncAll();
+            }
+        }, 15000);
+    }
+
+    async _fetchWithRetry(url, options = {}, attempts = ((options.method || 'GET').toUpperCase() === 'GET' ? 3 : 1)) {
+        let lastError;
+        for (let attempt = 0; attempt < attempts; attempt++) {
+            try {
+                const response = await fetch(url, options);
+                if (response.status < 500 && response.status !== 408 && response.status !== 429) return response;
+                lastError = new Error('HTTP ' + response.status);
+            } catch (error) { lastError = error; }
+            if (attempt < attempts - 1) await new Promise(resolve => setTimeout(resolve, 800 * Math.pow(2, attempt)));
+        }
+        throw lastError || new Error('Network unavailable');
     }
 
     // ✅ CORREGIDO: SIN parámetro _ en URL
@@ -88,7 +112,7 @@ class QuOLabNexusQuantumSync {
         
         console.log('📡 Fetch:', url);
         
-        const response = await fetch(url, {
+        const response = await this._fetchWithRetry(url, {
             method: 'GET',
             headers: {
                 'apikey': this.SUPABASE_ANON_KEY,
@@ -106,7 +130,7 @@ class QuOLabNexusQuantumSync {
     }
 
     async _rpc(name, body) {
-        const response = await fetch(`${this.SUPABASE_URL}/functions/v1/quolab-nexus-admin`, {
+        const response = await this._fetchWithRetry(`${this.SUPABASE_URL}/functions/v1/quolab-nexus-admin`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -127,7 +151,7 @@ class QuOLabNexusQuantumSync {
             html_len: data.html_code?.length || 0
         });
         
-        const response = await fetch(`${this.SUPABASE_URL}/rest/v1/${table}`, {
+        const response = await this._fetchWithRetry(`${this.SUPABASE_URL}/rest/v1/${table}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -146,7 +170,7 @@ class QuOLabNexusQuantumSync {
     }
 
     async _supabaseUpdate(table, id, data) {
-        const response = await fetch(`${this.SUPABASE_URL}/rest/v1/${table}?id=eq.${id}`, {
+        const response = await this._fetchWithRetry(`${this.SUPABASE_URL}/rest/v1/${table}?id=eq.${id}`, {
             method: 'PATCH',
             headers: {
                 'Content-Type': 'application/json',
@@ -167,7 +191,7 @@ class QuOLabNexusQuantumSync {
     // Borrado verificado: Supabase responde 204 "OK" aunque la política (RLS) impida borrar y no se borre NADA.
     // Con Prefer: return=representation sabemos cuántas filas se borraron realmente.
     async _supabaseDelete(table, id) {
-        const response = await fetch(`${this.SUPABASE_URL}/rest/v1/${table}?id=eq.${encodeURIComponent(id)}`, {
+        const response = await this._fetchWithRetry(`${this.SUPABASE_URL}/rest/v1/${table}?id=eq.${encodeURIComponent(id)}`, {
             method: 'DELETE',
             headers: {
                 'apikey': this.SUPABASE_ANON_KEY,
@@ -235,10 +259,19 @@ class QuOLabNexusQuantumSync {
                 order: { column: 'created_at', direction: 'desc' }
             });
             this.publishedApps = data || [];
+            try { localStorage.setItem('quolab_nexus_published_apps_cache', JSON.stringify(this.publishedApps)); } catch (e) {}
             if (this.onPublishedUpdate) this.onPublishedUpdate(this.publishedApps);
             return this.publishedApps;
         } catch (error) {
             console.error('Error syncing published:', error.message);
+            try {
+                const cached = JSON.parse(localStorage.getItem('quolab_nexus_published_apps_cache') || '[]');
+                if (Array.isArray(cached)) {
+                    this.publishedApps = cached;
+                    if (this.onPublishedUpdate) this.onPublishedUpdate(this.publishedApps);
+                    return this.publishedApps;
+                }
+            } catch (cacheError) {}
             return [];
         }
     }
@@ -343,6 +376,7 @@ class QuOLabNexusQuantumSync {
             clearInterval(this.syncInterval);
             this.syncInterval = null;
         }
+        if (this._onlineHandler) window.removeEventListener('online', this._onlineHandler);
     }
 }
 
