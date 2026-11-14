@@ -222,12 +222,20 @@ class QuOLabNexusConfigSync {
         const founderKey = localStorage.getItem('qcol_repo_founder_key') || '';
         if (!founderKey) throw new Error('Founder key required to update shared configuration');
         const stringValue = typeof value === 'string' ? value : JSON.stringify(value);
-        const response = await fetch(`${this.SUPABASE_URL}/rest/v1/rpc/quantum_config_save`, {
+        const response = await fetch(`${this.SUPABASE_URL}/functions/v1/quolab-nexus-admin`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'apikey': this.SUPABASE_ANON_KEY, 'Authorization': `Bearer ${this.SUPABASE_ANON_KEY}` },
-            body: JSON.stringify({ p_key: key, p_value: stringValue, p_founder_key: founderKey })
+            headers: {
+                'Content-Type': 'application/json',
+                'apikey': this.SUPABASE_ANON_KEY,
+                'Authorization': `Bearer ${this.SUPABASE_ANON_KEY}`
+            },
+            body: JSON.stringify({
+                action: 'quantum_config_save',
+                params: { p_key: key, p_value: stringValue, p_founder_key: founderKey }
+            })
         });
-        if (!response.ok) throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.error || `HTTP ${response.status}`);
     }
 
     // ==================== OBTENER CONFIGURACIÓN ====================
