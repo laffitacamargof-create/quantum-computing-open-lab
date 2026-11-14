@@ -55,7 +55,11 @@
       var requestBody = isRpc
         ? { action: path.slice(4), params: opts.body || {} }
         : opts.body;
-      var res = await fetch(url, {
+      var res;
+      var attempts = (opts.method || 'GET') === 'GET' ? 3 : 1;
+      for (var attempt = 0; attempt < attempts; attempt++) {
+        try {
+          res = await fetch(url, {
         method: opts.method || 'GET',
         cache: 'no-store',
         headers: {
@@ -65,7 +69,14 @@
         },
         body: requestBody ? JSON.stringify(requestBody) : undefined,
         signal: ctrl.signal
-      });
+          });
+          if (res.status < 500 && res.status !== 408 && res.status !== 429) break;
+          if (attempt === attempts - 1) break;
+        } catch (networkError) {
+          if (attempt === attempts - 1 || attempts === 1) throw networkError;
+        }
+        await new Promise(function (resolve) { setTimeout(resolve, 800 * Math.pow(2, attempt)); });
+      }
       var text = await res.text();
       var data = null;
       try { data = text ? JSON.parse(text) : null; } catch (e) { data = text; }
