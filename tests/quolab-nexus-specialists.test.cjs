@@ -93,7 +93,7 @@ assert.ok(notebook.includes("function syncCircuitCellFromCode(cell,source)"));
 assert.ok(notebook.includes("function buildCircuitEditorControls(cell)"));
 assert.ok(notebook.includes("Qiskit source stored in the hidden circuit layer"));
 assert.ok(notebook.includes("postCore('OPENQ_OPEN_ARCHITECT_EDIT'"));
-assert.ok(notebook.includes("type:'OPENQ_CIRCUIT_RETURN'"));
+assert.ok(notebook.includes("d.type === 'OPENQ_CIRCUIT_RETURN'"));
 assert.ok(notebook.includes('function openCircuitEditor(cellId)'));
 assert.ok(notebook.includes('cell.hiddenCode  = d.code'));
 assert.ok(notebook.includes('cell.circuitData = d.circuitData'));
