@@ -982,9 +982,11 @@ class QuOLabNexusConfigSyncReader {
     try { a = JSON.parse(localStorage.getItem('openq_ai') || '{}') || {}; } catch (e) {}
     try { q = JSON.parse(localStorage.getItem('qcol_ai') || '{}') || {}; } catch (e) {}
     if (!a.key && q.key) a = Object.assign({}, a, q);
-    // DeepSeek es el proveedor predeterminado del ecosistema; su clave vive solo en Supabase.
-    if (!a.provider || a.provider === 'none') a.provider = 'deepseek';
-    if (a.provider === 'deepseek' && !a.model) a.model = 'deepseek-chat';
+    // DeepSeek is the official QuOLab Nexus provider until the owner changes it.
+    // Its API key is server-side only; never reuse browser-stored provider keys.
+    a.provider = 'deepseek';
+    a.model = 'deepseek-chat';
+    a.key = '';
     return a;
   }
   let aiCfg = loadAICfg();
