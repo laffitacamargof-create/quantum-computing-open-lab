@@ -54,7 +54,7 @@ assert.doesNotMatch(agent, /const dangerous = \/[^\\n]*submit/, 'routine form su
 assert.match(connector, /MutationObserver/);
 assert.match(connector, /output_change/);
 assert.match(index, /'click','fill','type','select','scroll','hover','key','drag'/);
-assert.match(index, /async function routeAI\(msg, ctx\)/);
+assert.match(index, /async function routeAI\(msg,\s*ctx\)/);
 assert.match(index, /function isAIAvailable\(\)/, 'server-side gateway must count as configured without a browser API key');
 assert.equal((index.match(/if \(isAIAvailable\(\)\)/g) || []).length, 2, 'AI status and send flow must use the same availability check');
 assert.match(index, /Interpret short follow-ups from recent conversation history/, 'short follow-ups must retain conversational intent');
@@ -72,7 +72,7 @@ assert.match(agent, /Full tool manual/);
 assert.match(agent, /identity: 'QNexusAi'/);
 assert.match(agent, /You are the Projects Specialist/);
 assert.match(agent, /specialist_runs: delegationRuns\.slice\(-8\)/);
-assert.match(index, /async function routeAI\(msg, ctx\)/, 'central router must dispatch real worker calls');
+assert.match(index, /async function routeAI\(msg,\s*ctx\)/, 'central router must dispatch real worker calls');
 assert.match(index, /SPECIALIST EXECUTION MODE/);
 assert.match(index, /recordDelegation\(a\.specialist,status,last\|\|'Sin informe verificable\.'\)/);
 assert.match(index, /const status=done\?'completed':blocked\?'blocked':'incomplete'/);
