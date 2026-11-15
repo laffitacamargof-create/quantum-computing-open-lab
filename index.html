@@ -2,7 +2,7 @@
 <html lang="en" id="root">
 <head>
 <script src="quolab-nexus-core.js"></script>
-<script defer src="quolab-nexus-agent.js"></script>
+<script defer src="quolab-nexus-agent.js?v=1.4.0"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>QuOLab Nexus — Quantum Computing Open Lab</title>
@@ -2327,8 +2327,10 @@ CONTEXT: ${c}`;
   }
   function isExecutionRequest(msg) {
     const t=String(msg||'').toLowerCase();
-    if(/^\s*(open|abre|abrir|show|muestra|ir a|go to)\b/i.test(t)&&!/\b(create|build|program|write|edit|fix|correct|run|execute|save|delete|publish|implement|crea|construye|programa|escribe|edita|corrige|arregla|ejecuta|guarda|implementa)\b/i.test(t)) return false;
-    return /\b(create|build|program|write|edit|fix|correct|run|execute|save|delete|publish|implement|deploy|configure|add|remove|construye|programa|escribe|edita|corrige|arregla|ejecuta|guarda|implementa|configura|a[nñ]ade|elimina|modifica|dise[nñ]a|simula)\b/i.test(t);
+    const imperativeOnly=/^\s*(open|abre|abrir|show|muestra|ir a|go to)\b/i.test(t)
+      && !/\b(create|build|program|write|edit|fix|correct|run|execute|save|delete|publish|implement|crea|crear|construye|construir|programa|programar|escribe|escribir|edita|editar|corrige|corregir|arregla|arreglar|ejecuta|ejecutar|guarda|guardar|implementa|implementar)\b/i.test(t);
+    if(imperativeOnly)return false;
+    return /\b(create|build|program|write|edit|fix|correct|run|execute|save|delete|publish|implement|deploy|configure|add|remove|creating|building|programming|writing|editing|executing|saving|construye|construir|crear|crea|programa|programar|escribe|escribir|edita|editar|corrige|corregir|arregla|arreglar|ejecuta|ejecutar|guarda|guardar|implementa|implementar|configura|configurar|añade|añadir|anade|anadir|elimina|eliminar|modifica|modificar|diseña|diseñar|disena|disenar|simula|simular)\b/i.test(t);
   }
 
   async function routeAI(msg,ctx) {
@@ -2760,7 +2762,7 @@ CONTEXT: ${c}`;
 
 })();
 
-window.QUOLAB_NEXUS_BUILD = '2026-11-15-central-agent-dispatch';
+window.QUOLAB_NEXUS_BUILD = '2026-11-15-qnexusai-orchestration-v1.4.0';
 window.OPENQ_BUILD = window.QUOLAB_NEXUS_BUILD; // Compatibilidad temporal
 console.log('%cQuOLab Nexus build ' + window.QUOLAB_NEXUS_BUILD, 'color:#00ffdd');
 window.QuOLabNexus = QuOLabNexus;
