@@ -54,7 +54,7 @@ assert.match(index, /'click','fill','type','select','scroll','hover','key','drag
 assert.match(index, /async function routeAI\(msg, ctx\)/);
 assert.match(index, /function isAIAvailable\(\)/, 'server-side gateway must count as configured without a browser API key');
 assert.equal((index.match(/if \(isAIAvailable\(\)\)/g) || []).length, 2, 'AI status and send flow must use the same availability check');
-assert.match(index, /Interpret short follow-ups from recent conversation history/, 'short follow-ups must retain conversational intent');
+assert.match(index, /Use the latest user message together with recent conversation history/, 'short follow-ups must retain conversational intent');
 assert.match(index, /QuOLab AI gateway HTTP /, 'gateway failures must expose safe provider diagnostics');
 assert.match(index, /QUOLAB NEXUS AI/);
 assert.match(agent, /specialist_runs: delegationRuns\.slice\(-8\)/);
@@ -85,3 +85,15 @@ assert.match(index, /SPECIALIST WORKER MODE/);
 assert.match(index, /operation":"click\|fill\|type\|select\|scroll\|hover\|key\|drag/);
 assert.match(index, /QUOLAB NEXUS AI/);
 console.log('PASS: five specialist workers, central dispatch, telemetry, UI actions and nested App Studio routing.');
+
+
+// Delegated workers must receive an isolated role prompt and no stale user/assistant chat history.
+assert.match(index, /systemOverride: workerSystem/);
+assert.match(index, /includeHistory: false/);
+assert.match(index, /EXECUTION CONTRACT: Complete the assigned task/);
+assert.match(index, /Preserve the specialist result accurately/);
+assert.match(index, /const workerActions = extractActions\(workerReport\)\.actions/);
+assert.match(index, /mergedActions\.push\(action\)/);
+assert.match(index, /Bell-state circuit/);
+assert.match(agent, /actual content\/code, not a summary of the assignment/);
+assert.match(agent, /complete set_code action with target notebook/);
