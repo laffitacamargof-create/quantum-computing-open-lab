@@ -2325,7 +2325,7 @@ CONTEXT: ${c}`;
     const results = [];
     for (const action of actions) {
       const result = await execAIAction(action);
-      results.push({ action: describeAIAction(action), ok: result.ok, message: result.message, output: result.output || '' });
+      results.push({ action:describeAIAction(action),ok:result.ok,message:result.message,output:result.output||'',received:result.received===true,acknowledged:result.acknowledged===true });
       if (!result.ok) break;
     }
     const msgs = document.getElementById('ai-messages');
@@ -2381,7 +2381,7 @@ CONTEXT: ${c}`;
             const needsOutput=/\b(run|execute|simulate|simulation|ejecutar|ejecuta|simular|simula|simulaci[oó]n)\b/i.test(msg),outputOK=!needsOutput||hasFreshOutput(ctx,lastExecution);
             if(ack&&changed)evidence.push(...lastExecution.results.filter(x=>x.ok).map(x=>x.message));
             previous=finalText+'\nState changed: '+changed+'; actions acknowledged: '+ack+'; output verified: '+outputOK+'\nFresh context: '+JSON.stringify(ctx||{});
-            if(!lastExecution.ok){previous+='\nAction failure: diagnose and correct before continuing.';continue;}
+            if(!lastExecution.ok){const uncertain=lastExecution.results.some(x=>x.received&&!x.acknowledged);if(uncertain){blocked=true;previous+='\nThe tool acknowledged receipt but did not return an execution result. Do not resend this potentially non-idempotent command; keep the task blocked until its outcome can be inspected.';break;}previous+='\nAction failure: diagnose and correct before continuing.';continue;}
             if(status.status==='BLOCKED'){blocked=true;break;}
             if(status.status==='COMPLETED'&&status.evidence&&ack&&changed&&outputOK){finished=true;evidence.push(status.evidence);break;}
             continue;
