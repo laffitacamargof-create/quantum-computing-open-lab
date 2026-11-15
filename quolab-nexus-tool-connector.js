@@ -86,17 +86,17 @@
 
   global.document.addEventListener('input', event => {
     const el = event.target;
-    if (!el || !/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) || el.type === 'password') return;
+    if (!el || (!/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) && !el.isContentEditable && !(el.closest && el.closest('[contenteditable="true"],.cm-content'))) || el.type === 'password') return;
     const meta = { id: el.id || '', name: el.getAttribute('name') || '', type: el.type || el.tagName.toLowerCase(), label: fieldLabel(el) };
-    meta.value = SENSITIVE.test([meta.id, meta.name, meta.type, meta.label].join(' ')) ? '[REDACTED]' : sanitize(el.value, '', 0);
+    meta.value = SENSITIVE.test([meta.id, meta.name, meta.type, meta.label].join(' ')) ? '[REDACTED]' : sanitize(el.value !== undefined ? el.value : (el.innerText || el.textContent || ''), '', 0);
     send('input', meta);
   }, true);
 
   global.document.addEventListener('change', event => {
     const el=event.target;
-    if(!el||!['INPUT','TEXTAREA','SELECT'].includes(el.tagName)||el.type==='password')return;
+    if(!el||(!['INPUT','TEXTAREA','SELECT'].includes(el.tagName)&&!el.isContentEditable&&!(el.closest&&el.closest('[contenteditable="true"],.cm-content')))||el.type==='password')return;
     const meta={id:el.id||'',name:el.getAttribute('name')||'',type:el.type||el.tagName.toLowerCase(),label:fieldLabel(el)};
-    meta.value=SENSITIVE.test([meta.id,meta.name,meta.type,meta.label].join(' '))?'[REDACTED]':sanitize(el.tagName==='SELECT'?el.options[el.selectedIndex]?.text:el.value,'',0);
+    meta.value=SENSITIVE.test([meta.id,meta.name,meta.type,meta.label].join(' '))?'[REDACTED]':sanitize(el.tagName==='SELECT'?el.options[el.selectedIndex]?.text:(el.value!==undefined?el.value:(el.innerText||el.textContent||'')),'',0);
     send('change',meta);
   },true);
 
@@ -220,6 +220,12 @@
       outputTimer = setTimeout(reportOutputChanges, 250);
     });
     outputObserver.observe(global.document.body, { subtree: true, childList: true, characterData: true });
+  }
+
+  if(global.console&&typeof global.console.error==='function'&&!global.console.__quolabNexusWrapped){
+    const originalError=global.console.error.bind(global.console);
+    global.console.error=function(...args){send('console_error',{message:sanitize(args.map(value=>typeof value==='string'?value:(value&&value.message)||String(value)).join(' ').slice(0,1200),'',0)});return originalError(...args);};
+    try{Object.defineProperty(global.console,'__quolabNexusWrapped',{value:true});}catch(_){}
   }
 
   global.addEventListener('error', event => {
