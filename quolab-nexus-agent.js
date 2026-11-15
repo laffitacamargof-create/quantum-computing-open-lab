@@ -83,9 +83,12 @@
           type: el.type || (el.tagName.toLowerCase() === 'select' ? 'select' : 'text'),
           id: el.id || '',
           name: el.getAttribute('name') || '',
+          selector: '',
           label: cleanText(label || el.getAttribute('aria-label') || el.getAttribute('placeholder') || '', 90)
         };
-        if (!SENSITIVE.test([descriptor.id, descriptor.name, descriptor.label, descriptor.type].join(' '))) {
+        const sensitiveField = SENSITIVE.test([descriptor.id, descriptor.name, descriptor.label, descriptor.type].join(' '));
+        descriptor.selector = sensitiveField ? '' : selectorFor(el);
+        if (!sensitiveField) {
           if (el.tagName === 'SELECT') descriptor.value = cleanText(el.options[el.selectedIndex]?.text || '', 100);
           else descriptor.value = cleanText(el.value || el.innerText || '', 180);
         } else descriptor.value = '[REDACTED]';
@@ -99,6 +102,8 @@
           text: cleanText(el.innerText || el.value || el.getAttribute('aria-label') || '', 100),
           id: el.id || '',
           name: el.getAttribute('name') || '',
+          aria_label: cleanText(el.getAttribute('aria-label') || '', 80),
+          selector: selectorFor(el),
           disabled: !!el.disabled
         }));
       const outputs = [];
@@ -174,7 +179,19 @@
     return typeof selector === 'string' && selector.length <= 140 &&
       (/^#[A-Za-z][\w:.-]*$/.test(selector) ||
        /^\[name="[A-Za-z0-9_.:-]{1,80}"\]$/.test(selector) ||
-       /^\[data-[a-z0-9_-]+="[A-Za-z0-9_.:-]{1,80}"\]$/.test(selector));
+       /^\[data-[a-z0-9_-]+="[A-Za-z0-9_.:-]{1,80}"\]$/.test(selector) ||
+       /^\[(?:aria-label|placeholder|title)="[A-Za-z0-9 _.,:;()\/-]{1,80}"\]$/.test(selector));
+  }
+
+  function selectorFor(el) {
+    if (el.id && /^[A-Za-z][\w:.-]*$/.test(el.id)) return '#' + el.id;
+    const name = el.getAttribute('name') || '';
+    if (/^[A-Za-z0-9_.:-]{1,80}$/.test(name)) return '[name="' + name + '"]';
+    for (const attr of ['aria-label','placeholder','title']) {
+      const value = el.getAttribute(attr) || '';
+      if (/^[A-Za-z0-9 _.,:;()\/-]{1,80}$/.test(value)) return '[' + attr + '="' + value + '"]';
+    }
+    return '';
   }
 
   function executeUIAction(action) {
@@ -208,8 +225,8 @@
       return { ok: true, message: 'Field updated.', label };
     }
     if (operation === 'click') {
-      const dangerous = /delete|remove|publish|approve|reject|submit|purchase|payment|reset|clear|overwrite|disconnect|logout/i.test(label + ' ' + (el.id || ''));
-      if (dangerous && !global.confirm('QuOLab Nexus AI requests a potentially sensitive action: ' + label + '. Continue?')) {
+      const dangerous = /delete|remove|publish|approve|reject|purchase|payment|reset|clear|overwrite|disconnect|logout/i.test(label + ' ' + (el.id || ''));
+      if (dangerous && !global.confirm('QNexusAi requests a potentially sensitive action: ' + label + '. Continue?')) {
         return { ok: false, message: 'Action cancelled by user.' };
       }
       el.click();
