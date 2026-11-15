@@ -463,6 +463,7 @@ s.blt{color:#ffb86c;}
   <button class="stab" id="stab-2" onclick="setView('manage')">📂 MY NOTEBOOKS</button>
   <div class="secbar-right">
     <button class="tbtn" id="btn-add-md" onclick="addCellAt(-1,'markdown')">✦ Text</button>
+    <button class="tbtn" id="btn-add-code" onclick="addCellAt(-1,'code')">{ } Code</button>
     <button class="tbtn" id="btn-add-circ" onclick="addCellAt(-1,'circuit')" style="color:#00ff88;border-color:rgba(0,200,100,.25);">⚛ Circuit</button>
     <button class="tbtn" id="btn-import" onclick="importNb()">📂 Open</button>
     <input type="file" id="import-file" style="display:none;" accept=".ipynb" onchange="handleImport(event)">
@@ -481,6 +482,7 @@ s.blt{color:#ffb86c;}
     <div class="nb-scroll" id="nb-scroll">
       <div class="nb-bottom" id="nb-bottom-btns">
         <button class="nb-add-big" onclick="addCellAt(-1,'markdown')">✦ Text / LaTeX</button>
+        <button class="nb-add-big" onclick="addCellAt(-1,'code')">{ } Python / Qiskit</button>
         <button class="nb-add-big" onclick="addCellAt(-1,'circuit')" style="border-color:rgba(0,200,100,.2);color:rgba(0,200,100,.5);">⚛ Visual Circuit</button>
       </div>
     </div>
