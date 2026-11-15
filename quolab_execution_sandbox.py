@@ -1,5 +1,6 @@
 """Fail-closed OS-isolated execution for QuOLab Nexus."""
 import ast, json, os, shutil, subprocess, sys, tempfile, time
+from functools import lru_cache
 
 MAX_CODE_BYTES=20000
 MAX_OUTPUT_BYTES=16000
@@ -106,12 +107,33 @@ def _limits():
     try: resource.setrlimit(resource.RLIMIT_NPROC,(32,32))
     except (ValueError,OSError): pass
 
+
+@lru_cache(maxsize=1)
+def sandbox_runtime_status():
+    bwrap=shutil.which("bwrap")
+    if not bwrap: return {"ready":False,"binary_present":False,"reason":"bwrap_missing"}
+    args=[bwrap,"--unshare-all","--die-with-parent","--new-session","--uid","65534","--gid","65534"]
+    for path in ("/usr","/lib","/lib64","/bin","/sbin"):
+        source=os.path.realpath(path)
+        if os.path.isdir(source): args.extend(["--ro-bind",source,path])
+    args.extend(["--proc","/proc","--dev","/dev","--tmpfs","/tmp","--dir","/workspace",
+        "--chdir","/workspace","--","/usr/bin/true"])
+    try:
+        probe=subprocess.run(args,capture_output=True,text=True,timeout=3,check=False,
+            env={"PATH":"/usr/bin:/bin","LANG":"C.UTF-8"})
+        return {"ready":probe.returncode==0,"binary_present":True,
+            "reason":"ready" if probe.returncode==0 else "namespace_unavailable"}
+    except (OSError,subprocess.SubprocessError):
+        return {"ready":False,"binary_present":True,"reason":"namespace_unavailable"}
+
 def execute_isolated(code):
     started=time.monotonic()
     safe,message=is_safe(code)
     if not safe: return {"success":False,"output":message,"bloch":None,"time":0}
+    runtime=sandbox_runtime_status()
     bwrap=shutil.which("bwrap")
-    if not bwrap: return {"success":False,"output":"Ejecución bloqueada: bwrap no está instalado; no se ejecuta código sin aislamiento de red y archivos.","bloch":None,"time":0}
+    if not runtime["ready"]:
+        return {"success":False,"output":"Ejecución bloqueada: el servidor no puede crear el sandbox aislado. No se ejecutó código fuera del aislamiento.","bloch":None,"time":0}
     with tempfile.TemporaryDirectory(prefix="quolab-run-") as work:
         os.chmod(work,0o777)
         args=[bwrap,"--unshare-all","--die-with-parent","--new-session","--uid","65534","--gid","65534"]
