@@ -105,6 +105,7 @@
   }
 
   function recordMessage(event) {
+    try { if (global.localStorage.getItem('openq_ai_ctx') === '0') return; } catch (_) {}
     if (event.origin !== global.location.origin || !event.data || typeof event.data !== 'object') return;
     const type = event.data.type;
     if (typeof type !== 'string' || !EVENT_ALLOW.test(type)) return;
