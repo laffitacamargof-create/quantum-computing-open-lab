@@ -1,0 +1,34 @@
+name: Validate QuOLab Nexus AI
+
+on:
+  push:
+    branches:
+      - feature/quolab-nexus-central-ai-agent
+  pull_request:
+    paths:
+      - "index.html"
+      - "quolab-nexus-agent.js"
+      - ".github/workflows/validate-nexus-agent.yml"
+
+jobs:
+  syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Check central agent syntax
+        run: node --check quolab-nexus-agent.js
+      - name: Extract and check the main index module
+        run: |
+          python - <<'PY'
+          import re
+          from pathlib import Path
+          source = Path("index.html").read_text(encoding="utf-8")
+          blocks = re.findall(r'<script type="module">([\\s\\S]*?)</script>', source)
+          if len(blocks) != 1:
+              raise SystemExit(f"Expected one main module script, found {len(blocks)}")
+          Path("/tmp/quolab-index.mjs").write_text(blocks[0], encoding="utf-8")
+          PY
+          node --check /tmp/quolab-index.mjs
