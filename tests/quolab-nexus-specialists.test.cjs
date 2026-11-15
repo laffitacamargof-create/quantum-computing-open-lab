@@ -13,6 +13,8 @@ assert.ok(agent.includes('item.visible_text'));
 assert.ok(agent.includes('item.links='));
 assert.ok(agent.includes('item.canvases='));
 assert.ok(agent.includes('data-qnexus-agent-target'));
+assert.ok(agent.includes("screen==='quantum-app-studio'"));
+assert.ok(agent.includes('Open Quantum App Studio from Quantum Puzzle before operating this nested editor.'));
 assert.ok(index.includes('quolab-nexus-agent.js?v=1.6.0'));
 assert.ok(index.includes('OPENQ_AI_ACTION_RECEIVED'));
 assert.ok(index.includes('OPENQ_AI_ACTION_STATUS'));
