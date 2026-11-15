@@ -163,6 +163,24 @@
     }
   } catch (_) {}
 
+  // Observe same-frame browser storage writes as sanitized data-flow events.
+  for (const storageName of ['localStorage','sessionStorage']) {
+    try {
+      const storage=global[storageName];
+      if(!storage||storage.__quolabNexusWrapped)continue;
+      const proto=Object.getPrototypeOf(storage);
+      const originalSet=proto.setItem,originalRemove=proto.removeItem,originalClear=proto.clear;
+      proto.setItem=function(key,value){
+        const result=originalSet.call(this,key,value);
+        send('storage_write',{storage:storageName,key:String(key||'').slice(0,120),value:sanitize(String(value||''),'',0),length:String(value||'').length});
+        return result;
+      };
+      proto.removeItem=function(key){const result=originalRemove.call(this,key);send('storage_remove',{storage:storageName,key:String(key||'').slice(0,120)});return result;};
+      proto.clear=function(){const result=originalClear.call(this);send('storage_clear',{storage:storageName});return result;};
+      try{Object.defineProperty(storage,'__quolabNexusWrapped',{value:true});}catch(_){}
+    } catch(_){}
+  }
+
   // Quantum App Studio is nested inside the Quantum Puzzle page.
   // Relay its sanitized telemetry through the puzzle frame to the central agent.
   global.addEventListener('message', event => {
