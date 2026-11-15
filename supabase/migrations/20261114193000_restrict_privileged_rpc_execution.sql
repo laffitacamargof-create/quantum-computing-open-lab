@@ -25,3 +25,8 @@ grant execute on function public.repo_can_edit(uuid, text) to service_role;
 grant execute on function public.repo_create(text, text, text, text, text, integer, integer, text, jsonb, text, text) to service_role;
 grant execute on function public.repo_update(uuid, text, text, text, text, integer, integer, jsonb, text) to service_role;
 grant execute on function public.repo_delete(uuid, text) to service_role;
+
+
+-- Defense in depth for the private secret archive. No client role receives access.
+alter table private.quolab_nexus_secret_archive enable row level security;
+revoke all on table private.quolab_nexus_secret_archive from public, anon, authenticated;
