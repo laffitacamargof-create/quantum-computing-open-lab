@@ -38,6 +38,9 @@ assert.match(agent, /getSpecialistInstructions: id => SPECIALIST_INSTRUCTIONS\[i
 assert.match(agent, /recordDelegation,/);
 assert.match(agent, /quolab:nexus-alert/);
 assert.match(index, /function bindProactiveAlerts\(\)/);
+assert.match(index, /Automatic tool incident/);
+assert.match(index, /PROACTIVE INCIDENT MODE/);
+assert.match(index, /Diagnose the likely cause/);
 assert.match(index, /He detectado un problema en/);
 assert.match(index, /I detected a problem in/);
 assert.match(index, /bindProactiveAlerts\(\)/);

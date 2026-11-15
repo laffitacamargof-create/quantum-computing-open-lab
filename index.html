@@ -2316,8 +2316,10 @@ Do not invent screen state, IDs, tool capabilities, or completed actions. Do not
   }
 
   const proactiveAlertTimes = new Map();
+  let proactiveDiagnosticBusy = false;
+  let lastProactiveDiagnosticAt = 0;
   function bindProactiveAlerts() {
-    window.addEventListener('quolab:nexus-alert', event => {
+    window.addEventListener('quolab:nexus-alert', async event => {
       const detail = event && event.detail ? event.detail : {};
       const tool = String(detail.tool || 'ecosystem').slice(0, 60);
       const kind = String(detail.kind || 'error').slice(0, 60);
@@ -2329,13 +2331,33 @@ Do not invent screen state, IDs, tool capabilities, or completed actions. Do not
       proactiveAlertTimes.set(signature, now);
       if (proactiveAlertTimes.size > 30) proactiveAlertTimes.delete(proactiveAlertTimes.keys().next().value);
       const spanish = /^es(?:-|$)/i.test(navigator.language || '');
+      const configured = !!(aiCfg && aiCfg.key && aiCfg.provider !== 'none');
       const text = spanish
-        ? 'He detectado un problema en **' + tool + '** (' + kind + '): `' + safeMessage + '`. Puedo analizarlo y proponerte una corrección.'
-        : 'I detected a problem in **' + tool + '** (' + kind + '): `' + safeMessage + '`. I can diagnose it and propose a fix.';
+        ? 'He detectado un problema en **' + tool + '** (' + kind + '): `' + safeMessage + '`. ' + (configured ? 'Estoy analizando el error automáticamente.' : 'Configura un proveedor de IA para que pueda diagnosticarlo automáticamente.')
+        : 'I detected a problem in **' + tool + '** (' + kind + '): `' + safeMessage + '`. ' + (configured ? 'I am analyzing the error automatically.' : 'Configure an AI provider so I can diagnose it automatically.');
       const panel = document.getElementById('ai-panel-wrapper');
       if (panel) panel.classList.add('open');
       addAIMsg(text, 'bot');
       notify(spanish ? 'QuOLab Nexus AI detectó un error en ' + tool : 'QuOLab Nexus AI detected an error in ' + tool);
+      if (!configured || proactiveDiagnosticBusy || now - lastProactiveDiagnosticAt < 30000) return;
+      proactiveDiagnosticBusy = true;
+      lastProactiveDiagnosticAt = now;
+      try {
+        const ctx = await gatherAIContext();
+        const diagnostic = await callAI(
+          'Automatic tool incident. Tool: ' + tool + '. Event: ' + kind + '. Error: ' + message + '. Diagnose the likely cause using only the supplied context. Give the user practical next steps. Do not execute anything, do not emit openq-action blocks, and do not claim the problem is fixed.',
+          ctx,
+          { systemSuffix: '\n\nPROACTIVE INCIDENT MODE: This analysis was triggered by a tool error, not a new user command. Diagnose only. Do not propose or execute UI actions, do not modify code, and reply in the same language as the latest user conversation.' }
+        );
+        addAIMsg(diagnostic, 'bot');
+        aiHistory.push({ role: 'user', content: '[Automatic tool incident] ' + tool + ': ' + kind + ' — ' + message }, { role: 'assistant', content: diagnostic });
+        if (aiHistory.length > 12) aiHistory = aiHistory.slice(-12);
+      } catch (diagnosticError) {
+        const fallback = spanish ? 'No pude completar el diagnóstico automático. El error sigue registrado en el contexto del agente.' : 'I could not complete the automatic diagnosis. The error remains recorded in the agent context.';
+        addAIMsg(fallback, 'bot');
+      } finally {
+        proactiveDiagnosticBusy = false;
+      }
     });
   }
   function notify(msg) {
