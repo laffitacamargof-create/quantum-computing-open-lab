@@ -2322,6 +2322,7 @@ Do not invent screen state, IDs, tool capabilities, or completed actions. Do not
       const tool = String(detail.tool || 'ecosystem').slice(0, 60);
       const kind = String(detail.kind || 'error').slice(0, 60);
       const message = String(detail.message || 'An unexpected error occurred.').slice(0, 240);
+      const safeMessage = message.replace(/[&<>]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[ch]));
       const signature = tool + '|' + kind + '|' + message;
       const now = Date.now();
       if (now - (proactiveAlertTimes.get(signature) || 0) < 15000) return;
@@ -2329,8 +2330,8 @@ Do not invent screen state, IDs, tool capabilities, or completed actions. Do not
       if (proactiveAlertTimes.size > 30) proactiveAlertTimes.delete(proactiveAlertTimes.keys().next().value);
       const spanish = /^es(?:-|$)/i.test(navigator.language || '');
       const text = spanish
-        ? 'He detectado un problema en **' + tool + '** (' + kind + '): `' + message + '`. Puedo analizarlo y proponerte una corrección.'
-        : 'I detected a problem in **' + tool + '** (' + kind + '): `' + message + '`. I can diagnose it and propose a fix.';
+        ? 'He detectado un problema en **' + tool + '** (' + kind + '): `' + safeMessage + '`. Puedo analizarlo y proponerte una corrección.'
+        : 'I detected a problem in **' + tool + '** (' + kind + '): `' + safeMessage + '`. I can diagnose it and propose a fix.';
       const panel = document.getElementById('ai-panel-wrapper');
       if (panel) panel.classList.add('open');
       addAIMsg(text, 'bot');
