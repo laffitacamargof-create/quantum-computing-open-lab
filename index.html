@@ -2221,7 +2221,7 @@ Supported actions:
 {"type":"open_notebook|open_app","id":"ID_FROM_LIVE_CONTEXT"}
 \`\`\`
 - \`\`\`openq-action
-{"type":"add_cell","target":"notebook","cellType":"circuit|code|markdown","afterIndex":-1,"content":"optional initial cell content"}
+{"type":"add_cell","target":"notebook","cellType":"circuit|markdown","afterIndex":-1,"content":"optional initial Markdown or hidden Qiskit source"}
 \`\`\`
 - \`\`\`openq-action
 {"type":"set_code","target":"architect|notebook","cellIndex":0,"code":"..."}
@@ -2256,7 +2256,7 @@ CONTEXT (staged and size-limited): ${c}`;
     switch (a.type) {
       case 'nav': return AI_NAV_SCREENS.includes(a.screen);
       case 'open_notebook': case 'open_app': return typeof a.id === 'string' && /^[\w.\-]{1,80}$/.test(a.id);
-      case 'add_cell': return a.target === 'notebook' && ['circuit','markdown','code'].includes(a.cellType) && (a.content === undefined || (typeof a.content === 'string' && a.content.length <= 12000)) && (a.afterIndex === undefined || (Number.isInteger(a.afterIndex) && a.afterIndex >= -1 && a.afterIndex < 100));
+      case 'add_cell': return a.target === 'notebook' && ['circuit','markdown'].includes(a.cellType) && (a.content === undefined || (typeof a.content === 'string' && a.content.length <= 12000)) && (a.afterIndex === undefined || (Number.isInteger(a.afterIndex) && a.afterIndex >= -1 && a.afterIndex < 100));
       case 'open_circuit_editor': return a.target === 'notebook' && Number.isInteger(a.cellIndex) && a.cellIndex >= 0;
       case 'set_code': return !!AI_TARGET[a.target] && typeof a.code === 'string' && a.code.length > 0 && a.code.length < 20000 && (a.target !== 'notebook' || Number.isInteger(a.cellIndex));
       case 'set_markdown': return a.target === 'notebook' && Number.isInteger(a.cellIndex) && a.cellIndex >= 0 && typeof a.markdown === 'string' && a.markdown.length <= 12000;
