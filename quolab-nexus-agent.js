@@ -102,7 +102,32 @@
   const SENSITIVE = /password|passphrase|secret|token|api.?key|private.?key|credential|founder|authorization|cookie|session/i;
   const EVENT_ALLOW = /^(OPENQ|NEXUS|QCOL)_[A-Z0-9_]+$/;
   const recentEvents = [];
-  const MAX_EVENTS = 40;
+  const MAX_EVENTS = 240;
+  let eventSequence = 0;
+  let lastDeliveredEventSequence = 0;
+  function storeEvent(event) {
+    event.sequence = ++eventSequence;
+    recentEvents.push(event);
+    if (recentEvents.length > MAX_EVENTS) {
+      const removable = recentEvents.findIndex(item => item.status !== 'error');
+      recentEvents.splice(removable >= 0 ? removable : 0, 1);
+    }
+  }
+  function groupEventDelta(events) {
+    const groups = new Map();
+    for (const event of events) {
+      const tool = cleanText(event.from || 'nexus', 60);
+      if (!groups.has(tool)) groups.set(tool, []);
+      groups.get(tool).push(event);
+    }
+    return Array.from(groups, ([tool, items]) => {
+      const ordered = items.slice().sort((left,right) =>
+        (right.status === 'error') - (left.status === 'error') || right.sequence - left.sequence);
+      return { tool, error_count: ordered.filter(item => item.status === 'error').length,
+        events: ordered.slice(0,12) };
+    }).sort((left,right) => right.error_count-left.error_count ||
+      Math.max(...right.events.map(item=>item.sequence))-Math.max(...left.events.map(item=>item.sequence))).slice(0,12);
+  }
 
   function cleanText(value, limit) {
     return String(value == null ? '' : value)
@@ -206,12 +231,12 @@
       const message=cleanText(error&&error.stack||error&&error.message||String(error),1000);
       item.inspect_error=message;
       item.cross_origin_or_unavailable=!!(error&&(/security|cross.?origin|denied/i.test(String(error.name||'')+' '+String(error.message||''))));
-      recentEvents.push({time:new Date().toISOString(),from:screen,type:'FRAME_INSPECTION_ERROR',kind:'describeFrame',details:message,status:'error',timestamp:Date.now()});
+      storeEvent({time:new Date().toISOString(),from:screen,type:'FRAME_INSPECTION_ERROR',kind:'describeFrame',details:message,status:'error',timestamp:Date.now()});
     }
     return item;
   }
 
-  function snapshot(base) {
+  function snapshot(base, options = {}) {
     const active = activeScreen();
     const managedScreens = Object.keys(TOOL_CATALOG);
     const tools = managedScreens.map(id => {
@@ -224,7 +249,7 @@
       }, frame ? describeFrame(id, frame, id === active, spec) : { loaded: false });
     });
     const activeTool = tools.find(tool => tool.id === active) || null;
-    return {
+    const result = {
       identity: 'QNexusAi',
       version: VERSION,
       mode: 'single_autonomous_agent',
@@ -233,9 +258,18 @@
       active_tool_name: activeTool ? activeTool.tool_name : 'QNexusAi',
       tools,
       tool_catalog: Object.keys(TOOL_CATALOG).map(id => ({ id, ...TOOL_CATALOG[id] })),
-      recent_events: recentEvents.slice(-20),
+      recent_events: groupEventDelta(recentEvents.filter(event => event.sequence > lastDeliveredEventSequence)),
+      event_delta: {from_sequence:lastDeliveredEventSequence+1,to_sequence:eventSequence,dropped:recentEvents.length>0&&lastDeliveredEventSequence+1<recentEvents[0].sequence},
       user_context: base || {}
     };
+    return result;
+  }
+
+  function acknowledgeEventDelta(sequence) {
+    const value = Number(sequence);
+    if (Number.isInteger(value) && value >= 0 && value <= eventSequence) {
+      lastDeliveredEventSequence = Math.max(lastDeliveredEventSequence, value);
+    }
   }
 
   function recordMessage(event) {
@@ -256,8 +290,7 @@
       status: /ERROR|FAIL|REJECT/i.test(type) || /error/i.test(nestedKind) || (details.details && (details.details.ok===false || (Number(details.details.status)>=400))) ? 'error' : /RESULT|OUTPUT|SUCCESS|READY/i.test(type) || /response|output|result/i.test(nestedKind) ? 'result' : 'event',
       timestamp: Number(event.data.timestamp)||Date.now()
     };
-    recentEvents.push(record);
-    if (recentEvents.length > MAX_EVENTS) recentEvents.splice(0, recentEvents.length - MAX_EVENTS);
+    storeEvent(record);
     global.dispatchEvent(new CustomEvent('quolab:nexus-activity',{detail:record}));
     if (record.status === 'error') {
       const nestedDetails = details.details && typeof details.details === 'object' ? details.details : {};
@@ -400,6 +433,7 @@
     identity: 'QNexusAi',
     collectContext: snapshot,
     executeUIAction,
-    getRecentEvents: () => recentEvents.slice()
+    getRecentEvents: () => recentEvents.slice(),
+    acknowledgeEventDelta
   });
 })(window);
