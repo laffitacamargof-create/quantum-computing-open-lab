@@ -2200,8 +2200,9 @@ class QuOLabNexusConfigSyncReader {
     }
     if (c.length > 16000) {
       packed.selected_manuals = packed.selected_manuals.slice(0,1);
-      packed.live_state = [];
-      packed.recent_events = [];
+      // Preserve the active module's function API even when DOM context must be dropped.
+      packed.live_state = compactTools.map(tool=>({id:tool.id,name:tool.name,functions:(tool.functions||[]).slice(0,60)}));
+      packed.recent_events = (packed.recent_events||[]).slice(-3);
       c = JSON.stringify(packed);
     }
     return `
