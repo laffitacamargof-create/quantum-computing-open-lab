@@ -10,7 +10,8 @@
     'quolab-nexus-quantum-notebook.html': 'architect-pro',
     'quolab-nexus-library.html': 'library',
     'quolab-nexus-help.html': 'help',
-    'quolab-nexus-quantum-puzzle.html': 'quantum-puzzle'
+    'quolab-nexus-quantum-puzzle.html': 'quantum-puzzle',
+    'quolab-nexus-app-studio.html': 'quantum-app-studio'
   };
   const tool = TOOL_BY_FILE[global.location.pathname.split('/').pop()] || 'unknown';
   const SENSITIVE = /password|passphrase|secret|token|api.?key|private.?key|credential|founder|authorization|cookie|session/i;
@@ -145,6 +146,20 @@
       proto.__quolabNexusWrapped = true;
     }
   } catch (_) {}
+
+  // Quantum App Studio is nested inside the Quantum Puzzle page.
+  // Relay its sanitized telemetry through the puzzle frame to the central agent.
+  global.addEventListener('message', event => {
+    if (event.origin !== global.location.origin || !event.data || event.data.type !== 'NEXUS_TOOL_EVENT') return;
+    const child = Array.from(global.document.querySelectorAll('iframe')).find(frame => frame.contentWindow === event.source);
+    if (!child || !/quolab-nexus-app-studio\\.html(?:$|[?#])/.test(child.getAttribute('src') || '')) return;
+    const payload = event.data;
+    send('nested_tool_event', {
+      tool: 'quantum-app-studio',
+      kind: String(payload.kind || 'event').slice(0, 60),
+      details: payload.details || {}
+    });
+  }, true);
 
   global.addEventListener('error', event => {
     send('runtime_error', { message: event.message || 'Runtime error', file: safeUrl(event.filename || ''), line: event.lineno || 0 });
