@@ -2,7 +2,7 @@
 <html lang="en" id="root">
 <head>
 <script src="quolab-nexus-core.js"></script>
-<script defer src="quolab-nexus-agent.js?v=1.7.0"></script>
+<script defer src="quolab-nexus-agent.js?v=1.8.0"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>QuOLab Nexus — Quantum Computing Open Lab</title>
@@ -1976,10 +1976,10 @@ class QuOLabNexusConfigSyncReader {
     if (isAIAvailable()) {
       if (dot) dot.className = 'ai-status-dot ok';
       if (txt) txt.textContent = aiCfg.provider === 'gateway'
-        ? 'QNexusAi · multi-provider gateway · 5 specialists'
+        ? 'QNexusAi · multi-provider gateway · 7 tools'
         : aiCfg.provider === 'deepseek'
-          ? 'QNexusAi · DeepSeek · 5 specialists'
-          : 'QNexusAi active · 5 specialists';
+          ? 'QNexusAi · DeepSeek · 7 tools'
+          : 'QNexusAi active · 7 tools';
       if (lbl) lbl.textContent = '';
     } else {
       if (dot) dot.className = 'ai-status-dot';
@@ -2779,7 +2779,7 @@ CONTEXT (staged and size-limited): ${c}`;
         const kind = String(item.kind || item.type || 'activity').slice(0,36);
         const stamp = new Date(item.timestamp || Date.now()).toLocaleTimeString();
         bar.title = stamp + ' · ' + toolName + ' · ' + kind;
-        const status = bar.querySelector('.ai-status-text');
+        const status = bar.querySelector('#ai-stxt');
         if (status) status.textContent = toolName + ' · ' + kind + ' · ' + stamp;
       }
     });
