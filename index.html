@@ -1995,7 +1995,16 @@ class QuOLabNexusConfigSyncReader {
     const panel = document.getElementById('ai-panel-wrapper');
     if (!panel) return;
     panel.classList.toggle('open');
-    if (panel.classList.contains('open')) panel.classList.remove('ai-minimized');
+    if (panel.classList.contains('open')) {
+      panel.classList.remove('ai-minimized');
+      requestAnimationFrame(() => {
+        const rect = panel.getBoundingClientRect();
+        const left = Math.max(8, Math.min(rect.left, innerWidth - panel.offsetWidth - 8));
+        const top = Math.max(70, Math.min(rect.top, innerHeight - panel.offsetHeight - 8));
+        panel.style.left = left + 'px'; panel.style.top = top + 'px';
+        panel.style.right = 'auto'; panel.style.bottom = 'auto';
+      });
+    }
   }
   function toggleAIMinimized() {
     const panel = document.getElementById('ai-panel-wrapper');
@@ -2297,7 +2306,7 @@ CONTEXT: ${c}`;
     const explicitCentral=/\b(general|en general|fuera de las herramientas|ecosistema completo|todo el ecosistema|library|biblioteca|help|ayuda general|general question|whole ecosystem|across the ecosystem)\b/i.test(t);
     if(!ids.length&&!explicitCentral&&specialistIds.includes(active)) ids=[active];
     ids=Array.from(new Set(ids));
-    if(ids.includes('quantum-app-studio')) ids=ids.filter(x=>x!=='quantum-puzzle');
+    // Keep both Puzzle and App Studio when the request names both: Puzzle owns the launcher and Studio owns the nested editor.
     if(ids.includes('architect-pro')&&ids.includes('architect')&&!/visual|visualmente|editor de circuitos|circuit editor/i.test(t)) ids=ids.filter(x=>x!=='architect');
     return ids.length?ids.map(id=>({specialist:id,task:'Responde directamente sobre tu herramienta o ejecuta la tarea completa. Inspecciona el estado real, planifica todos los pasos, ejecuta, verifica salidas, corrige errores y continúa hasta terminar o identificar un bloqueo. No te limites a abrir la pantalla.'})):null;
   }
@@ -2357,10 +2366,10 @@ CONTEXT: ${c}`;
         'Solicitud original: '+msg,'Tarea asignada: '+task,round?'Informe anterior: '+last:'',
         'Contexto actual de todas las herramientas: '+JSON.stringify(ctx||{}),
         'Historial compartido de trabajo entre especialistas (delegaciones, resultados y bloqueos): '+JSON.stringify(workflowLog||[]),
-        'Eres el especialista responsable. Inspecciona, descompón la tarea, ejecuta todos los pasos necesarios con openq-action, inspecciona de nuevo, corrige errores y continúa. No te detengas al abrir una herramienta. Si una parte pertenece a otra herramienta, delega directamente al especialista dueño: usa exactamente un bloque de código `openq-delegate {"specialists":[{"specialist":"architect","task":"..."}]}`. Indica los datos que necesita y el resultado esperado. Cuando termine, integra su resultado y continúa tu parte. No inventes resultados.',
+        'Eres el especialista responsable. Primero crea un plan de pasos verificables y criterios de aceptación. Inspecciona el estado real de TODAS las herramientas implicadas. Descompón la tarea en subtareas, ejecuta todos los pasos necesarios con openq-action, inspecciona de nuevo después de cada operación, interpreta resultados y errores, corrige, vuelve a ejecutar y continúa hasta satisfacer cada criterio. Si una herramienta invoca o necesita otra, coordina al especialista dueño mediante openq-delegate; espera e integra su resultado antes de avanzar. No te detengas al abrir una herramienta. Si una parte pertenece a otra herramienta, delega directamente al especialista dueño: usa exactamente un bloque de código `openq-delegate {"specialists":[{"specialist":"architect","task":"..."}]}`. Indica los datos que necesita y el resultado esperado. Cuando termine, integra su resultado y continúa tu parte. No inventes resultados.',
         'Termina cada respuesta con TASK_STATUS: CONTINUE, TASK_STATUS: COMPLETED o TASK_STATUS: BLOCKED. COMPLETED exige TASK_EVIDENCE: con evidencia concreta observada en el contexto. Si quedan pasos, usa CONTINUE.'
       ].filter(Boolean).join('\n\n');
-      const raw=await callAI(prompt,ctx,{systemSuffix:'\nSPECIALIST EXECUTION MODE.\n'+manual+'\nOwn the complete workflow, including cross-tool workflows. Call the owner specialist directly with an exact fenced openq-delegate JSON block, specifying required input and expected output. The orchestrator runs that specialist and supplies its result in the shared workflow log. Integrate the result, continue your own steps, and verify the combined outcome. Navigation or a dispatch ACK is never completion. Reinspect fresh context after every action. Never claim completion without visible evidence.'});
+      const raw=await callAI(prompt,ctx,{systemSuffix:'\nSPECIALIST EXECUTION MODE.\n'+manual+'\nOwn the complete workflow, including multi-stage cross-tool workflows. Build and maintain a step plan and acceptance criteria. Inspect tool state before and after each operation. Call the owner specialist directly with an exact fenced openq-delegate JSON block, specifying required input, expected output, and why its tool is a dependency. The orchestrator runs that specialist and supplies its report and action results in the shared workflow log. Integrate that result, continue your own steps, revisit earlier tools when needed, correct failures, and verify the combined outcome. Stop only when every requested step is complete or a concrete blocker is demonstrated. Navigation or a dispatch ACK is never completion. Reinspect fresh context after every action. Never claim completion without visible evidence.'});
       const delegation=extractDelegations(raw);
       delegation.assignments.forEach(x=>{if(queue.length<10&&!queue.some(q=>q.specialist===x.specialist&&q.task===x.task))queue.push(x);});
       const actions=extractActions(delegation.text);
@@ -2368,10 +2377,10 @@ CONTEXT: ${c}`;
       if(actions.actions.length) execution=await executeAIActionSequence(actions.actions,ctx);
       const fresh=await gatherAIContext(), status=taskStatus(actions.text), changed=before!==JSON.stringify(fresh||{});
       const onlyNav=actions.actions.length>0&&actions.actions.every(x=>['nav','open_notebook','open_app'].includes(x.type));
-      const openOnly=!isExecutionRequest(msg);
+      const openOnly=!isExecutionRequest(msg);\n      const requiresRun=/\\b(run|execute|simulate|simulation|ejecutar|ejecuta|simular|simula|simulaci[oó]n)\\b/i.test(msg);
       const visibleEvidence=!!(fresh&&Array.isArray(fresh.tools)&&fresh.tools.some(x=>x.loaded&&((x.outputs&&x.outputs.some(Boolean))||(x.inputs&&x.inputs.some(v=>v.value&&v.value!=='[REDACTED]')))));
       const acknowledgedOperation=execution.results.length>0&&execution.results.every(x=>x.ok)&&actions.actions.some(x=>!['nav','open_notebook','open_app'].includes(x.type));
-      const evidenceOK=!!status.evidence&&(visibleEvidence||execution.results.some(x=>x.output&&x.output.trim())||(acknowledgedOperation&&changed));
+      const outputEvidence=execution.results.some(x=>x.output&&x.output.trim())||!!(fresh&&Array.isArray(fresh.tools)&&fresh.tools.some(x=>x.loaded&&x.outputs&&x.outputs.some(v=>String(v||'').trim())));\n      const evidenceOK=!!status.evidence&&acknowledgedOperation&&changed&&(!requiresRun||outputEvidence);
       last=actions.text+(execution.results.length?'\nExecution: '+JSON.stringify(execution.results):'');
       ctx=fresh;
       reports.push({specialist:spec.name,specialist_id:a.specialist,task,round:round+1,report:actions.text,delegated:delegation.assignments,execution,state_changed:changed,status:'in_progress'});
