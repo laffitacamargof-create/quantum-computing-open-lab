@@ -3339,7 +3339,7 @@ window.addEventListener('message', e => {
                 if (d.requestId) qnexusActionFinish(d,{ok, message: ok ? 'Quantum Open Lab simulation returned output.' : (value || 'Compiler did not return a successful result.'), output: value });
             }).catch(err => { if (d.requestId) qnexusActionFinish(d,{ok: false, message: err.message || 'Quantum Open Lab execution failed.' }); });
         }
-    } catch (err) { console.warn('copilot hook', err); }
+    } catch (err) { qnexusActionFinish(d,{ok:false,message:err&&err.message?err.message:'Quantum Open Lab action handler failed.'}); console.warn('copilot hook', err); }
 });
 
 window.addEventListener('message', e => {
