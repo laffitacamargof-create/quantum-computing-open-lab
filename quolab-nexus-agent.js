@@ -114,7 +114,9 @@
       time: new Date().toISOString(),
       from: frame ? frame.getAttribute('data-openq') : 'nexus',
       type: type,
-      status: /ERROR|FAIL|REJECT/i.test(type) ? 'error' : /RESULT|OUTPUT|SUCCESS|READY/i.test(type) ? 'result' : 'event'
+      kind: cleanText(event.data.kind || '', 60),
+      details: cleanText(JSON.stringify(event.data.details || {}), 1000),
+      status: /ERROR|FAIL|REJECT/i.test(type) || /error/i.test(event.data.kind || '') ? 'error' : /RESULT|OUTPUT|SUCCESS|READY/i.test(type) || /response|output|result/i.test(event.data.kind || '') ? 'result' : 'event'
     });
     if (recentEvents.length > MAX_EVENTS) recentEvents.splice(0, recentEvents.length - MAX_EVENTS);
   }
