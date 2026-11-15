@@ -30,7 +30,7 @@ for (const role of [
   'You are the Quantum Puzzle Specialist',
   'You are the Quantum App Studio Specialist'
 ]) assert.ok(agent.includes(role), role + ' must have its own worker instructions');
-assert.match(agent, /const VERSION = '1\.3\.1'/);
+assert.match(agent, /const VERSION = '1\.4\.0'/);
 assert.match(agent, /AIza|xox\[baprs\]/);
 assert.match(connector, /const VERSION = '1\.2\.1'/);
 assert.match(connector, /AIza\|xox\[baprs\]/);
@@ -54,9 +54,9 @@ assert.doesNotMatch(agent, /const dangerous = \/[^\\n]*submit/, 'routine form su
 assert.match(connector, /MutationObserver/);
 assert.match(connector, /output_change/);
 assert.match(index, /'click','fill','type','select','scroll','hover','key','drag'/);
-assert.match(index, /async function routeAI\(msg, ctx\)/);
+assert.match(index, /async function routeAI\(msg,\s*ctx\)/);
 assert.match(index, /function isAIAvailable\(\)/, 'server-side gateway must count as configured without a browser API key');
-assert.equal((index.match(/if \(isAIAvailable\(\)\)/g) || []).length, 2, 'AI status and send flow must use the same availability check');
+assert.equal((index.match(/if\s*\(isAIAvailable\(\)\)/g) || []).length, 2, 'AI status and send flow must use the same availability check');
 assert.match(index, /Interpret short follow-ups from recent conversation history/, 'short follow-ups must retain conversational intent');
 assert.match(index, /QuOLab AI gateway HTTP /, 'gateway failures must expose safe provider diagnostics');
 assert.match(index, /QNEXUSAI/);
@@ -72,10 +72,10 @@ assert.match(agent, /Full tool manual/);
 assert.match(agent, /identity: 'QNexusAi'/);
 assert.match(agent, /You are the Projects Specialist/);
 assert.match(agent, /specialist_runs: delegationRuns\.slice\(-8\)/);
-assert.match(index, /async function routeAI\(msg, ctx\)/, 'central router must dispatch real worker calls');
+assert.match(index, /async function routeAI\(msg,\s*ctx\)/, 'central router must dispatch real worker calls');
 assert.match(index, /SPECIALIST EXECUTION MODE/);
-assert.match(index, /recordDelegation\(assignment\.specialist, status, summary\)/);
-assert.match(index, /recordDelegation\(assignment\.specialist, 'failed'/);
+assert.match(index, /recordDelegation\(a\.specialist,status,last\|\|'Sin informe verificable\.'\)/);
+assert.match(index, /const status=done\?'completed':blocked\?'blocked':'incomplete'/);
 assert.match(index, /async function callAI\(msg, ctx, options = \{\}\)/);
 
 assert.match(agent, /QuOLab Nexus AI — central coordinator/);
@@ -98,4 +98,33 @@ assert.match(index, /same language as the user's latest message/);
 assert.match(index, /SPECIALIST EXECUTION MODE/);
 assert.match(index, /operation":"click\|fill\|type\|select\|scroll\|hover\|key\|drag/);
 assert.match(index, /QNEXUSAI/);
-console.log('PASS: five specialist workers, central dispatch, telemetry, UI actions and nested App Studio routing.');
+
+assert.match(agent, /const WORKFLOW_CONTRACTS = Object\.freeze/);
+assert.match(agent, /workflow_contracts: WORKFLOW_CONTRACTS/);
+assert.match(agent, /delegate to architect-pro with the exact resource ID/);
+assert.match(agent, /delegate to quantum-app-studio/);
+assert.match(agent, /delegate back to quantum-puzzle/);
+assert.match(agent, /identity: 'QNexusAi'/);
+assert.match(index, /Tool state is operational context, not optional conversation-history sharing/);
+assert.match(index, /sanitized tool status remains available for routing and verification/);
+assert.match(index, /function inferSpecialistAssignments\(msg, ctx\)/);
+assert.match(index, /function extractDelegations\(report\)/);
+assert.match(index, /openq-delegate/);
+assert.match(index, /shared workflow log/);
+assert.match(index, /criteria de aceptación|acceptance criteria/i);
+assert.match(index, /const requiresRun=/);
+assert.match(index, /const evidenceOK=!!status\.evidence&&acknowledgedOperation&&changed&&\(!requiresRun\|\|outputEvidence\)/);
+assert.match(index, /onlyNav/);
+assert.match(index, /id="ai-panel-drag-handle"/);
+assert.match(index, /function toggleAIMinimized\(\)/);
+assert.match(index, /function initAIPanelControls\(\)/);
+assert.match(index, /pointerdown/);
+assert.match(index, /pointermove/);
+assert.match(index, /resize:both/);
+assert.match(index, /ai-minimized/);
+assert.match(index, /max-height:calc\(100vh - 5rem\)/);
+assert.match(index, /Math\.max\(70,/);
+assert.match(index, /toggleAIMinimized, sendAI/);
+assert.match(index, /initAIPanelControls\(\)/);
+
+console.log('PASS: five specialist workers, direct tool routing, cross-specialist workflows, verified execution, telemetry, draggable/collapsible AI panel and nested App Studio routing.');
