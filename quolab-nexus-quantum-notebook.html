@@ -602,8 +602,15 @@ function addVisualGate(cellId){
 function addVisualQubit(cellId){const c=cells.find(x=>x.id===cellId);if(!c||c.type!=='circuit'||_expositionMode)return;if(c.circuitData.qubits>=20){notify('Maximum 20 qubits');return;}c.circuitData.qubits++;c.hiddenCode=visualCircuitCode(c.circuitData);renderCells();focusCell(cellId);saveCurrentNb(false);}
 function removeVisualGate(cellId,index){const c=cells.find(x=>x.id===cellId);if(!c||c.type!=='circuit'||_expositionMode)return;c.circuitData.gates.splice(index,1);c.hiddenCode=visualCircuitCode(c.circuitData);renderCells();focusCell(cellId);saveCurrentNb(false);}
 function clearVisualCircuit(cellId){const c=cells.find(x=>x.id===cellId);if(!c||c.type!=='circuit'||_expositionMode)return;c.circuitData={qubits:Math.max(1,c.circuitData?.qubits||1),gates:[]};c.hiddenCode='';c.visualWarnings=[];c.output='';c._outputData=null;renderCells();focusCell(cellId);saveCurrentNb(false);}
-function openCircuitEditor(cellId){const cell=cells.find(c=>c.id===cellId);if(!cell||cell.type!=='circuit')return;cell.editorOpen=true;renderCells();focusCell(cellId);}
-function toggleCircuitEditor(cellId){const cell=cells.find(c=>c.id===cellId);if(!cell||cell.type!=='circuit')return;cell.editorOpen=!cell.editorOpen;renderCells();focusCell(cellId);}
+function openCircuitEditor(cellId){
+ const cell=cells.find(c=>c.id===cellId);
+ if(!cell||cell.type!=='circuit'||_expositionMode)return;
+ _editingCellId=cellId;
+ const source=(cell.hiddenCode||'').trim()||visualCircuitCode(cell.circuitData||{qubits:2,gates:[]});
+ postCore('OPENQ_OPEN_ARCHITECT_EDIT',{cellId,code:source,circuitData:cell.circuitData||{qubits:2,gates:[]}});
+ notify('Opening this cell in Quantum Open Lab. Save and return to synchronize it.');
+}
+function toggleCircuitEditor(cellId){openCircuitEditor(cellId);}
 function buildCircuitEditorControls(cell){
  const q=cell.circuitData?.qubits||1,opts=Array.from({length:q},(_,i)=>'<option value="'+i+'">q['+i+']</option>').join(''),opts2=Array.from({length:q},(_,i)=>'<option value="'+i+'"'+(i===1?' selected':'')+'>q['+i+']</option>').join(''),opts3=Array.from({length:q},(_,i)=>'<option value="'+i+'"'+(i===2?' selected':'')+'>q['+i+']</option>').join('');
  const gates=Object.keys(NB_GATE_DEFS).map(id=>'<option value="'+id+'">'+id+'</option>').join('');
@@ -2054,7 +2061,7 @@ function addCellAt(afterIdx,type='markdown'){
   if(_expositionMode)return;
   if(!['markdown','circuit'].includes(type))type='circuit';
   const data={qubits:2,gates:[]};
-  const cell={id:genId(),type,code:'',output:'',exec_count:null,mdEdit:type==='markdown',errorLine:null,hiddenCode:'',circuitData:data,editorOpen:type==='circuit'};
+  const cell={id:genId(),type,code:'',output:'',exec_count:null,mdEdit:type==='markdown',errorLine:null,hiddenCode:'',circuitData:data,editorOpen:false};
   if(afterIdx===-1||afterIdx>=cells.length)cells.push(cell);
   else cells.splice(afterIdx+1,0,cell);
   renderCells();focusCell(cell.id);updateStatus();
