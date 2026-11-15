@@ -2416,7 +2416,7 @@ CONTEXT (staged and size-limited): ${c}`;
         if (typeof fn !== 'function') return {ok:false,message:'The function is no longer callable in the live module.'};
         const sensitive = /password|passphrase|secret|token|api.?key|private.?key|credential|authorization|cookie|session/i;
         if (JSON.stringify(a.args || []).length > 12000 || sensitive.test(JSON.stringify(a.args || []))) return {ok:false,message:'Function arguments exceed the safe limit or contain sensitive credential-like data.'};
-        if (/delete|remove|publish|approve|reject|reset|clear|overwrite|disconnect|logout/i.test(a.functionName) && !confirm('QNexusAi requests '+a.functionName+' in '+a.screen+'. Continue?')) return {ok:false,message:'Function call cancelled by user.'};
+        if (/delete|remove|publish|approve|reject|reset|clear|overwrite|disconnect|logout|^load|^sync|^update/i.test(a.functionName) && !confirm('QNexusAi requests '+a.functionName+' in '+a.screen+'. Continue?')) return {ok:false,message:'Function call cancelled by user.'};
         try {
           const value = await Promise.race([Promise.resolve(fn.apply(view,a.args||[])),new Promise((_,reject)=>setTimeout(()=>reject(new Error('Function call timed out after 30 seconds.')),30000))]);
           let output='';try{output=JSON.stringify(value);}catch(_){output=String(value??'');}
