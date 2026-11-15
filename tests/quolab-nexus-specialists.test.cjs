@@ -32,6 +32,7 @@ assert.ok(agent.includes('function acknowledgeEventDelta(sequence)'));
 assert.ok(index.includes('acknowledgeEventDelta(ctx?.event_delta?.to_sequence)'));
 assert.ok(!agent.includes('if (options && options.consumeEventDelta) lastDeliveredEventSequence = eventSequence'));
 assert.ok(index.includes('consumeEventDelta:true'));
+assert.ok(index.includes('acknowledgeEventDelta(ctx?.event_delta?.to_sequence)'));
 assert.ok(index.includes('events:(group.events||[]).slice(0,6)'));
 assert.ok(!agent.includes('recentEvents.slice(-20)'));
 assert.ok(!agent.includes('MAX_EVENTS = 40'));
