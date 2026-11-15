@@ -43,6 +43,9 @@ assert.ok(index.includes('Keep QNexusAi visible while the command is in flight')
 assert.ok(index.includes('function catalog when its documented global functions are callable'));
 
 assert.ok(notebook.includes('OPENQ_AI_SET_MARKDOWN'));
+assert.ok(notebook.includes('SET_MARKDOWN|NOISE'));
+assert.ok(agent.includes('safe:safe&&typeof fn===\'function\''));
+assert.ok(index.includes('item.callable && item.safe'));
 assert.ok(notebook.includes('id="btn-add-code"'));
 assert.ok(notebook.includes('Python / Qiskit</button>'));
 assert.ok(notebook.includes("const code = QISKIT_PREAMBLE+'\\n'+rawCode;"));
