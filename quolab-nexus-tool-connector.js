@@ -152,7 +152,7 @@
   global.addEventListener('message', event => {
     if (event.origin !== global.location.origin || !event.data || event.data.type !== 'NEXUS_TOOL_EVENT') return;
     const child = Array.from(global.document.querySelectorAll('iframe')).find(frame => frame.contentWindow === event.source);
-    if (!child || !/quolab-nexus-app-studio\\.html(?:$|[?#])/.test(child.getAttribute('src') || '')) return;
+    if (!child || !(child.getAttribute('src') || '').includes('quolab-nexus-app-studio.html')) return;
     const payload = event.data;
     send('nested_tool_event', {
       tool: 'quantum-app-studio',
