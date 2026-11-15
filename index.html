@@ -2140,7 +2140,7 @@ class QuOLabNexusConfigSyncReader {
       links:(tool.links||[]).slice(0,16),
       canvases:(tool.canvases||[]).slice(0,8),
       outputs:(tool.outputs||[]).slice(0,8),
-      functions:(tool.function_api||[]).slice(0,32),
+      functions:(tool.function_api||[]).slice(0,60),
       visible_text:String(tool.visible_text||'').slice(0,1800)
     }));
     const toolIndex = catalog.map(tool => ({
