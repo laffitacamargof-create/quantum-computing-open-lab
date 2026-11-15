@@ -111,6 +111,16 @@
 
   function describeFrame(screen, frame, isActive) {
     const item = { id: screen, name: TOOL_CATALOG[screen]?.name || screen, loaded: false };
+    if(screen==='quantum-app-studio'){
+      const puzzle=frameFor('quantum-puzzle');
+      const modal=puzzle&&puzzle.contentDocument&&puzzle.contentDocument.getElementById('studioModalReal');
+      if(!modal||!modal.classList.contains('open')){
+        item.available=false;
+        item.note='Open Quantum App Studio from Quantum Puzzle before operating this nested editor.';
+        return item;
+      }
+      item.available=true;
+    }
     try {
       const doc = frame.contentDocument;
       if (!doc || !doc.documentElement) return item;
