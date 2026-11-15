@@ -23,9 +23,13 @@ for (const name of [
 
 assert.match(agent, /CENTRAL_SCREENS = Object\.freeze\(\['library','help'\]\)/);
 assert.match(agent, /SPECIALIST_INSTRUCTIONS = Object\.freeze/);
-for (const id of ['projects','architect','architect-pro','quantum-puzzle','quantum-app-studio']) {
-  assert.match(agent, new RegExp(id.replace(/[.*+?^${}()|[\\]\\]/g, '\\\\assert.match(agent, /SPECIALIST_INSTRUCTIONS = Object\.freeze/);') + \": ['\\\"]You are the"));
-}
+for (const role of [
+  'You are the Projects Specialist',
+  'You are the Quantum Open Lab Specialist',
+  'You are the Quantum Notebook Specialist',
+  'You are the Quantum Puzzle Specialist',
+  'You are the Quantum App Studio Specialist'
+]) assert.ok(agent.includes(role), role + ' must have its own worker instructions');
 assert.match(agent, /const VERSION = '1\.2\.0'/);
 assert.match(connector, /const VERSION = '1\.2\.0'/);
 assert.match(agent, /getSpecialistInstructions: id => SPECIALIST_INSTRUCTIONS\[id\]/);
