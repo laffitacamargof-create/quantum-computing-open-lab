@@ -1,5 +1,6 @@
 # QuOLab Nexus Motor — Servidor cuántico completo
-import sys, io, time, json
+import os, sys, time, json
+from quolab_execution_sandbox import execute_isolated, is_safe
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -74,77 +75,9 @@ except Exception:
 
 print(f"QuOLab Nexus Motor OK — {len(LIBS)} libs: {', '.join(LIBS.keys())}")
 
-# Seguridad
-BLOCKED = ['import os','import subprocess','import socket','os.system','shutil.','os.popen']
-def is_safe(code):
-    for b in BLOCKED:
-        if b in code:
-            return False, f'No permitido: {b}'
-    return True, 'OK'
-
-# Ejecutar código
+# La ejecución de usuario se delega al sandbox OS aislado y fail-closed.
 def execute_code(code: str):
-    safe, msg = is_safe(code)
-    if not safe:
-        return {"success": False, "output": msg, "bloch": None, "time": 0}
-    old_out, old_err = sys.stdout, sys.stderr
-    sys.stdout = buf = io.StringIO()
-    sys.stderr = io.StringIO()
-    t0 = time.time()
-    try:
-        env = {'__builtins__': __builtins__}
-        if 'qiskit' in LIBS:
-            env.update({'qiskit':qiskit,'QuantumCircuit':QuantumCircuit,
-                'QuantumRegister':QuantumRegister,'ClassicalRegister':ClassicalRegister,
-                'transpile':transpile,'Statevector':Statevector,'DensityMatrix':DensityMatrix,
-                'Operator':Operator,'SparsePauliOp':SparsePauliOp})
-        if AerSimulator: env['AerSimulator'] = AerSimulator
-        if 'qiskit-algorithms' in LIBS:
-            env.update({'VQE':VQE,'QAOA':QAOA,'Grover':Grover,'COBYLA':COBYLA,'SPSA':SPSA})
-        if cirq: env['cirq'] = cirq
-        if qml:  env['qml'] = qml
-        if qt:   env['qt'] = qt
-        if 'numpy' in LIBS: env['np']=np; env['numpy']=np; env['pi']=pi
-        if 'scipy' in LIBS: env['scipy']=scipy
-        if 'sympy' in LIBS: env['sympy']=sympy
-
-        exec(code, env)
-        output = buf.getvalue()
-
-        bloch_data = None
-        qc = env.get('qc', None)
-        if qc is not None:
-            try:
-                if AerSimulator:
-                    has_m = any(i.operation.name=='measure' for i in qc.data)
-                    if has_m:
-                        sim = AerSimulator()
-                        res = sim.run(transpile(qc,sim), shots=1024).result()
-                        counts = res.get_counts()
-                        total = sum(counts.values())
-                        bloch_data = {'counts':counts,
-                            'probabilities':{k:v/total for k,v in counts.items()},
-                            'shots':1024,'simulator':'AerSimulator'}
-                    else:
-                        sv = Statevector(qc)
-                        bloch_data = {'probabilities':{k:float(v) for k,v in sv.probabilities_dict().items()},
-                            'simulator':'Statevector'}
-                else:
-                    sv = Statevector(qc)
-                    bloch_data = {'probabilities':{k:float(v) for k,v in sv.probabilities_dict().items()},
-                        'simulator':'Statevector'}
-            except Exception as ex:
-                bloch_data = {'error': str(ex)}
-
-        return {"success":True,"output":output.strip() or "OK",
-                "bloch":bloch_data,"time":round(time.time()-t0,3),"libs":LIBS}
-    except SyntaxError as e:
-        return {"success":False,"output":f"Sintaxis línea {e.lineno}: {e.msg}","bloch":None,"time":0}
-    except Exception as e:
-        return {"success":False,"output":str(e),"bloch":None,"time":0}
-    finally:
-        sys.stdout = old_out
-        sys.stderr = old_err
+    return execute_isolated(code)
 
 # Health response
 def health_response():
@@ -152,8 +85,12 @@ def health_response():
 
 # FastAPI
 app = FastAPI(title="QuOLab Nexus Motor")
-app.add_middleware(CORSMiddleware,
-    allow_origins=["*"],allow_methods=["*"],allow_headers=["*"])
+ALLOWED_ORIGINS = [origin.strip() for origin in os.environ.get(
+    "QUOLAB_ALLOWED_ORIGINS",
+    "https://laffitacamargof-create.github.io,https://quantum-computing-open-lab.vercel.app,http://localhost:8000,http://localhost:7860"
+).split(",") if origin.strip()]
+app.add_middleware(CORSMiddleware, allow_origins=ALLOWED_ORIGINS,
+    allow_methods=["GET","POST","OPTIONS"], allow_headers=["Content-Type"])
 
 # ── TODOS LOS ENDPOINTS POSIBLES ──────────────────
 
