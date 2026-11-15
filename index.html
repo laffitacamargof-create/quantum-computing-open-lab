@@ -2110,7 +2110,19 @@ class QuOLabNexusConfigSyncReader {
   }
 
   function aiSystemExtra(ctx) {
-    let c=JSON.stringify(ctx);if(c.length>18000)c=c.slice(0,18000)+'…(truncated; active tool is prioritized in live context)';
+    const allTools=Array.isArray(ctx?.tools)?ctx.tools:[];
+    const compactTools=allTools.map(tool=>({
+      id:tool.id,name:tool.tool_name||tool.name,loaded:tool.loaded,capabilities:tool.capabilities,
+      headings:(tool.headings||[]).slice(0,tool.id===ctx.active_tool?24:8),
+      inputs:(tool.inputs||[]).slice(0,tool.id===ctx.active_tool?60:16),
+      buttons:(tool.buttons||[]).slice(0,tool.id===ctx.active_tool?80:22),
+      links:(tool.links||[]).slice(0,tool.id===ctx.active_tool?45:12),
+      canvases:(tool.canvases||[]).slice(0,tool.id===ctx.active_tool?18:4),
+      outputs:(tool.outputs||[]).slice(0,tool.id===ctx.active_tool?16:4),
+      visible_text:String(tool.visible_text||'').slice(0,tool.id===ctx.active_tool?3800:450)
+    }));
+    const packed={tool_catalog:ctx?.tool_catalog||[],active_tool:ctx?.active_tool,active_tool_name:ctx?.active_tool_name,tools:compactTools,recent_events:(ctx?.recent_events||[]).slice(-12),user_context:ctx?.user_context||{}};
+    let c=JSON.stringify(packed);if(c.length>22000)c=c.slice(0,22000)+'…(truncated after full tool catalog and active-tool context)';
     return `
 
 You are QNexusAi: one autonomous superagent for the entire QuOLab Nexus ecosystem. There are no specialist agents, worker prompts, router calls, delegation chains or final-synthesis calls. You plan, operate tools, recover from errors and verify outcomes yourself. Tools are module interfaces, not agents: Projects; Quantum Open Lab; Quantum Notebook; Quantum Puzzle; nested Quantum App Studio; Library; and Help. Read the complete operating guide for every module from CONTEXT.tool_catalog, then inspect CONTEXT.tools for live controls, selectors, links, tabs, canvas surfaces, current content, outputs and errors. These guides are grounded in the current source and are the operating manual for the tools.
@@ -2376,7 +2388,7 @@ CONTEXT: ${c}`;
             'USER REQUEST (preserve the full scope):\n'+msg,
             turn?'CONTINUATION AND CHECKLIST:\n'+previous:'',
             turn?'LAST ACTION RESULTS: '+JSON.stringify(lastExecution.results||[]):'',
-            'FRESH LIVE CONTEXT: '+JSON.stringify(ctx||{}),
+            'FRESH LIVE CONTEXT: use the current structured CONTEXT supplied in the system instructions; do not rely on stale prior context.',
             executionTask?'Continue the same task. Maintain an explicit checklist of every requested acceptance criterion. Inspect, act, verify, correct and continue. Move between modules yourself. No agents or handoffs exist. Do not repeat successful actions.':'Answer directly; do not emit actions unless the user explicitly requests an operation.',
             'If needed, emit up to 8 valid actions, each inside its own fenced code block labeled openq-action. Use TASK_STATUS: CONTINUE until all criteria are verified. COMPLETED requires TASK_EVIDENCE grounded in fresh context. Use BLOCKED only for a concrete blocker. Questions are completed directly.'
           ].filter(Boolean).join('\n\n');
@@ -2387,7 +2399,7 @@ CONTEXT: ${c}`;
             const changed=before!==JSON.stringify(ctx||{}),ack=lastExecution.ok&&lastExecution.results.length===parsed.actions.length;
             const needsOutput=/\b(run|execute|simulate|simulation|ejecutar|ejecuta|simular|simula|simulaci[oó]n)\b/i.test(msg),outputOK=!needsOutput||hasFreshOutput(ctx,lastExecution);
             if(ack&&changed)evidence.push(...lastExecution.results.filter(x=>x.ok).map(x=>x.message));
-            previous=finalText+'\nState changed: '+changed+'; actions acknowledged: '+ack+'; output verified: '+outputOK+'\nFresh context: '+JSON.stringify(ctx||{});
+            previous=finalText+'\nState changed: '+changed+'; actions acknowledged: '+ack+'; output verified: '+outputOK+'\nFresh tool context was reloaded; inspect the current system CONTEXT before the next action.';
             if(!lastExecution.ok){const uncertain=lastExecution.results.some(x=>x.received&&!x.acknowledged);if(uncertain){blocked=true;previous+='\nThe tool acknowledged receipt but did not return an execution result. Do not resend this potentially non-idempotent command; keep the task blocked until its outcome can be inspected.';break;}previous+='\nAction failure: diagnose and correct before continuing.';continue;}
             if(status.status==='BLOCKED'){blocked=true;break;}
             if(status.status==='COMPLETED'&&status.evidence&&ack&&changed&&outputOK){finished=true;evidence.push(status.evidence);break;}
