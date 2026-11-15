@@ -22,6 +22,34 @@ for (const name of [
 ]) assert.ok(registry[1].includes(name), name + ' must be registered');
 
 assert.match(agent, /CENTRAL_SCREENS = Object\.freeze\(\['library','help'\]\)/);
+assert.match(agent, /SPECIALIST_INSTRUCTIONS = Object\.freeze/);
+for (const role of [
+  'You are the Projects Specialist',
+  'You are the Quantum Open Lab Specialist',
+  'You are the Quantum Notebook Specialist',
+  'You are the Quantum Puzzle Specialist',
+  'You are the Quantum App Studio Specialist'
+]) assert.ok(agent.includes(role), role + ' must have its own worker instructions');
+assert.match(agent, /const VERSION = '1\.2\.0'/);
+assert.match(connector, /const VERSION = '1\.2\.0'/);
+assert.match(agent, /getSpecialistInstructions: id => SPECIALIST_INSTRUCTIONS\[id\]/);
+assert.match(agent, /recordDelegation,/);
+assert.match(agent, /SPECIALIST_INSTRUCTIONS/);
+assert.match(agent, /operation === 'drag'/);
+assert.match(agent, /operation === 'hover'/);
+assert.match(agent, /operation === 'key'/);
+assert.match(connector, /MutationObserver/);
+assert.match(connector, /output_change/);
+assert.match(index, /'click','fill','type','select','scroll','hover','key','drag'/);
+assert.match(index, /async function routeAI\(msg, ctx\)/);
+assert.match(index, /QUOLAB NEXUS AI/);
+assert.match(agent, /specialist_runs: delegationRuns\.slice\(-8\)/);
+assert.match(index, /async function routeAI\(msg, ctx\)/, 'central router must dispatch real worker calls');
+assert.match(index, /SPECIALIST WORKER MODE/);
+assert.match(index, /recordDelegation\(route\.specialist, 'completed'/);
+assert.match(index, /recordDelegation\(route\.specialist, 'failed'/);
+assert.match(index, /async function callAI\(msg, ctx, options = \{\}\)/);
+
 assert.match(agent, /QuOLab Nexus AI — central coordinator/);
 assert.match(agent, /getElementById\('studioIframe'\)/, 'App Studio must be reachable through its nested iframe');
 assert.match(agent, /studioModalReal/, 'App Studio activation must be detected');
@@ -39,4 +67,7 @@ assert.match(index, /exactly five tool specialists and no others/);
 assert.match(index, /Library and Help are central-agent responsibilities/);
 assert.match(index, /same language as the user's latest message/);
 
-console.log('PASS: exactly five specialists, central-owned general modules, and nested Quantum App Studio routing.');
+assert.match(index, /SPECIALIST WORKER MODE/);
+assert.match(index, /operation":"click\|fill\|type\|select\|scroll\|hover\|key\|drag/);
+assert.match(index, /QUOLAB NEXUS AI/);
+console.log('PASS: five specialist workers, central dispatch, telemetry, UI actions and nested App Studio routing.');

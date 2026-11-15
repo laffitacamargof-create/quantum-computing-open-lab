@@ -1,9 +1,9 @@
-/* QuOLab Nexus Tool Connector — non-invasive telemetry bridge v1 */
+/* QuOLab Nexus Tool Connector — sanitized telemetry bridge v1.2.0 */
 (function (global) {
   'use strict';
   if (global.QuOLabNexusToolConnector) return;
 
-  const VERSION = '1.1.0';
+  const VERSION = '1.2.0';
   const TOOL_BY_FILE = {
     'quolab-nexus-projects.html': 'projects',
     'quolab-nexus-architect.html': 'architect',
@@ -160,6 +160,29 @@
       details: payload.details || {}
     });
   }, true);
+
+  // Observe only rendered output/result regions so the coordinator sees
+  // tool results as they change, without streaming entire page contents.
+  let lastOutputSignature = '';
+  let outputTimer = null;
+  function reportOutputChanges() {
+    const outputs = Array.from(global.document.querySelectorAll('pre,output,[aria-live="polite"],[aria-live="assertive"],[id*="output" i],[class*="output" i],[id*="result" i],[class*="result" i]'))
+      .slice(0, 20)
+      .map(el => sanitize(el.innerText || el.textContent || '', '', 0))
+      .filter(Boolean);
+    const signature = JSON.stringify(outputs);
+    if (signature && signature !== lastOutputSignature) {
+      lastOutputSignature = signature;
+      send('output_change', { outputs });
+    }
+  }
+  if (global.MutationObserver && global.document.body) {
+    const outputObserver = new MutationObserver(() => {
+      if (outputTimer) clearTimeout(outputTimer);
+      outputTimer = setTimeout(reportOutputChanges, 250);
+    });
+    outputObserver.observe(global.document.body, { subtree: true, childList: true, characterData: true });
+  }
 
   global.addEventListener('error', event => {
     send('runtime_error', { message: event.message || 'Runtime error', file: safeUrl(event.filename || ''), line: event.lineno || 0 });

@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - feature/quolab-nexus-five-specialists
+      - feature/quolab-nexus-real-specialist-dispatch
   pull_request:
     paths:
       - "index.html"
