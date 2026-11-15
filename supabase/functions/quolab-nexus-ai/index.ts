@@ -82,8 +82,8 @@ function providerOrder(available: Provider[]) {
   return [...new Set(ids)].map(id => available.find(p => p.id === id)).filter((p): p is Provider => !!p);
 }
 function retryable(status: number) {
-  return status === 401 || status === 402 || status === 403 || status === 408 || status === 409 ||
-    status === 429 || status >= 500;
+  return status === 401 || status === 402 || status === 403 || status === 408 || status === 409 || status === 413 ||
+    status === 425 || status === 429 || status >= 500;
 }
 async function invoke(provider: Provider, messages: Message[], maxTokens: number, temperature: number) {
   const controller = AbortSignal.timeout(provider.timeoutMs || 25_000);
@@ -161,6 +161,8 @@ Deno.serve(async (req: Request) => {
       if (content.length > 20_000 || totalChars > 60_000) return reply(413, { error: "prompt_too_large" }, origin);
       safeMessages.push({ role: role as Message["role"], content });
     }
+    const requestId = req.headers.get('x-request-id') || (typeof payload.request_id === 'string' ? payload.request_id.slice(0, 100) : crypto.randomUUID());
+    console.log('AI gateway request received', { requestId, messageCount: safeMessages.length, promptChars: totalChars, userId: user.id });
     const maxTokens = Math.min(Math.max(Number(payload.max_tokens) || 1200, 1), 4096);
     const rawTemperature = Number(payload.temperature);
     const temperature = Number.isFinite(rawTemperature) ? Math.min(Math.max(rawTemperature, 0), 2) : 0.7;
@@ -185,7 +187,7 @@ Deno.serve(async (req: Request) => {
         console.error("AI provider failed", { provider: provider.id, status, userId: user.id });
         failures.push(provider.id);
         if (!retryable(status)) return reply(status >= 400 && status < 500 ? status : 502, {
-          error: "ai_provider_request_failed", provider: provider.id, status,
+          error: "ai_provider_request_failed", provider: provider.id, status, request_received: true, request_id: requestId,
         }, origin);
       }
     }
