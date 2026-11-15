@@ -1892,7 +1892,7 @@ function handleImport(e){
         const src=Array.isArray(c.source)?c.source.join(''):c.source||'';
         const tags=c.metadata?.tags||[];
         const type=c.cell_type==='markdown'?'markdown':
-          (tags.includes('circuit-cell')?'circuit':'markdown');
+          (tags.includes('circuit-cell')?'circuit':'code');
         const hiddenCode = c.metadata?.hidden_code || '';
         const circuitData = c.metadata?.circuit_data || null;
         cells.push({id:genId(),type,code:src,output:'',exec_count:null,
@@ -1996,8 +1996,8 @@ function setView(v){
 
 // ── CELLS ────────────────────────────────────────────────────
 function addCellAt(afterIdx,type='markdown'){
-  if(type==='code'||type==='qiskit') type='markdown';
   if(_expositionMode)return;
+  if(!['markdown','circuit','code','qiskit'].includes(type))type='markdown';
   const defaultQk=`# Qiskit Cell — automatic imports: qc, AerSimulator, np, pi, plt
 qc = QuantumCircuit(2, 2)
 qc.h(0)
@@ -2592,7 +2592,7 @@ window.addEventListener('message',e=>{
     }else if(d.type==='OPENQ_AI_ADD_CELL'){
       if(_expositionMode){if(d.requestId)qnexusActionFinish(d,{ok:false,message:'This notebook is read-only.'});return;}
       const before=cells.length;
-      const cellType=['circuit','markdown'].includes(d.cellType)?d.cellType:'circuit';
+      const cellType=['circuit','markdown','code','qiskit'].includes(d.cellType)?d.cellType:'circuit';
       addCellAt(Number.isInteger(d.afterIndex)?d.afterIndex:cells.length-1,cellType);
       const index=cells.length-1;
       const cell=cells[index];
