@@ -92,7 +92,7 @@ assert.match(index, /exactly five tool specialists and no others/);
 assert.match(index, /Library and Help are central-agent responsibilities/);
 assert.match(index, /same language as the user's latest message/);
 
-assert.match(index, /SPECIALIST WORKER MODE/);
+assert.match(index, /SPECIALIST EXECUTION MODE/);
 assert.match(index, /operation":"click\|fill\|type\|select\|scroll\|hover\|key\|drag/);
 assert.match(index, /QNEXUSAI/);
 console.log('PASS: five specialist workers, central dispatch, telemetry, UI actions and nested App Studio routing.');
