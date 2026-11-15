@@ -123,7 +123,7 @@
       .find(frame => frame.getAttribute('data-openq') === screen) || null;
   }
 
-  function describeFrame(screen, frame, isActive) {
+  function describeFrame(screen, frame, isActive, spec) {
     const item = { id: screen, name: TOOL_CATALOG[screen]?.name || screen, loaded: false };
     if(screen==='quantum-app-studio'){
       const puzzle=frameFor('quantum-puzzle');
@@ -189,7 +189,12 @@
         return {name,purpose:FUNCTION_PURPOSES[name]||inferFunctionPurpose(name),callable:typeof fn==='function',safe:safe&&typeof fn==='function',arity:typeof fn==='function'?fn.length:0,signature:cleanText(signature,180)};
       });
       item.visible_text=cleanText(doc.body?.innerText||'',isActive?4200:700);
-    } catch (_) { item.cross_origin_or_unavailable=true; }
+    } catch (error) {
+      const message=cleanText(error&&error.stack||error&&error.message||String(error),1000);
+      item.inspect_error=message;
+      item.cross_origin_or_unavailable=!!(error&&(/security|cross.?origin|denied/i.test(String(error.name||'')+' '+String(error.message||''))));
+      recentEvents.push({time:new Date().toISOString(),from:screen,type:'FRAME_INSPECTION_ERROR',kind:'describeFrame',details:message,status:'error',timestamp:Date.now()});
+    }
     return item;
   }
 
@@ -203,7 +208,7 @@
         id,
         tool_name: spec ? spec.name : 'QNexusAi',
         capabilities: spec ? spec.capabilities : ['inspect','navigate','explain','diagnose']
-      }, frame ? describeFrame(id, frame, id === active) : { loaded: false });
+      }, frame ? describeFrame(id, frame, id === active, spec) : { loaded: false });
     });
     const activeTool = tools.find(tool => tool.id === active) || null;
     return {
