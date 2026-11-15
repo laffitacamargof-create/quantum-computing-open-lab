@@ -2111,7 +2111,34 @@ CONTEXT: ${c}`;
     if (aiCfg.key && aiCfg.provider !== 'none') {
       try {
         const ctx = await gatherAIContext();
-        const resp0 = await callAI(msg, ctx);
+        let resp0;
+        const route = await routeAI(msg, ctx);
+        if (route && route.specialist) {
+          const specialist = window.QuOLabNexusAgent.getSpecialistInstructions(route.specialist);
+          const startedAt = Date.now();
+          notify('Delegating to ' + window.QuOLabNexusAgent.specialists[route.specialist].name);
+          try {
+            const workerReport = await callAI(
+              'Original user request:\n' + msg + '\n\nAssigned task:\n' + route.task,
+              ctx,
+              { systemSuffix: '\n\nSPECIALIST WORKER MODE. ' + specialist + '\nReturn a concise factual report. If a UI change is needed, propose only valid openq-action blocks allowed by the ecosystem contract. Never claim execution without evidence.' }
+            );
+            window.QuOLabNexusAgent.recordDelegation(route.specialist, 'completed', workerReport);
+            const elapsed = Date.now() - startedAt;
+            resp0 = await callAI(
+              'Original user request:\n' + msg + '\n\nSpecialist report (' + window.QuOLabNexusAgent.specialists[route.specialist].name + ', ' + elapsed + ' ms):\n' + workerReport + '\n\nPrepare the final answer for the user. Preserve any valid openq-action blocks from the report when appropriate, and explain what the specialist concluded.',
+              ctx,
+              { systemSuffix: '\n\nYou are the central coordinator. You own the final response, verify the specialist report against CONTEXT, explain limitations, and present only actions that are valid and safe. Reply in the user’s language.' }
+            );
+          } catch (workerError) {
+            window.QuOLabNexusAgent.recordDelegation(route.specialist, 'failed', workerError && workerError.message || 'Worker failed');
+            throw workerError;
+          }
+        } else if (route && route.answer) {
+          resp0 = route.answer;
+        } else {
+          resp0 = await callAI(msg, ctx);
+        }
         const ex = extractActions(resp0); const resp = ex.text || (ex.actions.length ? 'Here is what I suggest:' : resp0);
         document.getElementById('ai-loading').classList.remove('show');
         addAIMsg(resp, 'bot');
@@ -2155,11 +2182,36 @@ CONTEXT: ${c}`;
     }
   }
 
-  async function callAI(msg, ctx) {
+  async function routeAI(msg, ctx) {
+    const routerPrompt = `
+
+CENTRAL ROUTER — INTERNAL DISPATCH ONLY.
+Classify the latest user request. Choose exactly one specialist only if the request materially concerns that specialist's scope:
+projects, architect, architect-pro, quantum-puzzle, quantum-app-studio.
+Otherwise the central coordinator handles it directly.
+Return ONLY one valid JSON object, no Markdown:
+For delegation: {"specialist":"<one exact specialist id>","task":"<specific bounded task for that specialist>"}
+For central handling: {"specialist":null,"answer":"<complete direct answer to the user>"}
+Do not invent screen state, IDs, tool capabilities, or completed actions. Do not delegate security/account/founder administration. Keep the user's language.
+`;
+    const raw = await callAI(msg, ctx, { systemSuffix: routerPrompt });
+    const match = String(raw || '').match(/\{[\s\S]*\}/);
+    if (!match) return null;
+    try {
+      const route = JSON.parse(match[0]);
+      if (route.specialist === null && typeof route.answer === 'string' && route.answer.trim()) return route;
+      const registry = window.QuOLabNexusAgent && window.QuOLabNexusAgent.specialists;
+      if (route.specialist && registry && Object.prototype.hasOwnProperty.call(registry, route.specialist) &&
+          typeof route.task === 'string' && route.task.trim() && route.task.length <= 5000) return route;
+    } catch (error) { console.warn('Central AI router returned invalid dispatch JSON:', error); }
+    return null;
+  }
+
+  async function callAI(msg, ctx, options = {}) {
     const temp   = aiCfg.temp   || 0.7;
     const tokens = Math.max(aiCfg.tokens || 600, 1200);
     const langNote = ' Always reply in the same language as the latest user message. Detect Spanish, English, or any other language automatically; preserve technical names and code identifiers.';
-    const sys = (aiCfg.prompt || 'You are the Quolab assistant, a quantum computing ecosystem. Respond concisely and technically.') + langNote + (ctx ? aiSystemExtra(ctx) : '');
+    const sys = (aiCfg.prompt || 'You are the Quolab assistant, a quantum computing ecosystem. Respond concisely and technically.') + langNote + (ctx ? aiSystemExtra(ctx) : '') + (options.systemSuffix || '');
     const msgs = [
       { role:'system', content:sys },
       ...aiHistory.slice(-6),
