@@ -2,7 +2,7 @@
 (function (global) {
   'use strict';
 
-  const VERSION = '1.3.1';
+  const VERSION = '1.4.0';
   // Exactly five tool specialists. Library, Help, and all general Nexus functions
   // remain under the central coordinator rather than becoming separate agents.
   const TOOL_SPECS = Object.freeze({
