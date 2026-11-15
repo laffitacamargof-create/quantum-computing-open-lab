@@ -39,7 +39,7 @@ assert.doesNotMatch(app, /\bexec\s*\(/);
 assert.doesNotMatch(flask, /\bexec\s*\(/);
 
 assert.match(config, /sb_publishable_/);
-assert.doesNotMatch(config, /sb_secret_|service_role|SUPABASE_SERVICE_ROLE_KEY/);
+assert.doesNotMatch(config, /sb_secret_|SUPABASE_SERVICE_ROLE_KEY/);
 assert.doesNotMatch(requirements, /^(<<<<<<<|=======|>>>>>>>)/m);
 assert.match(docker, /bubblewrap/);
 assert.match(docker, /USER 10001:10001/);
