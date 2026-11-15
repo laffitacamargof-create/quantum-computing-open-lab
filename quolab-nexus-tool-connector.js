@@ -16,6 +16,15 @@
   const tool = global.__QUOLAB_NEXUS_TOOL || TOOL_BY_FILE[global.location.pathname.split('/').pop()] || 'unknown';
   const SENSITIVE = /password|passphrase|secret|token|api.?key|private.?key|credential|founder|authorization|cookie|session/i;
   const MAX_TEXT = 1200;
+  const SAFE_RESPONSE_PATHS = new Set(['/health','/health/predict','/run','/run/predict']);
+  function contextEnabled() {
+    try { return global.localStorage.getItem('openq_ai_ctx') !== '0'; }
+    catch (_) { return true; }
+  }
+  function responseBodyAllowed(rawUrl) {
+    try { return SAFE_RESPONSE_PATHS.has(new URL(String(rawUrl || ''), global.location.href).pathname); }
+    catch (_) { return false; }
+  }
 
   function sanitize(value, key, depth) {
     if (SENSITIVE.test(String(key || ''))) return '[REDACTED]';
@@ -29,6 +38,11 @@
       return value
         .replace(/(?:sb_secret_|sk[-_](?:proj[-_]|live_|test_)?|ghp_|gho_|github_pat_|AIza|xox[baprs]-|glpat-|npm_)[A-Za-z0-9_-]{8,}/g, '[REDACTED]')
         .replace(/(Bearer\s+)[A-Za-z0-9._-]+/gi, '$1[REDACTED]')
+        .replace(/\beyJ[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{5,}\b/g, '[REDACTED_JWT]')
+        .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, '[REDACTED_EMAIL]')
+        .replace(/\b(?:\+\d{1,3}[\s.-]?)?(?:\(\d{2,4}\)|\d{2,4})[\s.-]\d{3,4}[\s.-]\d{3,4}\b/g, '[REDACTED_PHONE]')
+        .replace(/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi, '[REDACTED_UUID]')
+        .replace(/\b(?:\+?\d{1,3})?\d{10,12}\b/g, '[REDACTED_PHONE]')
         .replace(/((?:password|passwd|token|api[_-]?key|secret|authorization)=)[^&\s]+/gi, '$1[REDACTED]')
         .slice(0, MAX_TEXT);
     }
@@ -51,7 +65,7 @@
   }
 
   function send(kind, details) {
-    if (!global.parent || global.parent === global) return;
+    if (!contextEnabled() || !global.parent || global.parent === global) return;
     try {
       global.parent.postMessage({
         type: 'NEXUS_TOOL_EVENT',
@@ -70,6 +84,7 @@
   }
 
   function inspect() {
+    if (!contextEnabled()) return { tool, title: global.document.title, url: safeUrl(global.location.href), inputs: [], outputs: [] };
     const inputs = Array.from(global.document.querySelectorAll('input,textarea,select,[contenteditable="true"]'))
       .filter(el => el.type !== 'hidden' && !el.disabled && el.getClientRects().length)
       .slice(0, 60)
@@ -118,15 +133,20 @@
       const url = typeof input === 'string' ? input : (input && input.url) || '';
       const method = String((init && init.method) || (input && input.method) || 'GET').toUpperCase();
       const body = init && init.body;
-      send('request', { method, url: safeUrl(url), body: typeof body === 'string' ? sanitize(body, '', 0) : body ? '[NON_TEXT_BODY]' : '' });
+      if (!contextEnabled()) return originalFetch(input, init);
+      send('request', { method, url: safeUrl(url), body: '[OMITTED]', bodyLength: typeof body === 'string' ? body.length : body ? -1 : 0 });
       return originalFetch(input, init).then(response => {
         if(!response.ok)send('http_error',{method,url:safeUrl(url),status:response.status,statusText:String(response.statusText||'').slice(0,120)});
         try {
           const copy = response.clone();
           copy.text().then(text => {
-            let payload = text;
-            try { payload = JSON.parse(text); } catch (_) {}
-            send('response', { method, url: safeUrl(url), status: response.status, ok: response.ok, body: sanitize(payload, '', 0) });
+            if (contextEnabled()) {
+              if (responseBodyAllowed(url)) {
+                let payload = text;
+                try { payload = JSON.parse(text); } catch (_) {}
+                send('response', { method, url: safeUrl(url), status: response.status, ok: response.ok, body: sanitize(payload, '', 0) });
+              } else send('response', { method, url: safeUrl(url), status: response.status, ok: response.ok, body: '[NOT_ALLOWLISTED]' });
+            }
           }).catch(() => {});
         } catch (_) {}
         return response;
@@ -148,13 +168,17 @@
       };
       proto.send = function (body) {
         const meta = this.__quolabNexusMeta || { method: 'GET', url: '' };
-        send('request', { method: meta.method, url: meta.url, body: typeof body === 'string' ? sanitize(body, '', 0) : body ? '[NON_TEXT_BODY]' : '' });
+        if (!contextEnabled()) return originalSend.apply(this, arguments);
+        send('request', { method: meta.method, url: meta.url, body: '[OMITTED]', bodyLength: typeof body === 'string' ? body.length : body ? -1 : 0 });
         this.addEventListener('load', function () {
           if(this.status>=400)send('http_error',{method:meta.method,url:meta.url,status:this.status,statusText:String(this.statusText||'').slice(0,120)});
           let payload = '';
           try { payload = this.responseType === 'json' ? this.response : (this.responseText || ''); } catch (_) {}
           try { if (typeof payload === 'string') payload = JSON.parse(payload); } catch (_) {}
-          send('response', { method: meta.method, url: meta.url, status: this.status, body: sanitize(payload, '', 0) });
+          if (contextEnabled()) {
+            if (responseBodyAllowed(meta.url)) send('response', { method: meta.method, url: meta.url, status: this.status, body: sanitize(payload, '', 0) });
+            else send('response', { method: meta.method, url: meta.url, status: this.status, body: '[NOT_ALLOWLISTED]' });
+          }
         }, { once: true });
         this.addEventListener('error', function () { send('network_error', { method: meta.method, url: meta.url, message: 'XMLHttpRequest failed' }); }, { once: true });
         return originalSend.apply(this, arguments);

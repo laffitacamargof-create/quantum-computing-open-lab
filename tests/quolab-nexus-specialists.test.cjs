@@ -31,6 +31,16 @@ assert.ok(agent.includes('Open Quantum App Studio from Quantum Puzzle before ope
 assert.ok(index.includes('quolab-nexus-agent.js?v=1.8.0'));
 assert.ok(index.includes('7 tools'));
 assert.ok(connector.includes("const VERSION = '1.3.0'"));
+assert.ok(connector.includes('SAFE_RESPONSE_PATHS'));
+assert.ok(connector.includes("getItem('openq_ai_ctx') !== '0'"));
+assert.ok(connector.includes('[OMITTED]'));
+assert.ok(connector.includes('[NOT_ALLOWLISTED]'));
+assert.ok(connector.includes('REDACTED_EMAIL'));
+assert.ok(connector.includes('REDACTED_UUID'));
+assert.ok(connector.includes('REDACTED_PHONE'));
+assert.ok(connector.includes('if (!contextEnabled()) return { tool, title: global.document.title'));
+assert.ok(agent.includes('REDACTED_EMAIL'));
+assert.ok(docs.includes('Datos compartidos con proveedores LLM'));
 assert.ok(connector.includes("global.document.addEventListener('change'"));
 assert.ok(connector.includes("el.isContentEditable"));
 assert.ok(connector.includes("send('console_error'"));
