@@ -116,8 +116,12 @@ def execute_isolated(code):
         os.chmod(work,0o777)
         args=[bwrap,"--unshare-all","--die-with-parent","--new-session","--uid","65534","--gid","65534"]
         mounted=set()
-        for path in ("/usr","/lib","/lib64"):
-            if os.path.exists(path) and not os.path.islink(path):
+        for path in ("/usr","/lib","/lib64","/bin","/sbin"):
+            if os.path.islink(path):
+                # bubblewrap starts from an empty root; recreate system symlinks
+                # (notably /lib64 -> /usr/lib64) so the ELF loader remains reachable.
+                args.extend(["--symlink",os.readlink(path),path])
+            elif os.path.isdir(path):
                 args.extend(["--ro-bind",path,path]); mounted.add(path)
         for prefix in {sys.prefix,sys.base_prefix}:
             if prefix and os.path.exists(prefix) and not any(prefix==root or prefix.startswith(root.rstrip("/")+"/") for root in mounted if root!="/etc/ld.so.cache"):
