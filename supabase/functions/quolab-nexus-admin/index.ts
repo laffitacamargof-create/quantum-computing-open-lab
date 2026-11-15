@@ -4,7 +4,8 @@ const origins = new Set([
   "https://laffitacamargof-create.github.io",
   "https://quantum-computing-open-lab.vercel.app",
   "http://localhost:4173", "http://localhost:5173", "http://localhost:8000",
-  "http://localhost:7860", "http://127.0.0.1:4173", "http://127.0.0.1:5173",
+  "http://localhost:7860", "http://localhost:5000", "http://127.0.0.1:4173",
+  "http://127.0.0.1:5173", "http://127.0.0.1:8000", "http://127.0.0.1:5000",
 ]);
 const founderActions = new Set([
   "quantum_list_pending", "quantum_approve_app", "quantum_reject_app",
