@@ -2419,7 +2419,7 @@ CONTEXT (staged and size-limited): ${c}`;
         try {
           const value = await Promise.race([Promise.resolve(fn.apply(view,a.args||[])),new Promise((_,reject)=>setTimeout(()=>reject(new Error('Function call timed out after 30 seconds.')),30000))]);
           let output='';try{output=JSON.stringify(value);}catch(_){output=String(value??'');}
-          return {ok:true,message:'Documented module function completed: '+a.functionName+'.',output:String(output||'').slice(0,2200)};
+          return {ok:true,message:'documented module function completed: '+a.functionName+'.',output:String(output||'').slice(0,2200)};
         } catch(error) { return {ok:false,message:a.functionName+' failed: '+String(error?.message||error).slice(0,500)}; }
       }
       case 'ui_action': {
