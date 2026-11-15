@@ -2622,6 +2622,7 @@ CONTEXT (staged and size-limited): ${c}`;
   }
 
   async function callMultiModelGateway(messages, maxTokens, temperature) {
+    messages=fitGatewayMessages(messages);
     const accessToken = await getAIUserAccessToken();
     const requestId = globalThis.crypto?.randomUUID ? crypto.randomUUID() : 'qnexus-' + Date.now() + '-' + Math.random().toString(36).slice(2,10);
     const body = JSON.stringify({
