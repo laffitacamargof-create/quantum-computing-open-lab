@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import uvicorn
 
-from quolab_execution_sandbox import execute_isolated, is_safe
+from quolab_execution_sandbox import execute_isolated, is_safe, sandbox_runtime_status
 
 LIBS = {}
 try:
@@ -37,13 +37,14 @@ def execute_code(code: str):
     return execute_isolated(code)
 
 def health_response():
+    runtime = sandbox_runtime_status()
     return {
-        "status": "ok",
+        "status": "ok" if runtime["ready"] else "degraded",
         "engine": "QuOLab Nexus",
         "libs": list(LIBS.keys()),
         "versions": LIBS,
         "sandbox": {
-            "binary_present": bool(shutil.which("bwrap")),
+            **runtime,
             "policy": "fail-closed; no unsandboxed fallback",
             "max_code_bytes": MAX_CODE_BYTES,
             "max_concurrent_executions": MAX_CONCURRENT_EXECUTIONS
@@ -119,19 +120,23 @@ async def root():
 
 @app.get("/health")
 async def health_get():
-    return JSONResponse(health_response())
+    status = health_response()
+    return JSONResponse(status, status_code=200 if status["sandbox"]["ready"] else 503)
 
 @app.post("/health")
 async def health_post():
-    return JSONResponse(health_response())
+    status = health_response()
+    return JSONResponse(status, status_code=200 if status["sandbox"]["ready"] else 503)
 
 @app.get("/health/predict")
 async def health_predict_get():
-    return JSONResponse({"data": [health_response()]})
+    status = health_response()
+    return JSONResponse({"data": [status]}, status_code=200 if status["sandbox"]["ready"] else 503)
 
 @app.post("/health/predict")
 async def health_predict_post():
-    return JSONResponse({"data": [health_response()]})
+    status = health_response()
+    return JSONResponse({"data": [status]}, status_code=200 if status["sandbox"]["ready"] else 503)
 
 @app.post("/run")
 async def run_post(request: Request):
