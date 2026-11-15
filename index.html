@@ -2226,41 +2226,71 @@ CONTEXT: ${c}`;
 
   async function dispatchToolCommand(target, action) {
     const screen = AI_TARGET[target];
-    if (!screen) return { ok: false, message: 'Unknown tool target.' };
+    if (!screen) return { ok:false, message:'Unknown tool target.' };
     const active = document.querySelector('.screen.active');
     if (!active || active.id !== 'screen-' + screen) nav(screen);
     document.getElementById('ai-panel-wrapper')?.classList.remove('open');
     let frame = null;
-    for (let attempt = 0; attempt < 40; attempt++) {
-      frame = iframes[screen];
-      if (frame && frame.contentWindow && frame.contentDocument && frame.contentDocument.readyState === 'complete') break;
-      await waitFor(150);
+    for (let attempt=0; attempt<60; attempt++) {
+      frame=iframes[screen];
+      if(frame&&frame.contentWindow&&frame.contentDocument&&frame.contentDocument.readyState==='complete')break;
+      await waitFor(200);
     }
-    if (!frame || !frame.contentWindow || !frame.contentDocument) return { ok: false, message: 'The tool did not finish loading.' };
-    const requestId = 'qnexus-' + Date.now() + '-' + Math.random().toString(36).slice(2, 9);
-    const timeoutMs = action.type === 'run' || action.type === 'noise' ? 100000 : 12000;
-    return await new Promise(resolve => {
-      let settled = false;
-      const finish = result => { if (settled) return; settled = true; clearTimeout(timer); window.removeEventListener('message', onAck); resolve(result); };
-      const onAck = event => {
-        if (event.origin !== location.origin || event.source !== frame.contentWindow) return;
-        const data = event.data || {};
-        if (data.type !== 'OPENQ_AI_ACTION_ACK' || data.requestId !== requestId) return;
-        finish({ ok: data.ok === true, message: String(data.message || ''), output: String(data.output || '').slice(0, 1800) });
+    if(!frame||!frame.contentWindow||!frame.contentDocument)return{ok:false,message:'The tool did not finish loading; no command was sent.'};
+    const requestId='qnexus-'+(globalThis.crypto?.randomUUID?crypto.randomUUID():Date.now()+'-'+Math.random().toString(36).slice(2,12));
+    const timeoutMs=action.type==='run'||action.type==='noise'?180000:45000;
+    const message=action.type==='add_cell'
+      ?{type:'OPENQ_AI_ADD_CELL',cellType:action.cellType,afterIndex:action.afterIndex,requestId}
+      :action.type==='open_circuit_editor'
+        ?{type:'OPENQ_AI_OPEN_CIRCUIT_EDITOR',cellIndex:action.cellIndex,requestId}
+        :action.type==='set_code'
+          ?{type:'OPENQ_AI_SET_CODE',code:action.code,cellIndex:action.cellIndex,requestId}
+          :action.type==='run'
+            ?{type:'OPENQ_AI_RUN',cellIndex:action.cellIndex,requestId}
+            :{type:'OPENQ_AI_NOISE',cellIndex:action.cellIndex,noise:action.noise,engine:action.engine,shots:action.shots,requestId};
+    return await new Promise(resolve=>{
+      let settled=false,received=false,attempts=0,nextSendAt=0,nextStatusAt=0,backoff=650;
+      const startedAt=Date.now();
+      const cleanup=()=>{clearInterval(pulse);window.removeEventListener('message',onMessage);};
+      const finish=result=>{if(settled)return;settled=true;cleanup();resolve(result);};
+      const send=payload=>{try{frame.contentWindow.postMessage(payload,location.origin);return true;}catch(_){return false;}};
+      const complete=data=>finish({ok:data.ok===true,message:String(data.message||''),output:String(data.output||'').slice(0,2200),requestId,received:true,acknowledged:true});
+      const onMessage=event=>{
+        if(event.origin!==location.origin||event.source!==frame.contentWindow)return;
+        const data=event.data||{};
+        if(data.requestId!==requestId)return;
+        if(data.type==='OPENQ_AI_ACTION_RECEIVED'){received=true;return;}
+        if(data.type==='OPENQ_AI_ACTION_ACK'){received=true;complete(data);return;}
+        if(data.type==='OPENQ_AI_ACTION_STATUS'){
+          if(data.received)received=true;
+          if(data.completed&&data.result){complete(data.result);return;}
+        }
       };
-      const timer = setTimeout(() => finish({ ok: false, message: 'The tool did not confirm the action before timeout.' }), timeoutMs);
-      window.addEventListener('message', onAck);
-      const message = action.type === 'add_cell'
-        ? { type: 'OPENQ_AI_ADD_CELL', cellType: action.cellType, afterIndex: action.afterIndex, requestId }
-        : action.type === 'open_circuit_editor'
-          ? { type: 'OPENQ_AI_OPEN_CIRCUIT_EDITOR', cellIndex: action.cellIndex, requestId }
-          : action.type === 'set_code'
-            ? { type: 'OPENQ_AI_SET_CODE', code: action.code, cellIndex: action.cellIndex, requestId }
-            : action.type === 'run'
-              ? { type: 'OPENQ_AI_RUN', cellIndex: action.cellIndex, requestId }
-              : { type: 'OPENQ_AI_NOISE', cellIndex: action.cellIndex, noise: action.noise, engine: action.engine, shots: action.shots, requestId };
-      try { frame.contentWindow.postMessage(message, location.origin); }
-      catch (error) { finish({ ok: false, message: error.message || 'Could not contact the tool.' }); }
+      window.addEventListener('message',onMessage);
+      const pulse=setInterval(()=>{
+        if(settled)return;
+        const now=Date.now();
+        if(now-startedAt>timeoutMs){
+          finish({ok:false,message:received?'The tool received the instruction but did not confirm its result before the execution deadline.':'The tool did not acknowledge receipt; the instruction is not marked as delivered.',requestId,received,acknowledged:false});
+          return;
+        }
+        if(!received&&now>=nextSendAt){
+          if(attempts>=90){
+            finish({ok:false,message:'Delivery was retried 90 times, but the tool never acknowledged receipt. The action was not marked as delivered.',requestId,received:false,acknowledged:false});
+            return;
+          }
+          if(!send(message)){finish({ok:false,message:'The browser could not send the instruction to the tool frame.',requestId,received:false,acknowledged:false});return;}
+          attempts++;
+          nextSendAt=now+backoff;
+          backoff=Math.min(Math.round(backoff*1.45),4500);
+        }else if(received&&now>=nextStatusAt){
+          send({type:'OPENQ_AI_ACTION_STATUS',requestId});
+          nextStatusAt=now+1400;
+        }
+      },200);
+      send(message);
+      attempts=1;
+      nextSendAt=Date.now()+backoff;
     });
   }
 
