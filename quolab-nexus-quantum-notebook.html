@@ -2593,8 +2593,9 @@ window.addEventListener('message',e=>{
       if(_expositionMode){if(d.requestId)qnexusActionFinish(d,{ok:false,message:'This notebook is read-only.'});return;}
       const before=cells.length;
       const cellType=['circuit','markdown','code','qiskit'].includes(d.cellType)?d.cellType:'circuit';
-      addCellAt(Number.isInteger(d.afterIndex)?d.afterIndex:cells.length-1,cellType);
-      const index=cells.length-1;
+      const afterIndex=Number.isInteger(d.afterIndex)?d.afterIndex:before-1;
+      const index=afterIndex===-1||afterIndex>=before?before:afterIndex+1;
+      addCellAt(afterIndex,cellType);
       const cell=cells[index];
       if(d.requestId)qnexusActionFinish(d,{ok:cells.length===before+1&&!!cell, message:cell?'Created '+cellType+' cell '+index+'.':'Could not create notebook cell.',cellIndex:index,cellId:cell&&cell.id});
     }else if(d.type==='OPENQ_AI_OPEN_CIRCUIT_EDITOR'){
