@@ -19,6 +19,7 @@ on:
       - "requirements.txt"
       - "Dockerfile"
       - ".github/workflows/validate-nexus-agent.yml"
+      - ".github/workflows/deploy-pages.yml"
 
 jobs:
   syntax-and-security:
