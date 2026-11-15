@@ -105,7 +105,7 @@
 
   function snapshot(base) {
     const active = activeScreen();
-    const managedScreens = Object.keys(TOOL_CATALOG).concat(CENTRAL_SCREENS);
+    const managedScreens = Array.from(new Set(Object.keys(TOOL_CATALOG).concat(CENTRAL_SCREENS)));
     const tools = managedScreens.map(id => {
       const frame = frameFor(id);
       const spec = TOOL_CATALOG[id];
