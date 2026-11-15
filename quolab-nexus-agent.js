@@ -1,8 +1,8 @@
-/* QNexusAi — unified autonomous agent and universal UI connector v1.5.0 */
+/* QNexusAi — unified autonomous agent and universal UI connector v1.9.0 */
 (function (global) {
   'use strict';
 
-  const VERSION = '1.8.0';
+  const VERSION = '1.9.0';
   const TOOL_CATALOG = Object.freeze({
     projects: {
       name: 'Projects',
@@ -70,19 +70,19 @@
       workflow: 'Read the visible help content, identify the exact tool/topic, explain the relevant workflow and link the user to the corresponding module through navigation.',
       capabilities: ['read-help','explain-workflows','navigate-to-tool'],
       controls: 'Primarily a read-only help surface. Inspect visible headings, links and text; there may be no action buttons.',
-      functions: 'The current page exposes content/navigation rather than a separate operational API.',
+      functions: 'getHelpContent',
       how_to: 'Use Help as reference material, then operate the relevant tool itself and verify the result there. Do not claim that reading help completed an operation.',
       limits: 'Read-only guidance; execution belongs to the target module.'
     }
   });
   const SAFE_FUNCTIONS = Object.freeze({
-    projects: Object.freeze([]),
-    architect: Object.freeze([]),
-    'architect-pro': Object.freeze([]),
+    projects: Object.freeze(['reload']),
+    architect: Object.freeze(['renderCircuit']),
+    'architect-pro': Object.freeze(['renderCells']),
     'quantum-puzzle': Object.freeze(['getPublishedApps']),
-    'quantum-app-studio': Object.freeze([]),
+    'quantum-app-studio': Object.freeze(['renderRepository']),
     library: Object.freeze(['getItems']),
-    help: Object.freeze([])
+    help: Object.freeze(['getHelpContent'])
   });
   const FUNCTION_PURPOSES = Object.freeze({
     reload:'Reload the current Projects resource list.',setF:'Apply a resource-type filter.',render:'Rebuild the visible resource list from current data.',execProj:'Open or execute the selected project resource.',delProj:'Delete the selected project after the module confirmation.',editProj:'Open the selected project in its editor.',updateProj:'Persist the edited project metadata.',copyNbLink:'Copy a shareable notebook link.',nexusDirectLink:'Build a direct navigation link to a Nexus resource.',
@@ -90,7 +90,7 @@
     newNotebook:'Create a new notebook.',addCellAt:'Insert a Markdown or visual-circuit cell at the requested position; executable source belongs hidden inside visual-circuit cells.',deleteCell:'Delete the selected notebook cell.',moveCellUp:'Move a notebook cell one position earlier.',moveCellDown:'Move a notebook cell one position later.',changeCellType:'Convert a cell to another supported cell type.',clearCellContent:'Clear the selected cell content.',restoreCell:'Restore the selected cell from its saved or prior state.',runCell:'Execute one notebook code or circuit cell.',runCurCell:'Execute the currently selected notebook cell.',runAll:'Execute all eligible notebook cells in document order.',noiseRun:'Run a notebook noise simulation.',noiseCell:'Configure or run noise for a specific cell.',openCircuitEditor:'Open the visual circuit editor for a notebook circuit cell.',saveCurrentNb:'Save the current notebook.',importNb:'Open the notebook import flow.',handleImport:'Process an imported notebook file.',downloadNb:'Export the current notebook as an ipynb file.',loadNb:'Load a notebook into the editor.',deleteNb:'Delete a saved notebook.',refreshNbs:'Refresh the saved notebook list.',showPublish:'Open notebook publication settings.',publishNb:'Publish the notebook using the module publication flow.',activateExpositionMode:'Enable read-only exposition mode.',restoreAllCells:'Restore all notebook cells.',buildCellEl:'Build the rendered interface for one notebook cell.',renderCells:'Render the ordered notebook cell list.',editMd:'Enter Markdown cell editing mode.',renderMdPreview:'Render a Markdown cell preview.',syncCellCode:'Synchronize the visual circuit representation and its code.',
     refreshApps:'Refresh the published quantum-app catalogue.',getPublishedApps:'Read the currently published quantum apps.',renderPublishedApps:'Render the published-app catalogue.',renderTagFilters:'Render available app tag filters.',setTagFilter:'Filter published apps by tag.',executeQuantumApp:'Launch a published quantum app.',openQuantumAppStudio:'Open the nested Quantum App Studio editor.',closeStudioModal:'Close the nested App Studio editor.',openPendingManager:'Open the pending-app review queue.',publishPendingApp:'Publish a pending app after authorization.',rejectPendingApp:'Reject a pending app after authorization.',deletePublishedApp:'Delete a published app after authorization.',copyAppLink:'Copy the selected app share link.',closeExecModal:'Close the app execution preview.',
     loadProjects:'Load the App Studio project repository.',renderRepository:'Render the App Studio project list.',editProject:'Open a project in the App Studio editor.',setServerUrl:'Set the selected project backend URL.',updateServerStatusText:'Refresh the backend connection status display.',testBackendConnection:'Test the configured remote backend connection.',executePythonRemote:'Execute Python through the configured remote backend.',buildAppBlob:'Build a previewable application document.',launchProject:'Launch or transfer the selected project to Quantum Puzzle.',runPreview:'Run the current application preview.',showScreen:'Switch the App Studio view.',saveCurrentEdit:'Save the current project edits.',deleteProject:'Delete a project after authorization and confirmation.',startNewProject:'Start creating a new App Studio project.',bindEvents:'Register App Studio interface event handlers.',
-    getItems:'Read the current Library resource collection.',saveItems:'Persist the Library resource collection.',openItem:'Open the selected Library resource.',openAdd:'Open the Add Resource dialog.',closeAdd:'Close the Add Resource dialog.',addItem:'Add a resource through the Library form.',delItem:'Delete a resource after administrator confirmation.'
+    getHelpContent:'Read the visible Help content from the current module.',getItems:'Read the current Library resource collection.',saveItems:'Persist the Library resource collection.',openItem:'Open the selected Library resource.',openAdd:'Open the Add Resource dialog.',closeAdd:'Close the Add Resource dialog.',addItem:'Add a resource through the Library form.',delItem:'Delete a resource after administrator confirmation.'
   });
   function inferFunctionPurpose(name){
     const words=String(name||'').replace(/([a-z0-9])([A-Z])/g,'$1 $2').replace(/([A-Z])([A-Z][a-z])/g,'$1 $2').trim().toLowerCase();
@@ -136,7 +136,8 @@
       .replace(/\beyJ[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{5,}\b/g, '[REDACTED_JWT]')
       .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, '[REDACTED_EMAIL]')
       .replace(/\b(?:\+\d{1,3}[\s.-]?)?(?:\(\d{2,4}\)|\d{2,4})[\s.-]\d{3,4}[\s.-]\d{3,4}\b/g, '[REDACTED_PHONE]')
-      .replace(/\b[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b/gi, '[REDACTED_UUID]')
+      .replace(/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi, '[REDACTED_UUID]')
+      .replace(/\b(?:\+?\d{1,3})?\d{10,12}\b/g, '[REDACTED_PHONE]')
       .slice(0, limit || 500);
   }
 

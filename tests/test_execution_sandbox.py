@@ -1,4 +1,7 @@
 import unittest
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from quolab_execution_sandbox import is_safe, execute_isolated, MAX_CODE_BYTES
 class SandboxSecurityTests(unittest.TestCase):
     def test_rejects_import_escape_variants(self):
@@ -9,7 +12,7 @@ class SandboxSecurityTests(unittest.TestCase):
         for code in ["x.__class__.__mro__","open('/etc/passwd').read()","eval('1+1')"]:
             with self.subTest(code=code): self.assertFalse(is_safe(code)[0])
     def test_server_execution_path_rejects_import_escape(self):
-        for code in ["__import__('os').system('id')", "from os import system", "import importlib\\nimportlib.import_module('os')"]:
+        for code in ["__import__('os').system('id')", "from os import system", "import importlib\nimportlib.import_module('os')"]:
             with self.subTest(code=code):
                 result = execute_isolated(code)
                 self.assertFalse(result["success"])

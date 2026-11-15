@@ -50,7 +50,7 @@ for module,alias in (("numpy","np"),("numpy","numpy"),("math","math"),("math","p
  except Exception: pass
 class CappedBuffer(io.StringIO):
  def write(self, value):
-  remaining=16000-len(self.getvalue())
+  remaining=8000-len(self.getvalue())
   if remaining>0: return super().write(str(value)[:remaining])
   return len(str(value))
 try:
@@ -73,7 +73,7 @@ try:
  out,err=CappedBuffer(),CappedBuffer()
  with contextlib.redirect_stdout(out),contextlib.redirect_stderr(err):
   exec(compile(payload["code"],"<quolab-user-code>","exec"),env,env)
- text=(out.getvalue()+("\n"+err.getvalue() if err.getvalue() else "")).strip()
+ text=(out.getvalue()+("\n"+err.getvalue() if err.getvalue() else "")).strip()[:16000]
  bloch=None
  qc=env.get("qc")
  if qc is not None and qiskit:
@@ -94,7 +94,7 @@ try:
  result={"success":True,"output":text or "OK","bloch":bloch,"time":round(time.monotonic()-start,3)}
 except BaseException as exc:
  result={"success":False,"output":(str(exc) or type(exc).__name__)[:2000],"bloch":None,"time":0}
-sys.__stdout__.write(json.dumps(result,default=str))
+sys.__stdout__.write(json.dumps(result,default=str,ensure_ascii=False))
 '''
 
 def _limits():
@@ -134,12 +134,14 @@ def execute_isolated(code):
             return {"success":False,"output":"Tiempo máximo de ejecución excedido (15 s).","bloch":None,"time":round(time.monotonic()-started,3)}
         except (OSError,subprocess.SubprocessError) as exc:
             return {"success":False,"output":"Sandbox no disponible; ejecución bloqueada: "+str(exc)[:400],"bloch":None,"time":round(time.monotonic()-started,3)}
-        raw=(proc.stdout or "")[:MAX_OUTPUT_BYTES]
+        raw=(proc.stdout or "")
+        if len(raw)>MAX_OUTPUT_BYTES*8:
+            return {"success":False,"output":"Salida del proceso aislado demasiado grande.","bloch":None,"time":round(time.monotonic()-started,3)}
         if proc.returncode!=0:
             detail=(proc.stderr or raw or "El proceso aislado terminó sin resultado.")[:1000]
             return {"success":False,"output":"Sandbox rechazó o no pudo ejecutar el proceso: "+detail,"bloch":None,"time":round(time.monotonic()-started,3)}
         try: result=json.loads(raw)
         except (ValueError,TypeError): return {"success":False,"output":"Salida inválida del proceso aislado.","bloch":None,"time":round(time.monotonic()-started,3)}
-        result["output"]=str(result.get("output",""))[:MAX_OUTPUT_BYTES]
+        result["output"]=str(result.get("output","")).encode("utf-8")[:MAX_OUTPUT_BYTES].decode("utf-8","ignore")
         result["time"]=round(time.monotonic()-started,3)
         return result
