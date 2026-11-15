@@ -219,16 +219,16 @@
   let selectorSequence = 0;
   function validSelector(selector) {
     return typeof selector === 'string' && selector.length <= 180 &&
-      (/^#[A-Za-z][\\w:.-]*$/.test(selector) ||
-       /^\\[name="[A-Za-z0-9_.:-]{1,80}"\\]$/.test(selector) ||
-       /^\\[data-[a-z0-9_-]+="[A-Za-z0-9_.:-]{1,100}"\\]$/.test(selector) ||
-       /^\\[(?:aria-label|placeholder|title)="[A-Za-z0-9 _.,:;()\\/-]{1,100}"\\]$/.test(selector));
+      (/^#[A-Za-z][\w:.-]*$/.test(selector) ||
+       /^\[name="[A-Za-z0-9_.:-]{1,80}"\]$/.test(selector) ||
+       /^\[data-[a-z0-9_-]+="[A-Za-z0-9_.:-]{1,100}"\]$/.test(selector) ||
+       /^\[(?:aria-label|placeholder|title)="[A-Za-z0-9 _.,:;()\/-]{1,100}"\]$/.test(selector));
   }
 
   function selectorFor(el) {
     const doc = el && el.ownerDocument;
     if (!el || !doc) return '';
-    if (el.id && /^[A-Za-z][\\w:.-]*$/.test(el.id)) {
+    if (el.id && /^[A-Za-z][\w:.-]*$/.test(el.id)) {
       try { if (doc.querySelectorAll('#' + el.id).length === 1) return '#' + el.id; } catch (_) {}
     }
     const name = el.getAttribute('name') || '';
@@ -238,7 +238,7 @@
     }
     for (const attr of ['data-testid','data-action','aria-label','placeholder','title']) {
       const value = el.getAttribute(attr) || '';
-      if (/^[A-Za-z0-9 _.,:;()\\/-]{1,100}$/.test(value)) {
+      if (/^[A-Za-z0-9 _.,:;()\/-]{1,100}$/.test(value)) {
         const selector = '[' + attr + '="' + value + '"]';
         try { if (doc.querySelectorAll(selector).length === 1) return selector; } catch (_) {}
       }
