@@ -26,7 +26,7 @@ jobs:
         run: node --check quolab-nexus-agent.js
       - name: Check universal tool connector syntax
         run: node --check quolab-nexus-tool-connector.js
-      - name: Verify five-specialist architecture and App Studio routing
+      - name: Verify unified single-agent architecture and tool routing
         run: node tests/quolab-nexus-specialists.test.cjs
       - name: Extract and check the main index module
         run: |
