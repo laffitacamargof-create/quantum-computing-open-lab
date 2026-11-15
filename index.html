@@ -2332,8 +2332,16 @@ CONTEXT: ${c}`;
     const explicit = rules.filter(([, re]) => re.test(text)).map(([id]) => id);
     const active = String(ctx && (ctx.active_tool || ctx.screen) || 'home');
     const validActive = Object.prototype.hasOwnProperty.call(registry, active);
-    if (validActive && (!explicit.length || explicit.includes(active))) {
-      return { specialists: [{ specialist: active, task: 'Handle this request directly as the active tool specialist. Inspect the live tool context, answer tool-specific questions yourself, and execute supported requested actions in this tool. User request: ' + msg }] };
+    const namedTargets = [
+      ['architect-pro', /\\b(quantum notebook|notebook|jupyter)\\b/i],
+      ['architect', /\\b(quantum open lab|architect)\\b/i],
+      ['quantum-app-studio', /\\b(quantum app studio|app studio)\\b/i],
+      ['quantum-puzzle', /\\b(quantum puzzle|puzzle)\\b/i],
+      ['projects', /\\b(projects|proyectos)\\b/i]
+    ].filter(([, re]) => re.test(text)).map(([id]) => id);
+    const explicitSwitch = namedTargets.some(id => id !== active);
+    if (validActive && !explicitSwitch) {
+      return { specialists: [{ specialist: active, task: 'Handle this request directly as the active tool specialist. Inspect the live tool context, answer tool-specific questions yourself, and execute supported requested actions in this tool. If another tool is needed, hand off to its specialist with an openq-handoff block. User request: ' + msg }] };
     }
     if (explicit.length) {
       const unique = Array.from(new Set(explicit)).slice(0, 5);
