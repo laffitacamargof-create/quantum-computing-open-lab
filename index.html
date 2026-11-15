@@ -982,6 +982,9 @@ class QuOLabNexusConfigSyncReader {
     try { a = JSON.parse(localStorage.getItem('openq_ai') || '{}') || {}; } catch (e) {}
     try { q = JSON.parse(localStorage.getItem('qcol_ai') || '{}') || {}; } catch (e) {}
     if (!a.key && q.key) a = Object.assign({}, a, q);
+    // DeepSeek es el proveedor predeterminado del ecosistema; su clave vive solo en Supabase.
+    if (!a.provider || a.provider === 'none') a.provider = 'deepseek';
+    if (a.provider === 'deepseek' && !a.model) a.model = 'deepseek-chat';
     return a;
   }
   let aiCfg = loadAICfg();
@@ -1937,9 +1940,11 @@ class QuOLabNexusConfigSyncReader {
     const dot = document.getElementById('ai-sdot');
     const txt = document.getElementById('ai-stxt');
     const lbl = document.getElementById('ai-prov-lbl');
-    if (aiCfg.key && aiCfg.provider !== 'none') {
+    if ((aiCfg.provider === 'deepseek') || (aiCfg.key && aiCfg.provider !== 'none')) {
       if (dot) dot.className = 'ai-status-dot ok';
-      if (txt) txt.textContent = 'QuOLab Nexus AI active · 5 specialists';
+      if (txt) txt.textContent = aiCfg.provider === 'deepseek'
+        ? 'QuOLab Nexus AI · DeepSeek secure gateway · 5 specialists'
+        : 'QuOLab Nexus AI active · 5 specialists';
       if (lbl) lbl.textContent = '';
     } else {
       if (dot) dot.className = 'ai-status-dot';
@@ -2108,7 +2113,7 @@ CONTEXT: ${c}`;
 
     let reply = '';
 
-    if (aiCfg.key && aiCfg.provider !== 'none') {
+    if ((aiCfg.provider === 'deepseek') || (aiCfg.key && aiCfg.provider !== 'none')) {
       try {
         const ctx = await gatherAIContext();
         let resp0;
@@ -2206,6 +2211,75 @@ Do not invent screen state, IDs, tool capabilities, or completed actions. Do not
     return null;
   }
 
+  const AI_SUPABASE_URL = 'https://rtkcfbnoqbivylejhspv.supabase.co';
+  const AI_SUPABASE_ANON_KEY = 'sb_publishable_xo_Fyb_LQT3T5i3LQ1JNTw_NtLm2Zjd';
+  const AI_AUTH_STORAGE_KEY = 'quolab_nexus_ai_auth_v1';
+
+  async function getAIUserAccessToken() {
+    const now = Math.floor(Date.now() / 1000);
+    let session = null;
+    try { session = JSON.parse(sessionStorage.getItem(AI_AUTH_STORAGE_KEY) || 'null'); } catch (_) {}
+    if (session?.access_token && Number(session.expires_at || 0) > now + 60) return session.access_token;
+
+    if (session?.refresh_token) {
+      try {
+        const refreshed = await fetch(AI_SUPABASE_URL + '/auth/v1/token?grant_type=refresh_token', {
+          method: 'POST',
+          headers: { 'apikey': AI_SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refresh_token: session.refresh_token }),
+          signal: AbortSignal.timeout(12000)
+        });
+        const data = await refreshed.json();
+        if (refreshed.ok && data.access_token && data.refresh_token) {
+          session = Object.assign({}, data, { expires_at: now + Number(data.expires_in || 3600) });
+          sessionStorage.setItem(AI_AUTH_STORAGE_KEY, JSON.stringify(session));
+          return session.access_token;
+        }
+      } catch (_) {}
+      sessionStorage.removeItem(AI_AUTH_STORAGE_KEY);
+    }
+
+    // Anonymous Supabase Auth session: the AI gateway requires a real user JWT,
+    // not the public publishable key alone. Enable Anonymous Sign-Ins in Supabase Auth.
+    const signedIn = await fetch(AI_SUPABASE_URL + '/auth/v1/signup', {
+      method: 'POST',
+      headers: { 'apikey': AI_SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data: { app: 'quolab-nexus-ai' } }),
+      signal: AbortSignal.timeout(12000)
+    });
+    const created = await signedIn.json();
+    if (!signedIn.ok || !created.access_token || !created.refresh_token) {
+      const detail = created.msg || created.message || created.error_description || created.error || 'Anonymous sign-in unavailable';
+      throw new Error('Supabase anonymous authentication failed: ' + detail);
+    }
+    session = Object.assign({}, created, { expires_at: now + Number(created.expires_in || 3600) });
+    sessionStorage.setItem(AI_AUTH_STORAGE_KEY, JSON.stringify(session));
+    return session.access_token;
+  }
+
+  async function callDeepSeekGateway(messages, maxTokens, temperature) {
+    const accessToken = await getAIUserAccessToken();
+    const response = await fetch(AI_SUPABASE_URL + '/functions/v1/quolab-nexus-ai', {
+      method: 'POST',
+      headers: {
+        'apikey': AI_SUPABASE_ANON_KEY,
+        'Authorization': 'Bearer ' + accessToken,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: aiCfg.model || 'deepseek-chat',
+        messages,
+        max_tokens: Math.min(Math.max(Number(maxTokens) || 1200, 1), 4096),
+        temperature: Number.isFinite(Number(temperature)) ? Math.min(Math.max(Number(temperature), 0), 2) : 0.7
+      }),
+      signal: AbortSignal.timeout(30000)
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || data.message || ('DeepSeek gateway HTTP ' + response.status));
+    if (!data.choices?.[0]?.message?.content) throw new Error('DeepSeek returned an empty response');
+    return data.choices[0].message.content;
+  }
+
   async function callAI(msg, ctx, options = {}) {
     const temp   = aiCfg.temp   || 0.7;
     const tokens = Math.max(aiCfg.tokens || 600, 1200);
@@ -2216,6 +2290,9 @@ Do not invent screen state, IDs, tool capabilities, or completed actions. Do not
       ...aiHistory.slice(-6),
       { role:'user', content:msg },
     ];
+    if (aiCfg.provider === 'deepseek') {
+      return await callDeepSeekGateway(msgs, tokens, temp);
+    }
     const endpoints = {
       mistral:     'https://api.mistral.ai/v1/chat/completions',
       groq:        'https://api.groq.com/openai/v1/chat/completions',
@@ -2331,7 +2408,7 @@ Do not invent screen state, IDs, tool capabilities, or completed actions. Do not
       proactiveAlertTimes.set(signature, now);
       if (proactiveAlertTimes.size > 30) proactiveAlertTimes.delete(proactiveAlertTimes.keys().next().value);
       const spanish = /^es(?:-|$)/i.test(navigator.language || '');
-      const configured = !!(aiCfg && aiCfg.key && aiCfg.provider !== 'none');
+      const configured = !!(aiCfg && (aiCfg.provider === 'deepseek' || (aiCfg.key && aiCfg.provider !== 'none')));
       const text = spanish
         ? 'He detectado un problema en **' + tool + '** (' + kind + '): `' + safeMessage + '`. ' + (configured ? 'Estoy analizando el error automáticamente.' : 'Configura un proveedor de IA para que pueda diagnosticarlo automáticamente.')
         : 'I detected a problem in **' + tool + '** (' + kind + '): `' + safeMessage + '`. ' + (configured ? 'I am analyzing the error automatically.' : 'Configure an AI provider so I can diagnose it automatically.');
