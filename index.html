@@ -2225,112 +2225,144 @@ CONTEXT: ${c}`;
     return { ok: results.length === actions.length && results.every(item => item.ok), results };
   }
 
-  async function sendAI() {
-    if (!cmEditor) return;
-    const msg = cmEditor.state.doc.toString().trim();
-    if (!msg) return;
-    cmEditor.dispatch({ changes: { from: 0, to: cmEditor.state.doc.length, insert: '' } });
-    addAIMsg(msg, 'usr');
-    document.getElementById('ai-loading').classList.add('show');
-    let reply = '';
-    if (isAIAvailable()) {
-      try {
-        const ctx = await gatherAIContext();
-        const route = await routeAI(msg, ctx);
-        const routes = route && Array.isArray(route.specialists) ? route.specialists : route && route.specialist ? [{ specialist: route.specialist, task: route.task }] : [];
-        const reports = [];
-        for (const assignment of routes) {
-          const specialist = window.QuOLabNexusAgent.getSpecialistInstructions(assignment.specialist);
-          const spec = window.QuOLabNexusAgent.specialists[assignment.specialist];
-          if (!specialist || !spec) continue;
-          const startedAt = Date.now();
-          notify('QNexusAi → ' + spec.name);
-          try {
-            const workerReport = await callAI('User request:\n' + msg + '\n\nAssigned task:\n' + assignment.task, ctx, {
-              systemSuffix: '\n\nSPECIALIST EXECUTION MODE. ' + specialist + '\nYou are responsible for doing the task in the live tool, not just explaining how. Return openq-action blocks for every supported change/action needed. If a requested operation cannot be performed with the current tool/context, state the exact blocker and do not pretend it was done. Do not ask for confirmation for routine reversible actions. Destructive, publishing, credential, financial or irreversible actions must remain unexecuted pending confirmation.'
-            });
-            const workerActions = extractActions(workerReport);
-            let execution = { ok: true, results: [] };
-            if (workerActions.actions.length) execution = await executeAIActionSequence(workerActions.actions, ctx);
-            const taskIntent = /\b(create|build|program|write|edit|fix|correct|run|execute|open|save|delete|publish|implement|programa|crea|construye|corrige|arregla|ejecuta|abre|guarda|implementa)\b/i.test(msg);
-            const completed = workerActions.actions.length ? execution.ok : !taskIntent;
-            const status = completed ? 'completed' : workerActions.actions.length ? 'failed' : 'blocked';
-            const summary = workerActions.text + (execution.results.length ? '\nActions: ' + execution.results.map(x => (x.ok ? 'OK ' : 'FAILED ') + x.action + ': ' + x.message).join('; ') : '');
-            window.QuOLabNexusAgent.recordDelegation(assignment.specialist, status, summary);
-            reports.push({ specialist: spec.name, report: workerActions.text, execution, elapsed_ms: Date.now() - startedAt, status });
-          } catch (workerError) {
-            window.QuOLabNexusAgent.recordDelegation(assignment.specialist, 'failed', workerError && workerError.message || 'Worker failed');
-            reports.push({ specialist: spec.name, status: 'failed', error: workerError && workerError.message || String(workerError) });
-          }
-        }
-        let resp0;
-        if (reports.length) {
-          resp0 = await callAI('Original user request:\n' + msg + '\n\nSpecialist reports and verified execution results:\n' + JSON.stringify(reports) + '\n\nPrepare a concise final response in the user language. Distinguish completed actions from blocked/failed actions. Never claim success unless execution.ok is true and the tool acknowledgement confirms it. Mention the tool and what it actually returned.', ctx, {
-            systemSuffix: '\n\nYou are QNexusAi, the central coordinator. Specialist reports and execution acknowledgements are the source of truth. If an action failed, explain the exact blocker and do not label it completed. Do not produce new action blocks in the final answer.'
-          });
-        } else if (route && route.answer) resp0 = route.answer;
-        else resp0 = await callAI(msg, ctx);
-        const ex = extractActions(resp0);
-        let finalText = ex.text || (ex.actions.length ? 'QNexusAi is carrying out the requested actions.' : resp0);
-        if (ex.actions.length) {
-          const directExecution = await executeAIActionSequence(ex.actions, ctx);
-          finalText += directExecution.ok ? '\n\nThe requested tool actions were completed.' : '\n\nSome tool actions could not be completed; see the execution details above.';
-        }
-        document.getElementById('ai-loading').classList.remove('show');
-        addAIMsg(finalText, 'bot');
-        notify('QNexusAi: ' + finalText.replace(/\\s+/g, ' ').slice(0, 170));
-        reply = finalText;
-        aiHistory.push({ role: 'user', content: msg }, { role: 'assistant', content: finalText });
-        if (aiHistory.length > 12) aiHistory = aiHistory.slice(-12);
-      } catch (e) {
-        document.getElementById('ai-loading').classList.remove('show');
-        console.error('QNexusAi error:', e);
-        const errMsg = 'QNexusAi could not complete the request: ' + ((e && e.message) ? e.message : String(e));
-        addAIMsg(errMsg, 'bot'); reply = errMsg;
-      }
-    } else {
-      await new Promise(resolve => setTimeout(resolve, 500));
-      document.getElementById('ai-loading').classList.remove('show');
-      const errMsg = 'QNexusAi gateway is unavailable. Reconnect the AI service to execute tasks.';
-      addAIMsg(errMsg, 'bot'); reply = errMsg;
-    }
-    if (curUser?.username) {
-      let data = dbLoad(); if (!data) data = { ai_history: {} };
-      if (!data.ai_history) data.ai_history = {};
-      if (!data.ai_history[curUser.username]) data.ai_history[curUser.username] = [];
-      data.ai_history[curUser.username].push({ q: msg, a: reply, ts: Date.now() });
-      if (data.ai_history[curUser.username].length > 200) data.ai_history[curUser.username] = data.ai_history[curUser.username].slice(-200);
-      dbSave(data);
-    }
+  function inferSpecialistAssignments(msg, ctx) {
+    const t=String(msg||'').toLowerCase(), active=String(ctx&&(ctx.active_tool||ctx.screen)||'').toLowerCase();
+    const rules=[
+      ['projects',/\b(projects?|proyectos?|catalog(?:ue|o)|published resources|recursos publicados)\b/i],
+      ['architect-pro',/\b(quantum notebook|notebook|cuaderno|jupyter|ipynb|celdas?|cells?|python notebook)\b/i],
+      ['architect',/\b(quantum open lab|visual circuit|circuit editor|editor de circuitos|circuito visual|circuitos? cuanticos?|quantum circuit|noise model|modelo de ruido)\b/i],
+      ['quantum-puzzle',/\b(quantum puzzle|puzzle|rompecabezas|desaf[ií]o|challenge|published app|aplicaci[oó]n publicada)\b/i],
+      ['quantum-app-studio',/\b(app studio|quantum app studio|estudio de aplicaciones|crear una app|crear aplicaci[oó]n|editar aplicaci[oó]n|application editor)\b/i]
+    ];
+    let ids=rules.filter(x=>x[1].test(t)).map(x=>x[0]);
+    if(!ids.length&&/\b(qiskit|python|c[oó]digo|code|simulaci[oó]n|simulate|ejecutar|run)\b/i.test(t)) ids=[active==='architect'?'architect':'architect-pro'];
+    if(!ids.length&&['projects','architect','architect-pro','quantum-puzzle','quantum-app-studio'].includes(active)&&/\b(esta herramienta|esta pantalla|aqu[ií]|this tool|this screen|here|en el editor|in the editor)\b/i.test(t)) ids=[active];
+    ids=Array.from(new Set(ids));
+    if(ids.includes('quantum-app-studio')) ids=ids.filter(x=>x!=='quantum-puzzle');
+    if(ids.includes('architect-pro')&&ids.includes('architect')&&!/visual|visualmente|editor de circuitos|circuit editor/i.test(t)) ids=ids.filter(x=>x!=='architect');
+    return ids.length?ids.map(id=>({specialist:id,task:'Responde directamente sobre tu herramienta o ejecuta la tarea completa. Inspecciona el estado real, planifica todos los pasos, ejecuta, verifica salidas, corrige errores y continúa hasta terminar o identificar un bloqueo. No te limites a abrir la pantalla.'})):null;
   }
 
-  async function routeAI(msg, ctx) {
-    const routerPrompt = `
-CENTRAL ROUTER — INTERNAL DISPATCH ONLY.
-Classify the latest request using the live tool catalog and specialist manuals in CONTEXT.
-For tool-specific questions, delegate to the relevant specialist. For general quantum/ecosystem questions, answer centrally; consult multiple specialists when the answer materially depends on multiple tools.
-If the request concerns multiple tools, return every relevant specialist assignment, one per tool.
-For an execution request, assign the task to the specialist and tell it to perform the operation inside the live tool, inspect the result and return supported openq-action blocks. A plan or explanation is not completion.
-Return ONLY valid JSON:
-Delegation: {"specialists":[{"specialist":"projects|architect|architect-pro|quantum-puzzle|quantum-app-studio","task":"specific bounded task"}]}
-Central handling: {"specialist":null,"answer":"complete direct answer"}
-Use exactly the five registered specialist IDs. Interpret short follow-ups from recent conversation history ("programa uno", "hazlo", "build it") and preserve their intent. Quantum code/notebook tasks go to architect-pro unless the visual circuit editor is explicitly requested, then architect. For a visual circuit inside a notebook, architect-pro coordinates with architect. Do not ask permission for routine reversible actions. Preserve confirmation for destructive, publishing, financial, credential or irreversible operations. Never invent IDs, capabilities, outputs or completion. Reply in the user's language.
-`;
-    const raw = await callAI(msg, ctx, { systemSuffix: routerPrompt });
-    const match = String(raw || '').match(/\{[\s\S]*\}/);
-    if (!match) return null;
+  function extractDelegations(report) {
+    const assignments=[], fence=String.fromCharCode(96).repeat(3);
+    const re=new RegExp(fence+'openq-delegate\\s*([\\s\\S]*?)'+fence,'g');
+    const clean=String(report||'').replace(re,(all,body)=>{
+      try { const p=JSON.parse(body.trim()), list=Array.isArray(p.specialists)?p.specialists:[p];
+        list.forEach(x=>{if(x&&typeof x.specialist==='string'&&typeof x.task==='string'&&x.task.trim()&&x.task.length<=5000&&window.QuOLabNexusAgent?.specialists&&Object.prototype.hasOwnProperty.call(window.QuOLabNexusAgent.specialists,x.specialist)&&assignments.length<5) assignments.push({specialist:x.specialist,task:x.task.trim()});});
+      } catch(_){} return '';
+    }).trim();
+    return {text:clean,assignments};
+  }
+  function taskStatus(report) {
+    const t=String(report||'');
+    return {status:((t.match(/TASK_STATUS\s*:\s*(COMPLETED|CONTINUE|BLOCKED)/i)||[])[1]||'').toUpperCase(),evidence:((t.match(/TASK_EVIDENCE\s*:\s*([^\r\n]+)/i)||[])[1]||'').trim()};
+  }
+  function isExecutionRequest(msg) {
+    const t=String(msg||'').toLowerCase();
+    if(/^\s*(open|abre|abrir|show|muestra|ir a|go to)\b/i.test(t)&&!/\b(create|build|program|write|edit|fix|correct|run|execute|save|delete|publish|implement|crea|construye|programa|escribe|edita|corrige|arregla|ejecuta|guarda|implementa)\b/i.test(t)) return false;
+    return /\b(create|build|program|write|edit|fix|correct|run|execute|save|delete|publish|implement|deploy|configure|add|remove|construye|programa|escribe|edita|corrige|arregla|ejecuta|guarda|implementa|configura|a[nñ]ade|elimina|modifica|dise[nñ]a|simula)\b/i.test(t);
+  }
+
+  async function routeAI(msg,ctx) {
+    const direct=inferSpecialistAssignments(msg,ctx);
+    if(direct) return {specialists:direct,routing:'direct-specialist'};
+    const prompt=[
+      'CENTRAL ROUTER — DISPATCH ONLY. The central agent is not a mandatory conversational hop.',
+      'Route tool-specific questions and tasks to the relevant specialist. General questions may be answered centrally. Assign every relevant specialist for multi-tool work.',
+      'Specialists may delegate directly to other specialists with openq-delegate JSON blocks. Do not force every handoff through the central agent.',
+      'For execution: inspect current state, plan every required step, execute, inspect outputs/errors, correct failures, and verify final state. Opening or navigating is never completion for a build/edit/run/fix task.',
+      'Return ONLY JSON: {"specialists":[{"specialist":"projects|architect|architect-pro|quantum-puzzle|quantum-app-studio","task":"..."}]} or {"specialist":null,"answer":"..."}.',
+      'Quantum code/notebook work goes to architect-pro unless visual circuit editor work is explicit; visual circuits in notebooks require architect-pro and architect collaboration. Never invent results. Reply in the user language.'
+    ].join('\n');
+    const raw=await callAI(msg,ctx,{systemSuffix:prompt}), match=String(raw||'').match(/\{[\s\S]*\}/);
+    if(!match) return null;
     try {
-      const route = JSON.parse(match[0]);
-      if (route.specialist === null && typeof route.answer === 'string' && route.answer.trim()) return route;
-      const registry = window.QuOLabNexusAgent && window.QuOLabNexusAgent.specialists;
-      const assignments = Array.isArray(route.specialists) ? route.specialists : (route.specialist ? [{ specialist: route.specialist, task: route.task }] : []);
-      const clean = assignments.filter(item => item && registry && Object.prototype.hasOwnProperty.call(registry, item.specialist) && typeof item.task === 'string' && item.task.trim() && item.task.length <= 5000).slice(0, 5);
-      if (clean.length) return { specialists: clean };
-    } catch (error) { console.warn('QNexusAi router returned invalid dispatch JSON:', error); }
-    return null;
+      const r=JSON.parse(match[0]);
+      if(r.specialist===null&&typeof r.answer==='string'&&r.answer.trim()) return r;
+      const registry=window.QuOLabNexusAgent?.specialists;
+      const list=Array.isArray(r.specialists)?r.specialists:(r.specialist?[{specialist:r.specialist,task:r.task}]:[]);
+      const clean=list.filter(x=>x&&registry&&Object.prototype.hasOwnProperty.call(registry,x.specialist)&&typeof x.task==='string'&&x.task.trim()&&x.task.length<=5000).slice(0,5);
+      return clean.length?{specialists:clean,routing:'central-dispatch'}:null;
+    } catch(e){console.warn('QNexusAi routing JSON invalid',e);return null;}
   }
 
-  const AI_SUPABASE_URL = 'https://rtkcfbnoqbivylejhspv.supabase.co';
+  async function runSpecialistTask(a,msg,ctx,queue,reports) {
+    const spec=window.QuOLabNexusAgent?.specialists?.[a.specialist], manual=window.QuOLabNexusAgent?.getSpecialistInstructions(a.specialist);
+    if(!spec||!manual) return null;
+    let task=a.task,last='',done=false,blocked=false;
+    const started=Date.now();
+    for(let round=0;round<6;round++){
+      notify('QNexusAi → '+spec.name+(round?' · paso '+(round+1):''));
+      const before=JSON.stringify(ctx||{});
+      const prompt=[
+        'Solicitud original: '+msg,'Tarea asignada: '+task,round?'Informe anterior: '+last:'',
+        'Contexto actual: '+JSON.stringify(ctx||{}),
+        'Eres el especialista responsable. Inspecciona, descompón la tarea, ejecuta todos los pasos necesarios con openq-action, inspecciona de nuevo, corrige errores y continúa. No te detengas al abrir una herramienta. Si necesitas otro especialista, delega directamente con openq-delegate JSON. No inventes resultados.',
+        'Termina cada respuesta con TASK_STATUS: CONTINUE, TASK_STATUS: COMPLETED o TASK_STATUS: BLOCKED. COMPLETED exige TASK_EVIDENCE: con evidencia concreta observada en el contexto. Si quedan pasos, usa CONTINUE.'
+      ].filter(Boolean).join('\n\n');
+      const raw=await callAI(prompt,ctx,{systemSuffix:'\nSPECIALIST EXECUTION MODE.\n'+manual+'\nOwn the complete workflow. Navigation or a dispatch ACK is not completion. Reinspect fresh context after every action. You may delegate directly using an openq-delegate JSON block. Never claim completion without visible evidence.'});
+      const delegation=extractDelegations(raw);
+      delegation.assignments.forEach(x=>{if(queue.length<10&&!queue.some(q=>q.specialist===x.specialist&&q.task===x.task))queue.push(x);});
+      const actions=extractActions(delegation.text);
+      let execution={ok:true,results:[]};
+      if(actions.actions.length) execution=await executeAIActionSequence(actions.actions,ctx);
+      const fresh=await gatherAIContext(), status=taskStatus(actions.text), changed=before!==JSON.stringify(fresh||{});
+      const onlyNav=actions.actions.length>0&&actions.actions.every(x=>['nav','open_notebook','open_app'].includes(x.type));
+      const openOnly=!isExecutionRequest(msg);
+      const visibleEvidence=!!(fresh&&Array.isArray(fresh.tools)&&fresh.tools.some(x=>x.loaded&&((x.outputs&&x.outputs.some(Boolean))||(x.inputs&&x.inputs.some(v=>v.value&&v.value!=='[REDACTED]')))));
+      const evidenceOK=!!status.evidence&&(visibleEvidence||execution.results.some(x=>x.output&&x.output.trim()));
+      last=actions.text+(execution.results.length?'\nExecution: '+JSON.stringify(execution.results):'');
+      ctx=fresh;
+      reports.push({specialist:spec.name,task,round:round+1,report:actions.text,execution,state_changed:changed,status:'in_progress'});
+      if(!execution.ok||status.status==='BLOCKED'){blocked=true;break;}
+      if(status.status==='COMPLETED'&&(!isExecutionRequest(msg)||(evidenceOK&&(!onlyNav||openOnly)))){done=true;break;}
+      if(!actions.actions.length&&!delegation.assignments.length&&!isExecutionRequest(msg)&&actions.text){done=true;break;}
+      if(!actions.actions.length&&!delegation.assignments.length&&!changed&&round>=2&&status.status!=='CONTINUE'){blocked=true;break;}
+      task='Continúa la tarea original sin repetir pasos confirmados. Último resultado: '+last+'\nEjecuta el siguiente paso pendiente. Solo marca COMPLETED si todo está hecho y existe evidencia actual.';
+    }
+    const status=done?'completed':blocked?'blocked':'incomplete';
+    window.QuOLabNexusAgent.recordDelegation(a.specialist,status,last||'Sin informe verificable.');
+    const entry=reports.filter(x=>x.specialist===spec.name).pop();if(entry)entry.status=status;
+    return {specialist:spec.name,task,status,report:last,elapsed_ms:Date.now()-started};
+  }
+
+  async function sendAI() {
+    if(!cmEditor)return;
+    const msg=cmEditor.state.doc.toString().trim();if(!msg)return;
+    cmEditor.dispatch({changes:{from:0,to:cmEditor.state.doc.length,insert:''}});
+    addAIMsg(msg,'usr');document.getElementById('ai-loading').classList.add('show');
+    let reply='';
+    if(isAIAvailable()){
+      try{
+        const ctx=await gatherAIContext(),route=await routeAI(msg,ctx);
+        const queue=route&&Array.isArray(route.specialists)?route.specialists.slice(0,5):[];
+        const reports=[],outcomes=[];let processed=0;
+        while(queue.length&&processed<10){
+          const a=queue.shift();if(!a||!a.specialist)continue;processed++;
+          const result=await runSpecialistTask(a,msg,await gatherAIContext(),queue,reports);if(result)outcomes.push(result);
+        }
+        let finalText;
+        if(outcomes.length) finalText=await callAI('Solicitud original:\n'+msg+'\nResultados de especialistas:\n'+JSON.stringify(outcomes)+'\nRedacta en el idioma del usuario. No llames completada ninguna tarea cuyo estado no sea completed. Distingue completed, incomplete y blocked.',await gatherAIContext(),{systemSuffix:'Eres QNexusAi, coordinador final. Los informes y estados son la fuente de verdad. No emitas acciones nuevas. Explica los pasos faltantes o bloqueos.'});
+        else if(route&&route.answer) finalText=route.answer;
+        else finalText=await callAI(msg,ctx);
+        document.getElementById('ai-loading').classList.remove('show');addAIMsg(finalText,'bot');
+        notify('QNexusAi: '+finalText.replace(/\s+/g,' ').slice(0,170));reply=finalText;
+        aiHistory.push({role:'user',content:msg},{role:'assistant',content:finalText});if(aiHistory.length>12)aiHistory=aiHistory.slice(-12);
+      }catch(e){
+        document.getElementById('ai-loading').classList.remove('show');console.error('QNexusAi error:',e);
+        const err='QNexusAi could not complete the request: '+((e&&e.message)?e.message:String(e));addAIMsg(err,'bot');reply=err;
+      }
+    }else{
+      await new Promise(resolve=>setTimeout(resolve,500));document.getElementById('ai-loading').classList.remove('show');
+      const err='QNexusAi gateway is unavailable. Reconnect the AI service to execute tasks.';addAIMsg(err,'bot');reply=err;
+    }
+    if(curUser?.username){
+      let data=dbLoad();if(!data)data={ai_history:{}};if(!data.ai_history)data.ai_history={};if(!data.ai_history[curUser.username])data.ai_history[curUser.username]=[];
+      data.ai_history[curUser.username].push({q:msg,a:reply,ts:Date.now()});if(data.ai_history[curUser.username].length>200)data.ai_history[curUser.username]=data.ai_history[curUser.username].slice(-200);dbSave(data);
+    }
+  }
+
+    const AI_SUPABASE_URL = 'https://rtkcfbnoqbivylejhspv.supabase.co';
   const AI_SUPABASE_ANON_KEY = 'sb_publishable_xo_Fyb_LQT3T5i3LQ1JNTw_NtLm2Zjd';
   const AI_AUTH_STORAGE_KEY = 'quolab_nexus_ai_auth_v1';
 
