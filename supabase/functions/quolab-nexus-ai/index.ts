@@ -8,7 +8,7 @@ const allowedOrigins = new Set([
   "http://127.0.0.1:5173",
 ]);
 const rateBuckets = new Map<string, { startedAt: number; count: number }>();
-const DEFAULT_ORDER = ["gemini", "groq", "openrouter", "huggingface", "deepseek"];
+const DEFAULT_ORDER = ["gemini", "groq", "openrouter", "deepseek"];
 
 type Message = { role: "system" | "user" | "assistant"; content: string };
 type Provider = {
@@ -55,7 +55,6 @@ function configuredProviders(): Provider[] {
   });
   addOpenAI("groq", "https://api.groq.com/openai/v1/chat/completions", "GROQ_API_KEY", "openai/gpt-oss-120b");
   addOpenAI("openrouter", "https://openrouter.ai/api/v1/chat/completions", "OPENROUTER_API_KEY", "openrouter/free");
-  addOpenAI("huggingface", "https://router.huggingface.co/v1/chat/completions", "HUGGINGFACE_API_KEY", "Qwen/Qwen2.5-7B-Instruct");
   addOpenAI("deepseek", "https://api.deepseek.com/chat/completions", "DEEPSEEK_API_KEY", "deepseek-chat");
 
   // Extensible registry: add future OpenAI-compatible endpoints without changing this function.
@@ -166,7 +165,7 @@ Deno.serve(async (req: Request) => {
     const rawTemperature = Number(payload.temperature);
     const temperature = Number.isFinite(rawTemperature) ? Math.min(Math.max(rawTemperature, 0), 2) : 0.7;
     const providers = providerOrder(configuredProviders());
-    if (!providers.length) return reply(503, { error: "no_ai_provider_configured", setup: ["GEMINI_API_KEY", "GROQ_API_KEY", "OPENROUTER_API_KEY", "HUGGINGFACE_API_KEY", "DEEPSEEK_API_KEY"] }, origin);
+    if (!providers.length) return reply(503, { error: "no_ai_provider_configured", setup: ["GEMINI_API_KEY", "GROQ_API_KEY", "OPENROUTER_API_KEY", "DEEPSEEK_API_KEY"] }, origin);
 
     const failures: string[] = [];
     for (const provider of providers) {
