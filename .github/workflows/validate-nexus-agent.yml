@@ -12,6 +12,10 @@ on:
       - "quolab-nexus-tool-connector.js"
       - "quolab-nexus-*.html"
       - "tests/quolab-nexus-specialists.test.cjs"
+      - "tests/test_execution_sandbox.py"
+      - "app.py"
+      - "quolab_nexus_server.py"
+      - "quolab_execution_sandbox.py"
       - ".github/workflows/validate-nexus-agent.yml"
 
 jobs:
@@ -22,6 +26,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+      - name: Verify Python sandbox escape attempts are rejected
+        run: python tests/test_execution_sandbox.py
       - name: Check central agent syntax
         run: node --check quolab-nexus-agent.js
       - name: Check universal tool connector syntax
