@@ -30,7 +30,7 @@ for (const role of [
   'You are the Quantum Puzzle Specialist',
   'You are the Quantum App Studio Specialist'
 ]) assert.ok(agent.includes(role), role + ' must have its own worker instructions');
-assert.match(agent, /const VERSION = '1\.3\.0'/);
+assert.match(agent, /const VERSION = '1\.3\.1'/);
 assert.match(agent, /AIza|xox\[baprs\]/);
 assert.match(connector, /const VERSION = '1\.2\.1'/);
 assert.match(connector, /AIza\|xox\[baprs\]/);
@@ -48,6 +48,9 @@ assert.match(agent, /SPECIALIST_INSTRUCTIONS/);
 assert.match(agent, /operation === 'drag'/);
 assert.match(agent, /operation === 'hover'/);
 assert.match(agent, /operation === 'key'/);
+assert.match(agent, /function selectorFor\(el\)/, 'specialists need safe selectors for accessible controls without IDs');
+assert.match(agent, /aria-label|placeholder|title/);
+assert.doesNotMatch(agent, /const dangerous = \/[^\\n]*submit/, 'routine form submission must not require an unnecessary confirmation');
 assert.match(connector, /MutationObserver/);
 assert.match(connector, /output_change/);
 assert.match(index, /'click','fill','type','select','scroll','hover','key','drag'/);
