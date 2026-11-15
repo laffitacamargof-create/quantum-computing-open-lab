@@ -2027,7 +2027,7 @@ CONTEXT: ${c}`;
       case 'open_notebook': case 'open_app': return typeof a.id === 'string' && /^[\w.\-]{1,80}$/.test(a.id);
       case 'set_code': return !!AI_TARGET[a.target] && typeof a.code === 'string' && a.code.length > 0 && a.code.length < 20000 && (a.target !== 'notebook' || Number.isInteger(a.cellIndex));
       case 'run': return !!AI_TARGET[a.target] && (a.target !== 'notebook' || Number.isInteger(a.cellIndex));
-      case 'ui_action': return AI_SCREENS.includes(a.screen) && ['click','fill','select','scroll'].includes(a.operation) && typeof a.selector === 'string' && a.selector.length <= 140 && (/^#[A-Za-z][\w:.-]*$/.test(a.selector) || /^\[name="[A-Za-z0-9_.:-]{1,80}"\]$/.test(a.selector) || /^\[data-[a-z0-9_-]+="[A-Za-z0-9_.:-]{1,80}"\]$/.test(a.selector)) && ((a.operation === 'click' || a.operation === 'scroll') || (typeof a.value === 'string' && a.value.length <= 4000));
+      case 'ui_action': return AI_SCREENS.includes(a.screen) && ['click','fill','type','select','scroll','hover','key','drag'].includes(a.operation) && typeof a.selector === 'string' && a.selector.length <= 140 && (/^#[A-Za-z][\w:.-]*$/.test(a.selector) || /^\[name="[A-Za-z0-9_.:-]{1,80}"\]$/.test(a.selector) || /^\[data-[a-z0-9_-]+="[A-Za-z0-9_.:-]{1,80}"\]$/.test(a.selector)) && ((a.operation === 'click' || a.operation === 'scroll' || a.operation === 'hover') || (a.operation === 'key' && ['Enter','Escape','Tab','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Home','End','PageUp','PageDown',' '].includes(a.key)) || (a.operation === 'drag' && typeof a.targetSelector === 'string' && a.targetSelector.length <= 140 && (/^#[A-Za-z][\w:.-]*$/.test(a.targetSelector) || /^\[name="[A-Za-z0-9_.:-]{1,80}"\]$/.test(a.targetSelector) || /^\[data-[a-z0-9_-]+="[A-Za-z0-9_.:-]{1,80}"\]$/.test(a.targetSelector))) || ((a.operation === 'fill' || a.operation === 'type' || a.operation === 'select') && typeof a.value === 'string' && a.value.length <= 4000));
       case 'noise': return (a.target === 'architect' || (a.target === 'notebook' && Number.isInteger(a.cellIndex)))
         && (a.engine === undefined || ['qcol-browser', 'mqt-yaqs', 'qiskit-aer', 'both', 'all'].includes(a.engine))
         && (a.shots === undefined || (Number.isInteger(a.shots) && a.shots >= 1 && a.shots <= 2048))
@@ -2148,15 +2148,14 @@ CONTEXT: ${c}`;
         if (aiHistory.length > 12) aiHistory = aiHistory.slice(-12);
       } catch(e) {
         document.getElementById('ai-loading').classList.remove('show');
-        console.error('QuantumChat error:', e);
+        console.error('QuOLab Nexus AI error:', e);
         let why = (e && e.message) ? e.message : String(e);
         if (/failed to fetch|networkerror|load failed|network request failed/i.test(why))
           why = 'cannot reach ' + (aiCfg.provider || 'the AI provider') + ' (network blocked, CORS or VPN needed). Try another provider (Mistral / Groq / DeepSeek).';
         else if (/timeout|aborted/i.test(why)) why = 'timeout — ' + (aiCfg.provider || 'the provider') + ' did not answer in 20 s.';
-        const k = aiCfg.key ? ('…' + String(aiCfg.key).slice(-4)) : 'NO KEY';
         const errMsg = 'Connection error with the assistant: ' + why +
           (/unsupported provider/i.test(why) ? ' — choose a supported provider in Configuration.' : '') +
-          '\n\n`[provider: ' + (aiCfg.provider || 'none') + ' · model: ' + (aiCfg.model || 'default') + ' · key: ' + k + ']`';
+          '\n\n`[provider: ' + (aiCfg.provider || 'none') + ' · model: ' + (aiCfg.model || 'default') + ']`';
         addAIMsg(errMsg, 'bot');
         reply = errMsg;
       }
@@ -2292,7 +2291,7 @@ Do not invent screen state, IDs, tool capabilities, or completed actions. Do not
     
     const lbl = document.createElement('div');
     lbl.className = 'ai-lbl';
-    lbl.textContent = role === 'bot' ? 'QUANTUMCHAT' : 'YOU';
+    lbl.textContent = role === 'bot' ? 'QUOLAB NEXUS AI' : 'YOU';
     d.appendChild(lbl);
     
     const contentDiv = document.createElement('div');
