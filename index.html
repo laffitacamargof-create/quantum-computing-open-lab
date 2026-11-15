@@ -1987,7 +1987,7 @@ class QuOLabNexusConfigSyncReader {
     qubit:'A qubit: α|0⟩+β|1⟩ where |α|²+|β|²=1\nBloch: North=|0⟩, South=|1⟩, Equator=superposition',
     grover:'Grover O(√N): H on all → Oracle → Amplification → Measure',
     bell:'|Φ⁺⟩=(|00⟩+|11⟩)/√2\nqc.h(0)\nqc.cx(0,1)',
-    latex:'$$\\hat{H}|\\psi\\rangle=E|\\psi\\rangle$$\n$$|\\Phi^+\\rangle=\\frac{1}{\\sqrt{2}}(|00\\rangle+|11\\rangle)$$',
+    latex:'$$\\hat{H}|\\psi\\rangle=E|\\psi\\rangle$$\n$$|\\Phi^+\\rangle=\\frac{1}{\sqrt{2}}(|00\\rangle+|11\\rangle)$$',
     cirq:'import cirq\nq=cirq.LineQubit.range(2)\nc=cirq.Circuit(cirq.H(q[0]),cirq.CNOT(q[0],q[1]))',
     pennylane:'import pennylane as qml\ndev=qml.device("default.qubit",wires=2)\n@qml.qnode(dev)\ndef circ():\n    qml.Hadamard(wires=0)\n    qml.CNOT(wires=[0,1])\n    return qml.probs()',
     entanglement:'Quantum entanglement:\nqc.h(0); qc.cx(0,1)\n→ Bell state: measuring one determines the other',
@@ -2260,7 +2260,7 @@ CONTEXT: ${c}`;
             const workerActions = extractActions(handoff.text);
             let execution = { ok: true, results: [] };
             if (workerActions.actions.length) execution = await executeAIActionSequence(workerActions.actions, ctx);
-            const taskIntent = /\\b(create|build|program|write|edit|fix|correct|run|execute|open|save|delete|publish|implement|programa|crea|construye|corrige|arregla|ejecuta|abre|guarda|implementa)\\b/i.test(msg);
+            const taskIntent = /\b(create|build|program|write|edit|fix|correct|run|execute|open|save|delete|publish|implement|programa|crea|construye|corrige|arregla|ejecuta|abre|guarda|implementa)\b/i.test(msg);
             const completed = workerActions.actions.length ? execution.ok : !taskIntent;
             const status = completed ? 'completed' : workerActions.actions.length ? 'failed' : 'blocked';
             const summary = workerActions.text + (execution.results.length ? '\nActions: ' + execution.results.map(x => (x.ok ? 'OK ' : 'FAILED ') + x.action + ': ' + x.message).join('; ') : '');
@@ -2292,7 +2292,7 @@ CONTEXT: ${c}`;
         }
         document.getElementById('ai-loading').classList.remove('show');
         addAIMsg(finalText, 'bot');
-        notify('QNexusAi: ' + finalText.replace(/\\s+/g, ' ').slice(0, 170));
+        notify('QNexusAi: ' + finalText.replace(/\s+/g, ' ').slice(0, 170));
         reply = finalText;
         aiHistory.push({ role: 'user', content: msg }, { role: 'assistant', content: finalText });
         if (aiHistory.length > 12) aiHistory = aiHistory.slice(-12);
@@ -2323,11 +2323,11 @@ CONTEXT: ${c}`;
     if (!registry) return null;
     const text = String(msg || '').toLowerCase();
     const rules = [
-      ['architect-pro', /\\b(notebook|quantum notebook|jupyter|ipynb|cell|cells|celda|celdas|cuaderno|cuaderno cuantico|ejecutar celda|notebook cell)\\b/i],
-      ['architect', /\\b(quantum open lab|architect|circuit|circuito|qubit|gate|puerta cuantica|visual circuit|circuito visual)\\b/i],
-      ['quantum-app-studio', /\\b(app studio|quantum app studio|application editor|editor de aplicaciones|crear app|editar app|preview app|vista previa de app)\\b/i],
-      ['quantum-puzzle', /\\b(quantum puzzle|puzzle|puzzles|challenge|challenges|reto|desafio|published app|aplicacion publicada)\\b/i],
-      ['projects', /\\b(projects|projects catalogue|project catalog|proyectos|catalogo de proyectos|publicar proyecto|published project)\\b/i]
+      ['architect-pro', /\b(notebook|quantum notebook|jupyter|ipynb|cell|cells|celda|celdas|cuaderno|cuaderno cuantico|ejecutar celda|notebook cell)\b/i],
+      ['architect', /\b(quantum open lab|architect|circuit|circuito|qubit|gate|puerta cuantica|visual circuit|circuito visual)\b/i],
+      ['quantum-app-studio', /\b(app studio|quantum app studio|application editor|editor de aplicaciones|crear app|editar app|preview app|vista previa de app)\b/i],
+      ['quantum-puzzle', /\b(quantum puzzle|puzzle|puzzles|challenge|challenges|reto|desafio|published app|aplicacion publicada)\b/i],
+      ['projects', /\b(projects|projects catalogue|project catalog|proyectos|catalogo de proyectos|publicar proyecto|published project)\b/i]
     ];
     const explicit = rules.filter(([, re]) => re.test(text)).map(([id]) => id);
     const active = String(ctx && (ctx.active_tool || ctx.screen) || 'home');
@@ -2345,7 +2345,7 @@ CONTEXT: ${c}`;
   function extractSpecialistHandoff(report) {
     const known = window.QuOLabNexusAgent && window.QuOLabNexusAgent.specialists;
     const matches = [];
-    const clean = String(report || '').replace(/\x60\x60\x60openq-handoff\\s*([\\s\\S]*?)\x60\x60\x60/g, (block, body) => {
+    const clean = String(report || '').replace(/\x60\x60\x60openq-handoff\s*([\s\S]*?)\x60\x60\x60/g, (block, body) => {
       try {
         const data = JSON.parse(body.trim());
         const items = Array.isArray(data.handoffs) ? data.handoffs : [data];
