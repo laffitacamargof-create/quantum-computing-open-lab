@@ -1937,16 +1937,24 @@ class QuOLabNexusConfigSyncReader {
   }
 
   // ── AI ──
+  function isAIAvailable() {
+    // The multi-provider gateway keeps provider keys server-side in Supabase;
+    // an empty browser-side key is expected and must not trigger demo mode.
+    return aiCfg.provider === 'gateway' || aiCfg.provider === 'deepseek' || (!!aiCfg.key && aiCfg.provider !== 'none');
+  }
+
   function setupAI() {
     aiCfg = loadAICfg();
     const dot = document.getElementById('ai-sdot');
     const txt = document.getElementById('ai-stxt');
     const lbl = document.getElementById('ai-prov-lbl');
-    if ((aiCfg.provider === 'deepseek') || (aiCfg.key && aiCfg.provider !== 'none')) {
+    if (isAIAvailable()) {
       if (dot) dot.className = 'ai-status-dot ok';
-      if (txt) txt.textContent = aiCfg.provider === 'deepseek'
-        ? 'QuOLab Nexus AI · DeepSeek secure gateway · 5 specialists'
-        : 'QuOLab Nexus AI active · 5 specialists';
+      if (txt) txt.textContent = aiCfg.provider === 'gateway'
+        ? 'QuOLab Nexus AI · multi-provider gateway · 5 specialists'
+        : aiCfg.provider === 'deepseek'
+          ? 'QuOLab Nexus AI · DeepSeek · 5 specialists'
+          : 'QuOLab Nexus AI active · 5 specialists';
       if (lbl) lbl.textContent = '';
     } else {
       if (dot) dot.className = 'ai-status-dot';
@@ -2115,7 +2123,7 @@ CONTEXT: ${c}`;
 
     let reply = '';
 
-    if ((aiCfg.provider === 'deepseek') || (aiCfg.key && aiCfg.provider !== 'none')) {
+    if (isAIAvailable()) {
       try {
         const ctx = await gatherAIContext();
         let resp0;
@@ -2198,7 +2206,7 @@ Otherwise the central coordinator handles it directly.
 Return ONLY one valid JSON object, no Markdown:
 For delegation: {"specialist":"<one exact specialist id>","task":"<specific bounded task for that specialist>"}
 For central handling: {"specialist":null,"answer":"<complete direct answer to the user>"}
-Do not invent screen state, IDs, tool capabilities, or completed actions. Do not delegate security/account/founder administration. Keep the user's language.
+Interpret short follow-ups from recent conversation history (for example, “programa uno”, “hazlo”, “build it”) as continuation requests; do not repeat a generic capability list. If the user asks to create quantum code/programs, delegate to architect-pro unless the active screen or request clearly targets the visual circuit editor, in which case use architect. Do not invent screen state, IDs, tool capabilities, or completed actions. Do not delegate security/account/founder administration. Keep the user's language.
 `;
     const raw = await callAI(msg, ctx, { systemSuffix: routerPrompt });
     const match = String(raw || '').match(/\{[\s\S]*\}/);
@@ -2277,7 +2285,12 @@ Do not invent screen state, IDs, tool capabilities, or completed actions. Do not
       signal: AbortSignal.timeout(30000)
     });
     const data = await response.json();
-    if (!response.ok) throw new Error(data.error || data.message || ('DeepSeek gateway HTTP ' + response.status));
+    if (!response.ok) {
+      const provider = data.provider ? ' · provider: ' + data.provider : '';
+      const attempted = Array.isArray(data.attempted_providers) && data.attempted_providers.length
+        ? ' · attempted: ' + data.attempted_providers.join(', ') : '';
+      throw new Error('QuOLab AI gateway HTTP ' + response.status + ': ' + (data.error || data.message || 'request_failed') + provider + attempted);
+    }
     if (!data.choices?.[0]?.message?.content) throw new Error('AI gateway returned an empty response');
     return data.choices[0].message.content;
   }
