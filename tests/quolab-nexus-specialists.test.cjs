@@ -7,7 +7,7 @@ const docs=fs.readFileSync('docs/QUOLAB_NEXUS_AI_ARCHITECTURE.md','utf8');
 const connector=fs.readFileSync('quolab-nexus-tool-connector.js','utf8');
 assert.ok(agent.includes("const VERSION = '1.8.0'"));
 assert.ok(agent.includes('item.function_api='));
-assert.ok(agent.includes("new view.PointerEvent('pointerdown'"));
+assert.ok(agent.includes("pointer('pointerdown'"));
 assert.ok(agent.includes("new view.DragEvent('drop'"));
 assert.ok(co.includes('global.__QUOLAB_NEXUS_TOOL'));
 assert.ok(app.includes('quantum-app-studio-preview'));
