@@ -3,13 +3,14 @@ name: Validate QuOLab Nexus AI
 on:
   push:
     branches:
-      - feature/quolab-nexus-central-ai-agent
+      - feature/quolab-nexus-five-specialists
   pull_request:
     paths:
       - "index.html"
       - "quolab-nexus-agent.js"
       - "quolab-nexus-tool-connector.js"
       - "quolab-nexus-*.html"
+      - "tests/quolab-nexus-specialists.test.cjs"
       - ".github/workflows/validate-nexus-agent.yml"
 
 jobs:
@@ -24,6 +25,8 @@ jobs:
         run: node --check quolab-nexus-agent.js
       - name: Check universal tool connector syntax
         run: node --check quolab-nexus-tool-connector.js
+      - name: Verify five-specialist architecture and App Studio routing
+        run: node tests/quolab-nexus-specialists.test.cjs
       - name: Extract and check the main index module
         run: |
           python - <<'PY'

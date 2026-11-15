@@ -2,15 +2,17 @@
 (function (global) {
   'use strict';
 
-  const VERSION = '1.0.0';
+  const VERSION = '1.1.0';
+  // Exactly five tool specialists. Library, Help, and all general Nexus functions
+  // remain under the central coordinator rather than becoming separate agents.
   const TOOL_SPECS = Object.freeze({
-    projects: { name: 'Projects Specialist', role: 'Find and open published notebooks and projects; explain project metadata and execution results.', capabilities: ['inspect','navigate','open'] },
-    architect: { name: 'Architect Specialist', role: 'Build and inspect quantum circuits, Qiskit code, gates, measurements, simulation and noise.', capabilities: ['inspect','navigate','fill','click','run','noise'] },
-    'architect-pro': { name: 'Quantum Notebook Specialist', role: 'Work with notebook cells, code, markdown, execution, outputs and exports.', capabilities: ['inspect','navigate','fill','click','run'] },
-    library: { name: 'Library Specialist', role: 'Find learning resources, references, tutorials and documents.', capabilities: ['inspect','navigate','search','open'] },
-    help: { name: 'Help Specialist', role: 'Explain how to use QuOLab Nexus and troubleshoot its modules.', capabilities: ['inspect','navigate'] },
-    'quantum-puzzle': { name: 'Quantum Apps Specialist', role: 'Explore and operate published Quantum Apps and their user-facing controls.', capabilities: ['inspect','navigate','fill','click','select','scroll'] }
+    projects: { name: 'Projects Specialist', role: 'Find and open published projects and notebooks; inspect project metadata and results.', capabilities: ['inspect','navigate','open'] },
+    architect: { name: 'Quantum Open Lab Specialist', role: 'Design and inspect quantum circuits, gates, Qiskit code, measurements, simulation and noise in Quantum Open Lab.', capabilities: ['inspect','navigate','fill','click','run','noise'] },
+    'architect-pro': { name: 'Quantum Notebook Specialist', role: 'Work with notebook cells, Python and quantum code, markdown, execution, outputs and exports.', capabilities: ['inspect','navigate','fill','click','run'] },
+    'quantum-puzzle': { name: 'Quantum Puzzle Specialist', role: 'Explore and operate Quantum Puzzle challenges, published puzzles and their user-facing controls.', capabilities: ['inspect','navigate','fill','click','select','scroll'] },
+    'quantum-app-studio': { name: 'Quantum App Studio Specialist', role: 'Create, edit, preview and manage quantum applications in Quantum App Studio.', capabilities: ['inspect','navigate','fill','click','select','scroll'] }
   });
+  const CENTRAL_SCREENS = Object.freeze(['library','help']);
   const SENSITIVE = /password|passphrase|secret|token|api.?key|private.?key|credential|founder|authorization|cookie|session/i;
   const EVENT_ALLOW = /^(OPENQ|NEXUS|QCOL)_[A-Z0-9_]+$/;
   const recentEvents = [];
@@ -24,11 +26,22 @@
   }
 
   function activeScreen() {
+    const puzzleFrame = frameFor('quantum-puzzle');
+    try {
+      const modal = puzzleFrame && puzzleFrame.contentDocument && puzzleFrame.contentDocument.getElementById('studioModalReal');
+      if (modal && modal.classList.contains('open')) return 'quantum-app-studio';
+    } catch (_) {}
     const el = document.querySelector('.screen.active');
     return el ? el.id.replace(/^screen-/, '') : 'home';
   }
 
   function frameFor(screen) {
+    if (screen === 'quantum-app-studio') {
+      const puzzle = Array.from(document.querySelectorAll('iframe.module-iframe[data-openq]'))
+        .find(frame => frame.getAttribute('data-openq') === 'quantum-puzzle');
+      try { return puzzle && puzzle.contentDocument && puzzle.contentDocument.getElementById('studioIframe') || null; }
+      catch (_) { return null; }
+    }
     return Array.from(document.querySelectorAll('iframe.module-iframe[data-openq]'))
       .find(frame => frame.getAttribute('data-openq') === screen) || null;
   }
@@ -86,9 +99,15 @@
 
   function snapshot(base) {
     const active = activeScreen();
-    const tools = Object.keys(TOOL_SPECS).map(id => {
+    const managedScreens = Object.keys(TOOL_SPECS).concat(CENTRAL_SCREENS);
+    const tools = managedScreens.map(id => {
       const frame = frameFor(id);
-      return Object.assign({ id, specialist: TOOL_SPECS[id].name, capabilities: TOOL_SPECS[id].capabilities }, frame ? describeFrame(id, frame) : { loaded: false });
+      const spec = TOOL_SPECS[id];
+      return Object.assign({
+        id,
+        specialist: spec ? spec.name : 'QuOLab Nexus AI — central coordinator',
+        capabilities: spec ? spec.capabilities : ['inspect','navigate','explain','diagnose']
+      }, frame ? describeFrame(id, frame) : { loaded: false });
     });
     const activeTool = tools.find(tool => tool.id === active) || null;
     return {
@@ -97,7 +116,7 @@
       mode: 'central_coordinator_with_tool_specialists',
       language: navigator.language || 'auto',
       active_tool: active,
-      active_specialist: activeTool ? activeTool.specialist : 'Nexus Core Coordinator',
+      active_specialist: activeTool ? activeTool.specialist : 'QuOLab Nexus AI — central coordinator',
       tools,
       recent_events: recentEvents.slice(-20),
       user_context: base || {}
@@ -111,13 +130,15 @@
     if (typeof type !== 'string' || !EVENT_ALLOW.test(type)) return;
     const frame = Array.from(document.querySelectorAll('iframe.module-iframe[data-openq]'))
       .find(item => item.contentWindow === event.source);
+    const details = event.data.details || {};
+    const nestedKind = details.kind || event.data.kind || '';
     recentEvents.push({
       time: new Date().toISOString(),
-      from: frame ? frame.getAttribute('data-openq') : 'nexus',
+      from: cleanText(details.tool || (frame ? frame.getAttribute('data-openq') : 'nexus'), 60),
       type: type,
-      kind: cleanText(event.data.kind || '', 60),
-      details: cleanText(JSON.stringify(event.data.details || {}), 1000),
-      status: /ERROR|FAIL|REJECT/i.test(type) || /error/i.test(event.data.kind || '') ? 'error' : /RESULT|OUTPUT|SUCCESS|READY/i.test(type) || /response|output|result/i.test(event.data.kind || '') ? 'result' : 'event'
+      kind: cleanText(nestedKind, 60),
+      details: cleanText(JSON.stringify(details.details || details), 1000),
+      status: /ERROR|FAIL|REJECT/i.test(type) || /error/i.test(nestedKind) ? 'error' : /RESULT|OUTPUT|SUCCESS|READY/i.test(type) || /response|output|result/i.test(nestedKind) ? 'result' : 'event'
     });
     if (recentEvents.length > MAX_EVENTS) recentEvents.splice(0, recentEvents.length - MAX_EVENTS);
   }
@@ -131,7 +152,7 @@
   }
 
   function executeUIAction(action) {
-    if (!action || !TOOL_SPECS[action.screen] || !validSelector(action.selector)) {
+    if (!action || (!TOOL_SPECS[action.screen] && !CENTRAL_SCREENS.includes(action.screen)) || !validSelector(action.selector)) {
       return { ok: false, message: 'Invalid tool or selector.' };
     }
     const frame = frameFor(action.screen);

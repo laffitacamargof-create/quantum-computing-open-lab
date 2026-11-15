@@ -423,7 +423,7 @@ body::before{content:'';position:fixed;inset:0;
     <div class="ai-msgs" id="ai-messages">
       <div class="ai-msg bot">
         <div class="ai-lbl">QUOLAB NEXUS AI</div>
-        <div class="markdown-body" id="ai-welcome">Welcome to QuOLab Nexus. I am your central AI coordinator and can connect you with the specialist for each tool. Would you like a guided tour of the ecosystem, or help with something you are working on?</div>
+        <div class="markdown-body" id="ai-welcome">Welcome to QuOLab Nexus. I am your central AI coordinator. I coordinate five specialists: Projects, Quantum Notebook, Quantum Open Lab, Quantum Puzzle, and Quantum App Studio. I handle general help, diagnostics, programming, and the rest of the ecosystem. Would you like a guided tour or help with something you are working on?</div>
       </div>
     </div>
     <div class="ai-loading" id="ai-loading">
@@ -438,7 +438,7 @@ body::before{content:'';position:fixed;inset:0;
       <span id="ai-stxt">Not connected — demo mode</span>
       <span style="margin-left:auto;display:flex;gap:.7rem;">
         <label class="ai-opt" title="Share what you are doing (screen, code, last output) with the assistant so it can advise you"><input type="checkbox" id="ai-opt-ctx" onchange="QuOLabNexus.aiOpt('ctx',this.checked)"> 👁 Context</label>
-        <span id="ai-specialist-count" style="color:var(--mu)">6 tool specialists</span>
+        <span id="ai-specialist-count" style="color:var(--mu)">5 tool specialists</span>
       </span>
     </div>
   </div>
@@ -531,7 +531,7 @@ body::before{content:'';position:fixed;inset:0;
           <path d="M8 12h8M12 8l4 4-4 4" stroke="#00ffdd" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
           <circle cx="12" cy="12" r="2.5" fill="rgba(0,255,221,.2)" stroke="#00ffdd" stroke-width="1"/>
         </svg>
-        QuantumChat
+        QuOLab Nexus AI
       </button>
     </div>
     <div class="module-iframe-wrap" id="projects-wrap">
@@ -565,7 +565,7 @@ body::before{content:'';position:fixed;inset:0;
           <path d="M8 12h8M12 8l4 4-4 4" stroke="#00ffdd" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
           <circle cx="12" cy="12" r="2.5" fill="rgba(0,255,221,.2)" stroke="#00ffdd" stroke-width="1"/>
         </svg>
-        QuantumChat
+        QuOLab Nexus AI
       </button>
     </div>
     <div class="module-iframe-wrap" id="architect-wrap">
@@ -596,7 +596,7 @@ body::before{content:'';position:fixed;inset:0;
           <path d="M8 12h8M12 8l4 4-4 4" stroke="#00ffdd" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
           <circle cx="12" cy="12" r="2.5" fill="rgba(0,255,221,.2)" stroke="#00ffdd" stroke-width="1"/>
         </svg>
-        QuantumChat
+        QuOLab Nexus AI
       </button>
     </div>
     <div class="module-iframe-wrap" id="architect-pro-wrap">
@@ -621,7 +621,7 @@ body::before{content:'';position:fixed;inset:0;
           <path d="M8 12h8M12 8l4 4-4 4" stroke="#00ffdd" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
           <circle cx="12" cy="12" r="2.5" fill="rgba(0,255,221,.2)" stroke="#00ffdd" stroke-width="1"/>
         </svg>
-        QuantumChat
+        QuOLab Nexus AI
       </button>
     </div>
     <div class="module-iframe-wrap" id="library-wrap">
@@ -645,7 +645,7 @@ body::before{content:'';position:fixed;inset:0;
           <path d="M8 12h8M12 8l4 4-4 4" stroke="#00ffdd" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
           <circle cx="12" cy="12" r="2.5" fill="rgba(0,255,221,.2)" stroke="#00ffdd" stroke-width="1"/>
         </svg>
-        QuantumChat
+        QuOLab Nexus AI
       </button>
     </div>
     <div class="module-iframe-wrap" id="account-wrap">
@@ -663,7 +663,7 @@ body::before{content:'';position:fixed;inset:0;
           <path d="M8 12h8M12 8l4 4-4 4" stroke="#00ffdd" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
           <circle cx="12" cy="12" r="2.5" fill="rgba(0,255,221,.2)" stroke="#00ffdd" stroke-width="1"/>
         </svg>
-        QuantumChat
+        QuOLab Nexus AI
       </button>
     </div>
     <div class="module-iframe-wrap" id="founder-wrap">
@@ -687,7 +687,7 @@ body::before{content:'';position:fixed;inset:0;
           <path d="M8 12h8M12 8l4 4-4 4" stroke="#00ffdd" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
           <circle cx="12" cy="12" r="2.5" fill="rgba(0,255,221,.2)" stroke="#00ffdd" stroke-width="1"/>
         </svg>
-        QuantumChat
+        QuOLab Nexus AI
       </button>
     </div>
     <div class="module-iframe-wrap" id="help-wrap">
@@ -714,7 +714,7 @@ body::before{content:'';position:fixed;inset:0;
           <path d="M8 12h8M12 8l4 4-4 4" stroke="#00ffdd" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
           <circle cx="12" cy="12" r="2.5" fill="rgba(0,255,221,.2)" stroke="#00ffdd" stroke-width="1"/>
         </svg>
-        QuantumChat
+        QuOLab Nexus AI
       </button>
     </div>
     <div class="module-iframe-wrap" id="quantum-puzzle-wrap">
@@ -1939,7 +1939,7 @@ class QuOLabNexusConfigSyncReader {
     const lbl = document.getElementById('ai-prov-lbl');
     if (aiCfg.key && aiCfg.provider !== 'none') {
       if (dot) dot.className = 'ai-status-dot ok';
-      if (txt) txt.textContent = 'QuOLab Nexus AI active · 6 specialists';
+      if (txt) txt.textContent = 'QuOLab Nexus AI active · 5 specialists';
       if (lbl) lbl.textContent = '';
     } else {
       if (dot) dot.className = 'ai-status-dot';
@@ -1966,7 +1966,8 @@ class QuOLabNexusConfigSyncReader {
 
 
   // ═══════════════ COPILOTO: la IA ve el contexto, aconseja y (con tu permiso) actúa ═══════════════
-  const AI_SCREENS = ['projects','architect','architect-pro','library','help','quantum-puzzle'];   // founder/account nunca
+  const AI_SCREENS = ['projects','architect','architect-pro','library','help','quantum-puzzle','quantum-app-studio'];   // founder/account nunca
+  const AI_NAV_SCREENS = AI_SCREENS.filter(screen => screen !== 'quantum-app-studio');
   const AI_TARGET  = { architect: 'architect', notebook: 'architect-pro' };
   function aiOptGet(k) { try { const v = localStorage.getItem('openq_ai_' + k); return k === 'ctx' ? v !== '0' : v === '1'; } catch (e) { return k === 'ctx'; } }
   function aiOpt(k, on) { try { localStorage.setItem('openq_ai_' + k, on ? '1' : '0'); } catch (e) {} notify(k === 'auto' ? (on ? '⚡ Auto: the assistant will apply actions by itself' : 'Auto off: you confirm each action') : (on ? '👁 The assistant can see your screen, code and results' : '👁 Context sharing off')); }
@@ -1996,8 +1997,8 @@ class QuOLabNexusConfigSyncReader {
     let c = JSON.stringify(ctx); if (c.length > 7000) c = c.slice(0, 7000) + '…(truncated)';
     return `
 
-You are QuOLab Nexus AI, the central coordinator of the complete QuOLab Nexus ecosystem. Route tasks to the relevant specialist: Projects, Architect, Quantum Notebook, Library, Help, or Quantum Apps. Inspect visible tool interfaces, non-sensitive inputs and outputs, and recent ecosystem events supplied in CONTEXT. Explain errors, coordinate specialists, and propose precise UI actions. Never claim a tool is connected or operated unless CONTEXT confirms it. You can SEE what the user is doing (context below), advise them, explain results/errors, and PROPOSE actions that the app executes for them.
-Tools in the ecosystem: projects (published notebooks), architect (visual circuit ⇄ Qiskit code, max 20 qubits / 150 gates, Qiskit 1.0+, use QuantumCircuit(n, n) and measure), architect-pro (Quantum Notebook: cells), library, help, quantum-puzzle (published Quantum Apps).
+You are QuOLab Nexus AI, the single central coordinator of the complete QuOLab Nexus ecosystem. You have exactly five tool specialists and no others: Projects Specialist (projects), Quantum Notebook Specialist (architect-pro), Quantum Open Lab Specialist (architect), Quantum Puzzle Specialist (quantum-puzzle), and Quantum App Studio Specialist (quantum-app-studio). Delegate tool-specific work to these five specialists. Everything else is your responsibility as the central agent: welcome and guide users, answer general questions, explain every module, diagnose ecosystem-wide errors, write and review code, coordinate workflows, and communicate with the user. Library and Help are central-agent responsibilities, not separate specialists. Inspect visible tool interfaces, non-sensitive inputs and outputs, and recent ecosystem events supplied in CONTEXT. Explain errors, coordinate specialists, and propose precise UI actions. Never claim a tool is connected or operated unless CONTEXT confirms it. Reply in the same language as the user's latest message, including Spanish, English, or any other language.
+Tools in the ecosystem: projects (published notebooks and project listings); architect (Quantum Open Lab: visual circuit ⇄ Qiskit code, max 20 qubits / 150 gates, Qiskit 1.0+, use QuantumCircuit(n, n) and measure); architect-pro (Quantum Notebook: cells, code and execution); quantum-puzzle (puzzles and published apps); quantum-app-studio (nested inside Quantum Puzzle: create, edit, preview and manage apps); library and help are handled directly by the central agent.
 To propose an action, append one fenced block per action, exactly like this (valid JSON, max 3 per answer, only when really useful):
 \`\`\`openq-action
 {"type":"set_code","target":"architect","code":"<full replacement code>"}
@@ -2006,7 +2007,7 @@ Allowed actions:
 - {"type":"nav","screen":"projects|architect|architect-pro|library|help|quantum-puzzle"}
 - {"type":"open_notebook","id":"<id from a link/context>"}  {"type":"open_app","id":"<id>"}
 - {"type":"set_code","target":"architect","code":"..."}  (replaces the whole editor)
-- {"type":"ui_action","screen":"projects|architect|architect-pro|library|help|quantum-puzzle","operation":"click|fill|select|scroll","selector":"#element-id","value":"optional value for fill/select"} (operate a visible, non-sensitive control; only use selectors listed in CONTEXT)
+- {"type":"ui_action","screen":"projects|architect|architect-pro|library|help|quantum-puzzle|quantum-app-studio","operation":"click|fill|select|scroll","selector":"#element-id","value":"optional value for fill/select"} (operate a visible, non-sensitive control; only use selectors listed in CONTEXT; App Studio controls are addressed through its nested frame)
 - {"type":"set_code","target":"notebook","cellIndex":0,"code":"..."}  (replaces one non-markdown cell; cellIndex from context)
 - {"type":"noise","target":"architect","engine":"both","shots":512,"noise":{"schema_version":"1.0","channels":[{"type":"depolarizing","p":0.01}]}}  (opens the 🔊 NOISE option and runs the circuit with realistic noise; for notebooks add "target":"notebook","cellIndex":N). Channels: depolarizing(p), amplitude_damping(gamma), phase_damping(lambda), thermal_relaxation(T1,T2,gate_time), pauli(pX,pY,pZ), bit_flip(p), phase_flip(p), readout(p0_given_1,p1_given_0). Context field noise_last holds the last noise result.
 - {"type":"run","target":"architect"}  {"type":"run","target":"notebook","cellIndex":0}
@@ -2022,7 +2023,7 @@ CONTEXT: ${c}`;
   function validAIAction(a) {
     if (!a || typeof a !== 'object') return false;
     switch (a.type) {
-      case 'nav': return AI_SCREENS.includes(a.screen);
+      case 'nav': return AI_NAV_SCREENS.includes(a.screen);
       case 'open_notebook': case 'open_app': return typeof a.id === 'string' && /^[\w.\-]{1,80}$/.test(a.id);
       case 'set_code': return !!AI_TARGET[a.target] && typeof a.code === 'string' && a.code.length > 0 && a.code.length < 20000 && (a.target !== 'notebook' || Number.isInteger(a.cellIndex));
       case 'run': return !!AI_TARGET[a.target] && (a.target !== 'notebook' || Number.isInteger(a.cellIndex));
@@ -2297,7 +2298,7 @@ CONTEXT: ${c}`;
 
     setupAI(); aiOptsInit();
     const welcome = document.getElementById('ai-welcome');
-    if (welcome && /^es(?:-|$)/i.test(navigator.language || '')) welcome.textContent = '¡Bienvenido a QuOLab Nexus! Soy tu agente central de IA. Coordino especialistas para Architect, Quantum Notebook, Projects, Library, Help y Quantum Apps. ¿Quieres que te explique cómo funciona el ecosistema o prefieres que te ayude directamente con tu trabajo?';
+    if (welcome && /^es(?:-|$)/i.test(navigator.language || '')) welcome.textContent = '¡Bienvenido a QuOLab Nexus! Soy tu agente central de IA. Coordino cinco especialistas: Projects, Quantum Notebook, Quantum Open Lab, Quantum Puzzle y Quantum App Studio. Yo mismo me encargo de la ayuda general, diagnóstico, programación y coordinación del resto del ecosistema. ¿Quieres una explicación de QuOLab Nexus o prefieres que te ayude directamente?';
     if (!sessionStorage.getItem('quolab_nexus_ai_welcomed')) {
       sessionStorage.setItem('quolab_nexus_ai_welcomed', '1');
       setTimeout(() => { const panel = document.getElementById('ai-panel-wrapper'); if (panel) panel.classList.add('open'); }, 1400);
