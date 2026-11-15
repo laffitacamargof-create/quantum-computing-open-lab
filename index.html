@@ -2546,7 +2546,7 @@ CONTEXT (staged and size-limited): ${c}`;
         if (!retryable || attempt===4) throw lastError;
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error));
-        const statusMatch = String(lastError.message).match(/HTTP (\\d{3})/);
+        const statusMatch = String(lastError.message).match(/HTTP (\d{3})/);
         const status = statusMatch ? Number(statusMatch[1]) : 0;
         if (status && ![408,425,429,500,502,503,504].includes(status)) throw lastError;
         if (attempt===4) throw new Error(lastError.message+' · request '+requestId+' was retried 5 times; API receipt remains unconfirmed');
