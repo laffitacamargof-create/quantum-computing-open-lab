@@ -602,7 +602,8 @@ function addVisualGate(cellId){
 function addVisualQubit(cellId){const c=cells.find(x=>x.id===cellId);if(!c||c.type!=='circuit'||_expositionMode)return;if(c.circuitData.qubits>=20){notify('Maximum 20 qubits');return;}c.circuitData.qubits++;c.hiddenCode=visualCircuitCode(c.circuitData);renderCells();focusCell(cellId);saveCurrentNb(false);}
 function removeVisualGate(cellId,index){const c=cells.find(x=>x.id===cellId);if(!c||c.type!=='circuit'||_expositionMode)return;c.circuitData.gates.splice(index,1);c.hiddenCode=visualCircuitCode(c.circuitData);renderCells();focusCell(cellId);saveCurrentNb(false);}
 function clearVisualCircuit(cellId){const c=cells.find(x=>x.id===cellId);if(!c||c.type!=='circuit'||_expositionMode)return;c.circuitData={qubits:Math.max(1,c.circuitData?.qubits||1),gates:[]};c.hiddenCode='';c.visualWarnings=[];c.output='';c._outputData=null;renderCells();focusCell(cellId);saveCurrentNb(false);}
-function openCircuitEditor(cellId){const cell=cells.find(c=>c.id===cellId);if(!cell||cell.type!=='circuit')return;cell.editorOpen=!cell.editorOpen;renderCells();focusCell(cellId);}
+function openCircuitEditor(cellId){const cell=cells.find(c=>c.id===cellId);if(!cell||cell.type!=='circuit')return;cell.editorOpen=true;renderCells();focusCell(cellId);}
+function toggleCircuitEditor(cellId){const cell=cells.find(c=>c.id===cellId);if(!cell||cell.type!=='circuit')return;cell.editorOpen=!cell.editorOpen;renderCells();focusCell(cellId);}
 function buildCircuitEditorControls(cell){
  const q=cell.circuitData?.qubits||1,opts=Array.from({length:q},(_,i)=>'<option value="'+i+'">q['+i+']</option>').join(''),opts2=Array.from({length:q},(_,i)=>'<option value="'+i+'"'+(i===1?' selected':'')+'>q['+i+']</option>').join(''),opts3=Array.from({length:q},(_,i)=>'<option value="'+i+'"'+(i===2?' selected':'')+'>q['+i+']</option>').join('');
  const gates=Object.keys(NB_GATE_DEFS).map(id=>'<option value="'+id+'">'+id+'</option>').join('');
@@ -2266,7 +2267,7 @@ function buildCellEl(cell,i){
     const circuitToolbar = `<div class="cell-toolbar">
         <button class="ct-btn" onclick="event.stopPropagation();moveCellUp('${cell.id}')" title="Move up">↑</button>
         <button class="ct-btn" onclick="event.stopPropagation();moveCellDown('${cell.id}')" title="Move down">↓</button>
-        ${_expositionMode ? '' : `<button class="ct-btn danger" onclick="event.stopPropagation();deleteCell('${cell.id}')" title="Delete">✕</button>`}
+        ${_expositionMode ? '' : `<button class="ct-btn" onclick="event.stopPropagation();toggleCircuitEditor('${cell.id}')" title="Edit visual circuit">${cell.editorOpen?'Done':'Edit'}</button><button class="ct-btn danger" onclick="event.stopPropagation();deleteCell('${cell.id}')" title="Delete">✕</button>`}
       </div>`;
     const restoreBtn = '';
     const circuitSVG = hasCircuit ? buildCircuitFromData(cell.circuitData) : '';
