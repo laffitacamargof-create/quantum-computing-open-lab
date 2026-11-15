@@ -2572,6 +2572,55 @@ CONTEXT (staged and size-limited): ${c}`;
     return session.access_token;
   }
 
+  // Enforce the deployed gateway's 20k-per-message / 60k-total character limits
+  // and the 100 KB HTTP body limit before sending. Preserve prompt beginnings and
+  // endings so core instructions and the latest task survive context reduction.
+  function fitGatewayMessages(input) {
+    const marker='\\n\\n[QNexusAi: middle context omitted to fit gateway limits]\\n\\n';
+    const trim=(value,limit,headRatio=0.72)=>{
+      const text=String(value||'');
+      if(text.length<=limit)return text;
+      const room=Math.max(0,limit-marker.length),head=Math.floor(room*headRatio),tail=room-head;
+      return text.slice(0,head)+marker+text.slice(-tail);
+    };
+    let messages=input.map(m=>({role:m.role,content:String(m.content||'')}));
+    // Keep only the most recent conversation turns; task context is rebuilt live.
+    messages=messages.filter((m,i)=>m.role!=='assistant'||i===messages.length-1||messages.slice(i+1).some(x=>x.role==='user'));
+    const system=messages.find(m=>m.role==='system');
+    const user=messages.filter(m=>m.role==='user').at(-1);
+    const history=messages.filter(m=>m!==system&&m!==user);
+    if(system)system.content=trim(system.content,18000,0.82);
+    if(user)user.content=trim(user.content,18000,0.68);
+    history.forEach(m=>m.content=trim(m.content,2500,0.6));
+    let result=[...(system?[system]:[]),...history,...(user?[user]:[])];
+    const chars=()=>result.reduce((n,m)=>n+m.content.length,0);
+    if(chars()>55000){
+      result=[...(system?[system]:[]),...(user?[user]:[])];
+      if(system)system.content=trim(system.content,16000,0.86);
+      if(user)user.content=trim(user.content,16000,0.65);
+    }
+    const encoder=new TextEncoder();
+    let body=JSON.stringify({model:'auto',messages:result,max_tokens:1200,temperature:0.5});
+    // UTF-8 byte size can exceed character count for multilingual prompts.
+    if(encoder.encode(body).length>90000){
+      if(system)system.content=trim(system.content,12000,0.88);
+      if(user)user.content=trim(user.content,12000,0.62);
+      result=[...(system?[system]:[]),...(user?[user]:[])];
+      body=JSON.stringify({model:'auto',messages:result,max_tokens:1200,temperature:0.5});
+    }
+    const total=chars();
+    if(result.some(m=>m.content.length>20000)||total>59000||encoder.encode(body).length>95000){
+      throw new Error('QNexusAi context is still too large after safe reduction. Shorten the task context or remove old notebook output and try again.');
+    }
+    if(input.reduce((n,m)=>n+String(m.content||'').length,0)>total){
+      console.warn('[QNexusAi] Prompt context reduced before gateway request',{
+        originalChars:input.reduce((n,m)=>n+String(m.content||'').length,0),
+        sentChars:total,bodyBytes:encoder.encode(body).length,historyMessages:history.length
+      });
+    }
+    return result;
+  }
+
   async function callMultiModelGateway(messages, maxTokens, temperature) {
     const accessToken = await getAIUserAccessToken();
     const requestId = globalThis.crypto?.randomUUID ? crypto.randomUUID() : 'qnexus-' + Date.now() + '-' + Math.random().toString(36).slice(2,10);
@@ -2601,7 +2650,7 @@ CONTEXT (staged and size-limited): ${c}`;
           ? ' · attempted: '+data.attempted_providers.join(', ') : '';
         lastError = new Error('QuOLab AI gateway HTTP '+response.status+': '+(data.error||data.message||'request_failed')+provider+attempted+
           (data.gateway_received===true?' · gateway received request '+requestId:''));
-        const retryable = [408,425,429,500,502,503,504].includes(response.status);
+        const retryable = [408,425,429,500,502,503,504].includes(response.status); // 413 is a deterministic payload error: never resend the same oversized body.
         if (!retryable || attempt===4) throw lastError;
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error));
