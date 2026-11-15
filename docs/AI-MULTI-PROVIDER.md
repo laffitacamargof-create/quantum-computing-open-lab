@@ -14,10 +14,10 @@ The gateway supports these providers when their server-side key is configured:
 | `huggingface` | `HUGGINGFACE_API_KEY` | `Qwen/Qwen2.5-7B-Instruct` | Hugging Face router chat |
 | `deepseek` | `DEEPSEEK_API_KEY` | `deepseek-chat` | OpenAI-compatible chat |
 
-Only providers with configured credentials are considered. The default order is Gemini, Groq, OpenRouter, Hugging Face, then DeepSeek. Set `AI_PROVIDER_ORDER` to a comma-separated order to change priority, for example:
+Only providers with configured credentials are considered. The default order is Gemini, Groq, OpenRouter, then DeepSeek. Set `AI_PROVIDER_ORDER` to a comma-separated order to change priority, for example:
 
 ```text
-AI_PROVIDER_ORDER=gemini,groq,openrouter,huggingface,deepseek
+AI_PROVIDER_ORDER=gemini,groq,openrouter,deepseek
 ```
 
 Optional model overrides:
