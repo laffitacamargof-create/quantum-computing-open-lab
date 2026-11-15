@@ -2103,7 +2103,7 @@ class QuOLabNexusConfigSyncReader {
     } else if (!aiOptGet('ctx')) {
       ctx.note='Optional conversation extras are disabled; sanitized operational tool state remains available.';
     }
-    return window.QuOLabNexusAgent ? window.QuOLabNexusAgent.collectContext(ctx) : ctx;
+    return window.QuOLabNexusAgent ? window.QuOLabNexusAgent.collectContext(ctx, {consumeEventDelta:true}) : ctx;
   }
 
   function inferAIContextTools(prompt, ctx) {
@@ -2176,7 +2176,8 @@ class QuOLabNexusConfigSyncReader {
       loaded_tools:allTools.filter(tool=>tool.loaded).map(tool=>({id:tool.id,name:tool.tool_name||tool.name})),
       tool_index:toolIndex,
       live_state:compactTools,
-      recent_events:(ctx?.recent_events||[]).slice(-6),
+      recent_events:(ctx?.recent_events||[]).slice(0,8),
+      event_delta:ctx?.event_delta||null,
       user_context:{screen:ctx?.user_context?.screen,url_hash:ctx?.user_context?.url_hash,
         user_role:ctx?.user_context?.user_role,opened_item:ctx?.user_context?.opened_item},
       module_context:compactModuleContext
@@ -2202,7 +2203,7 @@ class QuOLabNexusConfigSyncReader {
       packed.selected_manuals = packed.selected_manuals.slice(0,1);
       // Preserve the active module's function API even when DOM context must be dropped.
       packed.live_state = compactTools.map(tool=>({id:tool.id,name:tool.name,functions:(tool.functions||[]).slice(0,60)}));
-      packed.recent_events = (packed.recent_events||[]).slice(-3);
+      packed.recent_events = (packed.recent_events||[]).slice(0,4).map(group=>({...group,events:(group.events||[]).slice(0,6)}));
       c = JSON.stringify(packed);
     }
     return `
