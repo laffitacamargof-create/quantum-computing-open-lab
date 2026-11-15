@@ -19,6 +19,11 @@ assert.ok(index.includes('OPENQ_AI_ACTION_STATUS'));
 assert.ok(index.includes('Delivery was retried 90 times'));
 assert.ok(index.includes('complete operating guide for every module'));
 assert.ok(index.includes('a.selector.length <= 180'));
+assert.ok(index.includes('received:true,acknowledged:true'));
+assert.ok(index.includes('result.received===true'));
+assert.ok(index.includes('result.acknowledged===true'));
+assert.ok(index.includes('Do not resend this potentially non-idempotent command'));
+assert.ok(index.includes('backoff=Math.min(Math.round(backoff*1.45),4500)'));
 for(const file of [architect,notebook]){
  assert.ok(file.includes('function qnexusActionBegin(d)'));
  assert.ok(file.includes('OPENQ_AI_ACTION_RECEIVED'));
