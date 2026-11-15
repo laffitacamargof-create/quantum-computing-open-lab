@@ -147,7 +147,8 @@
       active_tool: active,
       active_specialist: activeTool ? activeTool.specialist : 'QuOLab Nexus AI — central coordinator',
       tools,
-      tool_catalog: Object.keys(TOOL_SPECS).map(id => ({ id, name: TOOL_SPECS[id].name, purpose: TOOL_SPECS[id].purpose, how_to: TOOL_SPECS[id].how_to, workflow: TOOL_SPECS[id].workflow, capabilities: TOOL_SPECS[id].capabilities, limits: TOOL_SPECS[id].limits })),\n      workflow_contracts: WORKFLOW_CONTRACTS,
+      tool_catalog: Object.keys(TOOL_SPECS).map(id => ({ id, name: TOOL_SPECS[id].name, purpose: TOOL_SPECS[id].purpose, how_to: TOOL_SPECS[id].how_to, workflow: TOOL_SPECS[id].workflow, capabilities: TOOL_SPECS[id].capabilities, limits: TOOL_SPECS[id].limits })),
+      workflow_contracts: WORKFLOW_CONTRACTS,
       recent_events: recentEvents.slice(-20),
       specialist_runs: delegationRuns.slice(-8),
       user_context: base || {}
