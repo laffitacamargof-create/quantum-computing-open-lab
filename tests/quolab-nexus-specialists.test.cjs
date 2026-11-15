@@ -11,7 +11,7 @@ assert.ok(agent.includes('function executeUIAction'));
 for (const legacy of ['SPECIALIST_INSTRUCTIONS','WORKFLOW_CONTRACTS','recordDelegation','getSpecialistInstructions','specialist_runs','TOOL_SPECS','Projects Specialist','Quantum Notebook Specialist']) assert.ok(!agent.includes(legacy), 'legacy agent feature remains: '+legacy);
 assert.ok(index.includes('You are QNexusAi: one autonomous superagent'));
 assert.ok(index.includes('There are no specialist agents, worker prompts, router calls, delegation chains'));
-assert.ok(index.includes('const maxTurns=executionTask?10:1'));
+assert.ok(index.includes('maxTurns=executionTask?24:1'));
 for (const state of ['TASK_STATUS: COMPLETED','TASK_STATUS: CONTINUE','TASK_STATUS: BLOCKED','hasFreshOutput','SINGLE SUPERAGENT']) assert.ok(index.includes(state), 'missing execution contract: '+state);
 for (const legacy of ['runSpecialistTask','routeAI(','openq-delegate','SPECIALIST EXECUTION MODE']) assert.ok(!index.includes(legacy), 'legacy orchestration remains: '+legacy);
 assert.ok(index.includes('Math.min(Math.max(aiCfg.tokens || 700, 500), 1800)'));
