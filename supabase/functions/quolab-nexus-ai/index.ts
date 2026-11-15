@@ -179,18 +179,21 @@ Deno.serve(async (req: Request) => {
           provider: provider.id,
           choices: [{ index: 0, message: { role: "assistant", content: result.content }, finish_reason: "stop" }],
           usage: result.usage,
-          gateway_received: true, provider_completed: true, request_id: requestId,\n          routing: { strategy: "ordered_fallback", attempted_providers: failures },
+          gateway_received: true, provider_completed: true, request_id: requestId,
+          routing: { strategy: "ordered_fallback", attempted_providers: failures },
         }, origin);
       } catch (error) {
         const status = Number((error as { status?: number })?.status || 502);
         console.error("AI provider failed", { provider: provider.id, status, userId: user.id });
         failures.push(provider.id);
         if (!retryable(status)) return reply(status >= 400 && status < 500 ? status : 502, {
-          error: "ai_provider_request_failed", provider: provider.id, status,\n          gateway_received: true, provider_completed: false, request_id: requestId,
+          error: "ai_provider_request_failed", provider: provider.id, status,
+          gateway_received: true, provider_completed: false, request_id: requestId,
         }, origin);
       }
     }
-    return reply(503, { error: "all_ai_providers_unavailable", attempted_providers: failures,\n      gateway_received: true, provider_completed: false, request_id: requestId }, origin);
+    return reply(503, { error: "all_ai_providers_unavailable", attempted_providers: failures,
+      gateway_received: true, provider_completed: false, request_id: requestId }, origin);
   } catch (error) {
     const message = error instanceof Error ? error.message : "unknown_error";
     console.error("AI gateway error", { message });
