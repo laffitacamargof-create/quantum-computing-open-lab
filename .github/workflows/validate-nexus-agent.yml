@@ -101,3 +101,6 @@ jobs:
         run: docker build --pull --tag quolab-nexus-engine:test .
       - name: Verify bubblewrap is present in the runtime image
         run: docker run --rm --entrypoint bwrap quolab-nexus-engine:test --version
+      - name: Verify isolated Python execution works in the container
+        run: |
+          docker run --rm --security-opt seccomp=unconfined --entrypoint python quolab-nexus-engine:test -c "from quolab_execution_sandbox import execute_isolated; r=execute_isolated('print(42)'); assert r['success'] and '42' in r['output'], r"
