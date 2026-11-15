@@ -2026,7 +2026,7 @@ CONTEXT: ${c}`;
       case 'open_notebook': case 'open_app': return typeof a.id === 'string' && /^[\w.\-]{1,80}$/.test(a.id);
       case 'set_code': return !!AI_TARGET[a.target] && typeof a.code === 'string' && a.code.length > 0 && a.code.length < 20000 && (a.target !== 'notebook' || Number.isInteger(a.cellIndex));
       case 'run': return !!AI_TARGET[a.target] && (a.target !== 'notebook' || Number.isInteger(a.cellIndex));
-      case 'ui_action': return AI_SCREENS.includes(a.screen) && ['click','fill','select','scroll'].includes(a.operation) && typeof a.selector === 'string' && a.selector.length <= 140 && (/^#[A-Za-z][\\w:.-]*$/.test(a.selector) || /^\\[name="[A-Za-z0-9_.:-]{1,80}"\\]$/.test(a.selector) || /^\\[data-[a-z0-9_-]+="[A-Za-z0-9_.:-]{1,80}"\\]$/.test(a.selector)) && ((a.operation === 'click' || a.operation === 'scroll') || (typeof a.value === 'string' && a.value.length <= 4000));
+      case 'ui_action': return AI_SCREENS.includes(a.screen) && ['click','fill','select','scroll'].includes(a.operation) && typeof a.selector === 'string' && a.selector.length <= 140 && (/^#[A-Za-z][\w:.-]*$/.test(a.selector) || /^\[name="[A-Za-z0-9_.:-]{1,80}"\]$/.test(a.selector) || /^\[data-[a-z0-9_-]+="[A-Za-z0-9_.:-]{1,80}"\]$/.test(a.selector)) && ((a.operation === 'click' || a.operation === 'scroll') || (typeof a.value === 'string' && a.value.length <= 4000));
       case 'noise': return (a.target === 'architect' || (a.target === 'notebook' && Number.isInteger(a.cellIndex)))
         && (a.engine === undefined || ['qcol-browser', 'mqt-yaqs', 'qiskit-aer', 'both', 'all'].includes(a.engine))
         && (a.shots === undefined || (Number.isInteger(a.shots) && a.shots >= 1 && a.shots <= 2048))
