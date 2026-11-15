@@ -35,7 +35,7 @@ assert.match(sandbox, /--gid/);
 assert.ok(sandbox.includes("os.path.realpath(path)"));
 assert.ok(sandbox.includes('"--ro-bind",source,path'));
 assert.match(sandbox, /--unshare-all/);
-assert.match(sandbox, /no se ejecuta código sin aislamiento/);
+assert.match(sandbox, /no se ejecutó código fuera del aislamiento/);
 assert.match(app, /execute_isolated\(code\)/);
 assert.match(flask, /execute_isolated\(code\)/);
 assert.doesNotMatch(app, /\bexec\s*\(/);
