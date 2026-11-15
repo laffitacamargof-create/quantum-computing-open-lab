@@ -2245,7 +2245,7 @@ CONTEXT: ${c}`;
     }
     if(!frame||!frame.contentWindow||!frame.contentDocument)return{ok:false,message:'The tool did not finish loading; no command was sent.'};
     const requestId='qnexus-'+(globalThis.crypto?.randomUUID?crypto.randomUUID():Date.now()+'-'+Math.random().toString(36).slice(2,12));
-    const timeoutMs=action.type==='run'||action.type==='noise'?180000:45000;
+    const timeoutMs=action.type==='run'||action.type==='noise'?600000:300000;
     const message=action.type==='add_cell'
       ?{type:'OPENQ_AI_ADD_CELL',cellType:action.cellType,afterIndex:action.afterIndex,requestId}
       :action.type==='open_circuit_editor'
@@ -2282,8 +2282,8 @@ CONTEXT: ${c}`;
           return;
         }
         if(!received&&now>=nextSendAt){
-          if(attempts>=90){
-            finish({ok:false,message:'Delivery was retried 90 times, but the tool never acknowledged receipt. The action was not marked as delivered.',requestId,received:false,acknowledged:false});
+          if(attempts>=120){
+            finish({ok:false,message:'Delivery was retried 120 times, but the tool never acknowledged receipt. The action was not marked as delivered.',requestId,received:false,acknowledged:false});
             return;
           }
           if(!send(message)){finish({ok:false,message:'The browser could not send the instruction to the tool frame.',requestId,received:false,acknowledged:false});return;}
