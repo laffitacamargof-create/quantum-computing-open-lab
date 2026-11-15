@@ -2237,36 +2237,50 @@ CONTEXT: ${c}`;
       try {
         const ctx = await gatherAIContext();
         const route = await routeAI(msg, ctx);
-        const routes = route && Array.isArray(route.specialists) ? route.specialists : route && route.specialist ? [{ specialist: route.specialist, task: route.task }] : [];
+        const queue = route && Array.isArray(route.specialists) ? route.specialists.slice(0, 5) : route && route.specialist ? [{ specialist: route.specialist, task: route.task }] : [];
+        const seenSpecialists = new Set();
         const reports = [];
-        for (const assignment of routes) {
+        while (queue.length && seenSpecialists.size < 5) {
+          const assignment = queue.shift();
+          if (!assignment || seenSpecialists.has(assignment.specialist)) continue;
           const specialist = window.QuOLabNexusAgent.getSpecialistInstructions(assignment.specialist);
           const spec = window.QuOLabNexusAgent.specialists[assignment.specialist];
           if (!specialist || !spec) continue;
+          seenSpecialists.add(assignment.specialist);
           const startedAt = Date.now();
           notify('QNexusAi → ' + spec.name);
           try {
-            const workerReport = await callAI('User request:\n' + msg + '\n\nAssigned task:\n' + assignment.task, ctx, {
-              systemSuffix: '\n\nSPECIALIST EXECUTION MODE. ' + specialist + '\nYou are responsible for doing the task in the live tool, not just explaining how. Return openq-action blocks for every supported change/action needed. If a requested operation cannot be performed with the current tool/context, state the exact blocker and do not pretend it was done. Do not ask for confirmation for routine reversible actions. Destructive, publishing, credential, financial or irreversible actions must remain unexecuted pending confirmation.'
+            const workerReport = await callAI('User request:\n' + msg + '\n\nAssigned task from the coordination network:\n' + assignment.task + '\n\nPrevious specialist reports (if any):\n' + JSON.stringify(reports), ctx, {
+              systemSuffix: '\n\nSPECIALIST-TO-SPECIALIST EXECUTION MODE. ' + specialist + '\nYou are an autonomous specialist in a coordinated network, not a chatbot waiting for the central agent. Answer tool-specific questions directly and operate your own live tool. If another specialist must continue or perform a distinct part, emit an openq-handoff block containing JSON {"specialist":"<registered-id>","task":"<bounded task with necessary findings>"}. The coordinator will invoke that specialist and return its report to the network. You may hand off to multiple specialists using {"handoffs":[{"specialist":"...","task":"..."},{"specialist":"...","task":"..."}]}. Do not hand off to yourself or repeat a completed handoff. Return openq-action blocks for supported live changes. If a requested operation cannot be performed, state the exact blocker. Do not ask permission for routine reversible actions. Destructive, publishing, credential, financial or irreversible actions remain protected.'
             });
-            const workerActions = extractActions(workerReport);
+            const handoff = extractSpecialistHandoff(workerReport);
+            for (const next of handoff.handoffs) {
+              if (!seenSpecialists.has(next.specialist) && !queue.some(item => item.specialist === next.specialist) && queue.length < 5) queue.push(next);
+            }
+            const workerActions = extractActions(handoff.text);
             let execution = { ok: true, results: [] };
             if (workerActions.actions.length) execution = await executeAIActionSequence(workerActions.actions, ctx);
-            const taskIntent = /\b(create|build|program|write|edit|fix|correct|run|execute|open|save|delete|publish|implement|programa|crea|construye|corrige|arregla|ejecuta|abre|guarda|implementa)\b/i.test(msg);
+            const taskIntent = /\\b(create|build|program|write|edit|fix|correct|run|execute|open|save|delete|publish|implement|programa|crea|construye|corrige|arregla|ejecuta|abre|guarda|implementa)\\b/i.test(msg);
             const completed = workerActions.actions.length ? execution.ok : !taskIntent;
             const status = completed ? 'completed' : workerActions.actions.length ? 'failed' : 'blocked';
             const summary = workerActions.text + (execution.results.length ? '\nActions: ' + execution.results.map(x => (x.ok ? 'OK ' : 'FAILED ') + x.action + ': ' + x.message).join('; ') : '');
             window.QuOLabNexusAgent.recordDelegation(assignment.specialist, status, summary);
-            reports.push({ specialist: spec.name, report: workerActions.text, execution, elapsed_ms: Date.now() - startedAt, status });
+            reports.push({ specialist: spec.name, specialist_id: assignment.specialist, report: workerActions.text, execution, elapsed_ms: Date.now() - startedAt, status });
           } catch (workerError) {
             window.QuOLabNexusAgent.recordDelegation(assignment.specialist, 'failed', workerError && workerError.message || 'Worker failed');
-            reports.push({ specialist: spec.name, status: 'failed', error: workerError && workerError.message || String(workerError) });
+            reports.push({ specialist: spec.name, specialist_id: assignment.specialist, status: 'failed', error: workerError && workerError.message || String(workerError) });
           }
         }
         let resp0;
-        if (reports.length) {
-          resp0 = await callAI('Original user request:\n' + msg + '\n\nSpecialist reports and verified execution results:\n' + JSON.stringify(reports) + '\n\nPrepare a concise final response in the user language. Distinguish completed actions from blocked/failed actions. Never claim success unless execution.ok is true and the tool acknowledgement confirms it. Mention the tool and what it actually returned.', ctx, {
-            systemSuffix: '\n\nYou are QNexusAi, the central coordinator. Specialist reports and execution acknowledgements are the source of truth. If an action failed, explain the exact blocker and do not label it completed. Do not produce new action blocks in the final answer.'
+        if (reports.length === 1) {
+          const only = reports[0];
+          resp0 = only.report || (only.status === 'failed' ? only.error : 'The specialist completed the request.');
+          if (only.execution && only.execution.results && only.execution.results.length) {
+            resp0 += '\n\n' + only.execution.results.map(item => (item.ok ? '✓ ' : '✕ ') + item.action + ': ' + item.message + (item.output ? '\n' + item.output : '')).join('\n');
+          }
+        } else if (reports.length > 1) {
+          resp0 = await callAI('Original user request:\n' + msg + '\n\nReports from collaborating specialists and verified execution results:\n' + JSON.stringify(reports) + '\n\nSynthesize their findings in the user language. Credit each specialist contribution. Distinguish completed actions from blocked/failed actions. Never claim success unless execution.ok is true and the tool acknowledgement confirms it.', ctx, {
+            systemSuffix: '\n\nYou are the network synthesizer. Do not re-route or redo the specialists work. Use their reports and execution acknowledgements as source of truth. Do not produce new action blocks.'
           });
         } else if (route && route.answer) resp0 = route.answer;
         else resp0 = await callAI(msg, ctx);
@@ -2304,7 +2318,51 @@ CONTEXT: ${c}`;
     }
   }
 
+  function inferDirectSpecialistRoute(msg, ctx) {
+    const registry = window.QuOLabNexusAgent && window.QuOLabNexusAgent.specialists;
+    if (!registry) return null;
+    const text = String(msg || '').toLowerCase();
+    const rules = [
+      ['architect-pro', /\\b(notebook|quantum notebook|jupyter|ipynb|cell|cells|celda|celdas|cuaderno|cuaderno cuantico|ejecutar celda|notebook cell)\\b/i],
+      ['architect', /\\b(quantum open lab|architect|circuit|circuito|qubit|gate|puerta cuantica|visual circuit|circuito visual)\\b/i],
+      ['quantum-app-studio', /\\b(app studio|quantum app studio|application editor|editor de aplicaciones|crear app|editar app|preview app|vista previa de app)\\b/i],
+      ['quantum-puzzle', /\\b(quantum puzzle|puzzle|puzzles|challenge|challenges|reto|desafio|published app|aplicacion publicada)\\b/i],
+      ['projects', /\\b(projects|projects catalogue|project catalog|proyectos|catalogo de proyectos|publicar proyecto|published project)\\b/i]
+    ];
+    const explicit = rules.filter(([, re]) => re.test(text)).map(([id]) => id);
+    const active = String(ctx && (ctx.active_tool || ctx.screen) || 'home');
+    const validActive = Object.prototype.hasOwnProperty.call(registry, active);
+    if (validActive && (!explicit.length || explicit.includes(active))) {
+      return { specialists: [{ specialist: active, task: 'Handle this request directly as the active tool specialist. Inspect the live tool context, answer tool-specific questions yourself, and execute supported requested actions in this tool. User request: ' + msg }] };
+    }
+    if (explicit.length) {
+      const unique = Array.from(new Set(explicit)).slice(0, 5);
+      return { specialists: unique.map(id => ({ specialist: id, task: 'Handle the part of the user request that belongs to ' + id + '. If another tool is required, explicitly hand off to that specialist using an openq-handoff block. User request: ' + msg })) };
+    }
+    return null;
+  }
+
+  function extractSpecialistHandoff(report) {
+    const known = window.QuOLabNexusAgent && window.QuOLabNexusAgent.specialists;
+    const matches = [];
+    const clean = String(report || '').replace(/\x60\x60\x60openq-handoff\\s*([\\s\\S]*?)\x60\x60\x60/g, (block, body) => {
+      try {
+        const data = JSON.parse(body.trim());
+        const items = Array.isArray(data.handoffs) ? data.handoffs : [data];
+        for (const item of items) {
+          if (item && known && Object.prototype.hasOwnProperty.call(known, item.specialist) && typeof item.task === 'string' && item.task.trim() && item.task.length <= 4000 && matches.length < 4) {
+            matches.push({ specialist: item.specialist, task: item.task.trim() });
+          }
+        }
+      } catch (error) { console.warn('QNexusAi ignored invalid specialist handoff:', error); }
+      return '';
+    }).trim();
+    return { text: clean, handoffs: matches };
+  }
+
   async function routeAI(msg, ctx) {
+    const direct = inferDirectSpecialistRoute(msg, ctx);
+    if (direct) return direct;
     const routerPrompt = `
 CENTRAL ROUTER — INTERNAL DISPATCH ONLY.
 Classify the latest request using the live tool catalog and specialist manuals in CONTEXT.
