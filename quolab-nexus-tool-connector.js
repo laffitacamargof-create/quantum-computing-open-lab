@@ -21,9 +21,14 @@
     if (depth > 4) return '[DEPTH_LIMIT]';
     if (value == null || typeof value === 'boolean' || typeof value === 'number') return value;
     if (typeof value === 'string') {
+      const trimmed = value.trim();
+      if (depth < 4 && (trimmed.startsWith('{') || trimmed.startsWith('['))) {
+        try { return sanitize(JSON.parse(trimmed), '', depth + 1); } catch (_) {}
+      }
       return value
-        .replace(/(?:sb_secret_|sk-|ghp_|github_pat_)[A-Za-z0-9_\-]{8,}/g, '[REDACTED]')
-        .replace(/(Bearer\s+)[A-Za-z0-9._\-]+/gi, '$1[REDACTED]')
+        .replace(/(?:sb_secret_|sk-|ghp_|github_pat_)[A-Za-z0-9_\\-]{8,}/g, '[REDACTED]')
+        .replace(/(Bearer\\s+)[A-Za-z0-9._\\-]+/gi, '$1[REDACTED]')
+        .replace(/((?:password|passwd|token|api[_-]?key|secret|authorization)=)[^&\\s]+/gi, '$1[REDACTED]')
         .slice(0, MAX_TEXT);
     }
     if (Array.isArray(value)) return value.slice(0, 20).map(item => sanitize(item, '', depth + 1));
@@ -38,11 +43,9 @@
   function safeUrl(raw) {
     try {
       const url = new URL(String(raw || ''), global.location.href);
-      url.searchParams.forEach((value, key) => {
-        if (SENSITIVE.test(key)) url.searchParams.set(key, '[REDACTED]');
-        else if (value.length > 100) url.searchParams.set(key, value.slice(0, 100));
-      });
-      return (url.origin === global.location.origin ? url.pathname : url.origin + url.pathname) + (url.search ? url.search : '');
+      const queryKeys = Array.from(url.searchParams.keys());
+      const safeQuery = queryKeys.length ? '?' + queryKeys.map(key => encodeURIComponent(key) + '=[REDACTED]').join('&') : '';
+      return (url.origin === global.location.origin ? url.pathname : url.origin + url.pathname) + safeQuery;
     } catch (_) { return String(raw || '').slice(0, 240); }
   }
 
@@ -131,8 +134,9 @@
         const meta = this.__quolabNexusMeta || { method: 'GET', url: '' };
         send('request', { method: meta.method, url: meta.url, body: typeof body === 'string' ? sanitize(body, '', 0) : body ? '[NON_TEXT_BODY]' : '' });
         this.addEventListener('load', function () {
-          let payload = this.responseText || '';
-          try { payload = JSON.parse(payload); } catch (_) {}
+          let payload = '';
+          try { payload = this.responseType === 'json' ? this.response : (this.responseText || ''); } catch (_) {}
+          try { if (typeof payload === 'string') payload = JSON.parse(payload); } catch (_) {}
           send('response', { method: meta.method, url: meta.url, status: this.status, body: sanitize(payload, '', 0) });
         }, { once: true });
         this.addEventListener('error', function () { send('network_error', { method: meta.method, url: meta.url, message: 'XMLHttpRequest failed' }); }, { once: true });
