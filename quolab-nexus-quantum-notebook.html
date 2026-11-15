@@ -1777,7 +1777,7 @@ async function runCell(id){
   syncCellCode(id);
   const isCircuit=cell.type==='circuit';
   const rawCode = isCircuit ? (cell.hiddenCode||'') : cell.code.trim();
-  const code = isCircuit ? (QISKIT_PREAMBLE+'\n'+rawCode) : rawCode;
+  const code = QISKIT_PREAMBLE+'\n'+rawCode;
   if(!rawCode.trim()){notify('⚛ Cell without code — edit the circuit first');return;}
   if(!code.trim())return;
   running=true;setSbRun(true);
