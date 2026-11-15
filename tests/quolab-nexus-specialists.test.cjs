@@ -85,3 +85,15 @@ assert.match(index, /SPECIALIST WORKER MODE/);
 assert.match(index, /operation":"click\|fill\|type\|select\|scroll\|hover\|key\|drag/);
 assert.match(index, /QUOLAB NEXUS AI/);
 console.log('PASS: five specialist workers, central dispatch, telemetry, UI actions and nested App Studio routing.');
+
+
+// Delegated workers must receive an isolated role prompt and no stale user/assistant chat history.
+assert.match(index, /systemOverride: workerSystem/);
+assert.match(index, /includeHistory: false/);
+assert.match(index, /EXECUTION CONTRACT: Complete the assigned task/);
+assert.match(index, /Preserve the specialist result accurately/);
+assert.match(index, /const workerActions = extractActions\(workerReport\)\.actions/);
+assert.match(index, /mergedActions\.push\(action\)/);
+assert.match(index, /Bell-state circuit/);
+assert.match(agent, /actual content\/code, not a summary of the assignment/);
+assert.match(agent, /complete set_code action with target notebook/);
