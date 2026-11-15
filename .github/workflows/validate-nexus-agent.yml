@@ -8,6 +8,8 @@ on:
     paths:
       - "index.html"
       - "quolab-nexus-agent.js"
+      - "quolab-nexus-tool-connector.js"
+      - "quolab-nexus-*.html"
       - ".github/workflows/validate-nexus-agent.yml"
 
 jobs:
@@ -20,6 +22,8 @@ jobs:
           node-version: "22"
       - name: Check central agent syntax
         run: node --check quolab-nexus-agent.js
+      - name: Check universal tool connector syntax
+        run: node --check quolab-nexus-tool-connector.js
       - name: Extract and check the main index module
         run: |
           python - <<'PY'
