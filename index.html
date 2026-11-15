@@ -2152,6 +2152,23 @@ class QuOLabNexusConfigSyncReader {
       capabilities:tool.capabilities,controls:tool.controls,functions:tool.functions,
       how_to:tool.how_to,limits:tool.limits
     }));
+    const moduleState = ctx?.user_context?.module || null;
+    const allCells = Array.isArray(moduleState?.cells) ? moduleState.cells : [];
+    const currentIndex = Number.isInteger(moduleState?.current) ? moduleState.current : -1;
+    const detailedCellIndexes = new Set([...allCells.slice(0,4).map(cell=>cell.i),currentIndex].filter(Number.isInteger));
+    const compactModuleContext = moduleState ? {
+      tool:moduleState.tool,name:moduleState.name,exposition:moduleState.exposition,
+      engineOK:moduleState.engineOK,qubits:moduleState.qubits,gates:moduleState.gates,
+      current:currentIndex,cell_count:allCells.length,
+      cell_indices:allCells.map(cell=>({i:cell.i,type:cell.type})),
+      code:typeof moduleState.code==='string'?moduleState.code.slice(0,2200):undefined,
+      output:typeof moduleState.output==='string'?moduleState.output.slice(-1000):undefined,
+      noise_last:moduleState.noise_last ? JSON.stringify(moduleState.noise_last).slice(0,900) : undefined,
+      cells:allCells.filter(cell=>detailedCellIndexes.has(cell.i)).slice(0,5).map(cell=>({
+        i:cell.i,type:cell.type,code:String(cell.code||'').slice(0,1100),
+        output:String(cell.output||'').slice(-600)
+      }))
+    } : null;
     const packed = {
       selected_manuals:manuals,
       active_tool:ctx?.active_tool,
@@ -2160,7 +2177,9 @@ class QuOLabNexusConfigSyncReader {
       tool_index:toolIndex,
       live_state:compactTools,
       recent_events:(ctx?.recent_events||[]).slice(-6),
-      user_context:ctx?.user_context||{}
+      user_context:{screen:ctx?.user_context?.screen,url_hash:ctx?.user_context?.url_hash,
+        user_role:ctx?.user_context?.user_role,opened_item:ctx?.user_context?.opened_item},
+      module_context:compactModuleContext
     };
     let c = JSON.stringify(packed);
     if (c.length > 14500) {
@@ -2169,11 +2188,22 @@ class QuOLabNexusConfigSyncReader {
         buttons:tool.buttons.slice(0,16),inputs:tool.inputs.slice(0,12),
         outputs:tool.outputs.slice(0,4),visible_text:tool.visible_text.slice(0,900)
       }));
-      packed.user_context = {screen:ctx?.user_context?.screen,user_role:ctx?.user_context?.user_role,
-        module_context_status:ctx?.user_context?.module_context_status};
+      if (packed.module_context && Array.isArray(packed.module_context.cells)) {
+        packed.module_context.cells = packed.module_context.cells.slice(0,3).map(cell=>({
+          i:cell.i,type:cell.type,code:cell.code.slice(0,700),output:cell.output.slice(-350)
+        }));
+        packed.module_context.code = String(packed.module_context.code||'').slice(0,1400);
+        packed.module_context.output = String(packed.module_context.output||'').slice(-650);
+        packed.module_context.noise_last = undefined;
+      }
       c = JSON.stringify(packed);
     }
-    if (c.length > 16000) c = c.slice(0,16000) + '…[live state compacted]';
+    if (c.length > 16000) {
+      packed.selected_manuals = packed.selected_manuals.slice(0,1);
+      packed.live_state = [];
+      packed.recent_events = [];
+      c = JSON.stringify(packed);
+    }
     return `
 
 You are QNexusAi, the single autonomous superagent. All seven modules are tools, not separate agents. You own planning, tool use, recovery and verification. The compact tool index lists every module and its capabilities. The complete operating manual is loaded on demand in CONTEXT.selected_manuals for the one or two modules relevant to this turn. Read those manuals fully. Do not expect all seven detailed manuals in one request: when the task moves to another module, inspect the refreshed context and use that module's manual on the next turn. This staged loading is intentional and prevents oversized requests while retaining access to every documented function and instruction.
