@@ -24,3 +24,14 @@ The universal connector exposes sanitized UI controls, visible outputs, request/
 
 ## Verification
 CI checks the single-agent contract, removal of specialist orchestration, supported tool actions, evidence/status handling and reduced token budget. Static checks and deployment do not replace interactive end-to-end testing in the browser.
+
+
+## Module operating manuals and request receipt
+
+The runtime catalog is the single agent's operating manual for all seven interfaces: Projects, Quantum Open Lab, Quantum Notebook, Quantum Puzzle, Quantum App Studio, Library and Help. Each entry supplies purpose, step-by-step workflow, supported capabilities, expected inputs/outputs and limits. The live context includes this catalog alongside sanitized visible controls and outputs. The agent must ground selectors and IDs in fresh context; generic UI controls are available only when a same-origin visible control is exposed.
+
+The chat request avoids serializing the full live context twice: detailed context is supplied once in the system context, while continuation messages carry a short progress summary. History and output-token budgets are bounded to reduce provider 413 errors without removing the tool manual.
+
+Each gateway attempt carries a request ID. Supabase logs a receipt after authentication and payload validation, and returns `request_received` plus that ID when provider fallback is exhausted or succeeds. The browser retries transient gateway/network failures with the same request ID and bounded exponential backoff. A 413 is not retried unchanged by the browser; the gateway treats an upstream provider 413 as a provider failure and proceeds to the next configured provider. Receipt means the gateway accepted the request, not that the model completed the task. Model response, tool acknowledgement and fresh-state verification remain separate checkpoints.
+
+Retries are bounded rather than infinite: indefinite retries can hang the interface, amplify rate limits and duplicate model work when a response is lost. If no receipt can be confirmed after the retry budget, QNexusAi reports the failure and request ID when available instead of claiming execution.
