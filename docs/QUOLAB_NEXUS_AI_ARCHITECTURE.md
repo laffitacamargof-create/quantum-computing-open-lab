@@ -4,7 +4,7 @@
 QNexusAi is the only model-driven agent. The seven module surfaces are tools, not separate agents: Projects, Quantum Open Lab, Quantum Notebook, Quantum Puzzle, nested Quantum App Studio, Library and Help. The agent owns planning, direct tool use, cross-module workflows, recovery and verification.
 
 ## Tool knowledge and live context
-The runtime catalog documents each module's purpose, supported capabilities, workflow, important controls, relevant implementation functions and restrictions. At runtime the agent inspects every same-origin module frame and receives:
+The runtime catalog documents each module's purpose, supported capabilities, workflow, important controls, relevant implementation functions and restrictions. Structured operational context from Quantum Open Lab and Quantum Notebook is requested on every task regardless of the optional conversation-context preference; requests carry a correlation ID and retry eight times until the module returns a matching context response. At runtime the agent inspects every same-origin module frame and receives:
 - headings and visible text;
 - visible buttons, tabs, summaries and their usable selectors;
 - links and safe destinations;
@@ -30,7 +30,7 @@ Dedicated tool commands use a request ID and a two-stage acknowledgement:
 
 If the receipt acknowledgement is lost, the parent resends the same request ID with exponential backoff. The target module deduplicates request IDs, so a retry does not execute a command twice. Once receipt is known, the parent stops resending the command and polls `OPENQ_AI_ACTION_STATUS` until the saved result is returned. The request cache retains recent results to replay acknowledgements after a lost response.
 
-Delivery retries are bounded (90 attempts) and execution has a deadline. If the target never acknowledges receipt, the agent reports delivery unconfirmed; if it acknowledges receipt but never returns a result, the agent reports that the command was received but its execution result is unknown. Neither case is marked completed. This avoids infinite browser hangs while distinguishing delivery from execution.
+Delivery retries use exponential backoff (up to 120 attempts) and execution has a 5-minute deadline for edits and a 10-minute deadline for runs/noise. If the target never acknowledges receipt, the agent reports delivery unconfirmed; if it acknowledges receipt but never returns a result, the agent reports that the command was received but its execution result is unknown. Neither case is marked completed. This avoids infinite browser hangs while distinguishing delivery from execution.
 
 ## Task lifecycle and completion
 For each requested operation, QNexusAi defines acceptance criteria, inspects state, acts, checks receipts/results, refreshes context, corrects errors and continues across tools. Navigation, code insertion, receipt acknowledgement or model assertions alone do not prove completion. Run/simulation tasks require fresh output from the actual simulator/compiler. The final status is CONTINUE, COMPLETED or BLOCKED; COMPLETED requires evidence for every requested criterion.
