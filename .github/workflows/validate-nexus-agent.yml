@@ -44,7 +44,7 @@ jobs:
           import re
           from pathlib import Path
           source = Path("index.html").read_text(encoding="utf-8")
-          blocks = re.findall(r'<script type="module">([\s\\S]*?)</script>', source)
+          blocks = re.findall(r'<script type="module">([\s\S]*?)</script>', source)
           if len(blocks) != 1:
               raise SystemExit(f"Expected one main module script, found {len(blocks)}")
           Path("/tmp/quolab-index.mjs").write_text(blocks[0], encoding="utf-8")
@@ -67,7 +67,7 @@ jobs:
           count = 0
           for page in pages:
               source = Path(page).read_text(encoding="utf-8")
-              for match in re.finditer(r'<script\b([^>]*)>([\s\\S]*?)</script\s*>', source, re.I):
+              for match in re.finditer(r'<script\b([^>]*)>([\s\S]*?)</script\s*>', source, re.I):
                   attrs, body = match.group(1), match.group(2)
                   if re.search(r'\bsrc\s*=', attrs, re.I) or not body.strip():
                       continue
