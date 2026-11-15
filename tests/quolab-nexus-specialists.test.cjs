@@ -54,7 +54,7 @@ assert.match(index, /'click','fill','type','select','scroll','hover','key','drag
 assert.match(index, /async function routeAI\(msg, ctx\)/);
 assert.match(index, /function isAIAvailable\(\)/, 'server-side gateway must count as configured without a browser API key');
 assert.equal((index.match(/if \(isAIAvailable\(\)\)/g) || []).length, 2, 'AI status and send flow must use the same availability check');
-assert.match(index, /Interpret short follow-ups from recent conversation history/, 'short follow-ups must retain conversational intent');
+assert.match(index, /Use the latest user message together with recent conversation history/, 'short follow-ups must retain conversational intent');
 assert.match(index, /QuOLab AI gateway HTTP /, 'gateway failures must expose safe provider diagnostics');
 assert.match(index, /QUOLAB NEXUS AI/);
 assert.match(agent, /specialist_runs: delegationRuns\.slice\(-8\)/);
