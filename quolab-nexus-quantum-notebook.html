@@ -2559,11 +2559,30 @@ function initEngine(){
 initEngine();
 setTimeout(()=>initMarkdown(),400);
 
+const __QNEXUS_ACTION_CACHE = window.__QNEXUS_ACTION_CACHE || (window.__QNEXUS_ACTION_CACHE = new Map());
+function qnexusActionPost(payload){try{window.parent.postMessage(payload,location.origin);}catch(_){}}
+function qnexusActionBegin(d){
+  if(d.type==='OPENQ_AI_ACTION_STATUS'&&d.requestId){const entry=__QNEXUS_ACTION_CACHE.get(d.requestId);qnexusActionPost({type:'OPENQ_AI_ACTION_STATUS',requestId:d.requestId,received:!!entry,completed:!!(entry&&entry.result),result:entry&&entry.result||null});return true;}
+  if(!d.requestId||!/^OPENQ_AI_(?:SET_CODE|NOISE|RUN|ADD_CELL|OPEN_CIRCUIT_EDITOR)$/.test(d.type||''))return false;
+  const existing=__QNEXUS_ACTION_CACHE.get(d.requestId);
+  if(existing){qnexusActionPost({type:'OPENQ_AI_ACTION_RECEIVED',requestId:d.requestId});if(existing.result)qnexusActionPost(existing.result);return true;}
+  __QNEXUS_ACTION_CACHE.set(d.requestId,{receivedAt:Date.now(),result:null});
+  while(__QNEXUS_ACTION_CACHE.size>100)__QNEXUS_ACTION_CACHE.delete(__QNEXUS_ACTION_CACHE.keys().next().value);
+  qnexusActionPost({type:'OPENQ_AI_ACTION_RECEIVED',requestId:d.requestId});return false;
+}
+function qnexusActionFinish(d,result){
+  if(!d.requestId)return;
+  const payload=Object.assign({type:'OPENQ_AI_ACTION_ACK',requestId:d.requestId},result||{});
+  const entry=__QNEXUS_ACTION_CACHE.get(d.requestId);if(entry)entry.result=payload;
+  qnexusActionPost(payload);
+}
+
 // ── Copiloto IA: contexto + acciones (solo mensajes del padre) ──
 window.addEventListener('message',e=>{
   if(e.source!==window.parent)return;
   const d=e.data||{};
   try{
+    if(qnexusActionBegin(d))return;
     if(d.type==='OPENQ_GET_CONTEXT'){
       const strip=s=>String(s||'').replace(/<[^>]*>/g,'').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&');
       const nm=document.getElementById('nb-name-inp');
@@ -2571,35 +2590,35 @@ window.addEventListener('message',e=>{
         current:Math.max(0,cells.findIndex(c=>c.id===curCellId)),
         noise_last:(window.QuOLabNexusNoise&&window.QuOLabNexusNoise.last)||null,cells:cells.slice(0,30).map((c,i)=>({i,type:c.type,code:String(c.code||'').slice(0,1200),output:strip(c.output).slice(-800)}))}},'*');
     }else if(d.type==='OPENQ_AI_ADD_CELL'){
-      if(_expositionMode){if(d.requestId)window.parent.postMessage({type:'OPENQ_AI_ACTION_ACK',requestId:d.requestId,ok:false,message:'This notebook is read-only.'},'*');return;}
+      if(_expositionMode){if(d.requestId)qnexusActionFinish(d,{ok:false,message:'This notebook is read-only.'});return;}
       const before=cells.length;
       const cellType=['circuit','markdown'].includes(d.cellType)?d.cellType:'circuit';
       addCellAt(Number.isInteger(d.afterIndex)?d.afterIndex:cells.length-1,cellType);
       const index=cells.length-1;
       const cell=cells[index];
-      if(d.requestId)window.parent.postMessage({type:'OPENQ_AI_ACTION_ACK',requestId:d.requestId,ok:cells.length===before+1&&!!cell, message:cell?'Created '+cellType+' cell '+index+'.':'Could not create notebook cell.',cellIndex:index,cellId:cell&&cell.id},'*');
+      if(d.requestId)qnexusActionFinish(d,{ok:cells.length===before+1&&!!cell, message:cell?'Created '+cellType+' cell '+index+'.':'Could not create notebook cell.',cellIndex:index,cellId:cell&&cell.id});
     }else if(d.type==='OPENQ_AI_OPEN_CIRCUIT_EDITOR'){
       const cell=cells[d.cellIndex];
-      if(cell&&cell.type==='circuit'){openCircuitEditor(cell.id);if(d.requestId)window.parent.postMessage({type:'OPENQ_AI_ACTION_ACK',requestId:d.requestId,ok:true,message:'Opened the visual circuit editor for notebook cell '+d.cellIndex+'.',cellId:cell.id},'*');}
-      else if(d.requestId)window.parent.postMessage({type:'OPENQ_AI_ACTION_ACK',requestId:d.requestId,ok:false,message:'The selected notebook cell is not a visual circuit cell.'},'*');
+      if(cell&&cell.type==='circuit'){openCircuitEditor(cell.id);if(d.requestId)qnexusActionFinish(d,{ok:true,message:'Opened the visual circuit editor for notebook cell '+d.cellIndex+'.',cellId:cell.id});}
+      else if(d.requestId)qnexusActionFinish(d,{ok:false,message:'The selected notebook cell is not a visual circuit cell.'});
     }else if(d.type==='OPENQ_AI_SET_CODE'&&typeof d.code==='string'){
       const c=cells[d.cellIndex];
-      if(!c||c.type==='markdown'||_expositionMode){if(d.requestId)window.parent.postMessage({type:'OPENQ_AI_ACTION_ACK',requestId:d.requestId,ok:false,message:'Target cell is unavailable or read-only.'},'*');return;}
+      if(!c||c.type==='markdown'||_expositionMode){if(d.requestId)qnexusActionFinish(d,{ok:false,message:'Target cell is unavailable or read-only.'});return;}
       c.code=d.code;const ta=document.getElementById('ta-'+c.id);if(ta){ta.value=d.code;ta.dispatchEvent(new Event('input',{bubbles:true}));}
       syncCellCode(c.id);
-      if(d.requestId)window.parent.postMessage({type:'OPENQ_AI_ACTION_ACK',requestId:d.requestId,ok:c.code===d.code,message:'Code written to notebook cell '+d.cellIndex,cellId:c.id},'*');
+      if(d.requestId)qnexusActionFinish(d,{ok:c.code===d.code,message:'Code written to notebook cell '+d.cellIndex,cellId:c.id});
     }else if(d.type==='OPENQ_AI_NOISE'){
       const c=cells[d.cellIndex];
       if(c&&c.type!=='markdown'&&c.type!=='code'){
-        Promise.resolve(noiseRun(c.id,{noise:d.noise,engine:d.engine,shots:d.shots})).then(()=>{if(d.requestId)window.parent.postMessage({type:'OPENQ_AI_ACTION_ACK',requestId:d.requestId,ok:true,message:'Noise simulation command completed.'},'*');}).catch(err=>{if(d.requestId)window.parent.postMessage({type:'OPENQ_AI_ACTION_ACK',requestId:d.requestId,ok:false,message:err.message||'Noise simulation failed.'},'*');});
-      }else if(d.requestId)window.parent.postMessage({type:'OPENQ_AI_ACTION_ACK',requestId:d.requestId,ok:false,message:'Noise simulation target is unavailable.'},'*');
+        Promise.resolve(noiseRun(c.id,{noise:d.noise,engine:d.engine,shots:d.shots})).then(()=>{if(d.requestId)qnexusActionFinish(d,{ok:true,message:'Noise simulation command completed.'});}).catch(err=>{if(d.requestId)qnexusActionFinish(d,{ok:false,message:err.message||'Noise simulation failed.'});});
+      }else if(d.requestId)qnexusActionFinish(d,{ok:false,message:'Noise simulation target is unavailable.'});
     }else if(d.type==='OPENQ_AI_RUN'){
       const c=cells[d.cellIndex];
       if(c&&c.type!=='markdown'){
         syncCellCode(c.id);
         const beforeExec=c.exec_count;
-        Promise.resolve(runCell(c.id)).then(()=>{const out=document.getElementById('out-'+c.id);const value=out?(out.innerText||'').slice(-1200):'';const didExecute=c.exec_count!==beforeExec;const failed=!didExecute||!out||/No engine|❌|error/i.test(value);if(d.requestId)window.parent.postMessage({type:'OPENQ_AI_ACTION_ACK',requestId:d.requestId,ok:!failed,message:failed?(value||'Cell execution did not produce a successful output.'):'Notebook cell '+d.cellIndex+' executed.',output:value},'*');}).catch(err=>{if(d.requestId)window.parent.postMessage({type:'OPENQ_AI_ACTION_ACK',requestId:d.requestId,ok:false,message:err.message||'Cell execution failed.'},'*');});
-      }else if(d.requestId)window.parent.postMessage({type:'OPENQ_AI_ACTION_ACK',requestId:d.requestId,ok:false,message:'Notebook execution cell is unavailable.'},'*');
+        Promise.resolve(runCell(c.id)).then(()=>{const out=document.getElementById('out-'+c.id);const value=out?(out.innerText||'').slice(-1200):'';const didExecute=c.exec_count!==beforeExec;const failed=!didExecute||!out||/No engine|❌|error/i.test(value);if(d.requestId)qnexusActionFinish(d,{ok:!failed,message:failed?(value||'Cell execution did not produce a successful output.'):'Notebook cell '+d.cellIndex+' executed.',output:value});}).catch(err=>{if(d.requestId)qnexusActionFinish(d,{ok:false,message:err.message||'Cell execution failed.'});});
+      }else if(d.requestId)qnexusActionFinish(d,{ok:false,message:'Notebook execution cell is unavailable.'});
     }
   }catch(err){console.warn('copilot hook',err);}
 });
