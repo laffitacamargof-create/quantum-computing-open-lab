@@ -267,21 +267,18 @@ body::before{content:'';position:fixed;inset:0;
 #share-fab:focus-visible{outline:2px solid #00ffdd;outline-offset:2px;}
 
 
-/* QNexusAi workspace: persistent compact composer + expandable conversation drawer */
-#ai-panel-wrapper{display:block;position:fixed;left:max(1rem,calc((100vw - 1120px)/2));right:max(1rem,calc((100vw - 1120px)/2));bottom:.65rem;z-index:600;width:auto;pointer-events:none;}
-#ai-panel-wrapper .ai-panel{height:auto;min-height:0;background:transparent;border:0;border-radius:14px;box-shadow:none;overflow:visible;animation:none;pointer-events:auto;}
-#ai-panel-wrapper:not(.open) .ai-hdr,#ai-panel-wrapper:not(.open) .ai-msgs,#ai-panel-wrapper:not(.open) .ai-loading,#ai-panel-wrapper:not(.open) .ai-status-bar{display:none;}
-#ai-panel-wrapper:not(.open) .ai-input-row{border:1px solid rgba(0,200,255,.5);border-radius:14px;background:rgba(7,18,32,.97);box-shadow:0 8px 30px rgba(0,0,0,.48);padding:.45rem .6rem;}
-#ai-panel-wrapper:not(.open) #ai-editor .cm-editor{min-height:38px;max-height:90px;}
-#ai-panel-wrapper:not(.open) #ai-editor .cm-content{min-height:28px;}
-#ai-panel-wrapper.open{left:auto;right:1rem;bottom:5.2rem;width:min(440px,calc(100vw - 2rem));pointer-events:auto;}
-#ai-panel-wrapper.open .ai-panel{height:min(66vh,560px);min-height:360px;background:var(--s);border:1px solid rgba(0,136,255,.45);box-shadow:0 24px 60px rgba(0,0,0,.6);overflow:hidden;}
+/* QNexusAi: single entry point from the main header button; no persistent mini-tab */
+#ai-panel-wrapper{display:none;position:fixed;left:auto;right:1rem;bottom:5.2rem;z-index:600;width:min(440px,calc(100vw - 2rem));pointer-events:none;}
+#ai-panel-wrapper.open{display:block;pointer-events:auto;}
+#ai-panel-wrapper .ai-panel{height:min(66vh,560px);min-height:360px;background:var(--s);border:1px solid rgba(0,136,255,.45);border-radius:16px;box-shadow:0 24px 60px rgba(0,0,0,.6);overflow:hidden;animation:su .3s ease;}
 #ai-panel-wrapper.open .ai-hdr,#ai-panel-wrapper.open .ai-msgs,#ai-panel-wrapper.open .ai-status-bar{display:flex;}
 #ai-panel-wrapper.open .ai-loading.show{display:block;}
 #ai-panel-wrapper.open .ai-input-row{border-radius:0;background:var(--s2);}
 #ai-panel-wrapper .ai-input-row{align-items:flex-end;}
 #ai-panel-wrapper .ai-send{align-self:flex-end;min-height:38px;}
-@media(max-width:768px){#ai-panel-wrapper{left:.5rem;right:.5rem;bottom:.45rem;}#ai-panel-wrapper.open{left:.5rem;right:.5rem;bottom:4.7rem;width:auto;}#ai-panel-wrapper.open .ai-panel{height:min(62vh,500px);min-height:300px;}}
+/* All module screens use the single AI entry point in the global header. */
+.screen-hdr .ai-btn{display:none!important;}
+@media(max-width:768px){#ai-panel-wrapper{left:.5rem;right:.5rem;bottom:4.7rem;width:auto;}#ai-panel-wrapper .ai-panel{height:min(62vh,500px);min-height:300px;}}
 
 /* QuOLab Nexus — ajustes de uso móvil */
 @media(max-width:600px){
@@ -422,7 +419,7 @@ body::before{content:'';position:fixed;inset:0;
         <path d="M8 12h8M12 8l4 4-4 4" stroke="#00ffdd" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
         <circle cx="12" cy="12" r="2.5" fill="rgba(0,255,221,.2)" stroke="#00ffdd" stroke-width="1"/>
       </svg>
-      QuantumChat
+      QNexusAi
     </button>
     <div id="hdr-user-area">
       <button class="hbtn" onclick="QuOLabNexus.openAuth('login')">LOGIN</button>
@@ -2499,6 +2496,8 @@ CONTEXT (staged and size-limited): ${c}`;
         document.getElementById('ai-loading').classList.remove('show');addAIMsg(finalText,'bot');
         notify('QNexusAi: '+finalText.replace(/\s+/g,' ').slice(0,170));reply=finalText;
         aiHistory.push({role:'user',content:msg},{role:'assistant',content:finalText});if(aiHistory.length>8)aiHistory=aiHistory.slice(-8);
+        const verifiedCompletion=finished&&!blocked&&(!executionTask||evidence.some(Boolean));
+        if(verifiedCompletion){const completedPanel=document.getElementById('ai-panel-wrapper');if(completedPanel)completedPanel.classList.remove('open','ai-minimized');}
       }catch(e){document.getElementById('ai-loading').classList.remove('show');console.error('QNexusAi error:',e);const err='QNexusAi could not complete the request: '+((e&&e.message)?e.message:String(e));addAIMsg(err,'bot');reply=err;}
     }else{await new Promise(resolve=>setTimeout(resolve,500));document.getElementById('ai-loading').classList.remove('show');const err='QNexusAi gateway is unavailable. Reconnect the AI service to execute tasks.';addAIMsg(err,'bot');reply=err;}
     if(curUser?.username){let data=dbLoad();if(!data)data={ai_history:{}};if(!data.ai_history)data.ai_history={};if(!data.ai_history[curUser.username])data.ai_history[curUser.username]=[];data.ai_history[curUser.username].push({q:msg,a:reply,ts:Date.now()});if(data.ai_history[curUser.username].length>200)data.ai_history[curUser.username]=data.ai_history[curUser.username].slice(-200);dbSave(data);}
