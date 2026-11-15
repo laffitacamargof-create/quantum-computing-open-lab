@@ -3,7 +3,7 @@
   'use strict';
   if (global.QuOLabNexusToolConnector) return;
 
-  const VERSION = '1.0.0';
+  const VERSION = '1.1.0';
   const TOOL_BY_FILE = {
     'quolab-nexus-projects.html': 'projects',
     'quolab-nexus-architect.html': 'architect',
