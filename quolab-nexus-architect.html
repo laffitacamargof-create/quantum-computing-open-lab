@@ -3314,7 +3314,7 @@ window.addEventListener('message', e => {
         if (qnexusActionBegin(d)) return;
         if (d.type === 'OPENQ_GET_CONTEXT') {
             const ta = document.getElementById('code-ta'), ob = document.getElementById('out-body');
-            window.parent.postMessage({ type: 'OPENQ_CONTEXT', ctx: {
+            window.parent.postMessage({ type: 'OPENQ_CONTEXT', requestId:d.requestId, ctx: {
                 tool: 'architect', engineOK: !!engineOK,
                 qubits: circuit && circuit.qubits, gates: circuit && circuit.gates ? circuit.gates.length : 0,
                 code: ta ? ta.value.slice(0, 4000) : '',
