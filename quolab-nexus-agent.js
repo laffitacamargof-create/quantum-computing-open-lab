@@ -1,4 +1,4 @@
-/* QuOLab Nexus AI — central coordinator and universal UI connector v1 */
+/* QuOLab Nexus AI — central coordinator and universal UI connector v1.2.0 */
 (function (global) {
   'use strict';
 
