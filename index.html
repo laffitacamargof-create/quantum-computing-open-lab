@@ -2316,6 +2316,8 @@ Do not invent screen state, IDs, tool capabilities, or completed actions. Do not
   }
 
   const proactiveAlertTimes = new Map();
+  let proactiveDiagnosticBusy = false;
+  let lastProactiveDiagnosticAt = 0;
   function bindProactiveAlerts() {
     window.addEventListener('quolab:nexus-alert', async event => {
       const detail = event && event.detail ? event.detail : {};
@@ -2337,7 +2339,9 @@ Do not invent screen state, IDs, tool capabilities, or completed actions. Do not
       if (panel) panel.classList.add('open');
       addAIMsg(text, 'bot');
       notify(spanish ? 'QuOLab Nexus AI detectó un error en ' + tool : 'QuOLab Nexus AI detected an error in ' + tool);
-      if (!configured) return;
+      if (!configured || proactiveDiagnosticBusy || now - lastProactiveDiagnosticAt < 30000) return;
+      proactiveDiagnosticBusy = true;
+      lastProactiveDiagnosticAt = now;
       try {
         const ctx = await gatherAIContext();
         const diagnostic = await callAI(
@@ -2351,6 +2355,8 @@ Do not invent screen state, IDs, tool capabilities, or completed actions. Do not
       } catch (diagnosticError) {
         const fallback = spanish ? 'No pude completar el diagnóstico automático. El error sigue registrado en el contexto del agente.' : 'I could not complete the automatic diagnosis. The error remains recorded in the agent context.';
         addAIMsg(fallback, 'bot');
+      } finally {
+        proactiveDiagnosticBusy = false;
       }
     });
   }
