@@ -109,7 +109,7 @@
       .find(frame => frame.getAttribute('data-openq') === screen) || null;
   }
 
-  function describeFrame(screen, frame) {
+  function describeFrame(screen, frame, isActive) {
     const item = { id: screen, name: TOOL_CATALOG[screen]?.name || screen, loaded: false };
     try {
       const doc = frame.contentDocument;
@@ -122,9 +122,9 @@
       if (active && active !== doc.body && active !== doc.documentElement) {
         item.focused = { tag: active.tagName.toLowerCase(), id: active.id || '', name: active.getAttribute('name') || '' };
       }
-      item.headings = Array.from(doc.querySelectorAll('h1,h2,h3,[role="heading"]')).filter(visible).slice(0,24).map(el => cleanText(el.innerText || el.textContent,120)).filter(Boolean);
+      item.headings = Array.from(doc.querySelectorAll('h1,h2,h3,[role="heading"]')).filter(visible).slice(0,(isActive?24:8)).map(el => cleanText(el.innerText || el.textContent,120)).filter(Boolean);
       const inputs = [];
-      for (const el of Array.from(doc.querySelectorAll('input,textarea,select,[contenteditable="true"]')).filter(visible).slice(0,70)) {
+      for (const el of Array.from(doc.querySelectorAll('input,textarea,select,[contenteditable="true"]')).filter(visible).slice(0,(isActive?70:24))) {
         if (el.type === 'hidden' || el.disabled) continue;
         const label = el.labels && el.labels.length ? el.labels[0].innerText : '';
         const descriptor = { tag:el.tagName.toLowerCase(), type:el.type || (el.tagName.toLowerCase()==='select'?'select':'text'), id:el.id||'', name:el.getAttribute('name')||'', selector:'', label:cleanText(label||el.getAttribute('aria-label')||el.getAttribute('placeholder')||'',100) };
@@ -150,12 +150,12 @@
         width:el.width||el.clientWidth||0,height:el.height||el.clientHeight||0,selector:selectorFor(el)
       }));
       const outputs=[];
-      for(const el of Array.from(doc.querySelectorAll('pre,output,[aria-live="polite"],[aria-live="assertive"],[id*="output" i],[class*="output" i],[id*="result" i],[class*="result" i]')).filter(visible).slice(0,30)){
+      for(const el of Array.from(doc.querySelectorAll('pre,output,[aria-live="polite"],[aria-live="assertive"],[id*="output" i],[class*="output" i],[id*="result" i],[class*="result" i]')).filter(visible).slice(0,(isActive?30:8))){
         const value=cleanText(el.innerText||el.textContent||'',1000);
         if(value&&!SENSITIVE.test((el.id||'')+' '+(el.className||'')))outputs.push(value);
       }
-      item.outputs=outputs.slice(0,18);
-      item.visible_text=cleanText(doc.body?.innerText||'',4200);
+      item.outputs=outputs.slice(0,isActive?18:5);
+      item.visible_text=cleanText(doc.body?.innerText||'',isActive?4200:700);
     } catch (_) { item.cross_origin_or_unavailable=true; }
     return item;
   }
@@ -170,7 +170,7 @@
         id,
         tool_name: spec ? spec.name : 'QNexusAi',
         capabilities: spec ? spec.capabilities : ['inspect','navigate','explain','diagnose']
-      }, frame ? describeFrame(id, frame) : { loaded: false });
+      }, frame ? describeFrame(id, frame, id === active) : { loaded: false });
     });
     const activeTool = tools.find(tool => tool.id === active) || null;
     return {
