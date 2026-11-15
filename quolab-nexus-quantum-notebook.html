@@ -2651,8 +2651,9 @@ window.addEventListener('message',e=>{
       if(d.requestId)qnexusActionFinish(d,{ok:cells.length===before+1&&!!cell, message:cell?'Created '+cellType+' cell '+index+'.':'Could not create notebook cell.',cellIndex:index,cellId:cell&&cell.id});
     }else if(d.type==='OPENQ_AI_OPEN_CIRCUIT_EDITOR'){
       const cell=cells[d.cellIndex];
-      if(cell&&cell.type==='circuit'){openCircuitEditor(cell.id);if(d.requestId)qnexusActionFinish(d,{ok:true,message:'Opened the visual circuit editor for notebook cell '+d.cellIndex+'.',cellId:cell.id});}
-      else if(d.requestId)qnexusActionFinish(d,{ok:false,message:'The selected notebook cell is not a visual circuit cell.'});
+      if(cell&&cell.type==='circuit'){
+        if(d.requestId)qnexusActionFinish(d,{ok:false,message:'QNexusAi edits this visual circuit directly through set_code; the Quantum Open Lab handoff is reserved for user-initiated editing.',cellId:cell.id});
+      }else if(d.requestId)qnexusActionFinish(d,{ok:false,message:'The selected notebook cell is not a visual circuit cell.'});
     }else if(d.type==='OPENQ_AI_SET_MARKDOWN'&&typeof d.markdown==='string'){
       const c=cells[d.cellIndex];
       if(!c||c.type!=='markdown'||_expositionMode){if(d.requestId)qnexusActionFinish(d,{ok:false,message:'Target Markdown cell is unavailable or read-only.'});return;}
