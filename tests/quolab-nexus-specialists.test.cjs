@@ -30,6 +30,11 @@ assert.ok(index.includes("data.type==='OPENQ_CONTEXT'&&data.requestId===requestI
 assert.ok(index.includes('sanitized operational tool state remains available'));
 assert.ok(architect.includes('requestId:d.requestId, ctx:'));
 assert.ok(notebook.includes('requestId:d.requestId,ctx:'));
+assert.ok(notebook.includes("!['markdown','circuit','code','qiskit'].includes(type)"));
+assert.ok(notebook.includes("const type=c.cell_type==='markdown'?'markdown':"));
+assert.ok(notebook.includes("tags.includes('circuit-cell')?'circuit':'code'"));
+assert.ok(notebook.includes("['circuit','markdown','code','qiskit'].includes(d.cellType)"));
+assert.ok(notebook.includes('const cell=cells[index]'));
 for(const file of [architect,notebook]){
  assert.ok(file.includes('function qnexusActionBegin(d)'));
  assert.ok(file.includes('OPENQ_AI_ACTION_RECEIVED'));
