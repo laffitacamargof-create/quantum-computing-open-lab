@@ -340,14 +340,32 @@
     if (operation === 'drag') {
       const target = frame.contentDocument.querySelector(action.targetSelector);
       if (!target || target.disabled || !target.getClientRects().length) return { ok: false, message: 'Drop target is unavailable.' };
-      if (typeof global.DataTransfer !== 'function') return { ok: false, message: 'Drag and drop is not supported by this browser.' };
-      const transfer = new global.DataTransfer();
-      el.dispatchEvent(new DragEvent('dragstart', { bubbles: true, cancelable: true, dataTransfer: transfer }));
-      target.dispatchEvent(new DragEvent('dragenter', { bubbles: true, cancelable: true, dataTransfer: transfer }));
-      target.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: transfer }));
-      target.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: transfer }));
-      el.dispatchEvent(new DragEvent('dragend', { bubbles: true, cancelable: true, dataTransfer: transfer }));
-      return { ok: true, message: 'Drag-and-drop sequence dispatched.', label };
+      const view=frame.contentWindow;
+      const from=el.getBoundingClientRect(),to=target.getBoundingClientRect();
+      const start={x:from.left+from.width/2,y:from.top+from.height/2};
+      const end={x:to.left+to.width/2,y:to.top+to.height/2};
+      let pointerSent=false,dragSent=false;
+      if(typeof view.PointerEvent==='function'){
+        const pointer=(type,point,buttons)=>new view.PointerEvent(type,{bubbles:true,cancelable:true,pointerId:1,pointerType:'mouse',isPrimary:true,clientX:point.x,clientY:point.y,buttons,button:0});
+        el.dispatchEvent(pointer('pointerdown',start,1));
+        el.dispatchEvent(pointer('pointermove',start,1));
+        target.dispatchEvent(pointer('pointerover',end,1));
+        target.dispatchEvent(pointer('pointermove',end,1));
+        target.dispatchEvent(pointer('pointerup',end,0));
+        el.dispatchEvent(pointer('pointerup',end,0));
+        pointerSent=true;
+      }
+      if(typeof view.DataTransfer==='function'&&typeof view.DragEvent==='function'){
+        const transfer=new view.DataTransfer();
+        el.dispatchEvent(new view.DragEvent('dragstart',{bubbles:true,cancelable:true,dataTransfer:transfer}));
+        target.dispatchEvent(new view.DragEvent('dragenter',{bubbles:true,cancelable:true,dataTransfer:transfer}));
+        target.dispatchEvent(new view.DragEvent('dragover',{bubbles:true,cancelable:true,dataTransfer:transfer}));
+        target.dispatchEvent(new view.DragEvent('drop',{bubbles:true,cancelable:true,dataTransfer:transfer}));
+        el.dispatchEvent(new view.DragEvent('dragend',{bubbles:true,cancelable:true,dataTransfer:transfer}));
+        dragSent=true;
+      }
+      if(!pointerSent&&!dragSent)return {ok:false,message:'This browser does not expose PointerEvent or HTML DragEvent support for this control.'};
+      return {ok:true,message:'Synthetic pointer'+(dragSent?' and HTML drag':'')+' sequence dispatched; refresh the circuit state to verify the drop.',label};
     }
     if (operation === 'scroll') {
       el.scrollIntoView({ behavior: 'smooth', block: 'center' });
