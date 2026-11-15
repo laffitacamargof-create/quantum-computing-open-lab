@@ -171,7 +171,8 @@
         if(typeof fn==='function'){
           try{const source=Function.prototype.toString.call(fn);signature=(source.match(/^[^(]*\(([^)]*)\)/)||source.match(/^\s*([^=()]+?)\s*=>/)||[])[1]||'';}catch(_){}
         }
-        return {name,callable:typeof fn==='function',arity:typeof fn==='function'?fn.length:0,signature:cleanText(signature,180)};
+        const safe=/^(?:get|list|find|search|inspect|read|render|refresh|load|show|open|draw|describe|setF|setTab|setMode|setLib|updateStatus|updateBloch|syncCellCode)/i.test(name);
+        return {name,callable:typeof fn==='function',safe:safe&&typeof fn==='function',arity:typeof fn==='function'?fn.length:0,signature:cleanText(signature,180)};
       });
       item.visible_text=cleanText(doc.body?.innerText||'',isActive?4200:700);
     } catch (_) { item.cross_origin_or_unavailable=true; }
