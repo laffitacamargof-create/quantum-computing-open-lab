@@ -79,3 +79,11 @@ assert.ok(gateway.includes('gateway_received: true, provider_completed: true'));
 assert.ok(gateway.includes('provider_completed: false, request_id: requestId'));
 assert.ok(gateway.includes('x-quolab-request-id'));
 console.log('PASS: staged full tool manuals, bounded live context, small action batches, receipt-aware gateway retries and 413 provider failover.');
+
+assert.ok(index.includes('#ai-panel-wrapper{display:none;'));
+assert.ok(index.includes('#ai-panel-wrapper.open{display:block;'));
+assert.ok(index.includes('.screen-hdr .ai-btn{display:none!important;}'));
+assert.ok(index.includes('verifiedCompletion=finished&&!blocked&&(!executionTask||evidence.some(Boolean))'));
+assert.ok(index.includes("completedPanel.classList.remove('open','ai-minimized')"));
+assert.ok(index.includes('      QNexusAi\n'));
+assert.ok(!index.includes('persistent compact composer + expandable conversation drawer'));
