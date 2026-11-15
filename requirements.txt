@@ -1,12 +1,18 @@
-<<<<<<< HEAD
+# Runtime API
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
 flask==3.0.3
 flask-cors==4.0.1
+gunicorn==22.0.0
+
+# Quantum computing stack
 qiskit==1.2.4
 qiskit-aer==0.15.0
-cirq==1.4.1
+qiskit-algorithms==0.3.1
+cirq-core==1.4.1
 numpy==1.26.4
-gunicorn==22.0.0
-=======
-flask
-gunicorn
->>>>>>> a11aa3259f893d614c34387b709217cef043df68
+scipy==1.14.1
+sympy==1.13.3
+matplotlib==3.9.2
+pennylane==0.40.0
+qutip==5.0.4
