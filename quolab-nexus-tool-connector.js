@@ -163,21 +163,25 @@
     }
   } catch (_) {}
 
-  // Observe same-frame browser storage writes as sanitized data-flow events.
+  // Observe storage writes per instance; never transmit auth, account or AI-provider secrets.
   for (const storageName of ['localStorage','sessionStorage']) {
     try {
       const storage=global[storageName];
       if(!storage||storage.__quolabNexusWrapped)continue;
       const proto=Object.getPrototypeOf(storage);
       const originalSet=proto.setItem,originalRemove=proto.removeItem,originalClear=proto.clear;
-      proto.setItem=function(key,value){
-        const result=originalSet.call(this,key,value);
-        send('storage_write',{storage:storageName,key:String(key||'').slice(0,120),value:sanitize(String(value||''),'',0),length:String(value||'').length});
-        return result;
-      };
-      proto.removeItem=function(key){const result=originalRemove.call(this,key);send('storage_remove',{storage:storageName,key:String(key||'').slice(0,120)});return result;};
-      proto.clear=function(){const result=originalClear.call(this);send('storage_clear',{storage:storageName});return result;};
-      try{Object.defineProperty(storage,'__quolabNexusWrapped',{value:true});}catch(_){}
+      Object.defineProperties(storage,{
+        __quolabNexusWrapped:{value:true},
+        setItem:{configurable:true,value:function(key,value){
+          const result=originalSet.call(this,key,value);
+          const safeKey=String(key||'').slice(0,120);
+          const hidden=/(?:user|account|auth|session|token|secret|key|password|credential|openq_ai)/i.test(safeKey);
+          send('storage_write',{storage:storageName,key:safeKey,value:hidden?'[REDACTED]':sanitize(String(value||''),'',0),length:String(value||'').length});
+          return result;
+        }},
+        removeItem:{configurable:true,value:function(key){const result=originalRemove.call(this,key);send('storage_remove',{storage:storageName,key:String(key||'').slice(0,120)});return result;}},
+        clear:{configurable:true,value:function(){const result=originalClear.call(this);send('storage_clear',{storage:storageName});return result;}}
+      });
     } catch(_){}
   }
 
