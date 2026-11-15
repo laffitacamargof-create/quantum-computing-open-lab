@@ -2,7 +2,7 @@
 <html lang="en" id="root">
 <head>
 <script src="quolab-nexus-core.js"></script>
-<script defer src="quolab-nexus-agent.js?v=1.5.0"></script>
+<script defer src="quolab-nexus-agent.js?v=1.6.0"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>QuOLab Nexus — Quantum Computing Open Lab</title>
@@ -1979,10 +1979,10 @@ class QuOLabNexusConfigSyncReader {
     if (isAIAvailable()) {
       if (dot) dot.className = 'ai-status-dot ok';
       if (txt) txt.textContent = aiCfg.provider === 'gateway'
-        ? 'QNexusAi · multi-provider gateway · 5 specialists'
+        ? 'QNexusAi · multi-provider gateway · one agent, all tools'
         : aiCfg.provider === 'deepseek'
-          ? 'QNexusAi · DeepSeek · 5 specialists'
-          : 'QNexusAi active · 5 specialists';
+          ? 'QNexusAi · DeepSeek · one agent, all tools'
+          : 'QNexusAi active · one agent, all tools';
       if (lbl) lbl.textContent = '';
     } else {
       if (dot) dot.className = 'ai-status-dot';
@@ -2103,7 +2103,7 @@ class QuOLabNexusConfigSyncReader {
   }
 
   function aiSystemExtra(ctx) {
-    let c=JSON.stringify(ctx);if(c.length>9000)c=c.slice(0,9000)+'…(truncated)';
+    let c=JSON.stringify(ctx);if(c.length>6500)c=c.slice(0,6500)+'…(context compacted; inspect the live tool again before acting)';
     return `
 
 You are QNexusAi: one autonomous superagent for the entire QuOLab Nexus ecosystem. There are no specialist agents, worker prompts, router calls, delegation chains or final-synthesis calls. You plan, operate tools, recover from errors and verify outcomes yourself. Tools are module interfaces, not agents: Projects; Quantum Open Lab (visual circuits/Qiskit/simulation/noise, max 20 qubits and 150 gates); Quantum Notebook (Python/Qiskit/Markdown cells); Quantum Puzzle (challenges and app launcher); Quantum App Studio (nested in Puzzle); Library and Help.
@@ -2339,7 +2339,7 @@ CONTEXT: ${c}`;
             'USER REQUEST (preserve the full scope):\n'+msg,
             turn?'CONTINUATION AND CHECKLIST:\n'+previous:'',
             turn?'LAST ACTION RESULTS: '+JSON.stringify(lastExecution.results||[]):'',
-            'FRESH LIVE CONTEXT: '+JSON.stringify(ctx||{}),
+            'Use the fresh live context supplied in the system context. Do not duplicate the full context in the request body.',
             executionTask?'Continue the same task. Maintain an explicit checklist of every requested acceptance criterion. Inspect, act, verify, correct and continue. Move between modules yourself. No agents or handoffs exist. Do not repeat successful actions.':'Answer directly; do not emit actions unless the user explicitly requests an operation.',
             'If needed, emit up to 8 valid actions, each inside its own fenced code block labeled openq-action. Use TASK_STATUS: CONTINUE until all criteria are verified. COMPLETED requires TASK_EVIDENCE grounded in fresh context. Use BLOCKED only for a concrete blocker. Questions are completed directly.'
           ].filter(Boolean).join('\n\n');
@@ -2350,7 +2350,7 @@ CONTEXT: ${c}`;
             const changed=before!==JSON.stringify(ctx||{}),ack=lastExecution.ok&&lastExecution.results.length===parsed.actions.length;
             const needsOutput=/\b(run|execute|simulate|simulation|ejecutar|ejecuta|simular|simula|simulaci[oó]n)\b/i.test(msg),outputOK=!needsOutput||hasFreshOutput(ctx,lastExecution);
             if(ack&&changed)evidence.push(...lastExecution.results.filter(x=>x.ok).map(x=>x.message));
-            previous=finalText+'\nState changed: '+changed+'; actions acknowledged: '+ack+'; output verified: '+outputOK+'\nFresh context: '+JSON.stringify(ctx||{});
+            previous=finalText.slice(0,1800)+'\nState changed: '+changed+'; actions acknowledged: '+ack+'; output verified: '+outputOK+'\nFresh context was re-read internally; inspect it again before the next action.';
             if(!lastExecution.ok){previous+='\nAction failure: diagnose and correct before continuing.';continue;}
             if(status.status==='BLOCKED'){blocked=true;break;}
             if(status.status==='COMPLETED'&&status.evidence&&ack&&changed&&outputOK){finished=true;evidence.push(status.evidence);break;}
@@ -2367,7 +2367,7 @@ CONTEXT: ${c}`;
         else if(finished&&executionTask)finalText+='\n\nTASK_STATUS: COMPLETED\nTASK_EVIDENCE: '+evidence.filter(Boolean).join('; ').slice(0,900);
         document.getElementById('ai-loading').classList.remove('show');addAIMsg(finalText,'bot');
         notify('QNexusAi: '+finalText.replace(/\s+/g,' ').slice(0,170));reply=finalText;
-        aiHistory.push({role:'user',content:msg},{role:'assistant',content:finalText});if(aiHistory.length>8)aiHistory=aiHistory.slice(-8);
+        aiHistory.push({role:'user',content:msg},{role:'assistant',content:finalText});if(aiHistory.length>4)aiHistory=aiHistory.slice(-4);
       }catch(e){document.getElementById('ai-loading').classList.remove('show');console.error('QNexusAi error:',e);const err='QNexusAi could not complete the request: '+((e&&e.message)?e.message:String(e));addAIMsg(err,'bot');reply=err;}
     }else{await new Promise(resolve=>setTimeout(resolve,500));document.getElementById('ai-loading').classList.remove('show');const err='QNexusAi gateway is unavailable. Reconnect the AI service to execute tasks.';addAIMsg(err,'bot');reply=err;}
     if(curUser?.username){let data=dbLoad();if(!data)data={ai_history:{}};if(!data.ai_history)data.ai_history={};if(!data.ai_history[curUser.username])data.ai_history[curUser.username]=[];data.ai_history[curUser.username].push({q:msg,a:reply,ts:Date.now()});if(data.ai_history[curUser.username].length>200)data.ai_history[curUser.username]=data.ai_history[curUser.username].slice(-200);dbSave(data);}
@@ -2421,40 +2421,50 @@ CONTEXT: ${c}`;
 
   async function callMultiModelGateway(messages, maxTokens, temperature) {
     const accessToken = await getAIUserAccessToken();
-    const response = await fetch(AI_SUPABASE_URL + '/functions/v1/quolab-nexus-ai', {
-      method: 'POST',
-      headers: {
-        'apikey': AI_SUPABASE_ANON_KEY,
-        'Authorization': 'Bearer ' + accessToken,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: 'auto',
-        messages,
-        max_tokens: Math.min(Math.max(Number(maxTokens) || 1200, 1), 4096),
-        temperature: Number.isFinite(Number(temperature)) ? Math.min(Math.max(Number(temperature), 0), 2) : 0.7
-      }),
-      signal: AbortSignal.timeout(30000)
-    });
-    const data = await response.json();
-    if (!response.ok) {
-      const provider = data.provider ? ' · provider: ' + data.provider : '';
-      const attempted = Array.isArray(data.attempted_providers) && data.attempted_providers.length
-        ? ' · attempted: ' + data.attempted_providers.join(', ') : '';
-      throw new Error('QuOLab AI gateway HTTP ' + response.status + ': ' + (data.error || data.message || 'request_failed') + provider + attempted);
+    const requestId = globalThis.crypto?.randomUUID?.() || ('qnexus-' + Date.now() + '-' + Math.random().toString(36).slice(2));
+    let lastError = null;
+    for (let attempt = 0; attempt < 4; attempt++) {
+      try {
+        const response = await fetch(AI_SUPABASE_URL + '/functions/v1/quolab-nexus-ai', {
+          method: 'POST',
+          headers: {
+            'apikey': AI_SUPABASE_ANON_KEY,
+            'Authorization': 'Bearer ' + accessToken,
+            'Content-Type': 'application/json',
+            'x-request-id': requestId
+          },
+          body: JSON.stringify({
+            model: 'auto', request_id: requestId, messages,
+            max_tokens: Math.min(Math.max(Number(maxTokens) || 1200, 1), 1400),
+            temperature: Number.isFinite(Number(temperature)) ? Math.min(Math.max(Number(temperature), 0), 2) : 0.7
+          }),
+          signal: AbortSignal.timeout(45000)
+        });
+        const data = await response.json().catch(() => ({}));
+        if (response.ok && data.choices?.[0]?.message?.content) return data.choices[0].message.content;
+        const provider = data.provider ? ' · provider: ' + data.provider : '';
+        const attempted = Array.isArray(data.attempted_providers) && data.attempted_providers.length ? ' · attempted: ' + data.attempted_providers.join(', ') : '';
+        const received = data.request_received === true ? ' · Supabase received request' : '';
+        const err = new Error('QuOLab AI gateway HTTP ' + response.status + ': ' + (data.error || data.message || 'request_failed') + provider + attempted + received);
+        if (![408,425,429,500,502,503,504].includes(response.status) || attempt === 3) throw err;
+        lastError = err;
+      } catch (error) {
+        lastError = error;
+        if (attempt === 3 || /HTTP 4(?!08|25|29)/.test(String(error?.message || ''))) throw error;
+      }
+      await waitFor(Math.min(1000 * (2 ** attempt), 8000));
     }
-    if (!data.choices?.[0]?.message?.content) throw new Error('AI gateway returned an empty response');
-    return data.choices[0].message.content;
+    throw lastError || new Error('AI gateway did not acknowledge the request');
   }
 
   async function callAI(msg, ctx, options = {}) {
     const temp   = aiCfg.temp   || 0.7;
-    const tokens = Math.min(Math.max(aiCfg.tokens || 700, 500), 1800);
+    const tokens = Math.min(Math.max(aiCfg.tokens || 700, 500), 1400);
     const langNote = ' Always reply in the same language as the latest user message. Detect Spanish, English, or any other language automatically; preserve technical names and code identifiers.';
     const sys = (aiCfg.prompt || 'You are the Quolab assistant, a quantum computing ecosystem. Respond concisely and technically.') + langNote + (ctx ? aiSystemExtra(ctx) : '') + (options.systemSuffix || '');
     const msgs = [
       { role:'system', content:sys },
-      ...aiHistory.slice(-4),
+      ...aiHistory.slice(-2),
       { role:'user', content:msg },
     ];
     if (aiCfg.provider === 'gateway') {
@@ -2699,7 +2709,7 @@ CONTEXT: ${c}`;
 
 })();
 
-window.QUOLAB_NEXUS_BUILD = '2026-11-15-qnexusai-single-agent-v1.5.0';
+window.QUOLAB_NEXUS_BUILD = '2026-11-15-qnexusai-single-agent-v1.6.0';
 window.OPENQ_BUILD = window.QUOLAB_NEXUS_BUILD; // Compatibilidad temporal
 console.log('%cQuOLab Nexus build ' + window.QUOLAB_NEXUS_BUILD, 'color:#00ffdd');
 window.QuOLabNexus = QuOLabNexus;
