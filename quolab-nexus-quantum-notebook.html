@@ -2550,7 +2550,7 @@ const __QNEXUS_ACTION_CACHE = window.__QNEXUS_ACTION_CACHE || (window.__QNEXUS_A
 function qnexusActionPost(payload){try{window.parent.postMessage(payload,location.origin);}catch(_){}}
 function qnexusActionBegin(d){
   if(d.type==='OPENQ_AI_ACTION_STATUS'&&d.requestId){const entry=__QNEXUS_ACTION_CACHE.get(d.requestId);qnexusActionPost({type:'OPENQ_AI_ACTION_STATUS',requestId:d.requestId,received:!!entry,completed:!!(entry&&entry.result),result:entry&&entry.result||null});return true;}
-  if(!d.requestId||!/^OPENQ_AI_(?:SET_CODE|NOISE|RUN|ADD_CELL|OPEN_CIRCUIT_EDITOR)$/.test(d.type||''))return false;
+  if(!d.requestId||!/^OPENQ_AI_(?:SET_CODE|SET_MARKDOWN|NOISE|RUN|ADD_CELL|OPEN_CIRCUIT_EDITOR)$/.test(d.type||''))return false;
   const existing=__QNEXUS_ACTION_CACHE.get(d.requestId);
   if(existing){qnexusActionPost({type:'OPENQ_AI_ACTION_RECEIVED',requestId:d.requestId});if(existing.result)qnexusActionPost(existing.result);return true;}
   __QNEXUS_ACTION_CACHE.set(d.requestId,{receivedAt:Date.now(),result:null});
