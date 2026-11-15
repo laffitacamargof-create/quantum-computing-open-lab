@@ -160,7 +160,8 @@
     recentEvents.push(record);
     if (recentEvents.length > MAX_EVENTS) recentEvents.splice(0, recentEvents.length - MAX_EVENTS);
     if (record.status === 'error') {
-      const detailMessage = details.message || details.error || nestedKind || type;
+      const nestedDetails = details.details && typeof details.details === 'object' ? details.details : {};
+      const detailMessage = details.message || details.error || nestedDetails.message || nestedDetails.error || nestedKind || type;
       global.dispatchEvent(new CustomEvent('quolab:nexus-alert', {
         detail: { tool: record.from, kind: record.kind, message: cleanText(detailMessage, 240) }
       }));
