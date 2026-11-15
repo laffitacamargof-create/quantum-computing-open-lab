@@ -2075,13 +2075,21 @@ class QuOLabNexusConfigSyncReader {
   function aiOptsInit() { const c = document.getElementById('ai-opt-ctx'), a = document.getElementById('ai-opt-auto'); if (c) c.checked = aiOptGet('ctx'); if (a) a.checked = aiOptGet('auto'); }
 
   function askModule(screen) {
-    return new Promise(res => {
-      const f = iframes[screen]; if (!f || !f.contentWindow) return res(null);
-      let done = false;
-      const h = ev => { if (ev.source === f.contentWindow && ev.data && ev.data.type === 'OPENQ_CONTEXT') { done = true; window.removeEventListener('message', h); res(ev.data.ctx || null); } };
-      window.addEventListener('message', h);
-      try { f.contentWindow.postMessage({ type: 'OPENQ_GET_CONTEXT' }, '*'); } catch (e) { window.removeEventListener('message', h); return res(null); }
-      setTimeout(() => { if (!done) { window.removeEventListener('message', h); res(null); } }, 1200);
+    return new Promise(resolve=>{
+      const frame=iframes[screen];
+      if(!frame||!frame.contentWindow){resolve(null);return;}
+      const requestId='qnexus-context-'+(globalThis.crypto?.randomUUID?crypto.randomUUID():Date.now()+'-'+Math.random().toString(36).slice(2,9));
+      let attempts=0,settled=false;
+      const finish=value=>{if(settled)return;settled=true;clearInterval(retry);window.removeEventListener('message',handler);resolve(value);};
+      const handler=event=>{
+        if(event.origin!==location.origin||event.source!==frame.contentWindow)return;
+        const data=event.data||{};
+        if(data.type==='OPENQ_CONTEXT'&&data.requestId===requestId)finish(data.ctx||null);
+      };
+      const send=()=>{if(settled)return;if(attempts>=8){finish(null);return;}attempts++;try{frame.contentWindow.postMessage({type:'OPENQ_GET_CONTEXT',requestId},location.origin);}catch(_){if(attempts>=8)finish(null);}};
+      window.addEventListener('message',handler);
+      send();
+      const retry=setInterval(send,650);
     });
   }
   async function gatherAIContext() {
@@ -2090,14 +2098,13 @@ class QuOLabNexusConfigSyncReader {
     // Tool state is operational context, not optional conversation-history sharing.
     // The agent needs it to choose the active specialist and verify real execution.
     const ctx = { screen, url_hash: location.hash || '', user_role: curUser?.role || 'guest' };
-    if (aiOptGet('ctx')) {
-      if (_shareCtx && _shareCtx.title) ctx.opened_item = { title: _shareCtx.title, link: _shareCtx.hash };
-      if (screen === 'architect' || screen === 'architect-pro') {
-        const moduleState = await askModule(screen);
-        if (moduleState) ctx.module = moduleState;
-      }
-    } else {
-      ctx.note = 'Optional conversation extras are disabled; sanitized tool status remains available for routing and verification.';
+    if (aiOptGet('ctx') && _shareCtx && _shareCtx.title) ctx.opened_item = { title:_shareCtx.title, link:_shareCtx.hash };
+    if (screen === 'architect' || screen === 'architect-pro') {
+      const moduleState=await askModule(screen);
+      if(moduleState)ctx.module=moduleState;
+      else ctx.module_context_status='module did not answer the context request after retries; use live DOM snapshot and do not assume missing state is empty';
+    } else if (!aiOptGet('ctx')) {
+      ctx.note='Optional conversation extras are disabled; sanitized operational tool state remains available.';
     }
     return window.QuOLabNexusAgent ? window.QuOLabNexusAgent.collectContext(ctx) : ctx;
   }
