@@ -2586,7 +2586,7 @@ window.addEventListener('message',e=>{
     if(d.type==='OPENQ_GET_CONTEXT'){
       const strip=s=>String(s||'').replace(/<[^>]*>/g,'').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&');
       const nm=document.getElementById('nb-name-inp');
-      window.parent.postMessage({type:'OPENQ_CONTEXT',ctx:{tool:'notebook',name:nm?nm.value:'',exposition:!!_expositionMode,
+      window.parent.postMessage({type:'OPENQ_CONTEXT',requestId:d.requestId,ctx:{tool:'notebook',name:nm?nm.value:'',exposition:!!_expositionMode,
         current:Math.max(0,cells.findIndex(c=>c.id===curCellId)),
         noise_last:(window.QuOLabNexusNoise&&window.QuOLabNexusNoise.last)||null,cells:cells.slice(0,30).map((c,i)=>({i,type:c.type,code:String(c.code||'').slice(0,1200),output:strip(c.output).slice(-800)}))}},'*');
     }else if(d.type==='OPENQ_AI_ADD_CELL'){
