@@ -25,6 +25,10 @@ on:
       - ".github/workflows/validate-nexus-agent.yml"
       - ".github/workflows/deploy-pages.yml"
 
+concurrency:
+  group: validate-quolab-nexus-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   syntax-and-security:
     runs-on: ubuntu-latest
