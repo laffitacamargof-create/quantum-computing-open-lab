@@ -2522,7 +2522,7 @@ CONTEXT (staged and size-limited): ${c}`;
       max_tokens:Math.min(Math.max(Number(maxTokens)||900,1),4096),
       temperature:Number.isFinite(Number(temperature))?Math.min(Math.max(Number(temperature),0),2):0.5
     });
-    let lastError = null;
+    let lastError = null, gatewayReceived = false;
     for (let attempt=0; attempt<5; attempt++) {
       let response, data = {};
       try {
@@ -2533,8 +2533,9 @@ CONTEXT (staged and size-limited): ${c}`;
           body, signal:AbortSignal.timeout(45000)
         });
         data = await response.json().catch(()=>({}));
+        if (data.gateway_received === true && data.request_id === requestId) gatewayReceived = true;
         if (response.ok && data.choices?.[0]?.message?.content) {
-          if (data.gateway_received === false) throw new Error('Gateway did not confirm receipt of request ' + requestId);
+          if (!gatewayReceived || data.provider_completed !== true) throw new Error('Gateway did not confirm receipt and provider completion for request ' + requestId);
           return data.choices[0].message.content;
         }
         const provider = data.provider ? ' · provider: ' + data.provider : '';
@@ -2549,7 +2550,7 @@ CONTEXT (staged and size-limited): ${c}`;
         const statusMatch = String(lastError.message).match(/HTTP (\d{3})/);
         const status = statusMatch ? Number(statusMatch[1]) : 0;
         if (status && ![408,425,429,500,502,503,504].includes(status)) throw lastError;
-        if (attempt===4) throw new Error(lastError.message+' · request '+requestId+' was retried 5 times; API receipt remains unconfirmed');
+        if (attempt===4) throw new Error(lastError.message+' · request '+requestId+' was retried 5 times; '+(gatewayReceived?'gateway receipt confirmed, but no provider completed the request':'API receipt remains unconfirmed'));
       }
       await new Promise(resolve=>setTimeout(resolve,Math.min(700*Math.pow(1.8,attempt),5000)));
     }
