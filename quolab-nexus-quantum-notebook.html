@@ -2571,13 +2571,22 @@ window.addEventListener('message',e=>{
         current:Math.max(0,cells.findIndex(c=>c.id===curCellId)),
         noise_last:(window.QuOLabNexusNoise&&window.QuOLabNexusNoise.last)||null,cells:cells.slice(0,30).map((c,i)=>({i,type:c.type,code:String(c.code||'').slice(0,1200),output:strip(c.output).slice(-800)}))}},'*');
     }else if(d.type==='OPENQ_AI_SET_CODE'&&typeof d.code==='string'){
-      const c=cells[d.cellIndex];if(!c||c.type==='markdown'||_expositionMode&&false)return;
+      const c=cells[d.cellIndex];
+      if(!c||c.type==='markdown'||_expositionMode){if(d.requestId)window.parent.postMessage({type:'OPENQ_AI_ACTION_ACK',requestId:d.requestId,ok:false,message:'Target cell is unavailable or read-only.'},'*');return;}
       c.code=d.code;const ta=document.getElementById('ta-'+c.id);if(ta){ta.value=d.code;ta.dispatchEvent(new Event('input',{bubbles:true}));}
       syncCellCode(c.id);
+      if(d.requestId)window.parent.postMessage({type:'OPENQ_AI_ACTION_ACK',requestId:d.requestId,ok:c.code===d.code,message:'Code written to notebook cell '+d.cellIndex,cellId:c.id},'*');
     }else if(d.type==='OPENQ_AI_NOISE'){
-      const c=cells[d.cellIndex];if(c&&c.type!=='markdown'&&c.type!=='code')noiseRun(c.id,{noise:d.noise,engine:d.engine,shots:d.shots});
+      const c=cells[d.cellIndex];
+      if(c&&c.type!=='markdown'&&c.type!=='code'){
+        Promise.resolve(noiseRun(c.id,{noise:d.noise,engine:d.engine,shots:d.shots})).then(()=>{if(d.requestId)window.parent.postMessage({type:'OPENQ_AI_ACTION_ACK',requestId:d.requestId,ok:true,message:'Noise simulation command completed.'},'*');}).catch(err=>{if(d.requestId)window.parent.postMessage({type:'OPENQ_AI_ACTION_ACK',requestId:d.requestId,ok:false,message:err.message||'Noise simulation failed.'},'*');});
+      }else if(d.requestId)window.parent.postMessage({type:'OPENQ_AI_ACTION_ACK',requestId:d.requestId,ok:false,message:'Noise simulation target is unavailable.'},'*');
     }else if(d.type==='OPENQ_AI_RUN'){
-      const c=cells[d.cellIndex];if(c&&c.type!=='markdown'){syncCellCode(c.id);runCell(c.id);}
+      const c=cells[d.cellIndex];
+      if(c&&c.type!=='markdown'){
+        syncCellCode(c.id);
+        Promise.resolve(runCell(c.id)).then(()=>{const out=document.getElementById('out-'+c.id);const value=out?(out.innerText||'').slice(-1200):'';const failed=!out||/No engine|❌|error/i.test(value);if(d.requestId)window.parent.postMessage({type:'OPENQ_AI_ACTION_ACK',requestId:d.requestId,ok:!failed,message:failed?(value||'Cell execution did not produce a successful output.'):'Notebook cell '+d.cellIndex+' executed.',output:value},'*');}).catch(err=>{if(d.requestId)window.parent.postMessage({type:'OPENQ_AI_ACTION_ACK',requestId:d.requestId,ok:false,message:err.message||'Cell execution failed.'},'*');});
+      }else if(d.requestId)window.parent.postMessage({type:'OPENQ_AI_ACTION_ACK',requestId:d.requestId,ok:false,message:'Notebook execution cell is unavailable.'},'*');
     }
   }catch(err){console.warn('copilot hook',err);}
 });
