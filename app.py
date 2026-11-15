@@ -85,10 +85,19 @@ def _extract_code(body):
     return None
 
 async def _run_code(request: Request):
+    chunks = []
+    received = 0
     try:
-        body = await request.json()
-    except Exception:
+        async for chunk in request.stream():
+            received += len(chunk)
+            if received > MAX_REQUEST_BYTES:
+                return JSONResponse({"success": False, "output": "Solicitud demasiado grande."}, status_code=413)
+            chunks.append(chunk)
+        body = json.loads(b"".join(chunks).decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError):
         return JSONResponse({"success": False, "output": "JSON inválido."}, status_code=400)
+    except Exception:
+        return JSONResponse({"success": False, "output": "No se pudo leer la solicitud."}, status_code=400)
     code = _extract_code(body)
     if code is None:
         return JSONResponse({"success": False, "output": "Se requiere code o data[0] como texto."}, status_code=400)
