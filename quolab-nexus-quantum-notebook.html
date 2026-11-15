@@ -564,26 +564,26 @@ const NB_GATE_DEFS={
  CCX:{sym:'CCX',bg:'#005f6a',code:'qc.ccx({q},{q2},{q3})'},CSWAP:{sym:'CSW',bg:'#283593',code:'qc.cswap({q},{q2},{q3})'},M:{sym:'M',bg:'#6d4c41',code:'qc.measure({q},{q})'}
 };
 function parseQiskitCircuitCode(source){
- const code=String(source||''),decl=code.match(/QuantumCircuit\\s*\\(\\s*(\\d+)/),gates=[],warnings=[];
+ const code=String(source||''),decl=code.match(/QuantumCircuit\s*\(\s*(\d+)/),gates=[],warnings=[];
  let qubits=decl?Math.max(1,Math.min(20,Number(decl[1]))):1;
  const add=(id,q,q2,q3)=>{const def=NB_GATE_DEFS[id];if(!def)return;gates.push({id,q,q2,q3,uid:gates.length+1,def:{bg:def.bg,sym:def.sym,code:def.code}});qubits=Math.max(qubits,q+1,(q2??-1)+1,(q3??-1)+1);};
- for(const line of code.split(/\\r?\\n/)){let m;
-  if((m=line.match(/\\bqc\\.(h|x|y|z|s|t|sx)\\s*\\(\\s*(\\d+)\\s*\\)/i))){add(m[1].toUpperCase(),+m[2]);continue;}
-  if((m=line.match(/\\bqc\\.(rx|ry|rz)\\s*\\(\\s*([^,]+),\\s*(\\d+)\\s*\\)/i))){add(m[1].toUpperCase(),+m[3]);continue;}
-  if((m=line.match(/\\bqc\\.(cx|cz|swap)\\s*\\(\\s*(\\d+)\\s*,\\s*(\\d+)\\s*\\)/i))){add(m[1].toUpperCase(),+m[2],+m[3]);continue;}
-  if((m=line.match(/\\bqc\\.(ccx|cswap)\\s*\\(\\s*(\\d+)\\s*,\\s*(\\d+)\\s*,\\s*(\\d+)\\s*\\)/i))){add(m[1].toLowerCase()==='cswap'?'CSWAP':'CCX',+m[2],+m[3],+m[4]);continue;}
-  if((m=line.match(/\\bqc\\.measure\\s*\\(\\s*(\\d+)\\s*,\\s*(\\d+)\\s*\\)/i))){add('M',+m[1]);continue;}
-  if((m=line.match(/\\bqc\\.measure\\s*\\(\\s*\\[([^\\]]+)\\]\\s*,\\s*\\[([^\\]]+)\\]\\s*\\)/i))){[...m[1].matchAll(/\\d+/g)].forEach(x=>add('M',+x[0]));continue;}
-  if(/\\bqc\\.(?:barrier|measure_all)\\s*\\(/.test(line)){if(/measure_all/.test(line))for(let q=0;q<qubits;q++)add('M',q);continue;}
-  if(/\\bqc\\.(?:reset|initialize|unitary|append|compose|toffoli|mcp|mcx)\\s*\\(/.test(line))warnings.push(line.trim().slice(0,100));
+ for(const line of code.split(/\r?\n/)){let m;
+  if((m=line.match(/\bqc\.(h|x|y|z|s|t|sx)\s*\(\s*(\d+)\s*\)/i))){add(m[1].toUpperCase(),+m[2]);continue;}
+  if((m=line.match(/\bqc\.(rx|ry|rz)\s*\(\s*([^,]+),\s*(\d+)\s*\)/i))){add(m[1].toUpperCase(),+m[3]);continue;}
+  if((m=line.match(/\bqc\.(cx|cz|swap)\s*\(\s*(\d+)\s*,\s*(\d+)\s*\)/i))){add(m[1].toUpperCase(),+m[2],+m[3]);continue;}
+  if((m=line.match(/\bqc\.(ccx|cswap)\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)/i))){add(m[1].toLowerCase()==='cswap'?'CSWAP':'CCX',+m[2],+m[3],+m[4]);continue;}
+  if((m=line.match(/\bqc\.measure\s*\(\s*(\d+)\s*,\s*(\d+)\s*\)/i))){add('M',+m[1]);continue;}
+  if((m=line.match(/\bqc\.measure\s*\(\s*\[([^\]]+)\]\s*,\s*\[([^\]]+)\]\s*\)/i))){[...m[1].matchAll(/\d+/g)].forEach(x=>add('M',+x[0]));continue;}
+  if(/\bqc\.(?:barrier|measure_all)\s*\(/.test(line)){if(/measure_all/.test(line))for(let q=0;q<qubits;q++)add('M',q);continue;}
+  if(/\bqc\.(?:reset|initialize|unitary|append|compose|toffoli|mcp|mcx)\s*\(/.test(line))warnings.push(line.trim().slice(0,100));
  }
  return {circuitData:{qubits:Math.max(1,Math.min(20,qubits)),gates},warnings};
 }
 function visualCircuitCode(data){
  const n=Math.max(1,Math.min(20,Number(data?.qubits)||1)),gates=Array.isArray(data?.gates)?data.gates:[];
  const lines=['from qiskit import QuantumCircuit','import numpy as np','','qc = QuantumCircuit('+n+', '+n+')',''];
- gates.forEach(g=>{const def=NB_GATE_DEFS[g.id];if(def)lines.push(def.code.replace(/\\{q3\\}/g,g.q3??0).replace(/\\{q2\\}/g,g.q2??0).replace(/\\{q\\}/g,g.q));});
- return lines.join('\\n');
+ gates.forEach(g=>{const def=NB_GATE_DEFS[g.id];if(def)lines.push(def.code.replace(/\{q3\}/g,g.q3??0).replace(/\{q2\}/g,g.q2??0).replace(/\{q\}/g,g.q));});
+ return lines.join('\n');
 }
 function syncCircuitCellFromCode(cell,source){
  const parsed=parseQiskitCircuitCode(source);cell.hiddenCode=String(source||'');cell.code='';cell.circuitData=parsed.circuitData;cell.visualWarnings=parsed.warnings;return parsed;
@@ -2192,9 +2192,9 @@ function buildLinenos(code, errorLine){
 
 function buildCellEl(cell,i){
   const el=document.createElement('div');
+  if(cell.type==='code'||cell.type==='qiskit'){syncCircuitCellFromCode(cell,cell.code||'');cell.type='circuit';cell.code='';}
   const isQk=false;
-  const isCode=cell.type==='code'||cell.type==='qiskit';
-  if(cell.type==='qiskit')cell.type='code';
+  const isCode=false;
   el.className='nb-cell'+(curCellId===cell.id?' active':'');
   el.dataset.id=cell.id;
   el.dataset.ctype=cell.type;
@@ -2272,6 +2272,8 @@ function buildCellEl(cell,i){
     const restoreBtn = '';
     const circuitSVG = hasCircuit ? buildCircuitFromData(cell.circuitData) : '';
     const outContent = cell.output ? `<div class="cell-output-area" id="out-${cell.id}">${'<!-- output -->'}</div>` : '';
+    const editorControls = cell.editorOpen&&!_expositionMode ? buildCircuitEditorControls(cell) : '';
+    const warningHtml = cell.visualWarnings?.length ? `<div class="nb-circuit-warning">Some Qiskit operations are not drawn in this preview; the complete hidden source is still executed.</div>` : '';
     el.className='nb-cell circ-cell'+(curCellId===cell.id?' active':'');
     el.innerHTML=`${circuitToolbar}
       <div class="cell-gutter has-noise">
@@ -2281,19 +2283,17 @@ function buildCellEl(cell,i){
       </div>
       <div class="cell-body">
         <div class="cell-type-badge ctb-circ">
-          ⚛ Visual Circuit${hasCode?' · <span style="color:rgba(0,200,100,.5);font-size:.38rem;">code ready</span>':' · <span style="color:rgba(255,180,0,.6);font-size:.38rem;">no code</span>'}
+          ⚛ Visual Circuit
         </div>
         <div class="cell-circuit-preview" id="cprev-${cell.id}"
           onclick="event.stopPropagation();openCircuitEditor('${cell.id}')"
           title="Click to edit the circuit">
           ${hasCircuit
             ? `<div class="circ-preview-hint">⚛ QUANTUM CIRCUIT — click to edit</div>${circuitSVG}`
-            : `<div class="circ-empty-hint" onclick="event.stopPropagation();openCircuitEditor('${cell.id}')">
-                ⚛ Visual Circuit Cell<br>
-                <span style="font-size:.4rem;color:rgba(0,200,100,.4);">Click to edit the visual circuit</span>
-              </div>`
+            : `<div class="circ-empty-hint" onclick="event.stopPropagation();openCircuitEditor('${cell.id}')">⚛ Visual Circuit Cell<br><span style="font-size:.4rem;color:rgba(0,200,100,.4);">Open visual gate controls</span></div>`
           }
         </div>
+        ${editorControls}${warningHtml}
         <div class="cell-output-area" id="out-${cell.id}">${cell.output?`<div class="out-stdout">${escH(cell.output)}</div>`:''}</div>
         ${restoreBtn}
       </div>`;
