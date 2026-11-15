@@ -809,7 +809,10 @@
     });
 
     async function buildAppBlob(pythonCode, htmlCode, serverUrl) {
+        const connectorUrl = new URL('quolab-nexus-tool-connector.js?v=1.3.0', location.href).href;
         const bridge = `
+        <script>window.__QUOLAB_NEXUS_TOOL='quantum-app-studio';<\/script>
+        <script src="${connectorUrl}"><\/script>
         <script>
         window.__serverUrl = ${JSON.stringify(serverUrl)};
         window.__pyCode = ${JSON.stringify(pythonCode)};
@@ -838,6 +841,15 @@
         const url = URL.createObjectURL(blob);
         return { blobUrl: url, revoke: () => URL.revokeObjectURL(url) };
     }
+
+    // Relay sanitized activity from the user app's live preview iframe to the App Studio connector.
+    window.addEventListener('message', event => {
+        if(event.origin!==location.origin||!event.data||event.data.type!=='NEXUS_TOOL_EVENT')return;
+        const preview=Array.from(document.querySelectorAll('iframe')).find(frame=>frame.contentWindow===event.source);
+        if(!preview||preview.id!=='app-iframe')return;
+        const payload=event.data;
+        if(window.QuOLabNexusToolConnector)window.QuOLabNexusToolConnector.report('preview_'+String(payload.kind||'event').slice(0,40),{tool:'quantum-app-studio-preview',details:payload.details||{}});
+    },true);
 
     async function launchProject(id) {
         // ── 🛡️ PROTECTION: ALWAYS load from projects array, never from editor
