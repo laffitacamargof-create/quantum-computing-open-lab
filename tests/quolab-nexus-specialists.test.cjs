@@ -30,8 +30,10 @@ for (const role of [
   'You are the Quantum Puzzle Specialist',
   'You are the Quantum App Studio Specialist'
 ]) assert.ok(agent.includes(role), role + ' must have its own worker instructions');
-assert.match(agent, /const VERSION = '1\.2\.0'/);
-assert.match(connector, /const VERSION = '1\.2\.0'/);
+assert.match(agent, /const VERSION = '1\.2\.1'/);
+assert.match(agent, /AIza\|xox\[baprs\]/);
+assert.match(connector, /const VERSION = '1\.2\.1'/);
+assert.match(connector, /AIza\|xox\[baprs\]/);
 assert.match(agent, /getSpecialistInstructions: id => SPECIALIST_INSTRUCTIONS\[id\]/);
 assert.match(agent, /recordDelegation,/);
 assert.match(agent, /SPECIALIST_INSTRUCTIONS/);
