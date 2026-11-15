@@ -2170,7 +2170,7 @@ CONTEXT: ${c}`;
             ? { type: 'OPENQ_AI_SET_CODE', code: action.code, cellIndex: action.cellIndex, requestId }
             : action.type === 'run'
               ? { type: 'OPENQ_AI_RUN', cellIndex: action.cellIndex, requestId }
-              : { type: 'OPENQ_AI_NOISE', cellIndex: action.cellIndex, noise: action.noise, engine: action.engine, shots: action.shots, requestId }
+              : { type: 'OPENQ_AI_NOISE', cellIndex: action.cellIndex, noise: action.noise, engine: action.engine, shots: action.shots, requestId };
       try { frame.contentWindow.postMessage(message, location.origin); }
       catch (error) { finish({ ok: false, message: error.message || 'Could not contact the tool.' }); }
     });
