@@ -20,7 +20,7 @@ function corsHeaders(origin: string | null) {
   const allowed = origin && allowedOrigins.has(origin) ? origin : "https://laffitacamargof-create.github.io";
   return {
     "Access-Control-Allow-Origin": allowed,
-    "Access-Control-Allow-Headers": "authorization, apikey, content-type, x-client-info",
+    "Access-Control-Allow-Headers": "authorization, apikey, content-type, x-client-info, x-quolab-request-id",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
     "Vary": "Origin",
     "Content-Type": "application/json; charset=utf-8",
@@ -178,18 +178,18 @@ Deno.serve(async (req: Request) => {
           provider: provider.id,
           choices: [{ index: 0, message: { role: "assistant", content: result.content }, finish_reason: "stop" }],
           usage: result.usage,
-          routing: { strategy: "ordered_fallback", attempted_providers: failures },
+          gateway_received: true, provider_completed: true, request_id: requestId,\n          routing: { strategy: "ordered_fallback", attempted_providers: failures },
         }, origin);
       } catch (error) {
         const status = Number((error as { status?: number })?.status || 502);
         console.error("AI provider failed", { provider: provider.id, status, userId: user.id });
         failures.push(provider.id);
         if (!retryable(status)) return reply(status >= 400 && status < 500 ? status : 502, {
-          error: "ai_provider_request_failed", provider: provider.id, status,
+          error: "ai_provider_request_failed", provider: provider.id, status,\n          gateway_received: true, provider_completed: false, request_id: requestId,
         }, origin);
       }
     }
-    return reply(503, { error: "all_ai_providers_unavailable", attempted_providers: failures }, origin);
+    return reply(503, { error: "all_ai_providers_unavailable", attempted_providers: failures,\n      gateway_received: true, provider_completed: false, request_id: requestId }, origin);
   } catch (error) {
     const message = error instanceof Error ? error.message : "unknown_error";
     console.error("AI gateway error", { message });
