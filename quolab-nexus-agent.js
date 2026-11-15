@@ -1,8 +1,8 @@
-/* QNexusAi — unified autonomous agent and universal UI connector v1.5.0 */
+/* QNexusAi — unified autonomous agent and universal UI connector v1.9.0 */
 (function (global) {
   'use strict';
 
-  const VERSION = '1.8.0';
+  const VERSION = '1.9.0';
   const TOOL_CATALOG = Object.freeze({
     projects: {
       name: 'Projects',
