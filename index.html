@@ -2315,6 +2315,28 @@ Do not invent screen state, IDs, tool capabilities, or completed actions. Do not
     } catch(e) {}
   }
 
+  const proactiveAlertTimes = new Map();
+  function bindProactiveAlerts() {
+    window.addEventListener('quolab:nexus-alert', event => {
+      const detail = event && event.detail ? event.detail : {};
+      const tool = String(detail.tool || 'ecosystem').slice(0, 60);
+      const kind = String(detail.kind || 'error').slice(0, 60);
+      const message = String(detail.message || 'An unexpected error occurred.').slice(0, 240);
+      const signature = tool + '|' + kind + '|' + message;
+      const now = Date.now();
+      if (now - (proactiveAlertTimes.get(signature) || 0) < 15000) return;
+      proactiveAlertTimes.set(signature, now);
+      if (proactiveAlertTimes.size > 30) proactiveAlertTimes.delete(proactiveAlertTimes.keys().next().value);
+      const spanish = /^es(?:-|$)/i.test(navigator.language || '');
+      const text = spanish
+        ? 'He detectado un problema en **' + tool + '** (' + kind + '): `' + message + '`. Puedo analizarlo y proponerte una corrección.'
+        : 'I detected a problem in **' + tool + '** (' + kind + '): `' + message + '`. I can diagnose it and propose a fix.';
+      const panel = document.getElementById('ai-panel-wrapper');
+      if (panel) panel.classList.add('open');
+      addAIMsg(text, 'bot');
+      notify(spanish ? 'QuOLab Nexus AI detectó un error en ' + tool : 'QuOLab Nexus AI detected an error in ' + tool);
+    });
+  }
   function notify(msg) {
     const n = document.getElementById('notif');
     n.textContent = msg; n.classList.add('show');
@@ -2347,7 +2369,7 @@ Do not invent screen state, IDs, tool capabilities, or completed actions. Do not
       }
     }, 650);
 
-    setupAI(); aiOptsInit();
+    setupAI(); aiOptsInit(); bindProactiveAlerts();
     const welcome = document.getElementById('ai-welcome');
     if (welcome && /^es(?:-|$)/i.test(navigator.language || '')) welcome.textContent = '¡Bienvenido a QuOLab Nexus! Soy tu agente central de IA. Coordino cinco especialistas: Projects, Quantum Notebook, Quantum Open Lab, Quantum Puzzle y Quantum App Studio. Yo mismo me encargo de la ayuda general, diagnóstico, programación y coordinación del resto del ecosistema. ¿Quieres una explicación de QuOLab Nexus o prefieres que te ayude directamente?';
     if (!sessionStorage.getItem('quolab_nexus_ai_welcomed')) {
@@ -2410,7 +2432,7 @@ Do not invent screen state, IDs, tool capabilities, or completed actions. Do not
 
 })();
 
-window.QUOLAB_NEXUS_BUILD = '2026-11-14-nexus-migration';
+window.QUOLAB_NEXUS_BUILD = '2026-11-15-central-agent-dispatch';
 window.OPENQ_BUILD = window.QUOLAB_NEXUS_BUILD; // Compatibilidad temporal
 console.log('%cQuOLab Nexus build ' + window.QUOLAB_NEXUS_BUILD, 'color:#00ffdd');
 window.QuOLabNexus = QuOLabNexus;
