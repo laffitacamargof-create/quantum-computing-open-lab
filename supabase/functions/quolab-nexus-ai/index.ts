@@ -167,7 +167,7 @@ Deno.serve(async (req: Request) => {
     const rawTemperature = Number(payload.temperature);
     const temperature = Number.isFinite(rawTemperature) ? Math.min(Math.max(rawTemperature, 0), 2) : 0.7;
     const providers = providerOrder(configuredProviders());
-    if (!providers.length) return reply(503, { error: "no_ai_provider_configured", setup: ["GEMINI_API_KEY", "GROQ_API_KEY", "OPENROUTER_API_KEY", "DEEPSEEK_API_KEY"] }, origin);
+    if (!providers.length) return reply(503, { error: "no_ai_provider_configured", request_received: true, request_id: requestId, setup: ["GEMINI_API_KEY", "GROQ_API_KEY", "OPENROUTER_API_KEY", "DEEPSEEK_API_KEY"] }, origin);
 
     const failures: string[] = [];
     for (const provider of providers) {
@@ -191,7 +191,7 @@ Deno.serve(async (req: Request) => {
         }, origin);
       }
     }
-    return reply(503, { error: "all_ai_providers_unavailable", attempted_providers: failures }, origin);
+    return reply(503, { error: "all_ai_providers_unavailable", request_received: true, request_id: requestId, attempted_providers: failures }, origin);
   } catch (error) {
     const message = error instanceof Error ? error.message : "unknown_error";
     console.error("AI gateway error", { message });
