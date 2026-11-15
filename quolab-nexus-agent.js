@@ -2,7 +2,7 @@
 (function (global) {
   'use strict';
 
-  const VERSION = '1.2.0';
+  const VERSION = '1.2.1';
   // Exactly five tool specialists. Library, Help, and all general Nexus functions
   // remain under the central coordinator rather than becoming separate agents.
   const TOOL_SPECS = Object.freeze({
@@ -36,7 +36,7 @@
 
   function cleanText(value, limit) {
     return String(value == null ? '' : value)
-      .replace(/(?:sb_secret_|sk-|ghp_|github_pat_)[A-Za-z0-9_\-]{8,}/g, '[REDACTED]')
+      .replace(/(?:sb_secret_|sk[-_](?:proj[-_]|live_|test_)?|ghp_|gho_|github_pat_|AIza|xox[baprs]-|glpat-|npm_)[A-Za-z0-9_\-]{8,}/g, '[REDACTED]')
       .replace(/(Bearer\s+)[A-Za-z0-9._\-]+/gi, '$1[REDACTED]')
       .slice(0, limit || 500);
   }

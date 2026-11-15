@@ -3,7 +3,7 @@
   'use strict';
   if (global.QuOLabNexusToolConnector) return;
 
-  const VERSION = '1.2.0';
+  const VERSION = '1.2.1';
   const TOOL_BY_FILE = {
     'quolab-nexus-projects.html': 'projects',
     'quolab-nexus-architect.html': 'architect',
@@ -27,7 +27,7 @@
         try { return sanitize(JSON.parse(trimmed), '', depth + 1); } catch (_) {}
       }
       return value
-        .replace(/(?:sb_secret_|sk-|ghp_|github_pat_)[A-Za-z0-9_-]{8,}/g, '[REDACTED]')
+        .replace(/(?:sb_secret_|sk[-_](?:proj[-_]|live_|test_)?|ghp_|gho_|github_pat_|AIza|xox[baprs]-|glpat-|npm_)[A-Za-z0-9_-]{8,}/g, '[REDACTED]')
         .replace(/(Bearer\s+)[A-Za-z0-9._-]+/gi, '$1[REDACTED]')
         .replace(/((?:password|passwd|token|api[_-]?key|secret|authorization)=)[^&\s]+/gi, '$1[REDACTED]')
         .slice(0, MAX_TEXT);
