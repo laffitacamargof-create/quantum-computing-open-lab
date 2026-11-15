@@ -463,7 +463,6 @@ s.blt{color:#ffb86c;}
   <button class="stab" id="stab-2" onclick="setView('manage')">📂 MY NOTEBOOKS</button>
   <div class="secbar-right">
     <button class="tbtn" id="btn-add-md" onclick="addCellAt(-1,'markdown')">✦ Text</button>
-    <button class="tbtn" id="btn-add-code" onclick="addCellAt(-1,'code')">{ } Code</button>
     <button class="tbtn" id="btn-add-circ" onclick="addCellAt(-1,'circuit')" style="color:#00ff88;border-color:rgba(0,200,100,.25);">⚛ Circuit</button>
     <button class="tbtn" id="btn-import" onclick="importNb()">📂 Open</button>
     <input type="file" id="import-file" style="display:none;" accept=".ipynb" onchange="handleImport(event)">
@@ -482,7 +481,6 @@ s.blt{color:#ffb86c;}
     <div class="nb-scroll" id="nb-scroll">
       <div class="nb-bottom" id="nb-bottom-btns">
         <button class="nb-add-big" onclick="addCellAt(-1,'markdown')">✦ Text / LaTeX</button>
-        <button class="nb-add-big" onclick="addCellAt(-1,'code')">{ } Python / Qiskit</button>
         <button class="nb-add-big" onclick="addCellAt(-1,'circuit')" style="border-color:rgba(0,200,100,.2);color:rgba(0,200,100,.5);">⚛ Visual Circuit</button>
       </div>
     </div>
@@ -502,7 +500,7 @@ s.blt{color:#ffb86c;}
 <div class="statusbar" id="statusbar" style="display:none;">
   <div class="sb-dot sb-idle" id="sb-dot"></div>
   <span id="sb-txt">Ready</span>
-  <span>Qiskit · Python</span>
+  <span>Visual Qiskit Circuit</span>
   <div class="sb-right">
     <span id="sb-cells-info">0 cells</span>
     <span id="sb-save-status">─</span>
@@ -944,17 +942,7 @@ function buildCircuitFromData(data){
 
 let _editingCellId = null;
 
-function openCircuitEditor(cellId){
-  const cell = cells.find(c => c.id === cellId);
-  if(!cell) return;
-  _editingCellId = cellId;
-  postCore('OPENQ_OPEN_ARCHITECT_EDIT', {
-    cellId,
-    code:        cell.hiddenCode || '',
-    circuitData: cell.circuitData || null
-  });
-  notify('⚛ Opening circuit editor...');
-}
+function openCircuitEditor(cellId){const cell=cells.find(c=>c.id===cellId);if(!cell||cell.type!=='circuit')return;cell.editorOpen=!cell.editorOpen;renderCells();focusCell(cellId);}
 
 function buildCircuitOut(text){
   if(!text.trim()) return '';
@@ -1776,9 +1764,10 @@ async function runCell(id){
   if(running){notify('An execution is already in progress');return;}
   const cell=cells.find(c=>c.id===id);
   if(!cell||cell.type==='markdown')return;
+  if(cell.type==='code'||cell.type==='qiskit'){syncCircuitCellFromCode(cell,cell.code||'');cell.type='circuit';cell.code='';}
   syncCellCode(id);
-  const isCircuit=cell.type==='circuit';
-  const rawCode = isCircuit ? (cell.hiddenCode||'') : cell.code.trim();
+  const isCircuit=true;
+  const rawCode = (cell.hiddenCode||'').trim();
   const code = QISKIT_PREAMBLE+'\n'+rawCode;
   if(!rawCode.trim()){notify('⚛ Cell without code — edit the circuit first');return;}
   if(!code.trim())return;
@@ -1998,8 +1987,9 @@ function setView(v){
 // ── CELLS ────────────────────────────────────────────────────
 function addCellAt(afterIdx,type='markdown'){
   if(_expositionMode)return;
-  if(!['markdown','circuit','code'].includes(type))type='markdown';
-  const cell={id:genId(),type,code:'',output:'',exec_count:null,mdEdit:type==='markdown',errorLine:null,hiddenCode:'',circuitData:null};
+  if(!['markdown','circuit'].includes(type))type='circuit';
+  const data={qubits:2,gates:[]};
+  const cell={id:genId(),type,code:'',output:'',exec_count:null,mdEdit:type==='markdown',errorLine:null,hiddenCode:type==='circuit'?visualCircuitCode(data):'',circuitData:data,editorOpen:type==='circuit'};
   if(afterIdx===-1||afterIdx>=cells.length)cells.push(cell);
   else cells.splice(afterIdx+1,0,cell);
   renderCells();focusCell(cell.id);updateStatus();
@@ -2010,7 +2000,7 @@ function moveCellDown(id){const i=cells.findIndex(c=>c.id===id);if(i<0||i>=cells
 function _noiseCode(id){const c=cells.find(x=>x.id===id);if(!c)return'';syncCellCode(id);return c.type==='circuit'?(c.hiddenCode||''):(c.code||'');}
 // 🔊 Ejecuta el ruido YA, con los ajustes de ESTA celda; el resultado sale en la salida de la celda (como un Run normal)
 function noiseRun(id,extra){
-  const cell=cells.find(c=>c.id===id);if(!cell||cell.type==='markdown'||cell.type==='code')return;
+  const cell=cells.find(c=>c.id===id);if(!cell||cell.type!=='circuit')return;
   if(!window.QuOLabNexusNoise){notify('Noise module not loaded');return;}
   const out=document.getElementById('out-'+id);if(!out)return;
   if(!_noiseCode(id).trim()){notify('⚛ Cell without code — edit the circuit first');return;}
@@ -2025,11 +2015,12 @@ function noiseCell(id,extra){
 }
 function syncCellCode(id){const cell=cells.find(c=>c.id===id);if(!cell)return;const ta=document.getElementById('ta-'+id);const mta=document.getElementById('mta-'+id);if(ta)cell.code=ta.value;if(mta)cell.code=mta.value;}
 function focusCell(id){curCellId=id;document.querySelectorAll('.nb-cell').forEach(el=>{el.classList.toggle('active',el.dataset.id===id);});const ta=document.getElementById('ta-'+id)||document.getElementById('mta-'+id);if(ta)ta.focus();}
-function changeCellType(id){if(_expositionMode)return;const cell=cells.find(c=>c.id===id);if(!cell)return;cell.type=cell.type==='code'||cell.type==='qiskit'?'markdown':'code';cell.mdEdit=true;renderCells();focusCell(id);}
+function changeCellType(id){if(_expositionMode)return;const cell=cells.find(c=>c.id===id);if(!cell)return;cell.type=cell.type==='markdown'?'circuit':'markdown';cell.mdEdit=cell.type==='markdown';if(cell.type==='circuit'){cell.circuitData=cell.circuitData||{qubits:2,gates:[]};cell.hiddenCode=cell.hiddenCode||visualCircuitCode(cell.circuitData);}renderCells();focusCell(id);}
 
 function clearCellContent(id) {
   const cell = cells.find(c => c.id === id);
   if (!cell) return;
+  if(cell.type==='circuit'){clearVisualCircuit(id);return;}
   cell.code = '';
   cell.errorLine = null;
   const ta = document.getElementById('ta-'+id) || document.getElementById('mta-'+id);
@@ -2324,7 +2315,7 @@ function autoResize(ta){
 function onCellKeydown(e,id){
   const ta=document.getElementById('ta-'+id);
   if(e.key==='Tab'){e.preventDefault();const s=ta.selectionStart,en=ta.selectionEnd;ta.value=ta.value.substring(0,s)+'    '+ta.value.substring(en);ta.selectionStart=ta.selectionEnd=s+4;onCellInput(id);return;}
-  if(e.shiftKey&&e.key==='Enter'){e.preventDefault();runCell(id);const idx=cells.findIndex(c=>c.id===id);if(idx<cells.length-1)focusCell(cells[idx+1].id);else if(!_expositionMode)addCellAt(-1,'code');return;}
+  if(e.shiftKey&&e.key==='Enter'){e.preventDefault();runCell(id);const idx=cells.findIndex(c=>c.id===id);if(idx<cells.length-1)focusCell(cells[idx+1].id);else if(!_expositionMode)addCellAt(-1,'circuit');return;}
   if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();runCell(id);}
   if(e.ctrlKey&&e.key==='ArrowUp'){
     e.preventDefault();
@@ -2395,7 +2386,7 @@ function showUI(user){
     }
   });
   refreshNbs();
-  if(cells.length===0&&!_expositionMode)addCellAt(-1,'qiskit');
+  if(cells.length===0&&!_expositionMode)addCellAt(-1,'circuit');
 }
 
 window.addEventListener('message',e=>{
