@@ -75,6 +75,15 @@
       limits: 'Read-only guidance; execution belongs to the target module.'
     }
   });
+  const SAFE_FUNCTIONS = Object.freeze({
+    projects: Object.freeze([]),
+    architect: Object.freeze([]),
+    'architect-pro': Object.freeze([]),
+    'quantum-puzzle': Object.freeze(['getPublishedApps']),
+    'quantum-app-studio': Object.freeze([]),
+    library: Object.freeze(['getItems']),
+    help: Object.freeze([])
+  });
   const FUNCTION_PURPOSES = Object.freeze({
     reload:'Reload the current Projects resource list.',setF:'Apply a resource-type filter.',render:'Rebuild the visible resource list from current data.',execProj:'Open or execute the selected project resource.',delProj:'Delete the selected project after the module confirmation.',editProj:'Open the selected project in its editor.',updateProj:'Persist the edited project metadata.',copyNbLink:'Copy a shareable notebook link.',nexusDirectLink:'Build a direct navigation link to a Nexus resource.',
     buildPalette:'Build the available quantum-gate palette.',placeGate:'Place a selected gate on the circuit canvas.',removeGate:'Remove a gate from the circuit.',moveExistingGate:'Move an existing gate to another circuit position.',renderCircuit:'Render the current circuit on the visual canvas.',updateCodeFromCircuit:'Regenerate Qiskit code from the visual circuit.',onCodeEdit:'Handle code-editor changes and synchronize circuit state.',forceSync:'Force synchronization between the circuit and code representations.',initPyodide:'Initialize the browser Python execution runtime.',runServerCode:'Submit code to the configured remote execution engine.',runCode:'Execute the current code in the configured engine.',fetchWithRetry:'Perform a network request with retry handling.',drawBloch:'Draw the current qubit state on the Bloch sphere.',updateBlochFromProbs:'Update Bloch visualization from measured probabilities.',applyBlochGate:'Apply a gate operation to the selected Bloch-state model.',addQubit:'Add a qubit to the current circuit.',removeQubit:'Remove a qubit from the current circuit.',clearCircuit:'Clear the current circuit.',saveCircuit:'Save the current circuit to the account.',loadCircuit:'Load a saved circuit.',deleteCircuit:'Delete a saved circuit.',dlPy:'Export the current circuit as a Python file.',dlNb:'Export the current circuit as a notebook.',saveAndSchedule:'Save the circuit and add it to the execution queue.',runQueue:'Execute queued circuit jobs.',removeFromQueue:'Remove a job from the execution queue.',setTab:'Switch the active tool tab.',setMode:'Change the current editor or visualization mode.',setLib:'Select the active gate or component library.',openNoise:'Open noise-model configuration.',quickNoise:'Run a quick noise experiment with current settings.',returnToNotebook:'Return the circuit to its parent notebook.',
@@ -185,7 +194,7 @@
         if(typeof fn==='function'){
           try{const source=Function.prototype.toString.call(fn);signature=(source.match(/^[^(]*\(([^)]*)\)/)||source.match(/^\s*([^=()]+?)\s*=>/)||[])[1]||'';}catch(_){}
         }
-        const safe=/^(?:get|list|find|search|inspect|read|render|refresh|load|show|open|draw|describe|setF|setTab|setMode|setLib|updateStatus|updateBloch|syncCellCode)/i.test(name);
+        const safe=(SAFE_FUNCTIONS[screen]||[]).includes(name);
         return {name,purpose:FUNCTION_PURPOSES[name]||inferFunctionPurpose(name),callable:typeof fn==='function',safe:safe&&typeof fn==='function',arity:typeof fn==='function'?fn.length:0,signature:cleanText(signature,180)};
       });
       item.visible_text=cleanText(doc.body?.innerText||'',isActive?4200:700);
