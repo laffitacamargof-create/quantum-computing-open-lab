@@ -83,7 +83,7 @@ function providerOrder(available: Provider[]) {
 }
 function retryable(status: number) {
   return status === 401 || status === 402 || status === 403 || status === 408 || status === 409 ||
-    status === 429 || status >= 500;
+    status === 413 || status === 425 || status === 429 || status >= 500;
 }
 async function invoke(provider: Provider, messages: Message[], maxTokens: number, temperature: number) {
   const controller = AbortSignal.timeout(provider.timeoutMs || 25_000);
@@ -126,6 +126,7 @@ Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders(origin) });
   if (req.method !== "POST") return reply(405, { error: "method_not_allowed" }, origin);
   if (origin && !allowedOrigins.has(origin)) return reply(403, { error: "origin_not_allowed" }, origin);
+  const requestId = (req.headers.get("x-quolab-request-id") || crypto.randomUUID()).slice(0, 100);
 
   const authHeader = req.headers.get("authorization") || "";
   const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
