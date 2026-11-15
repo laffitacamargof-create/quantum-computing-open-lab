@@ -11,7 +11,6 @@ The gateway supports these providers when their server-side key is configured:
 | `gemini` | `GEMINI_API_KEY` | `gemini-2.5-flash` | Gemini generateContent |
 | `groq` | `GROQ_API_KEY` | `openai/gpt-oss-120b` | OpenAI-compatible chat |
 | `openrouter` | `OPENROUTER_API_KEY` | `openrouter/free` | OpenAI-compatible chat |
-| `huggingface` | `HUGGINGFACE_API_KEY` | `Qwen/Qwen2.5-7B-Instruct` | Hugging Face router chat |
 | `deepseek` | `DEEPSEEK_API_KEY` | `deepseek-chat` | OpenAI-compatible chat |
 
 Only providers with configured credentials are considered. The default order is Gemini, Groq, OpenRouter, then DeepSeek. Set `AI_PROVIDER_ORDER` to a comma-separated order to change priority, for example:
@@ -25,7 +24,6 @@ Optional model overrides:
 - `AI_MODEL_GEMINI`
 - `AI_MODEL_GROQ`
 - `AI_MODEL_OPENROUTER`
-- `AI_MODEL_HUGGINGFACE`
 - `AI_MODEL_DEEPSEEK`
 
 ## Adding future OpenAI-compatible providers
