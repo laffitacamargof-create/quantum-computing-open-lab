@@ -103,9 +103,17 @@ body::before{content:'';position:fixed;inset:0;
 .btn-cancel:hover{border-color:var(--bl);color:var(--bl2);}
 
 /* AI PANEL (QNexusAi) */
-#ai-panel-wrapper{display:none;position:fixed;bottom:1.2rem;right:1.2rem;z-index:600;width:400px;}
+#ai-panel-wrapper{display:none;position:fixed;left:auto;top:auto;bottom:1rem;right:1rem;z-index:600;width:min(400px,calc(100vw - 2rem));height:min(540px,calc(100vh - 5.5rem));min-width:280px;min-height:64px;max-width:calc(100vw - 1rem);max-height:calc(100vh - 5rem);overflow:hidden;resize:both;touch-action:pan-y;}
 #ai-panel-wrapper.open{display:block;}
-.ai-panel{background:var(--s);border:1px solid rgba(0,136,255,.45);border-radius:16px;display:flex;flex-direction:column;height:500px;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.6);animation:su .3s ease;}
+.ai-panel{background:var(--s);border:1px solid rgba(0,136,255,.45);border-radius:16px;display:flex;flex-direction:column;height:100%;min-height:0;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.6);animation:su .3s ease;}
+#ai-panel-wrapper.ai-minimized{height:auto!important;min-height:0;width:min(320px,calc(100vw - 1rem));resize:none;}
+#ai-panel-wrapper.ai-minimized .ai-msgs,#ai-panel-wrapper.ai-minimized .ai-loading,#ai-panel-wrapper.ai-minimized .ai-input-row,#ai-panel-wrapper.ai-minimized .ai-status-bar{display:none;}
+.ai-hdr{cursor:move;touch-action:none;user-select:none;}
+.ai-hdr button{cursor:pointer;touch-action:manipulation;}
+.ai-window-controls{display:flex;align-items:center;gap:.3rem;}
+.ai-window-controls button{width:27px;height:27px;border:1px solid var(--b);border-radius:6px;background:transparent;color:var(--mu);font-size:.85rem;line-height:1;cursor:pointer;}
+.ai-window-controls button:hover{border-color:var(--bl);color:var(--bl2);}
+@media(max-width:600px){#ai-panel-wrapper{right:.5rem;bottom:.5rem;width:calc(100vw - 1rem);height:min(68vh,520px);min-width:260px;max-width:calc(100vw - 1rem);max-height:calc(100vh - 4.5rem);}#ai-panel-wrapper.ai-minimized{width:min(280px,calc(100vw - 1rem));}}
 .ai-hdr{padding:.82rem 1.1rem;background:linear-gradient(135deg,var(--s2),rgba(0,136,255,.12));border-bottom:1px solid var(--b);display:flex;align-items:center;justify-content:space-between;}
 .ai-title{display:flex;align-items:center;gap:.45rem;font-family:var(--orb);font-size:.7rem;color:var(--bl2);}
 .ai-dot{width:7px;height:7px;background:var(--gr);border-radius:50%;animation:pd 2s infinite;}
@@ -424,7 +432,7 @@ body::before{content:'';position:fixed;inset:0;
 
 <div id="ai-panel-wrapper">
   <div class="ai-panel">
-    <div class="ai-hdr">
+    <div class="ai-hdr" id="ai-panel-drag-handle">
       <div class="ai-title">
         <div class="ai-dot"></div>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="margin-right:4px;">
@@ -435,7 +443,10 @@ body::before{content:'';position:fixed;inset:0;
         QNexusAi
         <span id="ai-prov-lbl" style="font-size:.46rem;color:var(--mu);margin-left:.3rem;"></span>
       </div>
-      <button class="ai-close-btn" onclick="QuOLabNexus.toggleAI()">✕</button>
+      <div class="ai-window-controls">
+        <button type="button" title="Plegar QNexusAi" aria-label="Plegar QNexusAi" onclick="QuOLabNexus.toggleAIMinimized()">−</button>
+        <button type="button" title="Cerrar QNexusAi" aria-label="Cerrar QNexusAi" onclick="QuOLabNexus.toggleAI()">×</button>
+      </div>
     </div>
     <div class="ai-msgs" id="ai-messages">
       <div class="ai-msg bot">
@@ -1980,7 +1991,58 @@ class QuOLabNexusConfigSyncReader {
     }
   }
 
-  function toggleAI() { const panel = document.getElementById('ai-panel-wrapper'); if (panel) panel.classList.toggle('open'); }
+  function toggleAI() {
+    const panel = document.getElementById('ai-panel-wrapper');
+    if (!panel) return;
+    panel.classList.toggle('open');
+    if (panel.classList.contains('open')) panel.classList.remove('ai-minimized');
+  }
+  function toggleAIMinimized() {
+    const panel = document.getElementById('ai-panel-wrapper');
+    if (panel) panel.classList.toggle('ai-minimized');
+  }
+  function initAIPanelControls() {
+    const panel = document.getElementById('ai-panel-wrapper');
+    const handle = document.getElementById('ai-panel-drag-handle');
+    if (!panel || !handle || handle.dataset.dragBound) return;
+    handle.dataset.dragBound = '1';
+    try {
+      const saved = JSON.parse(localStorage.getItem('qnexus_ai_window') || '{}');
+      if (Number.isFinite(saved.left) && Number.isFinite(saved.top)) {
+        panel.style.left = Math.max(8, Math.min(saved.left, innerWidth - panel.offsetWidth - 8)) + 'px';
+        panel.style.top = Math.max(70, Math.min(saved.top, innerHeight - panel.offsetHeight - 8)) + 'px';
+        panel.style.right = 'auto'; panel.style.bottom = 'auto';
+      }
+    } catch (_) {}
+    let drag = null;
+    handle.addEventListener('pointerdown', event => {
+      if (event.target.closest('button')) return;
+      const rect = panel.getBoundingClientRect();
+      drag = { x:event.clientX, y:event.clientY, left:rect.left, top:rect.top, id:event.pointerId };
+      try { handle.setPointerCapture(event.pointerId); } catch (_) {}
+      event.preventDefault();
+    });
+    handle.addEventListener('pointermove', event => {
+      if (!drag || event.pointerId !== drag.id) return;
+      const left = Math.max(8, Math.min(drag.left + event.clientX - drag.x, innerWidth - panel.offsetWidth - 8));
+      const top = Math.max(70, Math.min(drag.top + event.clientY - drag.y, innerHeight - panel.offsetHeight - 8));
+      panel.style.left = left + 'px'; panel.style.top = top + 'px';
+      panel.style.right = 'auto'; panel.style.bottom = 'auto';
+    });
+    const stop = event => {
+      if (!drag || (event && event.pointerId !== drag.id)) return;
+      drag = null;
+      const rect = panel.getBoundingClientRect();
+      try { localStorage.setItem('qnexus_ai_window', JSON.stringify({ left:rect.left, top:rect.top })); } catch (_) {}
+    };
+    handle.addEventListener('pointerup', stop);
+    handle.addEventListener('pointercancel', stop);
+    window.addEventListener('resize', () => {
+      const rect = panel.getBoundingClientRect();
+      if (rect.left + 40 > innerWidth) panel.style.left = Math.max(8, innerWidth - Math.min(panel.offsetWidth, innerWidth - 16) - 8) + 'px';
+      if (rect.top + 40 > innerHeight) panel.style.top = Math.max(70, innerHeight - Math.min(panel.offsetHeight, innerHeight - 80) - 8) + 'px';
+    });
+  }
 
   const DEMO = {
     qiskit:'from qiskit import QuantumCircuit\nqc = QuantumCircuit(2)\nqc.h(0)\nqc.cx(0,1)\nprint(qc.draw())',
@@ -2014,12 +2076,20 @@ class QuOLabNexusConfigSyncReader {
     });
   }
   async function gatherAIContext() {
-    const a = document.querySelector('.screen.active');
-    const screen = a ? a.id.replace(/^screen-/, '') : 'home';
+    const active = document.querySelector('.screen.active');
+    const screen = active ? active.id.replace(/^screen-/, '') : 'home';
+    // Tool state is operational context, not optional conversation-history sharing.
+    // The agent needs it to choose the active specialist and verify real execution.
     const ctx = { screen, url_hash: location.hash || '', user_role: curUser?.role || 'guest' };
-    if (!aiOptGet('ctx')) { ctx.note = 'The user disabled context sharing.'; return ctx; }
-    if (_shareCtx && _shareCtx.title) ctx.opened_item = { title: _shareCtx.title, link: _shareCtx.hash };
-    if (screen === 'architect' || screen === 'architect-pro') { const m = await askModule(screen); if (m) ctx.module = m; }
+    if (aiOptGet('ctx')) {
+      if (_shareCtx && _shareCtx.title) ctx.opened_item = { title: _shareCtx.title, link: _shareCtx.hash };
+      if (screen === 'architect' || screen === 'architect-pro') {
+        const moduleState = await askModule(screen);
+        if (moduleState) ctx.module = moduleState;
+      }
+    } else {
+      ctx.note = 'Optional conversation extras are disabled; sanitized tool status remains available for routing and verification.';
+    }
     return window.QuOLabNexusAgent ? window.QuOLabNexusAgent.collectContext(ctx) : ctx;
   }
 
@@ -2618,7 +2688,7 @@ CONTEXT: ${c}`;
       }
     }, 650);
 
-    setupAI(); aiOptsInit(); bindProactiveAlerts();
+    setupAI(); aiOptsInit(); bindProactiveAlerts(); initAIPanelControls();
     const welcome = document.getElementById('ai-welcome');
     if (welcome && /^es(?:-|$)/i.test(navigator.language || '')) welcome.textContent = 'Soy QNexusAi, el agente central de QuOLab Nexus. Coordino cinco especialistas y puedo operar las herramientas compatibles del ecosistema. Escribe una instrucción y trabajaré directamente en la herramienta correspondiente.';
     if (!sessionStorage.getItem('quolab_nexus_ai_welcomed')) {
@@ -2674,7 +2744,7 @@ CONTEXT: ${c}`;
 
   return { 
     nav, toggleShare, share, shareScreen, addShortcut, aiOpt, openAuth, closeAuth, doLogin, doRegister, doFounder, doLogout,
-    toggleAI, sendAI, notify, init, getUser:()=>curUser,
+    toggleAI, toggleAIMinimized, sendAI, notify, init, getUser:()=>curUser,
     _refreshUI: refreshUIFromConfig,
     _broadcastConfig: broadcastConfigToModules
   };
