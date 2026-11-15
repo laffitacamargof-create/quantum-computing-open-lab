@@ -1,4 +1,4 @@
-/* QuOLab Nexus Tool Connector — non-invasive telemetry bridge v1 */
+/* QuOLab Nexus Tool Connector — sanitized telemetry bridge v1.2.0 */
 (function (global) {
   'use strict';
   if (global.QuOLabNexusToolConnector) return;
