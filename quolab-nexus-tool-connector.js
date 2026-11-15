@@ -1,9 +1,9 @@
-/* QuOLab Nexus Tool Connector — sanitized telemetry bridge v1.2.0 */
+/* QuOLab Nexus Tool Connector — sanitized telemetry bridge v1.3.0 */
 (function (global) {
   'use strict';
   if (global.QuOLabNexusToolConnector) return;
 
-  const VERSION = '1.2.1';
+  const VERSION = '1.3.0';
   const TOOL_BY_FILE = {
     'quolab-nexus-projects.html': 'projects',
     'quolab-nexus-architect.html': 'architect',
@@ -92,6 +92,20 @@
     send('input', meta);
   }, true);
 
+  global.document.addEventListener('change', event => {
+    const el=event.target;
+    if(!el||!['INPUT','TEXTAREA','SELECT'].includes(el.tagName)||el.type==='password')return;
+    const meta={id:el.id||'',name:el.getAttribute('name')||'',type:el.type||el.tagName.toLowerCase(),label:fieldLabel(el)};
+    meta.value=SENSITIVE.test([meta.id,meta.name,meta.type,meta.label].join(' '))?'[REDACTED]':sanitize(el.tagName==='SELECT'?el.options[el.selectedIndex]?.text:el.value,'',0);
+    send('change',meta);
+  },true);
+
+  global.document.addEventListener('submit', event => {
+    const form=event.target;
+    if(!form||form.tagName!=='FORM')return;
+    send('form_submit',{id:form.id||'',name:form.getAttribute('name')||'',action:safeUrl(form.getAttribute('action')||global.location.href),method:String(form.method||'GET').toUpperCase()});
+  },true);
+
   global.document.addEventListener('click', event => {
     const el = event.target && event.target.closest ? event.target.closest('button,a,[role="button"],input[type="submit"]') : null;
     if (!el) return;
@@ -106,6 +120,7 @@
       const body = init && init.body;
       send('request', { method, url: safeUrl(url), body: typeof body === 'string' ? sanitize(body, '', 0) : body ? '[NON_TEXT_BODY]' : '' });
       return originalFetch(input, init).then(response => {
+        if(!response.ok)send('http_error',{method,url:safeUrl(url),status:response.status,statusText:String(response.statusText||'').slice(0,120)});
         try {
           const copy = response.clone();
           copy.text().then(text => {
@@ -135,6 +150,7 @@
         const meta = this.__quolabNexusMeta || { method: 'GET', url: '' };
         send('request', { method: meta.method, url: meta.url, body: typeof body === 'string' ? sanitize(body, '', 0) : body ? '[NON_TEXT_BODY]' : '' });
         this.addEventListener('load', function () {
+          if(this.status>=400)send('http_error',{method:meta.method,url:meta.url,status:this.status,statusText:String(this.statusText||'').slice(0,120)});
           let payload = '';
           try { payload = this.responseType === 'json' ? this.response : (this.responseText || ''); } catch (_) {}
           try { if (typeof payload === 'string') payload = JSON.parse(payload); } catch (_) {}
