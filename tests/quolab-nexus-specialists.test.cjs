@@ -98,7 +98,7 @@ assert.ok(notebook.includes('function openCircuitEditor(cellId)'));
 assert.ok(notebook.includes('cell.hiddenCode  = d.code'));
 assert.ok(notebook.includes('cell.circuitData = d.circuitData'));
 assert.ok(notebook.includes('OPENQ_OPEN_ARCHITECT_EDIT'));
-assert.ok(notebook.includes('Save and Return'));
+assert.ok(notebook.includes('Save and return'));
 assert.ok(agent.includes('writes hiddenCode directly'));
 assert.ok(docs.includes('Notebook ↔ Quantum Open Lab circuit synchronization'));
 assert.ok(agent.includes('must not use that navigation path for its own edits'));
