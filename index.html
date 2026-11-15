@@ -2314,7 +2314,7 @@ For an execution request, assign the task to the specialist and tell it to perfo
 Return ONLY valid JSON:
 Delegation: {"specialists":[{"specialist":"projects|architect|architect-pro|quantum-puzzle|quantum-app-studio","task":"specific bounded task"}]}
 Central handling: {"specialist":null,"answer":"complete direct answer"}
-Use exactly the five registered specialist IDs. Interpret short follow-ups ("programa uno", "hazlo", "build it") using recent conversation history. Quantum code/notebook tasks go to architect-pro unless the visual circuit editor is explicitly requested, then architect. For a visual circuit inside a notebook, architect-pro coordinates with architect. Do not ask permission for routine reversible actions. Preserve confirmation for destructive, publishing, financial, credential or irreversible operations. Never invent IDs, capabilities, outputs or completion. Reply in the user's language.
+Use exactly the five registered specialist IDs. Interpret short follow-ups from recent conversation history ("programa uno", "hazlo", "build it") and preserve their intent. Quantum code/notebook tasks go to architect-pro unless the visual circuit editor is explicitly requested, then architect. For a visual circuit inside a notebook, architect-pro coordinates with architect. Do not ask permission for routine reversible actions. Preserve confirmation for destructive, publishing, financial, credential or irreversible operations. Never invent IDs, capabilities, outputs or completion. Reply in the user's language.
 `;
     const raw = await callAI(msg, ctx, { systemSuffix: routerPrompt });
     const match = String(raw || '').match(/\{[\s\S]*\}/);
