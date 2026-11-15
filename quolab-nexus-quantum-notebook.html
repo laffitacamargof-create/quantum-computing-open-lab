@@ -2597,7 +2597,8 @@ window.addEventListener('message',e=>{
       const c=cells[d.cellIndex];
       if(c&&c.type!=='markdown'){
         syncCellCode(c.id);
-        Promise.resolve(runCell(c.id)).then(()=>{const out=document.getElementById('out-'+c.id);const value=out?(out.innerText||'').slice(-1200):'';const failed=!out||/No engine|❌|error/i.test(value);if(d.requestId)window.parent.postMessage({type:'OPENQ_AI_ACTION_ACK',requestId:d.requestId,ok:!failed,message:failed?(value||'Cell execution did not produce a successful output.'):'Notebook cell '+d.cellIndex+' executed.',output:value},'*');}).catch(err=>{if(d.requestId)window.parent.postMessage({type:'OPENQ_AI_ACTION_ACK',requestId:d.requestId,ok:false,message:err.message||'Cell execution failed.'},'*');});
+        const beforeExec=c.exec_count;
+        Promise.resolve(runCell(c.id)).then(()=>{const out=document.getElementById('out-'+c.id);const value=out?(out.innerText||'').slice(-1200):'';const didExecute=c.exec_count!==beforeExec;const failed=!didExecute||!out||/No engine|❌|error/i.test(value);if(d.requestId)window.parent.postMessage({type:'OPENQ_AI_ACTION_ACK',requestId:d.requestId,ok:!failed,message:failed?(value||'Cell execution did not produce a successful output.'):'Notebook cell '+d.cellIndex+' executed.',output:value},'*');}).catch(err=>{if(d.requestId)window.parent.postMessage({type:'OPENQ_AI_ACTION_ACK',requestId:d.requestId,ok:false,message:err.message||'Cell execution failed.'},'*');});
       }else if(d.requestId)window.parent.postMessage({type:'OPENQ_AI_ACTION_ACK',requestId:d.requestId,ok:false,message:'Notebook execution cell is unavailable.'},'*');
     }
   }catch(err){console.warn('copilot hook',err);}
