@@ -263,8 +263,14 @@
       event_delta: {from_sequence:lastDeliveredEventSequence+1,to_sequence:eventSequence,dropped:recentEvents.length>0&&lastDeliveredEventSequence+1<recentEvents[0].sequence},
       user_context: base || {}
     };
-    if (options && options.consumeEventDelta) lastDeliveredEventSequence = eventSequence;
     return result;
+  }
+
+  function acknowledgeEventDelta(sequence) {
+    const value = Number(sequence);
+    if (Number.isInteger(value) && value >= 0 && value <= eventSequence) {
+      lastDeliveredEventSequence = Math.max(lastDeliveredEventSequence, value);
+    }
   }
 
   function recordMessage(event) {
@@ -428,6 +434,7 @@
     identity: 'QNexusAi',
     collectContext: snapshot,
     executeUIAction,
-    getRecentEvents: () => recentEvents.slice()
+    getRecentEvents: () => recentEvents.slice(),
+    acknowledgeEventDelta
   });
 })(window);
