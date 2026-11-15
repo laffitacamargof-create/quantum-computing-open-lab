@@ -67,7 +67,7 @@ assert.match(index, /case 'open_circuit_editor'/);
 assert.match(agent, /tool_catalog: Object\.keys\(TOOL_SPECS\)/);
 assert.match(agent, /Full tool manual/);
 assert.match(agent, /identity: 'QNexusAi'/);
-assert.match(agent, /The Projects Specialist/);
+assert.match(agent, /You are the Projects Specialist/);
 assert.match(agent, /specialist_runs: delegationRuns\.slice\(-8\)/);
 assert.match(index, /async function routeAI\(msg, ctx\)/, 'central router must dispatch real worker calls');
 assert.match(index, /SPECIALIST EXECUTION MODE/);
