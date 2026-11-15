@@ -22,6 +22,16 @@ for (const name of [
 ]) assert.ok(registry[1].includes(name), name + ' must be registered');
 
 assert.match(agent, /CENTRAL_SCREENS = Object\.freeze\(\['library','help'\]\)/);
+assert.match(agent, /SPECIALIST_INSTRUCTIONS = Object\.freeze/);
+assert.match(agent, /getSpecialistInstructions: id => SPECIALIST_INSTRUCTIONS\[id\]/);
+assert.match(agent, /recordDelegation,/);
+assert.match(agent, /specialist_runs: delegationRuns\.slice\(-8\)/);
+assert.match(index, /async function routeAI\(msg, ctx\)/, 'central router must dispatch real worker calls');
+assert.match(index, /SPECIALIST WORKER MODE/);
+assert.match(index, /recordDelegation\(route\.specialist, 'completed'/);
+assert.match(index, /recordDelegation\(route\.specialist, 'failed'/);
+assert.match(index, /async function callAI\(msg, ctx, options = \{\}\)/);
+
 assert.match(agent, /QuOLab Nexus AI — central coordinator/);
 assert.match(agent, /getElementById\('studioIframe'\)/, 'App Studio must be reachable through its nested iframe');
 assert.match(agent, /studioModalReal/, 'App Studio activation must be detected');
