@@ -2,7 +2,7 @@
 (function (global) {
   'use strict';
 
-  const VERSION = '1.7.0';
+  const VERSION = '1.8.0';
   const TOOL_CATALOG = Object.freeze({
     projects: {
       name: 'Projects',
@@ -165,6 +165,14 @@
         if(value&&!SENSITIVE.test((el.id||'')+' '+(el.className||'')))outputs.push(value);
       }
       item.outputs=outputs.slice(0,isActive?18:5);
+      item.function_api=(spec.functions||'').split(',').map(name=>name.trim()).filter(name=>/^[A-Za-z_$][\\w$]*$/.test(name)).slice(0,60).map(name=>{
+        const fn=doc.defaultView&&doc.defaultView[name];
+        let signature='';
+        if(typeof fn==='function'){
+          try{const source=Function.prototype.toString.call(fn);signature=(source.match(/^[^(]*\\(([^)]*)\\)/)||source.match(/^\\s*([^=()]+?)\\s*=>/)||[])[1]||'';}catch(_){}
+        }
+        return {name,callable:typeof fn==='function',arity:typeof fn==='function'?fn.length:0,signature:cleanText(signature,180)};
+      });
       item.visible_text=cleanText(doc.body?.innerText||'',isActive?4200:700);
     } catch (_) { item.cross_origin_or_unavailable=true; }
     return item;
@@ -212,10 +220,12 @@
       type: type,
       kind: cleanText(nestedKind, 60),
       details: cleanText(JSON.stringify(details.details || details), 1000),
-      status: /ERROR|FAIL|REJECT/i.test(type) || /error/i.test(nestedKind) ? 'error' : /RESULT|OUTPUT|SUCCESS|READY/i.test(type) || /response|output|result/i.test(nestedKind) ? 'result' : 'event'
+      status: /ERROR|FAIL|REJECT/i.test(type) || /error/i.test(nestedKind) || (details.details && (details.details.ok===false || (Number(details.details.status)>=400))) ? 'error' : /RESULT|OUTPUT|SUCCESS|READY/i.test(type) || /response|output|result/i.test(nestedKind) ? 'result' : 'event',
+      timestamp: Number(event.data.timestamp)||Date.now()
     };
     recentEvents.push(record);
     if (recentEvents.length > MAX_EVENTS) recentEvents.splice(0, recentEvents.length - MAX_EVENTS);
+    global.dispatchEvent(new CustomEvent('quolab:nexus-activity',{detail:record}));
     if (record.status === 'error') {
       const nestedDetails = details.details && typeof details.details === 'object' ? details.details : {};
       const detailMessage = details.message || details.error || nestedDetails.message || nestedDetails.error || nestedKind || type;
