@@ -2298,10 +2298,11 @@ CONTEXT: ${c}`;
             finish({ok:false,message:'Delivery was retried 120 times, but the tool never acknowledged receipt. The action was not marked as delivered.',requestId,received:false,acknowledged:false});
             return;
           }
-          if(!send(message)){finish({ok:false,message:'The browser could not send the instruction to the tool frame.',requestId,received:false,acknowledged:false});return;}
+          const sent=send(message);
           attempts++;
           nextSendAt=now+backoff;
           backoff=Math.min(Math.round(backoff*1.45),4500);
+          if(!sent)console.warn('QNexusAi delivery attempt could not reach the tool frame; retrying the same request ID.',requestId);
         }else if(received&&now>=nextStatusAt){
           send({type:'OPENQ_AI_ACTION_STATUS',requestId});
           nextStatusAt=now+1400;
