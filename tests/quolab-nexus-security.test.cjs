@@ -29,6 +29,7 @@ assert.match(ai, /payload_too_large/);
 
 assert.match(sandbox, /shutil\.which\("bwrap"\)/);
 assert.match(sandbox, /--unshare-all/);
+assert.match(sandbox, /sandbox_runtime_status/);
 assert.match(sandbox, /--uid/);
 assert.match(sandbox, /--gid/);
 assert.ok(sandbox.includes("os.path.realpath(path)"));
