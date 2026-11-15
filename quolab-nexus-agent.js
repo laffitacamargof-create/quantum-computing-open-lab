@@ -13,6 +13,22 @@
     'quantum-app-studio': { name: 'Quantum App Studio Specialist', role: 'Create, edit, preview and manage quantum applications in Quantum App Studio.', capabilities: ['inspect','navigate','fill','click','select','scroll'] }
   });
   const CENTRAL_SCREENS = Object.freeze(['library','help']);
+  const SPECIALIST_INSTRUCTIONS = Object.freeze({
+    projects: 'You are the Projects Specialist. Scope: published projects, notebooks, PDFs, videos, project metadata, search and opening project resources. Inspect the supplied project screen and context. Do not claim to edit or publish project records unless a supported action is explicitly available. Return findings, exact next steps, and only safe UI actions supported by context.',
+    architect: 'You are the Quantum Open Lab Specialist. Scope: quantum circuit construction, gates, Qiskit code, measurement, simulation, noise models, and circuit diagnostics. Preserve the current circuit unless the user asks to replace it. Validate qubit/gate limits and explain simulation assumptions. Return tested reasoning, code where requested, and safe UI actions.',
+    'architect-pro': 'You are the Quantum Notebook Specialist. Scope: notebook cells, Python/Qiskit code, Markdown, execution outputs, errors, and exports. Preserve unrelated cells. Use cell indices only when present in context. Never claim code ran unless an execution result confirms it. Return precise cell-scoped changes and safe UI actions.',
+    'quantum-puzzle': 'You are the Quantum Puzzle Specialist. Scope: puzzle catalogue, challenge state, puzzle interactions, and published puzzle applications. Do not bypass access checks or alter published content without explicit user approval. Return grounded findings and safe UI actions.',
+    'quantum-app-studio': 'You are the Quantum App Studio Specialist. Scope: creating, editing, previewing, and managing applications inside the nested App Studio iframe. Inspect only controls and state supplied in context. Do not publish, delete, overwrite, or approve without explicit user confirmation. Return exact app changes and safe UI actions.'
+  });
+  const delegationRuns = [];
+  function recordDelegation(specialist, status, summary) {
+    if (!Object.prototype.hasOwnProperty.call(TOOL_SPECS, specialist)) return null;
+    const spec = TOOL_SPECS[specialist];
+    const item = { specialist, name: spec.name, status: cleanText(status, 30), summary: cleanText(summary, 320), at: new Date().toISOString() };
+    delegationRuns.push(item);
+    if (delegationRuns.length > 20) delegationRuns.shift();
+    return Object.assign({}, item);
+  }
   const SENSITIVE = /password|passphrase|secret|token|api.?key|private.?key|credential|founder|authorization|cookie|session/i;
   const EVENT_ALLOW = /^(OPENQ|NEXUS|QCOL)_[A-Z0-9_]+$/;
   const recentEvents = [];
@@ -119,6 +135,7 @@
       active_specialist: activeTool ? activeTool.specialist : 'QuOLab Nexus AI — central coordinator',
       tools,
       recent_events: recentEvents.slice(-20),
+      specialist_runs: delegationRuns.slice(-8),
       user_context: base || {}
     };
   }
@@ -200,6 +217,9 @@
     version: VERSION,
     identity: 'QuOLab Nexus AI',
     specialists: TOOL_SPECS,
+    getSpecialistInstructions: id => SPECIALIST_INSTRUCTIONS[id] || null,
+    recordDelegation,
+    getRecentDelegations: () => delegationRuns.slice(),
     collectContext: snapshot,
     executeUIAction,
     getRecentEvents: () => recentEvents.slice()
