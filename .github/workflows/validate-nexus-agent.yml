@@ -16,10 +16,12 @@ on:
       - "app.py"
       - "quolab_nexus_server.py"
       - "quolab_execution_sandbox.py"
+      - "requirements.txt"
+      - "Dockerfile"
       - ".github/workflows/validate-nexus-agent.yml"
 
 jobs:
-  syntax:
+  syntax-and-security:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -28,6 +30,8 @@ jobs:
           node-version: "22"
       - name: Verify Python sandbox escape attempts are rejected
         run: python tests/test_execution_sandbox.py
+      - name: Compile Python entrypoints
+        run: python -m py_compile app.py quolab_nexus_server.py quolab_execution_sandbox.py
       - name: Check central agent syntax
         run: node --check quolab-nexus-agent.js
       - name: Check universal tool connector syntax
@@ -40,7 +44,7 @@ jobs:
           import re
           from pathlib import Path
           source = Path("index.html").read_text(encoding="utf-8")
-          blocks = re.findall(r'<script type="module">([\s\S]*?)</script>', source)
+          blocks = re.findall(r'<script type="module">([\\s\\S]*?)</script>', source)
           if len(blocks) != 1:
               raise SystemExit(f"Expected one main module script, found {len(blocks)}")
           Path("/tmp/quolab-index.mjs").write_text(blocks[0], encoding="utf-8")
@@ -63,11 +67,11 @@ jobs:
           count = 0
           for page in pages:
               source = Path(page).read_text(encoding="utf-8")
-              for match in re.finditer(r'<script\b([^>]*)>([\s\S]*?)</script\s*>', source, re.I):
+              for match in re.finditer(r'<script\\b([^>]*)>([\\s\\S]*?)</script\\s*>', source, re.I):
                   attrs, body = match.group(1), match.group(2)
-                  if re.search(r'\bsrc\s*=', attrs, re.I) or not body.strip():
+                  if re.search(r'\\bsrc\\s*=', attrs, re.I) or not body.strip():
                       continue
-                  kind = re.search(r"""\btype\s*=\s*["']([^"']+)["']""", attrs, re.I)
+                  kind = re.search(r"""\\btype\\s*=\\s*["']([^"']+)["']""", attrs, re.I)
                   if kind and kind.group(1).lower() not in ("module", "text/javascript", "application/javascript"):
                       continue
                   suffix = "mjs" if kind and kind.group(1).lower() == "module" else "js"
@@ -81,3 +85,7 @@ jobs:
             [ -e "$file" ] || continue
             node --check "$file"
           done
+      - name: Build isolated quantum engine image
+        run: docker build --pull --tag quolab-nexus-engine:test .
+      - name: Verify bubblewrap is present in the runtime image
+        run: docker run --rm --entrypoint bwrap quolab-nexus-engine:test --version
