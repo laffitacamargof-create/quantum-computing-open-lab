@@ -982,10 +982,10 @@ class QuOLabNexusConfigSyncReader {
     try { a = JSON.parse(localStorage.getItem('openq_ai') || '{}') || {}; } catch (e) {}
     try { q = JSON.parse(localStorage.getItem('qcol_ai') || '{}') || {}; } catch (e) {}
     if (!a.key && q.key) a = Object.assign({}, a, q);
-    // DeepSeek is the official QuOLab Nexus provider until the owner changes it.
-    // Its API key is server-side only; never reuse browser-stored provider keys.
-    a.provider = 'deepseek';
-    a.model = 'deepseek-chat';
+    // All model traffic is routed through the server-side multi-provider gateway.
+    // Provider selection and fallback order are controlled by server secrets.
+    a.provider = 'gateway';
+    a.model = 'auto';
     a.key = '';
     return a;
   }
@@ -2259,7 +2259,7 @@ Do not invent screen state, IDs, tool capabilities, or completed actions. Do not
     return session.access_token;
   }
 
-  async function callDeepSeekGateway(messages, maxTokens, temperature) {
+  async function callMultiModelGateway(messages, maxTokens, temperature) {
     const accessToken = await getAIUserAccessToken();
     const response = await fetch(AI_SUPABASE_URL + '/functions/v1/quolab-nexus-ai', {
       method: 'POST',
@@ -2269,7 +2269,7 @@ Do not invent screen state, IDs, tool capabilities, or completed actions. Do not
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: aiCfg.model || 'deepseek-chat',
+        model: 'auto',
         messages,
         max_tokens: Math.min(Math.max(Number(maxTokens) || 1200, 1), 4096),
         temperature: Number.isFinite(Number(temperature)) ? Math.min(Math.max(Number(temperature), 0), 2) : 0.7
@@ -2278,7 +2278,7 @@ Do not invent screen state, IDs, tool capabilities, or completed actions. Do not
     });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || data.message || ('DeepSeek gateway HTTP ' + response.status));
-    if (!data.choices?.[0]?.message?.content) throw new Error('DeepSeek returned an empty response');
+    if (!data.choices?.[0]?.message?.content) throw new Error('AI gateway returned an empty response');
     return data.choices[0].message.content;
   }
 
@@ -2292,8 +2292,8 @@ Do not invent screen state, IDs, tool capabilities, or completed actions. Do not
       ...aiHistory.slice(-6),
       { role:'user', content:msg },
     ];
-    if (aiCfg.provider === 'deepseek') {
-      return await callDeepSeekGateway(msgs, tokens, temp);
+    if (aiCfg.provider === 'gateway') {
+      return await callMultiModelGateway(msgs, tokens, temp);
     }
     const endpoints = {
       mistral:     'https://api.mistral.ai/v1/chat/completions',
