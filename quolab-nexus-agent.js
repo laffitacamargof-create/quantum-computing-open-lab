@@ -1,42 +1,18 @@
-/* QNexusAi — central coordinator and universal UI connector v1.3.1 */
+/* QNexusAi — unified autonomous agent and universal UI connector v1.5.0 */
 (function (global) {
   'use strict';
 
-  const VERSION = '1.4.0';
+  const VERSION = '1.5.0';
   // Exactly five tool specialists. Library, Help, and all general Nexus functions
   // remain under the central coordinator rather than becoming separate agents.
-  const TOOL_SPECS = Object.freeze({
-    projects: { name: 'Projects Specialist', role: 'Search, inspect, open and organize published projects, notebooks and learning resources.', purpose: 'The public-facing catalogue of published quantum projects and notebooks; it is for discovery and viewing, not the notebook editor.', how_to: 'Open Projects from the main menu. Search or filter the catalogue, inspect a project card and open its published resource. Use the project id and visible metadata from the live screen; never invent ids. Verify the resource actually opened before reporting success.', workflow: 'Inspect catalogue and current filters → identify the requested published item → open it → verify title/content in the active project view → report the opened item and any limitation.', capabilities: ['inspect','navigate','search','open'], screens: ['projects'], limits: 'Do not claim to edit or publish records unless the visible UI exposes that operation and a success response confirms it.' },
-    architect: { name: 'Quantum Open Lab Specialist', role: 'Build and inspect visual quantum circuits, gate placement, Qiskit code, measurements, simulation and noise.', purpose: 'Visual circuit workbench that synchronizes a gate-based circuit with Qiskit code and can submit simulations to the configured quantum compiler.', how_to: 'Open Quantum Open Lab. Inspect the current circuit and code first. Use the visual editor for gate-level circuit construction; use the code editor for Qiskit. Keep within the tool limits (20 qubits and 150 gates). Build or update the circuit, run it through the configured engine when requested, then inspect the rendered circuit and output/error panel.', workflow: 'Open screen → inspect current qubits/gates/code and engine status → build or update requested circuit → run only when requested and engine is available → read output → verify code/circuit and result → report exact tool output.', capabilities: ['inspect','navigate','fill','click','run','noise','visual-circuit','qiskit'], screens: ['architect'], limits: 'A dispatched set_code message only proves the editor received code; a run is complete only after an execution result is visible. Never fabricate compiler availability or simulation output.' },
-    'architect-pro': { name: 'Quantum Notebook Specialist', role: 'Create and edit notebook cells, Python/Qiskit code, Markdown, execute cells, inspect outputs/errors and export notebooks.', purpose: 'Notebook workspace for multi-cell quantum experiments, explanations, Python code and reproducible execution. It can also host visual-circuit cells that open Quantum Open Lab.', how_to: 'Open Quantum Notebook and inspect its cells and current notebook title. Preserve unrelated cells. Use existing non-Markdown cell indices only when supplied by live context. For a new circuit task, create or reuse a suitable code/circuit cell through the actual notebook UI; write code in that cell; execute it if asked; wait for the output/error region; inspect the returned output and cell state. Use a visual circuit cell when the user asks for a visual circuit, then complete the circuit in Quantum Open Lab and return it to the notebook.', workflow: 'Open notebook → inspect title/cells/types/current outputs → choose or create the correct cell using visible controls → write requested code → execute when requested → wait for output → verify output and errors → report cell and result. For visual circuits, hand off to Quantum Open Lab and verify the returned circuit in the notebook.', capabilities: ['inspect','navigate','fill','click','run','cells','python','qiskit','markdown','export','visual-circuit-handoff'], screens: ['architect-pro'], limits: 'Never claim code ran unless the cell output or an execution acknowledgement confirms it. Preserve unrelated cells; do not assume a cell index if context is missing.' },
-    'quantum-puzzle': { name: 'Quantum Puzzle Specialist', role: 'Operate Quantum Puzzle challenge catalogue, puzzle state, published applications and their execution controls.', purpose: 'User-facing puzzle and quantum app catalogue; it can open challenges and launch published apps, and it hosts the nested App Studio entry point.', how_to: 'Open Quantum Puzzle. Inspect available challenges/apps and their visible controls. For a puzzle, select/open the requested challenge and verify its state. For an existing published app, locate it in the catalogue and use its run/open control. For authoring a new app, delegate the editor work to Quantum App Studio rather than pretending the puzzle catalogue is the editor.', workflow: 'Open puzzle screen → inspect catalogue/challenge → choose the exact item → operate visible controls → verify challenge state or app execution panel → report outcome.', capabilities: ['inspect','navigate','fill','click','select','scroll','challenge','published-app-launch'], screens: ['quantum-puzzle'], limits: 'Do not bypass access checks, publish, delete or alter shared content without explicit authorization. An app catalogue card is not proof that an app has executed.' },
-    'quantum-app-studio': { name: 'Quantum App Studio Specialist', role: 'Create, edit, preview and manage quantum applications in the nested App Studio editor.', purpose: 'Application authoring environment nested inside Quantum Puzzle. It edits app metadata and code and provides preview/save operations; it is distinct from the published app catalogue.', how_to: 'Open Quantum Puzzle, then open the App Studio modal and wait for the nested studio iframe to load. Inspect editor fields, tabs, preview and save controls. Make only the requested changes, use Preview to validate the app, and save when requested. Verify the editor/preview response before reporting completion.', workflow: 'Open Quantum Puzzle → open App Studio → wait for nested iframe ready → inspect app fields and code → edit requested files/settings → preview → inspect preview/errors → save if requested → verify saved state.', capabilities: ['inspect','navigate','fill','click','select','scroll','create-app','edit-app','preview','save'], screens: ['quantum-app-studio'], limits: 'Never claim the app is saved/published based only on text being inserted. Do not publish, delete, overwrite or approve without explicit user confirmation.' }
-  });
-  const CENTRAL_SCREENS = Object.freeze(['library','help']);
-  const WORKFLOW_CONTRACTS = Object.freeze([
-    { from: 'projects', to: 'architect-pro', when: 'A selected resource is a notebook that must be inspected, edited or executed', handoff: 'resource identifier, title, source and requested notebook operation' },
-    { from: 'projects', to: 'quantum-puzzle', when: 'A selected resource is a published challenge or quantum app', handoff: 'resource identifier, title and launch/test objective' },
-    { from: 'architect-pro', to: 'architect', when: 'The notebook task requires a visual circuit editor, gate layout or visual circuit verification', handoff: 'notebook cell index, circuit specification, qubit/gate constraints and expected return artifact' },
-    { from: 'architect', to: 'architect-pro', when: 'The visual circuit task requires notebook code, Python analysis, export or a notebook execution result', handoff: 'circuit definition, code, simulation result and notebook destination' },
-    { from: 'quantum-puzzle', to: 'quantum-app-studio', when: 'A published app must be authored or edited', handoff: 'app identity, requested changes and preview acceptance criteria' },
-    { from: 'quantum-app-studio', to: 'quantum-puzzle', when: 'The edited app must be launched or tested in the published-app experience', handoff: 'saved app identity, preview result and test cases' }
-  ]);
-  const SPECIALIST_INSTRUCTIONS = Object.freeze({
-    projects: 'You are the Projects Specialist. Full tool manual: Projects is the published-resource catalogue, not the authoring editor. Purpose: discover, inspect and open published projects, notebooks and learning resources. How to use: open Projects, inspect visible cards/search/filter controls, use only IDs and labels found in live context, open the exact requested resource, and verify its title/content. Workflow: inspect → search/filter → select exact resource → open → verify the resource view → report the result. If the selected item is a notebook requiring work, delegate to architect-pro with the exact resource ID and requested operations; if it is a challenge or published app, delegate to quantum-puzzle. Receive and verify the returned result. Do not claim editing or publishing unless a supported UI operation and success response exist.',
-    architect: 'You are the Quantum Open Lab Specialist. Full tool manual: Quantum Open Lab is the visual gate/circuit workbench synchronized with Qiskit code; it supports circuit construction, measurements, simulation and noise through the configured engine. How to use: open the Architect screen, inspect qubit count, gates, code and engine status; construct the requested circuit in the visual editor or update Qiskit code; stay within 20 qubits and 150 gates; run only when requested and the engine is ready; inspect the actual output/error panel. Workflow: open → inspect → construct/update → execute → read result → verify. For Python notebook analysis, notebook execution or exporting the circuit, delegate to architect-pro with the circuit/code and expected return data, then integrate its report. A code insertion is not a simulation; do not claim a run without output/acknowledgement.',
-    'architect-pro': 'You are the Quantum Notebook Specialist. Full tool manual: Quantum Notebook is the multi-cell Python/Qiskit/Markdown workspace with execution outputs, exports and visual-circuit handoff to Quantum Open Lab. How to use: open Notebook; inspect title, cell types, indices, code and outputs; preserve unrelated cells; use only cell indices in context; create/reuse the appropriate code or circuit cell using visible controls; write code; execute on request; wait for the output/error; verify the cell result. For visual gate placement or circuit editor operations, delegate to architect with the exact circuit cell index, circuit specification and expected return state; after the handoff, re-open/inspect the notebook and verify the circuit is synchronized. Never claim execution without output evidence.',
-    'quantum-puzzle': 'You are the Quantum Puzzle Specialist. Full tool manual: Quantum Puzzle is the challenge catalogue and published-app launcher; it is not the App Studio editor. How to use: open Quantum Puzzle; inspect challenge/app cards and state; open the exact requested challenge or launch the exact published app; verify the challenge or execution view. If the task is app authoring, delegate to quantum-app-studio with the app identity, requirements and acceptance criteria. After the studio handoff, return to Puzzle to launch/test the saved app when requested. Do not bypass access controls or claim an app ran based on merely opening its card.',
-    'quantum-app-studio': 'You are the Quantum App Studio Specialist. Full tool manual: App Studio is a nested iframe editor inside Quantum Puzzle for creating/editing quantum applications, previewing and saving them. How to use: coordinate with quantum-puzzle to open the launcher and nested App Studio frame; inspect tabs/fields/code; make only requested edits; preview and inspect errors; save if requested; verify saved state. If the task requires testing the published app, delegate back to quantum-puzzle with the saved app identity and test cases, then integrate its report. It is separate from the published app catalogue. Do not claim save/publish based only on inserted text. Publishing, deleting, overwriting or approving shared content requires explicit confirmation.'
-  });
-  const delegationRuns = [];
-  function recordDelegation(specialist, status, summary) {
-    if (!Object.prototype.hasOwnProperty.call(TOOL_SPECS, specialist)) return null;
-    const spec = TOOL_SPECS[specialist];
-    const item = { specialist, name: spec.name, status: cleanText(status, 30), summary: cleanText(summary, 320), at: new Date().toISOString() };
-    delegationRuns.push(item);
-    if (delegationRuns.length > 20) delegationRuns.shift();
-    return Object.assign({}, item);
-  }
+  const TOOL_CATALOG = Object.freeze({
+ projects:{name:'Projects',purpose:'Published projects, notebooks and learning resources.',how_to:'Search the live catalogue, open the exact resource and verify its title/content.',capabilities:['inspect','navigate','search','open'],screens:['projects'],limits:'Do not claim edits or publication without visible confirmation.'},
+ architect:{name:'Quantum Open Lab',purpose:'Visual circuits, Qiskit, measurements, simulation and noise.',how_to:'Inspect circuit, code and engine; build/update; run when requested; inspect actual output/errors.',capabilities:['inspect','navigate','fill','click','run','noise','visual-circuit'],screens:['architect'],limits:'Code insertion is not a simulation; require visible run output.'},
+ 'architect-pro':{name:'Quantum Notebook',purpose:'Python/Qiskit/Markdown cells, execution and exports.',how_to:'Inspect title, cell types, indices and outputs; preserve unrelated cells; edit/run the right cell; verify output/errors.',capabilities:['inspect','navigate','fill','click','run','cells','python','qiskit','markdown','export'],screens:['architect-pro'],limits:'Never claim execution without visible output; do not assume cell indices.'},
+ 'quantum-puzzle':{name:'Quantum Puzzle',purpose:'Challenges and published-app catalogue/launcher.',how_to:'Inspect challenges/apps, open exact item, operate visible controls and verify state.',capabilities:['inspect','navigate','fill','click','select','scroll','challenge','published-app-launch'],screens:['quantum-puzzle'],limits:'Do not bypass access or alter shared content without authorization.'},
+ 'quantum-app-studio':{name:'Quantum App Studio',purpose:'Nested app editor for metadata/code, preview and save.',how_to:'Open from Puzzle, inspect fields/tabs, edit, preview, inspect errors and save when requested.',capabilities:['inspect','navigate','fill','click','select','scroll','create-app','edit-app','preview','save'],screens:['quantum-app-studio'],limits:'Do not claim saved from text insertion. Publishing/deleting/overwriting requires confirmation.'}
+ });
+ const CENTRAL_SCREENS = Object.freeze(['library','help']);
   const SENSITIVE = /password|passphrase|secret|token|api.?key|private.?key|credential|founder|authorization|cookie|session/i;
   const EVENT_ALLOW = /^(OPENQ|NEXUS|QCOL)_[A-Z0-9_]+$/;
   const recentEvents = [];
@@ -71,7 +47,7 @@
   }
 
   function describeFrame(screen, frame) {
-    const item = { id: screen, name: TOOL_SPECS[screen]?.name || screen, loaded: false };
+    const item = { id: screen, name: TOOL_CATALOG[screen]?.name || screen, loaded: false };
     try {
       const doc = frame.contentDocument;
       if (!doc || !doc.documentElement) return item;
@@ -128,13 +104,13 @@
 
   function snapshot(base) {
     const active = activeScreen();
-    const managedScreens = Object.keys(TOOL_SPECS).concat(CENTRAL_SCREENS);
+    const managedScreens = Object.keys(TOOL_CATALOG).concat(CENTRAL_SCREENS);
     const tools = managedScreens.map(id => {
       const frame = frameFor(id);
-      const spec = TOOL_SPECS[id];
+      const spec = TOOL_CATALOG[id];
       return Object.assign({
         id,
-        specialist: spec ? spec.name : 'QuOLab Nexus AI — central coordinator',
+        tool_name: spec ? spec.name : 'QNexusAi',
         capabilities: spec ? spec.capabilities : ['inspect','navigate','explain','diagnose']
       }, frame ? describeFrame(id, frame) : { loaded: false });
     });
@@ -142,15 +118,13 @@
     return {
       identity: 'QNexusAi',
       version: VERSION,
-      mode: 'central_coordinator_with_tool_specialists',
+      mode: 'single_autonomous_agent',
       language: navigator.language || 'auto',
       active_tool: active,
-      active_specialist: activeTool ? activeTool.specialist : 'QuOLab Nexus AI — central coordinator',
+      active_tool_name: activeTool ? activeTool.tool_name : 'QNexusAi',
       tools,
-      tool_catalog: Object.keys(TOOL_SPECS).map(id => ({ id, name: TOOL_SPECS[id].name, purpose: TOOL_SPECS[id].purpose, how_to: TOOL_SPECS[id].how_to, workflow: TOOL_SPECS[id].workflow, capabilities: TOOL_SPECS[id].capabilities, limits: TOOL_SPECS[id].limits })),
-      workflow_contracts: WORKFLOW_CONTRACTS,
+      tool_catalog: Object.keys(TOOL_CATALOG).map(id => ({ id, name: TOOL_CATALOG[id].name, purpose: TOOL_CATALOG[id].purpose, how_to: TOOL_CATALOG[id].how_to, workflow: TOOL_CATALOG[id].workflow, capabilities: TOOL_CATALOG[id].capabilities, limits: TOOL_CATALOG[id].limits })),
       recent_events: recentEvents.slice(-20),
-      specialist_runs: delegationRuns.slice(-8),
       user_context: base || {}
     };
   }
@@ -204,7 +178,7 @@
   }
 
   function executeUIAction(action) {
-    if (!action || (!TOOL_SPECS[action.screen] && !CENTRAL_SCREENS.includes(action.screen)) || !validSelector(action.selector) || (action.operation === 'drag' && !validSelector(action.targetSelector))) {
+    if (!action || (!TOOL_CATALOG[action.screen] && !CENTRAL_SCREENS.includes(action.screen)) || !validSelector(action.selector) || (action.operation === 'drag' && !validSelector(action.targetSelector))) {
       return { ok: false, message: 'Invalid tool or selector.' };
     }
     const frame = frameFor(action.screen);
@@ -279,10 +253,6 @@
   global.QuOLabNexusAgent = Object.freeze({
     version: VERSION,
     identity: 'QNexusAi',
-    specialists: TOOL_SPECS,
-    getSpecialistInstructions: id => SPECIALIST_INSTRUCTIONS[id] || null,
-    recordDelegation,
-    getRecentDelegations: () => delegationRuns.slice(),
     collectContext: snapshot,
     executeUIAction,
     getRecentEvents: () => recentEvents.slice()

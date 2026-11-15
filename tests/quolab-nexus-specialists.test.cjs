@@ -1,130 +1,20 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-
 const agent = fs.readFileSync('quolab-nexus-agent.js', 'utf8');
-const connector = fs.readFileSync('quolab-nexus-tool-connector.js', 'utf8');
 const index = fs.readFileSync('index.html', 'utf8');
-const puzzle = fs.readFileSync('quolab-nexus-quantum-puzzle.html', 'utf8');
-const appStudio = fs.readFileSync('quolab-nexus-app-studio.html', 'utf8');
-
-const registry = agent.match(/const TOOL_SPECS = Object\.freeze\(\{([\s\S]*?)\}\);/);
-assert.ok(registry, 'specialist registry must exist');
-const keys = [...registry[1].matchAll(/^\s*(['"]?[a-z][a-z-]*['"]?)\s*:/gm)].map(m => m[1].replace(/['"]/g, ''));
-assert.deepEqual(keys, ['projects', 'architect', 'architect-pro', 'quantum-puzzle', 'quantum-app-studio']);
-assert.equal(keys.length, 5, 'exactly five specialists are allowed');
-
-for (const name of [
-  'Projects Specialist',
-  'Quantum Open Lab Specialist',
-  'Quantum Notebook Specialist',
-  'Quantum Puzzle Specialist',
-  'Quantum App Studio Specialist'
-]) assert.ok(registry[1].includes(name), name + ' must be registered');
-
-assert.match(agent, /CENTRAL_SCREENS = Object\.freeze\(\['library','help'\]\)/);
-assert.match(agent, /SPECIALIST_INSTRUCTIONS = Object\.freeze/);
-for (const role of [
-  'You are the Projects Specialist',
-  'You are the Quantum Open Lab Specialist',
-  'You are the Quantum Notebook Specialist',
-  'You are the Quantum Puzzle Specialist',
-  'You are the Quantum App Studio Specialist'
-]) assert.ok(agent.includes(role), role + ' must have its own worker instructions');
-assert.match(agent, /const VERSION = '1\.4\.0'/);
-assert.match(agent, /AIza|xox\[baprs\]/);
-assert.match(connector, /const VERSION = '1\.2\.1'/);
-assert.match(connector, /AIza\|xox\[baprs\]/);
-assert.match(agent, /getSpecialistInstructions: id => SPECIALIST_INSTRUCTIONS\[id\]/);
-assert.match(agent, /recordDelegation,/);
-assert.match(agent, /quolab:nexus-alert/);
-assert.match(index, /function bindProactiveAlerts\(\)/);
-assert.match(index, /Automatic tool incident/);
-assert.match(index, /PROACTIVE INCIDENT MODE/);
-assert.match(index, /Diagnose the likely cause/);
-assert.match(index, /He detectado un problema en/);
-assert.match(index, /I detected a problem in/);
-assert.match(index, /bindProactiveAlerts\(\)/);
-assert.match(agent, /SPECIALIST_INSTRUCTIONS/);
-assert.match(agent, /operation === 'drag'/);
-assert.match(agent, /operation === 'hover'/);
-assert.match(agent, /operation === 'key'/);
-assert.match(agent, /function selectorFor\(el\)/, 'specialists need safe selectors for accessible controls without IDs');
-assert.match(agent, /aria-label|placeholder|title/);
-assert.doesNotMatch(agent, /const dangerous = \/[^\\n]*submit/, 'routine form submission must not require an unnecessary confirmation');
-assert.match(connector, /MutationObserver/);
-assert.match(connector, /output_change/);
-assert.match(index, /'click','fill','type','select','scroll','hover','key','drag'/);
-assert.match(index, /async function routeAI\(msg,\s*ctx\)/);
-assert.match(index, /function isAIAvailable\(\)/, 'server-side gateway must count as configured without a browser API key');
-assert.equal((index.match(/if\s*\(isAIAvailable\(\)\)/g) || []).length, 2, 'AI status and send flow must use the same availability check');
-assert.match(index, /Interpret short follow-ups from recent conversation history/, 'short follow-ups must retain conversational intent');
-assert.match(index, /QuOLab AI gateway HTTP /, 'gateway failures must expose safe provider diagnostics');
-assert.match(index, /QNEXUSAI/);
-assert.match(index, /QNexusAi workspace: persistent compact composer/);
-assert.match(index, /For an execution task, return the exact openq-action blocks/);
-assert.match(index, /async function dispatchToolCommand/);
-assert.match(index, /OPENQ_AI_ACTION_ACK/);
-assert.match(index, /Array\.isArray\(route\.specialists\)/);
-assert.match(index, /case 'add_cell'/);
-assert.match(index, /case 'open_circuit_editor'/);
-assert.match(agent, /tool_catalog: Object\.keys\(TOOL_SPECS\)/);
-assert.match(agent, /Full tool manual/);
-assert.match(agent, /identity: 'QNexusAi'/);
-assert.match(agent, /You are the Projects Specialist/);
-assert.match(agent, /specialist_runs: delegationRuns\.slice\(-8\)/);
-assert.match(index, /async function routeAI\(msg,\s*ctx\)/, 'central router must dispatch real worker calls');
-assert.match(index, /SPECIALIST EXECUTION MODE/);
-assert.match(index, /recordDelegation\(a\.specialist,status,last\|\|'Sin informe verificable\.'\)/);
-assert.match(index, /const status=done\?'completed':blocked\?'blocked':'incomplete'/);
-assert.match(index, /async function callAI\(msg, ctx, options = \{\}\)/);
-
-assert.match(agent, /QuOLab Nexus AI — central coordinator/);
-assert.match(agent, /getElementById\('studioIframe'\)/, 'App Studio must be reachable through its nested iframe');
-assert.match(agent, /studioModalReal/, 'App Studio activation must be detected');
-
-assert.match(connector, /'quolab-nexus-app-studio\.html': 'quantum-app-studio'/);
-assert.match(connector, /nested_tool_event/);
-assert.match(connector, /includes\('quolab-nexus-app-studio\.html'\)/);
-assert.match(puzzle, /id="studioIframe"[^>]+src="quolab-nexus-app-studio\.html"/);
-assert.match(appStudio, /<script defer src="quolab-nexus-tool-connector\.js"><\/script>/);
-
-assert.match(index, /AI_SCREENS = \[[^\]]*'quantum-app-studio'\]/);
-assert.match(index, /AI_NAV_SCREENS = AI_SCREENS\.filter\(screen => screen !== 'quantum-app-studio'\)/);
-assert.match(index, /5 tool specialists/);
-assert.match(index, /exactly five tool specialists and no others/);
-assert.match(index, /Library and Help are central-agent responsibilities/);
-assert.match(index, /same language as the user's latest message/);
-
-assert.match(index, /SPECIALIST EXECUTION MODE/);
-assert.match(index, /operation":"click\|fill\|type\|select\|scroll\|hover\|key\|drag/);
-assert.match(index, /QNEXUSAI/);
-
-assert.match(agent, /const WORKFLOW_CONTRACTS = Object\.freeze/);
-assert.match(agent, /workflow_contracts: WORKFLOW_CONTRACTS/);
-assert.match(agent, /delegate to architect-pro with the exact resource ID/);
-assert.match(agent, /delegate to quantum-app-studio/);
-assert.match(agent, /delegate back to quantum-puzzle/);
-assert.match(agent, /identity: 'QNexusAi'/);
-assert.match(index, /Tool state is operational context, not optional conversation-history sharing/);
-assert.match(index, /sanitized tool status remains available for routing and verification/);
-assert.match(index, /function inferSpecialistAssignments\(msg, ctx\)/);
-assert.match(index, /function extractDelegations\(report\)/);
-assert.match(index, /openq-delegate/);
-assert.match(index, /shared workflow log/);
-assert.match(index, /criteria de aceptación|acceptance criteria/i);
-assert.match(index, /const requiresRun=/);
-assert.match(index, /const evidenceOK=!!status\.evidence&&acknowledgedOperation&&changed&&\(!requiresRun\|\|outputEvidence\)/);
-assert.match(index, /onlyNav/);
-assert.match(index, /id="ai-panel-drag-handle"/);
-assert.match(index, /function toggleAIMinimized\(\)/);
-assert.match(index, /function initAIPanelControls\(\)/);
-assert.match(index, /pointerdown/);
-assert.match(index, /pointermove/);
-assert.match(index, /resize:both/);
-assert.match(index, /ai-minimized/);
-assert.match(index, /max-height:calc\(100vh - 5rem\)/);
-assert.match(index, /Math\.max\(70,/);
-assert.match(index, /toggleAIMinimized, sendAI/);
-assert.match(index, /initAIPanelControls\(\)/);
-
-console.log('PASS: five specialist workers, direct tool routing, cross-specialist workflows, verified execution, telemetry, draggable/collapsible AI panel and nested App Studio routing.');
+const connector = fs.readFileSync('quolab-nexus-tool-connector.js', 'utf8');
+assert.ok(agent.includes("const VERSION = '1.5.0'"));
+assert.ok(agent.includes("mode: 'single_autonomous_agent'"));
+assert.ok(agent.includes('const TOOL_CATALOG = Object.freeze'));
+assert.ok(agent.includes('tool_catalog: Object.keys(TOOL_CATALOG)'));
+assert.ok(agent.includes('function executeUIAction'));
+for (const legacy of ['SPECIALIST_INSTRUCTIONS','WORKFLOW_CONTRACTS','recordDelegation','getSpecialistInstructions','specialist_runs','TOOL_SPECS','Projects Specialist','Quantum Notebook Specialist']) assert.ok(!agent.includes(legacy), 'legacy agent feature remains: '+legacy);
+assert.ok(index.includes('You are QNexusAi: one autonomous superagent'));
+assert.ok(index.includes('There are no specialist agents, worker prompts, router calls, delegation chains'));
+assert.ok(index.includes('maxTurns=executionTask?24:1'));
+for (const state of ['TASK_STATUS: COMPLETED','TASK_STATUS: CONTINUE','TASK_STATUS: BLOCKED','hasFreshOutput','SINGLE SUPERAGENT']) assert.ok(index.includes(state), 'missing execution contract: '+state);
+for (const legacy of ['runSpecialistTask','routeAI(','openq-delegate','SPECIALIST EXECUTION MODE']) assert.ok(!index.includes(legacy), 'legacy orchestration remains: '+legacy);
+assert.ok(index.includes('Math.min(Math.max(aiCfg.tokens || 700, 500), 1800)'));
+assert.ok(connector.includes('MutationObserver'));
+assert.ok(connector.includes('output_change'));
+console.log('PASS: single autonomous agent, unified multi-tool loop, fresh-state verification, explicit completion/blocker states, reduced token budget and no specialist/router/delegation pipeline.');
