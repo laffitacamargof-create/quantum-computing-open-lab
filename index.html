@@ -2098,19 +2098,6 @@ CONTEXT: ${c}`;
     const f = iframes[screen]; if (f && f.contentWindow) { try { f.contentWindow.postMessage(msg, '*'); return; } catch (e) {} }
     _sendToModule(screen, msg);
   }
-  function execAIAction(a) {
-    if (!validAIAction(a)) return false;
-    switch (a.type) {
-      case 'nav': nav(a.screen); return true;
-      case 'open_notebook': location.hash = 'notebook/' + a.id; return true;
-      case 'open_app': location.hash = 'app/' + a.id; return true;
-      case 'set_code': sendToTool(a.target, { type: 'OPENQ_AI_SET_CODE', code: a.code, cellIndex: a.cellIndex }); return true;
-      case 'run': sendToTool(a.target, { type: 'OPENQ_AI_RUN', cellIndex: a.cellIndex }); return true;
-      case 'noise': sendToTool(a.target, { type: 'OPENQ_AI_NOISE', cellIndex: a.cellIndex, noise: a.noise, engine: a.engine, shots: a.shots }); return true;
-      case 'ui_action': { const result = window.QuOLabNexusAgent && window.QuOLabNexusAgent.executeUIAction(a); if (result) notify(result.message); return !!(result && result.ok); }
-    }
-    return false;
-  }
   function renderAIActions(actions, ctx) {
     if (!actions.length) return;
     const msgs = document.getElementById('ai-messages'); const last = msgs.lastElementChild; if (!last) return;
@@ -2236,7 +2223,9 @@ CONTEXT: ${c}`;
     ];
     let ids=rules.filter(x=>x[1].test(t)).map(x=>x[0]);
     if(!ids.length&&/\b(qiskit|python|c[oó]digo|code|simulaci[oó]n|simulate|ejecutar|run)\b/i.test(t)) ids=[active==='architect'?'architect':'architect-pro'];
-    if(!ids.length&&['projects','architect','architect-pro','quantum-puzzle','quantum-app-studio'].includes(active)&&/\b(esta herramienta|esta pantalla|aqu[ií]|this tool|this screen|here|en el editor|in the editor)\b/i.test(t)) ids=[active];
+    const specialistIds=['projects','architect','architect-pro','quantum-puzzle','quantum-app-studio'];
+    const explicitCentral=/\b(general|en general|fuera de las herramientas|ecosistema completo|todo el ecosistema|library|biblioteca|help|ayuda general|general question|whole ecosystem|across the ecosystem)\b/i.test(t);
+    if(!ids.length&&!explicitCentral&&specialistIds.includes(active)) ids=[active];
     ids=Array.from(new Set(ids));
     if(ids.includes('quantum-app-studio')) ids=ids.filter(x=>x!=='quantum-puzzle');
     if(ids.includes('architect-pro')&&ids.includes('architect')&&!/visual|visualmente|editor de circuitos|circuit editor/i.test(t)) ids=ids.filter(x=>x!=='architect');
@@ -2268,7 +2257,7 @@ CONTEXT: ${c}`;
     if(direct) return {specialists:direct,routing:'direct-specialist'};
     const prompt=[
       'CENTRAL ROUTER — DISPATCH ONLY. The central agent is not a mandatory conversational hop.',
-      'Route tool-specific questions and tasks to the relevant specialist. General questions may be answered centrally. Assign every relevant specialist for multi-tool work.',
+      'Route tool-specific questions directly to the owner specialist, including questions asked while that tool is active. General questions may be answered centrally. For workflows crossing tools, identify the full dependency chain and assign every needed specialist. Specialists must hand work directly to each other with openq-delegate blocks; do not send a handoff back through the central agent merely to switch screens.',
       'Specialists may delegate directly to other specialists with openq-delegate JSON blocks. Do not force every handoff through the central agent.',
       'For execution: inspect current state, plan every required step, execute, inspect outputs/errors, correct failures, and verify final state. Opening or navigating is never completion for a build/edit/run/fix task.',
       'Return ONLY JSON: {"specialists":[{"specialist":"projects|architect|architect-pro|quantum-puzzle|quantum-app-studio","task":"..."}]} or {"specialist":null,"answer":"..."}.',
@@ -2286,7 +2275,7 @@ CONTEXT: ${c}`;
     } catch(e){console.warn('QNexusAi routing JSON invalid',e);return null;}
   }
 
-  async function runSpecialistTask(a,msg,ctx,queue,reports) {
+  async function runSpecialistTask(a,msg,ctx,queue,reports,workflowLog) {
     const spec=window.QuOLabNexusAgent?.specialists?.[a.specialist], manual=window.QuOLabNexusAgent?.getSpecialistInstructions(a.specialist);
     if(!spec||!manual) return null;
     let task=a.task,last='',done=false,blocked=false;
@@ -2296,11 +2285,12 @@ CONTEXT: ${c}`;
       const before=JSON.stringify(ctx||{});
       const prompt=[
         'Solicitud original: '+msg,'Tarea asignada: '+task,round?'Informe anterior: '+last:'',
-        'Contexto actual: '+JSON.stringify(ctx||{}),
-        'Eres el especialista responsable. Inspecciona, descompón la tarea, ejecuta todos los pasos necesarios con openq-action, inspecciona de nuevo, corrige errores y continúa. No te detengas al abrir una herramienta. Si necesitas otro especialista, delega directamente con openq-delegate JSON. No inventes resultados.',
+        'Contexto actual de todas las herramientas: '+JSON.stringify(ctx||{}),
+        'Historial compartido de trabajo entre especialistas (delegaciones, resultados y bloqueos): '+JSON.stringify(workflowLog||[]),
+        'Eres el especialista responsable. Inspecciona, descompón la tarea, ejecuta todos los pasos necesarios con openq-action, inspecciona de nuevo, corrige errores y continúa. No te detengas al abrir una herramienta. Si una parte pertenece a otra herramienta, delega directamente al especialista dueño: usa exactamente un bloque de código `openq-delegate {"specialists":[{"specialist":"architect","task":"..."}]}`. Indica los datos que necesita y el resultado esperado. Cuando termine, integra su resultado y continúa tu parte. No inventes resultados.',
         'Termina cada respuesta con TASK_STATUS: CONTINUE, TASK_STATUS: COMPLETED o TASK_STATUS: BLOCKED. COMPLETED exige TASK_EVIDENCE: con evidencia concreta observada en el contexto. Si quedan pasos, usa CONTINUE.'
       ].filter(Boolean).join('\n\n');
-      const raw=await callAI(prompt,ctx,{systemSuffix:'\nSPECIALIST EXECUTION MODE.\n'+manual+'\nOwn the complete workflow. Navigation or a dispatch ACK is not completion. Reinspect fresh context after every action. You may delegate directly using an openq-delegate JSON block. Never claim completion without visible evidence.'});
+      const raw=await callAI(prompt,ctx,{systemSuffix:'\nSPECIALIST EXECUTION MODE.\n'+manual+'\nOwn the complete workflow, including cross-tool workflows. Call the owner specialist directly with an exact fenced openq-delegate JSON block, specifying required input and expected output. The orchestrator runs that specialist and supplies its result in the shared workflow log. Integrate the result, continue your own steps, and verify the combined outcome. Navigation or a dispatch ACK is never completion. Reinspect fresh context after every action. Never claim completion without visible evidence.'});
       const delegation=extractDelegations(raw);
       delegation.assignments.forEach(x=>{if(queue.length<10&&!queue.some(q=>q.specialist===x.specialist&&q.task===x.task))queue.push(x);});
       const actions=extractActions(delegation.text);
@@ -2310,10 +2300,12 @@ CONTEXT: ${c}`;
       const onlyNav=actions.actions.length>0&&actions.actions.every(x=>['nav','open_notebook','open_app'].includes(x.type));
       const openOnly=!isExecutionRequest(msg);
       const visibleEvidence=!!(fresh&&Array.isArray(fresh.tools)&&fresh.tools.some(x=>x.loaded&&((x.outputs&&x.outputs.some(Boolean))||(x.inputs&&x.inputs.some(v=>v.value&&v.value!=='[REDACTED]')))));
-      const evidenceOK=!!status.evidence&&(visibleEvidence||execution.results.some(x=>x.output&&x.output.trim()));
+      const acknowledgedOperation=execution.results.length>0&&execution.results.every(x=>x.ok)&&actions.actions.some(x=>!['nav','open_notebook','open_app'].includes(x.type));
+      const evidenceOK=!!status.evidence&&(visibleEvidence||execution.results.some(x=>x.output&&x.output.trim())||(acknowledgedOperation&&changed));
       last=actions.text+(execution.results.length?'\nExecution: '+JSON.stringify(execution.results):'');
       ctx=fresh;
-      reports.push({specialist:spec.name,task,round:round+1,report:actions.text,execution,state_changed:changed,status:'in_progress'});
+      reports.push({specialist:spec.name,specialist_id:a.specialist,task,round:round+1,report:actions.text,delegated:delegation.assignments,execution,state_changed:changed,status:'in_progress'});
+      workflowLog.push({specialist:spec.name,specialist_id:a.specialist,task,round:round+1,report:actions.text,delegated:delegation.assignments,execution,state_changed:changed});
       if(!execution.ok||status.status==='BLOCKED'){blocked=true;break;}
       if(status.status==='COMPLETED'&&(!isExecutionRequest(msg)||(evidenceOK&&(!onlyNav||openOnly)))){done=true;break;}
       if(!actions.actions.length&&!delegation.assignments.length&&!isExecutionRequest(msg)&&actions.text){done=true;break;}
@@ -2336,10 +2328,11 @@ CONTEXT: ${c}`;
       try{
         const ctx=await gatherAIContext(),route=await routeAI(msg,ctx);
         const queue=route&&Array.isArray(route.specialists)?route.specialists.slice(0,5):[];
-        const reports=[],outcomes=[];let processed=0;
+        const reports=[],outcomes=[],workflowLog=[];let processed=0;
         while(queue.length&&processed<10){
           const a=queue.shift();if(!a||!a.specialist)continue;processed++;
-          const result=await runSpecialistTask(a,msg,await gatherAIContext(),queue,reports);if(result)outcomes.push(result);
+          const result=await runSpecialistTask(a,msg,await gatherAIContext(),queue,reports,workflowLog);
+          if(result){outcomes.push(result);workflowLog.push({specialist:result.specialist,task:result.task,status:result.status,final_report:result.report,elapsed_ms:result.elapsed_ms});}
         }
         let finalText;
         if(outcomes.length) finalText=await callAI('Solicitud original:\n'+msg+'\nResultados de especialistas:\n'+JSON.stringify(outcomes)+'\nRedacta en el idioma del usuario. No llames completada ninguna tarea cuyo estado no sea completed. Distingue completed, incomplete y blocked.',await gatherAIContext(),{systemSuffix:'Eres QNexusAi, coordinador final. Los informes y estados son la fuente de verdad. No emitas acciones nuevas. Explica los pasos faltantes o bloqueos.'});
