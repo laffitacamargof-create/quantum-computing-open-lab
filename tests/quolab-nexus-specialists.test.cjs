@@ -23,6 +23,8 @@ assert.ok(index.includes('quolab-nexus-agent.js?v=1.8.0'));
 assert.ok(index.includes('7 tools'));
 assert.ok(connector.includes("const VERSION = '1.3.0'"));
 assert.ok(connector.includes("global.document.addEventListener('change'"));
+assert.ok(connector.includes("el.isContentEditable"));
+assert.ok(connector.includes("send('console_error'"));
 assert.ok(connector.includes("global.document.addEventListener('submit'"));
 assert.ok(connector.includes("send('http_error'"));
 assert.ok(connector.includes("send('storage_write'"));
