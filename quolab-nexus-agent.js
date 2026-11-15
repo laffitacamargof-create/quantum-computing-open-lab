@@ -165,11 +165,11 @@
         if(value&&!SENSITIVE.test((el.id||'')+' '+(el.className||'')))outputs.push(value);
       }
       item.outputs=outputs.slice(0,isActive?18:5);
-      item.function_api=(spec.functions||'').split(',').map(name=>name.trim()).filter(name=>/^[A-Za-z_$][\\w$]*$/.test(name)).slice(0,60).map(name=>{
+      item.function_api=(spec.functions||'').split(',').map(name=>name.trim()).filter(name=>/^[A-Za-z_$][\w$]*$/.test(name)).slice(0,60).map(name=>{
         const fn=doc.defaultView&&doc.defaultView[name];
         let signature='';
         if(typeof fn==='function'){
-          try{const source=Function.prototype.toString.call(fn);signature=(source.match(/^[^(]*\\(([^)]*)\\)/)||source.match(/^\\s*([^=()]+?)\\s*=>/)||[])[1]||'';}catch(_){}
+          try{const source=Function.prototype.toString.call(fn);signature=(source.match(/^[^(]*\(([^)]*)\)/)||source.match(/^\s*([^=()]+?)\s*=>/)||[])[1]||'';}catch(_){}
         }
         return {name,callable:typeof fn==='function',arity:typeof fn==='function'?fn.length:0,signature:cleanText(signature,180)};
       });
