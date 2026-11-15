@@ -2340,6 +2340,7 @@ CONTEXT: ${c}`;
       'CENTRAL ROUTER — DISPATCH ONLY. The central agent is not a mandatory conversational hop.',
       'Route tool-specific questions directly to the owner specialist, including questions asked while that tool is active. General questions may be answered centrally. For workflows crossing tools, identify the full dependency chain and assign every needed specialist. Specialists must hand work directly to each other with openq-delegate blocks; do not send a handoff back through the central agent merely to switch screens.',
       'Specialists may delegate directly to other specialists with openq-delegate JSON blocks. Do not force every handoff through the central agent.',
+      'Interpret short follow-ups from recent conversation history and preserve the active task, selected tool, constraints, and unfinished steps unless the user clearly starts a new task.',
       'For execution: inspect current state, plan every required step, execute, inspect outputs/errors, correct failures, and verify final state. Opening or navigating is never completion for a build/edit/run/fix task.',
       'Return ONLY JSON: {"specialists":[{"specialist":"projects|architect|architect-pro|quantum-puzzle|quantum-app-studio","task":"..."}]} or {"specialist":null,"answer":"..."}.',
       'Quantum code/notebook work goes to architect-pro unless visual circuit editor work is explicit; visual circuits in notebooks require architect-pro and architect collaboration. Never invent results. Reply in the user language.'
