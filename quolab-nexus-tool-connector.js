@@ -13,7 +13,7 @@
     'quolab-nexus-quantum-puzzle.html': 'quantum-puzzle',
     'quolab-nexus-app-studio.html': 'quantum-app-studio'
   };
-  const tool = TOOL_BY_FILE[global.location.pathname.split('/').pop()] || 'unknown';
+  const tool = global.__QUOLAB_NEXUS_TOOL || TOOL_BY_FILE[global.location.pathname.split('/').pop()] || 'unknown';
   const SENSITIVE = /password|passphrase|secret|token|api.?key|private.?key|credential|founder|authorization|cookie|session/i;
   const MAX_TEXT = 1200;
 
