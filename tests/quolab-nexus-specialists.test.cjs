@@ -30,7 +30,7 @@ for (const role of [
   'You are the Quantum Puzzle Specialist',
   'You are the Quantum App Studio Specialist'
 ]) assert.ok(agent.includes(role), role + ' must have its own worker instructions');
-assert.match(agent, /const VERSION = '1\.2\.1'/);
+assert.match(agent, /const VERSION = '1\.3\.0'/);
 assert.match(agent, /AIza|xox\[baprs\]/);
 assert.match(connector, /const VERSION = '1\.2\.1'/);
 assert.match(connector, /AIza\|xox\[baprs\]/);
@@ -56,12 +56,23 @@ assert.match(index, /function isAIAvailable\(\)/, 'server-side gateway must coun
 assert.equal((index.match(/if \(isAIAvailable\(\)\)/g) || []).length, 2, 'AI status and send flow must use the same availability check');
 assert.match(index, /Interpret short follow-ups from recent conversation history/, 'short follow-ups must retain conversational intent');
 assert.match(index, /QuOLab AI gateway HTTP /, 'gateway failures must expose safe provider diagnostics');
-assert.match(index, /QUOLAB NEXUS AI/);
+assert.match(index, /QNEXUSAI/);
+assert.match(index, /QNexusAi workspace: persistent compact composer/);
+assert.match(index, /For an execution task, return the exact openq-action blocks/);
+assert.match(index, /async function dispatchToolCommand/);
+assert.match(index, /OPENQ_AI_ACTION_ACK/);
+assert.match(index, /Array\.isArray\(route\.specialists\)/);
+assert.match(index, /case 'add_cell'/);
+assert.match(index, /case 'open_circuit_editor'/);
+assert.match(agent, /tool_catalog: Object\.keys\(TOOL_SPECS\)/);
+assert.match(agent, /Full tool manual/);
+assert.match(agent, /identity: 'QNexusAi'/);
+assert.match(agent, /You are the Projects Specialist/);
 assert.match(agent, /specialist_runs: delegationRuns\.slice\(-8\)/);
 assert.match(index, /async function routeAI\(msg, ctx\)/, 'central router must dispatch real worker calls');
-assert.match(index, /SPECIALIST WORKER MODE/);
-assert.match(index, /recordDelegation\(route\.specialist, 'completed'/);
-assert.match(index, /recordDelegation\(route\.specialist, 'failed'/);
+assert.match(index, /SPECIALIST EXECUTION MODE/);
+assert.match(index, /recordDelegation\(assignment\.specialist, status, summary\)/);
+assert.match(index, /recordDelegation\(assignment\.specialist, 'failed'/);
 assert.match(index, /async function callAI\(msg, ctx, options = \{\}\)/);
 
 assert.match(agent, /QuOLab Nexus AI — central coordinator/);
@@ -81,7 +92,7 @@ assert.match(index, /exactly five tool specialists and no others/);
 assert.match(index, /Library and Help are central-agent responsibilities/);
 assert.match(index, /same language as the user's latest message/);
 
-assert.match(index, /SPECIALIST WORKER MODE/);
+assert.match(index, /SPECIALIST EXECUTION MODE/);
 assert.match(index, /operation":"click\|fill\|type\|select\|scroll\|hover\|key\|drag/);
-assert.match(index, /QUOLAB NEXUS AI/);
+assert.match(index, /QNEXUSAI/);
 console.log('PASS: five specialist workers, central dispatch, telemetry, UI actions and nested App Studio routing.');
