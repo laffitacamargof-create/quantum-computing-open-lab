@@ -3288,14 +3288,33 @@ function quickNoise(extra) {
         const el = document.getElementById('out-elapsed'); if (el) el.textContent = ((Date.now() - t0) / 1000).toFixed(2) + 's'; return r; });
 }
 (function () { const b = document.getElementById('btn-noise'); if (b) b.addEventListener('click', () => openNoise()); const r = document.getElementById('btn-noise-run'); if (r) r.addEventListener('click', () => quickNoise()); })();
+const __QNEXUS_ACTION_CACHE = window.__QNEXUS_ACTION_CACHE || (window.__QNEXUS_ACTION_CACHE = new Map());
+function qnexusActionPost(payload){try{window.parent.postMessage(payload,location.origin);}catch(_){}}
+function qnexusActionBegin(d){
+  if(d.type==='OPENQ_AI_ACTION_STATUS'&&d.requestId){const entry=__QNEXUS_ACTION_CACHE.get(d.requestId);qnexusActionPost({type:'OPENQ_AI_ACTION_STATUS',requestId:d.requestId,received:!!entry,completed:!!(entry&&entry.result),result:entry&&entry.result||null});return true;}
+  if(!d.requestId||!/^OPENQ_AI_(?:SET_CODE|NOISE|RUN|ADD_CELL|OPEN_CIRCUIT_EDITOR)$/.test(d.type||''))return false;
+  const existing=__QNEXUS_ACTION_CACHE.get(d.requestId);
+  if(existing){qnexusActionPost({type:'OPENQ_AI_ACTION_RECEIVED',requestId:d.requestId});if(existing.result)qnexusActionPost(existing.result);return true;}
+  __QNEXUS_ACTION_CACHE.set(d.requestId,{receivedAt:Date.now(),result:null});
+  while(__QNEXUS_ACTION_CACHE.size>100)__QNEXUS_ACTION_CACHE.delete(__QNEXUS_ACTION_CACHE.keys().next().value);
+  qnexusActionPost({type:'OPENQ_AI_ACTION_RECEIVED',requestId:d.requestId});return false;
+}
+function qnexusActionFinish(d,result){
+  if(!d.requestId)return;
+  const payload=Object.assign({type:'OPENQ_AI_ACTION_ACK',requestId:d.requestId},result||{});
+  const entry=__QNEXUS_ACTION_CACHE.get(d.requestId);if(entry)entry.result=payload;
+  qnexusActionPost(payload);
+}
+
 // ── Copiloto IA: contexto + acciones (solo mensajes del padre) ──
 window.addEventListener('message', e => {
     if (e.source !== window.parent) return;
     const d = e.data || {};
     try {
+        if (qnexusActionBegin(d)) return;
         if (d.type === 'OPENQ_GET_CONTEXT') {
             const ta = document.getElementById('code-ta'), ob = document.getElementById('out-body');
-            window.parent.postMessage({ type: 'OPENQ_CONTEXT', ctx: {
+            window.parent.postMessage({ type: 'OPENQ_CONTEXT', requestId:d.requestId, ctx: {
                 tool: 'architect', engineOK: !!engineOK,
                 qubits: circuit && circuit.qubits, gates: circuit && circuit.gates ? circuit.gates.length : 0,
                 code: ta ? ta.value.slice(0, 4000) : '',
@@ -3305,22 +3324,22 @@ window.addEventListener('message', e => {
         } else if (d.type === 'OPENQ_AI_SET_CODE' && typeof d.code === 'string') {
             const ta = document.getElementById('code-ta');
             if (ta) { ta.value = d.code; if (typeof onCodeEdit === 'function') onCodeEdit(); }
-            if (d.requestId) window.parent.postMessage({ type: 'OPENQ_AI_ACTION_ACK', requestId: d.requestId, ok: !!ta && ta.value === d.code, message: ta ? 'Qiskit code written to Quantum Open Lab.' : 'Code editor is unavailable.' }, '*');
+            if (d.requestId) qnexusActionFinish(d,{ok: !!ta && ta.value === d.code, message: ta ? 'Qiskit code written to Quantum Open Lab.' : 'Code editor is unavailable.' });
         } else if (d.type === 'OPENQ_AI_NOISE') {
             Promise.resolve(quickNoise({ noise: d.noise, engine: d.engine, shots: d.shots })).then(() => {
                 const out = document.getElementById('out-body');
                 const value = out ? (out.innerText || '').slice(-1200) : '';
-                if (d.requestId) window.parent.postMessage({ type: 'OPENQ_AI_ACTION_ACK', requestId: d.requestId, ok: !!value && !/error|failed|no compiler/i.test(value), message: value || 'Noise simulation returned no output.', output: value }, '*');
-            }).catch(err => { if (d.requestId) window.parent.postMessage({ type: 'OPENQ_AI_ACTION_ACK', requestId: d.requestId, ok: false, message: err.message || 'Noise simulation failed.' }, '*'); });
+                if (d.requestId) qnexusActionFinish(d,{ok: !!value && !/error|failed|no compiler/i.test(value), message: value || 'Noise simulation returned no output.', output: value });
+            }).catch(err => { if (d.requestId) qnexusActionFinish(d,{ok: false, message: err.message || 'Noise simulation failed.' }); });
         } else if (d.type === 'OPENQ_AI_RUN') {
             Promise.resolve(typeof runServerCode === 'function' ? runServerCode() : null).then(() => {
                 const out = document.getElementById('out-body');
                 const value = out ? (out.innerText || '').slice(-1600) : '';
                 const ok = !!value && !/No cloud compiler|❌|error|failed/i.test(value);
-                if (d.requestId) window.parent.postMessage({ type: 'OPENQ_AI_ACTION_ACK', requestId: d.requestId, ok, message: ok ? 'Quantum Open Lab simulation returned output.' : (value || 'Compiler did not return a successful result.'), output: value }, '*');
-            }).catch(err => { if (d.requestId) window.parent.postMessage({ type: 'OPENQ_AI_ACTION_ACK', requestId: d.requestId, ok: false, message: err.message || 'Quantum Open Lab execution failed.' }, '*'); });
+                if (d.requestId) qnexusActionFinish(d,{ok, message: ok ? 'Quantum Open Lab simulation returned output.' : (value || 'Compiler did not return a successful result.'), output: value });
+            }).catch(err => { if (d.requestId) qnexusActionFinish(d,{ok: false, message: err.message || 'Quantum Open Lab execution failed.' }); });
         }
-    } catch (err) { console.warn('copilot hook', err); }
+    } catch (err) { qnexusActionFinish(d,{ok:false,message:err&&err.message?err.message:'Quantum Open Lab action handler failed.'}); console.warn('copilot hook', err); }
 });
 
 window.addEventListener('message', e => {
