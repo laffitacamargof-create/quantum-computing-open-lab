@@ -2297,7 +2297,7 @@ function buildCellEl(cell,i){
           title="Click to show or hide visual gate controls">
           ${hasCircuit
             ? `<div class="circ-preview-hint">⚛ QUANTUM CIRCUIT — click for gate controls</div>${circuitSVG}`
-            : `<div class="circ-empty-hint" onclick="event.stopPropagation();openCircuitEditor('${cell.id}')">⚛ Visual Circuit Cell<br><span style="font-size:.4rem;color:rgba(0,200,100,.4);">Open visual gate controls</span></div>`
+            : `<div class="circ-empty-hint">⚛ Visual Circuit Cell<br><span style="font-size:.4rem;color:rgba(0,200,100,.4);">Use the controls below to add gates</span></div>`
           }
         </div>
         ${editorControls}${warningHtml}
@@ -2531,7 +2531,7 @@ window.addEventListener('message',e=>{
 
     document.getElementById('nb-name-inp').value = nb.title||nb.name||'Untitled';
     cells = (nb.cells && nb.cells.length > 0)
-      ? nb.cells.map(c=>({...c, id:genId(), output:'', exec_count:null, mdEdit:false, errorLine:null}))
+      ? nb.cells.map(c=>({...c, id:genId(), output:'', exec_count:null, mdEdit:false, errorLine:null, editorOpen:c.type==='circuit'?true:c.editorOpen}))
       : [];
 
     if(isExpo){
