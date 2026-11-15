@@ -606,8 +606,8 @@ function openCircuitEditor(cellId){const cell=cells.find(c=>c.id===cellId);if(!c
 function buildCircuitEditorControls(cell){
  const q=cell.circuitData?.qubits||1,opts=Array.from({length:q},(_,i)=>'<option value="'+i+'">q['+i+']</option>').join('');
  const gates=Object.keys(NB_GATE_DEFS).map(id=>'<option value="'+id+'">'+id+'</option>').join('');
- const gateList=(cell.circuitData?.gates||[]).map((g,i)=>'<button class="nb-gate-chip" onclick="event.stopPropagation();removeVisualGate(\\''+cell.id+'\\','+i+')" title="Remove gate">'+(g.def?.sym||g.id)+' · q'+g.q+(g.q2!==undefined?'–q'+g.q2:'')+' ×</button>').join('');
- return '<div class="nb-circuit-tools" onclick="event.stopPropagation()"><div class="nb-circuit-controls"><select id="nb-gate-'+cell.id+'" aria-label="Gate">'+gates+'</select><select id="nb-q-'+cell.id+'" aria-label="Target qubit">'+opts+'</select><select id="nb-q2-'+cell.id+'" aria-label="Second qubit">'+opts+'</select><select id="nb-q3-'+cell.id+'" aria-label="Third qubit">'+opts+'</select><button onclick="addVisualGate(\\''+cell.id+'\\')">＋ Gate</button><button onclick="addVisualQubit(\\''+cell.id+'\\')">＋ Qubit</button><button onclick="clearVisualCircuit(\\''+cell.id+'\\')">Clear</button></div><div class="nb-gate-list">'+(gateList||'<span>No gates yet</span>')+'</div></div>';
+ const gateList=(cell.circuitData?.gates||[]).map((g,i)=>'<button class="nb-gate-chip" onclick="event.stopPropagation();removeVisualGate(\''+cell.id+'\','+i+')" title="Remove gate">'+(g.def?.sym||g.id)+' · q'+g.q+(g.q2!==undefined?'–q'+g.q2:'')+' ×</button>').join('');
+ return '<div class="nb-circuit-tools" onclick="event.stopPropagation()"><div class="nb-circuit-controls"><select id="nb-gate-'+cell.id+'" aria-label="Gate">'+gates+'</select><select id="nb-q-'+cell.id+'" aria-label="Target qubit">'+opts+'</select><select id="nb-q2-'+cell.id+'" aria-label="Second qubit">'+opts+'</select><select id="nb-q3-'+cell.id+'" aria-label="Third qubit">'+opts+'</select><button onclick="addVisualGate(\''+cell.id+'\')">＋ Gate</button><button onclick="addVisualQubit(\''+cell.id+'\')">＋ Qubit</button><button onclick="clearVisualCircuit(\''+cell.id+'\')">Clear</button></div><div class="nb-gate-list">'+(gateList||'<span>No gates yet</span>')+'</div></div>';
 }
 
 // ── NAVIGATION ────────────────────────────────────────────────
@@ -1946,14 +1946,13 @@ function handleImport(e){
       (nb.cells||[]).forEach(c=>{
         const src=Array.isArray(c.source)?c.source.join(''):c.source||'';
         const tags=c.metadata?.tags||[];
-        const type=c.cell_type==='markdown'?'markdown':
-          (tags.includes('circuit-cell')?'circuit':'code');
-        const hiddenCode = c.metadata?.hidden_code || '';
-        const circuitData = c.metadata?.circuit_data || null;
-        cells.push({id:genId(),type,code:src,output:'',exec_count:null,
-          mdEdit:false,errorLine:null,hiddenCode,circuitData,noiseCfg:c.metadata?.noise_cfg||null});
+        const type=c.cell_type==='markdown'?'markdown':'circuit';
+        const hiddenCode = c.metadata?.hidden_code || (type==='circuit'?src:'');
+        const parsed=type==='circuit'?(c.metadata?.circuit_data?{circuitData:c.metadata.circuit_data,warnings:[]}:parseQiskitCircuitCode(hiddenCode)):{circuitData:{qubits:2,gates:[]},warnings:[]};
+        cells.push({id:genId(),type,code:type==='markdown'?src:'',output:'',exec_count:null,
+          mdEdit:false,errorLine:null,hiddenCode,circuitData:parsed.circuitData,visualWarnings:parsed.warnings,noiseCfg:c.metadata?.noise_cfg||null});
       });
-      if(cells.length===0)addCellAt(-1,'code');
+      if(cells.length===0)addCellAt(-1,'circuit');
       else{renderCells();focusCell(cells[0].id);}
       setView('notebook');notify(`✅ Imported: ${name}`);
     }catch(err){notify('❌ Error: '+err.message);}
@@ -1961,7 +1960,7 @@ function handleImport(e){
   reader.readAsText(file);e.target.value='';
 }
 function getSavedNbs(){if(!curUser)return[];const key='qcol_nbs_'+(curUser.username||'dev');return JSON.parse(localStorage.getItem(key)||'[]');}
-function loadNb(name){const nbs=getSavedNbs();const nb=nbs.find(n=>n.name===name);if(!nb)return;cells=nb.cells.map(c=>({...c,mdEdit:false}));document.getElementById('nb-name-inp').value=nb.name;renderCells();if(cells[0])focusCell(cells[0].id);setView('notebook');notify('📂 '+nb.name);}
+function loadNb(name){const nbs=getSavedNbs();const nb=nbs.find(n=>n.name===name);if(!nb)return;cells=nb.cells.map(c=>{const x={...c,mdEdit:false};if(x.type==='code'||x.type==='qiskit'){syncCircuitCellFromCode(x,x.code||'');x.type='circuit';x.code='';}x.circuitData=x.circuitData||{qubits:2,gates:[]};return x;});document.getElementById('nb-name-inp').value=nb.name;renderCells();if(cells[0])focusCell(cells[0].id);setView('notebook');notify('📂 '+nb.name);}
 function deleteNb(name){if(!confirm('Delete "'+name+'"?'))return;const key='qcol_nbs_'+(curUser?.username||'dev');localStorage.setItem(key,JSON.stringify(getSavedNbs().filter(n=>n.name!==name)));refreshNbs();notify('🗑 Deleted');}
 function refreshNbs(){
   const grid=document.getElementById('nb-grid');if(!grid)return;
@@ -2209,13 +2208,13 @@ function buildCellEl(cell,i){
   const execLbl=cell.exec_count!==null?`[${cell.exec_count}]`:'[ ]';
 
   const toolbar=_expositionMode
-    ?`<div class="cell-toolbar">${isCode?`<button class="ct-btn ct-run" onclick="event.stopPropagation();runCell('${cell.id}')" title="Run">▶</button>`:''}
+    ?`<div class="cell-toolbar">${cell.type==='circuit'?`<button class="ct-btn ct-run" onclick="event.stopPropagation();runCell('${cell.id}')" title="Run">▶</button>`:''}
       </div>`
     :`<div class="cell-toolbar">
         
         <button class="ct-btn" onclick="event.stopPropagation();moveCellUp('${cell.id}')" title="Move up">↑</button>
         <button class="ct-btn" onclick="event.stopPropagation();moveCellDown('${cell.id}')" title="Move down">↓</button>
-        <button class="ct-btn" onclick="event.stopPropagation();changeCellType('${cell.id}')" title="Change type">${isCode?'Md':'{ }'}</button>
+        <button class="ct-btn" onclick="event.stopPropagation();changeCellType('${cell.id}')" title="Change type">${cell.type==='markdown'?'⚛':'Md'}</button>
         <button class="ct-btn" onclick="event.stopPropagation();clearCellContent('${cell.id}')" title="Clear content">🗑</button>
         <button class="ct-btn danger" onclick="event.stopPropagation();deleteCell('${cell.id}')" title="Delete">✕</button>
       </div>`;
@@ -2631,16 +2630,16 @@ window.addEventListener('message',e=>{
       const nm=document.getElementById('nb-name-inp');
       window.parent.postMessage({type:'OPENQ_CONTEXT',requestId:d.requestId,ctx:{tool:'notebook',name:nm?nm.value:'',exposition:!!_expositionMode,
         current:Math.max(0,cells.findIndex(c=>c.id===curCellId)),
-        noise_last:(window.QuOLabNexusNoise&&window.QuOLabNexusNoise.last)||null,cells:cells.slice(0,30).map((c,i)=>({i,type:c.type,code:String(c.code||'').slice(0,1200),output:strip(c.output).slice(-800)}))}},'*');
+        noise_last:(window.QuOLabNexusNoise&&window.QuOLabNexusNoise.last)||null,cells:cells.slice(0,30).map((c,i)=>({i,type:c.type,hasHiddenCode:!!(c.hiddenCode||'').trim(),circuitData:c.type==='circuit'?c.circuitData:null,code:c.type==='markdown'?String(c.code||'').slice(0,1200):'',output:strip(c.output).slice(-800)}))}},'*');
     }else if(d.type==='OPENQ_AI_ADD_CELL'){
       if(_expositionMode){if(d.requestId)qnexusActionFinish(d,{ok:false,message:'This notebook is read-only.'});return;}
       const before=cells.length;
-      const cellType=['circuit','markdown','code'].includes(d.cellType)?d.cellType:'circuit';
+      const cellType=['circuit','markdown'].includes(d.cellType)?d.cellType:'circuit';
       const afterIndex=Number.isInteger(d.afterIndex)?d.afterIndex:before-1;
       const index=afterIndex===-1||afterIndex>=before?before:afterIndex+1;
       addCellAt(afterIndex,cellType);
       const cell=cells[index];
-      if(cell&&typeof d.content==='string'){cell.code=d.content;if(cell.type==='markdown'){cell.mdEdit=true;renderCells();focusCell(cell.id);}else{const ta=document.getElementById('ta-'+cell.id);if(ta){ta.value=d.content;ta.dispatchEvent(new Event('input',{bubbles:true}));}}}
+      if(cell&&typeof d.content==='string'){if(cell.type==='markdown'){cell.code=d.content;cell.mdEdit=true;}else syncCircuitCellFromCode(cell,d.content);renderCells();focusCell(cell.id);}
       if(d.requestId)qnexusActionFinish(d,{ok:cells.length===before+1&&!!cell, message:cell?'Created '+cellType+' cell '+index+'.':'Could not create notebook cell.',cellIndex:index,cellId:cell&&cell.id});
     }else if(d.type==='OPENQ_AI_OPEN_CIRCUIT_EDITOR'){
       const cell=cells[d.cellIndex];
@@ -2655,18 +2654,17 @@ window.addEventListener('message',e=>{
       if(d.requestId)qnexusActionFinish(d,{ok:c.code===d.markdown,message:'Markdown written to notebook cell '+d.cellIndex,cellId:c.id});
     }else if(d.type==='OPENQ_AI_SET_CODE'&&typeof d.code==='string'){
       const c=cells[d.cellIndex];
-      if(!c||c.type==='markdown'||_expositionMode){if(d.requestId)qnexusActionFinish(d,{ok:false,message:'Target cell is unavailable or read-only.'});return;}
-      c.code=d.code;const ta=document.getElementById('ta-'+c.id);if(ta){ta.value=d.code;ta.dispatchEvent(new Event('input',{bubbles:true}));}
-      syncCellCode(c.id);
-      if(d.requestId)qnexusActionFinish(d,{ok:c.code===d.code,message:'Code written to notebook cell '+d.cellIndex,cellId:c.id});
+      if(!c||c.type!=='circuit'||_expositionMode){if(d.requestId)qnexusActionFinish(d,{ok:false,message:'Target must be an editable visual circuit cell.'});return;}
+      const parsed=syncCircuitCellFromCode(c,d.code);c.editorOpen=false;renderCells();focusCell(c.id);
+      if(d.requestId)qnexusActionFinish(d,{ok:c.hiddenCode===d.code&&!!c.circuitData,message:'Qiskit source stored in the hidden circuit layer and visual preview refreshed.',cellId:c.id,visualGates:c.circuitData.gates.length,visualWarnings:parsed.warnings.length});
     }else if(d.type==='OPENQ_AI_NOISE'){
       const c=cells[d.cellIndex];
-      if(c&&c.type!=='markdown'&&c.type!=='code'){
+      if(c&&c.type==='circuit'){
         Promise.resolve(noiseRun(c.id,{noise:d.noise,engine:d.engine,shots:d.shots})).then(()=>{if(d.requestId)qnexusActionFinish(d,{ok:true,message:'Noise simulation command completed.'});}).catch(err=>{if(d.requestId)qnexusActionFinish(d,{ok:false,message:err.message||'Noise simulation failed.'});});
       }else if(d.requestId)qnexusActionFinish(d,{ok:false,message:'Noise simulation target is unavailable.'});
     }else if(d.type==='OPENQ_AI_RUN'){
       const c=cells[d.cellIndex];
-      if(c&&c.type!=='markdown'){
+      if(c&&c.type==='circuit'){
         syncCellCode(c.id);
         const beforeExec=c.exec_count;
         Promise.resolve(runCell(c.id)).then(()=>{const out=document.getElementById('out-'+c.id);const value=out?(out.innerText||'').slice(-1200):'';const didExecute=c.exec_count!==beforeExec;const failed=!didExecute||!out||/No engine|❌|error/i.test(value);if(d.requestId)qnexusActionFinish(d,{ok:!failed,message:failed?(value||'Cell execution did not produce a successful output.'):'Notebook cell '+d.cellIndex+' executed.',output:value});}).catch(err=>{if(d.requestId)qnexusActionFinish(d,{ok:false,message:err.message||'Cell execution failed.'});});
