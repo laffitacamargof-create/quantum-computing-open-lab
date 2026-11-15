@@ -2148,7 +2148,7 @@ Action syntax (each action must be in its own fenced block labeled openq-action)
 {"type":"run","target":"notebook","cellIndex":0}
 \`\`\`
 - \`\`\`openq-action
-{"type":"add_cell","target":"notebook","cellType":"circuit|markdown","afterIndex":-1}
+{"type":"add_cell","target":"notebook","cellType":"circuit|qiskit|code|markdown","afterIndex":-1}
 \`\`\`
 - \`\`\`openq-action
 {"type":"open_circuit_editor","target":"notebook","cellIndex":0}
@@ -2177,7 +2177,7 @@ CONTEXT: ${c}`;
     switch (a.type) {
       case 'nav': return AI_NAV_SCREENS.includes(a.screen);
       case 'open_notebook': case 'open_app': return typeof a.id === 'string' && /^[\w.\-]{1,80}$/.test(a.id);
-      case 'add_cell': return a.target === 'notebook' && ['circuit','markdown'].includes(a.cellType) && (a.afterIndex === undefined || (Number.isInteger(a.afterIndex) && a.afterIndex >= -1 && a.afterIndex < 100));
+      case 'add_cell': return a.target === 'notebook' && ['circuit','markdown','code','qiskit'].includes(a.cellType) && (a.afterIndex === undefined || (Number.isInteger(a.afterIndex) && a.afterIndex >= -1 && a.afterIndex < 100));
       case 'open_circuit_editor': return a.target === 'notebook' && Number.isInteger(a.cellIndex) && a.cellIndex >= 0;
       case 'set_code': return !!AI_TARGET[a.target] && typeof a.code === 'string' && a.code.length > 0 && a.code.length < 20000 && (a.target !== 'notebook' || Number.isInteger(a.cellIndex));
       case 'run': return !!AI_TARGET[a.target] && (a.target !== 'notebook' || Number.isInteger(a.cellIndex));
