@@ -40,3 +40,38 @@ jobs:
           Path("/tmp/quolab-index.mjs").write_text(blocks[0], encoding="utf-8")
           PY
           node --check /tmp/quolab-index.mjs
+      - name: Extract and check inline scripts in every tool module
+        run: |
+          python - <<'PY'
+          import re
+          from pathlib import Path
+          pages = [
+              "quolab-nexus-projects.html",
+              "quolab-nexus-architect.html",
+              "quolab-nexus-quantum-notebook.html",
+              "quolab-nexus-quantum-puzzle.html",
+              "quolab-nexus-app-studio.html",
+              "quolab-nexus-library.html",
+              "quolab-nexus-help.html",
+          ]
+          count = 0
+          for page in pages:
+              source = Path(page).read_text(encoding="utf-8")
+              for match in re.finditer(r'<script\\b([^>]*)>([\\s\\S]*?)</script\\s*>', source, re.I):
+                  attrs, body = match.group(1), match.group(2)
+                  if re.search(r'\\bsrc\\s*=', attrs, re.I) or not body.strip():
+                      continue
+                  kind = re.search(r'\\btype\\s*=\\s*["\\']([^"\\']+)["\\']', attrs, re.I)
+                  if kind and kind.group(1).lower() not in ("module", "text/javascript", "application/javascript"):
+                      continue
+                  suffix = "mjs" if kind and kind.group(1).lower() == "module" else "js"
+                  Path(f"/tmp/quolab-module-{count}.{suffix}").write_text(body, encoding="utf-8")
+                  count += 1
+          if count == 0:
+              raise SystemExit("No inline module scripts found")
+          print(f"Extracted {count} inline tool scripts")
+          PY
+          for file in /tmp/quolab-module-*.js /tmp/quolab-module-*.mjs; do
+            [ -e "$file" ] || continue
+            node --check "$file"
+          done
