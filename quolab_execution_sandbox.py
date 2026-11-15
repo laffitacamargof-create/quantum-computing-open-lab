@@ -16,10 +16,10 @@ def is_safe(code):
             modules=[item.name for item in node.names] if isinstance(node,ast.Import) else [node.module or ""]
             for module in modules:
                 root=module.split(".",1)[0]
-                if root not in ALLOWED_IMPORTS: return False,"Import no permitido: "+(root or "<vacío>")
+                if root not in ALLOWED_IMPORTS or any(part in {"ctypes","ctypeslib"} for part in module.split(".")): return False,"Import no permitido: "+(root or "<vacío>")
         if isinstance(node,ast.Name) and (node.id in FORBIDDEN_NAMES or node.id.startswith("__")):
             return False,"Nombre no permitido: "+node.id
-        if isinstance(node,ast.Attribute) and node.attr.startswith("__"):
+        if isinstance(node,ast.Attribute) and (node.attr.startswith("_") or node.attr in {"ctypeslib","ctypes","CDLL","PyDLL","WinDLL","CFUNCTYPE","pythonapi","system","popen","spawn","fork","execv","fromfile","tofile","memmap","load","save","loadtxt","savetxt"}):
             return False,"Acceso a atributos internos no permitido."
         if isinstance(node,(ast.Global,ast.Nonlocal,ast.ClassDef,ast.AsyncFunctionDef,ast.Await,ast.Yield,ast.YieldFrom)):
             return False,"Construcción no permitida: "+type(node).__name__
@@ -63,6 +63,11 @@ try:
   try:
    from qiskit_aer import AerSimulator
    env["AerSimulator"]=AerSimulator
+  except Exception: pass
+  try:
+   from qiskit_algorithms import VQE,QAOA,Grover
+   from qiskit_algorithms.optimizers import COBYLA,SPSA
+   env.update({"VQE":VQE,"QAOA":QAOA,"Grover":Grover,"COBYLA":COBYLA,"SPSA":SPSA})
   except Exception: pass
  start=time.monotonic()
  out,err=CappedBuffer(),CappedBuffer()
@@ -111,8 +116,8 @@ def execute_isolated(code):
         os.chmod(work,0o777)
         args=[bwrap,"--unshare-all","--die-with-parent","--new-session","--uid","65534","--gid","65534"]
         mounted=set()
-        for path in ("/usr","/bin","/lib","/lib64","/etc/ld.so.cache"):
-            if os.path.exists(path):
+        for path in ("/usr","/lib","/lib64"):
+            if os.path.exists(path) and not os.path.islink(path):
                 args.extend(["--ro-bind",path,path]); mounted.add(path)
         for prefix in {sys.prefix,sys.base_prefix}:
             if prefix and os.path.exists(prefix) and not any(prefix==root or prefix.startswith(root.rstrip("/")+"/") for root in mounted if root!="/etc/ld.so.cache"):
@@ -120,7 +125,7 @@ def execute_isolated(code):
         args.extend(["--proc","/proc","--dev","/dev","--tmpfs","/tmp","--dir","/workspace","--bind",work,"/workspace",
           "--chdir","/workspace","--setenv","HOME","/workspace","--setenv","MPLCONFIGDIR","/workspace/.mpl",
           "--setenv","XDG_CACHE_HOME","/workspace/.cache","--setenv","PYTHONDONTWRITEBYTECODE","1",
-          "--","--",sys.executable,"-I","-c",_WORKER])
+          "--",sys.executable,"-I","-c",_WORKER])
         payload=json.dumps({"code":code,"allowed":sorted(ALLOWED_IMPORTS)})
         try:
             proc=subprocess.run(args,input=payload,text=True,capture_output=True,timeout=15,check=False,
