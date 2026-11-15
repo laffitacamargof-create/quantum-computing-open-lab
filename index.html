@@ -531,7 +531,7 @@ body::before{content:'';position:fixed;inset:0;
           <path d="M8 12h8M12 8l4 4-4 4" stroke="#00ffdd" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
           <circle cx="12" cy="12" r="2.5" fill="rgba(0,255,221,.2)" stroke="#00ffdd" stroke-width="1"/>
         </svg>
-        QuantumChat
+        QuOLab Nexus AI
       </button>
     </div>
     <div class="module-iframe-wrap" id="projects-wrap">
@@ -565,7 +565,7 @@ body::before{content:'';position:fixed;inset:0;
           <path d="M8 12h8M12 8l4 4-4 4" stroke="#00ffdd" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
           <circle cx="12" cy="12" r="2.5" fill="rgba(0,255,221,.2)" stroke="#00ffdd" stroke-width="1"/>
         </svg>
-        QuantumChat
+        QuOLab Nexus AI
       </button>
     </div>
     <div class="module-iframe-wrap" id="architect-wrap">
@@ -596,7 +596,7 @@ body::before{content:'';position:fixed;inset:0;
           <path d="M8 12h8M12 8l4 4-4 4" stroke="#00ffdd" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
           <circle cx="12" cy="12" r="2.5" fill="rgba(0,255,221,.2)" stroke="#00ffdd" stroke-width="1"/>
         </svg>
-        QuantumChat
+        QuOLab Nexus AI
       </button>
     </div>
     <div class="module-iframe-wrap" id="architect-pro-wrap">
@@ -621,7 +621,7 @@ body::before{content:'';position:fixed;inset:0;
           <path d="M8 12h8M12 8l4 4-4 4" stroke="#00ffdd" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
           <circle cx="12" cy="12" r="2.5" fill="rgba(0,255,221,.2)" stroke="#00ffdd" stroke-width="1"/>
         </svg>
-        QuantumChat
+        QuOLab Nexus AI
       </button>
     </div>
     <div class="module-iframe-wrap" id="library-wrap">
@@ -645,7 +645,7 @@ body::before{content:'';position:fixed;inset:0;
           <path d="M8 12h8M12 8l4 4-4 4" stroke="#00ffdd" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
           <circle cx="12" cy="12" r="2.5" fill="rgba(0,255,221,.2)" stroke="#00ffdd" stroke-width="1"/>
         </svg>
-        QuantumChat
+        QuOLab Nexus AI
       </button>
     </div>
     <div class="module-iframe-wrap" id="account-wrap">
@@ -663,7 +663,7 @@ body::before{content:'';position:fixed;inset:0;
           <path d="M8 12h8M12 8l4 4-4 4" stroke="#00ffdd" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
           <circle cx="12" cy="12" r="2.5" fill="rgba(0,255,221,.2)" stroke="#00ffdd" stroke-width="1"/>
         </svg>
-        QuantumChat
+        QuOLab Nexus AI
       </button>
     </div>
     <div class="module-iframe-wrap" id="founder-wrap">
@@ -687,7 +687,7 @@ body::before{content:'';position:fixed;inset:0;
           <path d="M8 12h8M12 8l4 4-4 4" stroke="#00ffdd" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
           <circle cx="12" cy="12" r="2.5" fill="rgba(0,255,221,.2)" stroke="#00ffdd" stroke-width="1"/>
         </svg>
-        QuantumChat
+        QuOLab Nexus AI
       </button>
     </div>
     <div class="module-iframe-wrap" id="help-wrap">
@@ -714,7 +714,7 @@ body::before{content:'';position:fixed;inset:0;
           <path d="M8 12h8M12 8l4 4-4 4" stroke="#00ffdd" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
           <circle cx="12" cy="12" r="2.5" fill="rgba(0,255,221,.2)" stroke="#00ffdd" stroke-width="1"/>
         </svg>
-        QuantumChat
+        QuOLab Nexus AI
       </button>
     </div>
     <div class="module-iframe-wrap" id="quantum-puzzle-wrap">
@@ -1967,6 +1967,7 @@ class QuOLabNexusConfigSyncReader {
 
   // ═══════════════ COPILOTO: la IA ve el contexto, aconseja y (con tu permiso) actúa ═══════════════
   const AI_SCREENS = ['projects','architect','architect-pro','library','help','quantum-puzzle','quantum-app-studio'];   // founder/account nunca
+  const AI_NAV_SCREENS = AI_SCREENS.filter(screen => screen !== 'quantum-app-studio');
   const AI_TARGET  = { architect: 'architect', notebook: 'architect-pro' };
   function aiOptGet(k) { try { const v = localStorage.getItem('openq_ai_' + k); return k === 'ctx' ? v !== '0' : v === '1'; } catch (e) { return k === 'ctx'; } }
   function aiOpt(k, on) { try { localStorage.setItem('openq_ai_' + k, on ? '1' : '0'); } catch (e) {} notify(k === 'auto' ? (on ? '⚡ Auto: the assistant will apply actions by itself' : 'Auto off: you confirm each action') : (on ? '👁 The assistant can see your screen, code and results' : '👁 Context sharing off')); }
@@ -2022,7 +2023,7 @@ CONTEXT: ${c}`;
   function validAIAction(a) {
     if (!a || typeof a !== 'object') return false;
     switch (a.type) {
-      case 'nav': return AI_SCREENS.includes(a.screen);
+      case 'nav': return AI_NAV_SCREENS.includes(a.screen);
       case 'open_notebook': case 'open_app': return typeof a.id === 'string' && /^[\w.\-]{1,80}$/.test(a.id);
       case 'set_code': return !!AI_TARGET[a.target] && typeof a.code === 'string' && a.code.length > 0 && a.code.length < 20000 && (a.target !== 'notebook' || Number.isInteger(a.cellIndex));
       case 'run': return !!AI_TARGET[a.target] && (a.target !== 'notebook' || Number.isInteger(a.cellIndex));
