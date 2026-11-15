@@ -137,6 +137,7 @@
     try { el = frame.contentDocument.querySelector(action.selector); } catch (_) {}
     if (!el) return { ok: false, message: 'The requested control was not found in the current tool.' };
     if (el.disabled || el.getAttribute('aria-disabled') === 'true') return { ok: false, message: 'The control is disabled.' };
+    if (!el.getClientRects().length || global.getComputedStyle(el).visibility === 'hidden') return { ok: false, message: 'The control is not visible.' };
     const label = cleanText(el.innerText || el.value || el.getAttribute('aria-label') || '', 100);
     const operation = action.operation;
     if (operation === 'fill' || operation === 'select') {
