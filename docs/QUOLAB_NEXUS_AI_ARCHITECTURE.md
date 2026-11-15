@@ -63,3 +63,12 @@ Secrets, password fields, tokens and sensitive form values are redacted and cann
 
 ## Verification
 CI validates syntax, module catalog coverage, selectors, staged manual selection, bounded context, small action batches, gateway request retries, upstream 413 failover, receipt/status handling and action deduplication. Automated static tests and GitHub Pages deployment do not substitute for interactive end-to-end testing in a real browser session.
+
+
+## Runtime function access and continuous telemetry (v1.8)
+
+The superagent receives a live function inventory for each loaded module. For each function documented in that module's operating manual, the inventory reports whether the corresponding public global function is actually callable in the current frame, its arity and a best-effort parameter signature. The model may use `tool_call` only for a function in that documented, live callable inventory; if a function is not exposed, it must use the supported UI/action bridge. Function calls execute in the module frame and retain module-level authorization checks. Destructive function names require a user confirmation. The agent must not guess function signatures or bypass module security.
+
+The universal connector reports sanitized input/change events, clicks, form submissions, fetch/XHR requests and responses, HTTP failures, rendered output changes, runtime errors and rejected promises. Events are retained in a bounded in-memory recent-event buffer and broadcast to the coordinator. HTTP responses with status 400 or higher are classified as errors and can trigger proactive diagnostics. Sensitive fields and credential-like strings remain redacted. Telemetry is operational context, not a raw recording of passwords, tokens, cookies, private keys or unrelated user data. The agent sees the event stream on context refresh and proactively diagnoses detected errors; it does not invoke an LLM for every keystroke or network packet, which would be expensive and could disclose excessive data.
+
+The task panel remains open during action dispatch and closes only through the verified-completion lifecycle. Manual selection follows the active tool on continuation turns so a multi-tool task can change manuals after each navigation while preserving its original objective.
