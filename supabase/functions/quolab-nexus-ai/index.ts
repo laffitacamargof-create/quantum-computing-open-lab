@@ -85,6 +85,26 @@ function retryable(status: number) {
   return status === 401 || status === 402 || status === 403 || status === 408 || status === 409 ||
     status === 413 || status === 425 || status === 429 || status >= 500;
 }
+async function readLimitedText(req: Request, maxBytes = 100_000) {
+  const declared = Number(req.headers.get("content-length") || 0);
+  if (declared > maxBytes) throw new Error("payload_too_large");
+  if (!req.body) return "";
+  const reader = req.body.getReader(), chunks: Uint8Array[] = [];
+  let size = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > maxBytes) { await reader.cancel(); throw new Error("payload_too_large"); }
+      chunks.push(value);
+    }
+  } finally { reader.releaseLock(); }
+  const bytes = new Uint8Array(size);
+  let offset = 0;
+  for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
+  return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+}
 async function invoke(provider: Provider, messages: Message[], maxTokens: number, temperature: number) {
   const controller = AbortSignal.timeout(provider.timeoutMs || 25_000);
   let response: Response;
@@ -146,8 +166,12 @@ Deno.serve(async (req: Request) => {
     if (user.is_anonymous !== true) return reply(403, { error: "anonymous_session_required" }, origin);
     if (!withinRateLimit(user.id)) return reply(429, { error: "rate_limit_exceeded" }, origin);
 
-    const raw = await req.text();
-    if (raw.length > 100_000) return reply(413, { error: "payload_too_large" }, origin);
+    let raw: string;
+    try { raw = await readLimitedText(req); }
+    catch (error) {
+      const tooLarge = error instanceof Error && error.message === "payload_too_large";
+      return reply(tooLarge ? 413 : 400, { error: tooLarge ? "payload_too_large" : "invalid_request_body" }, origin);
+    }
     let payload: Record<string, unknown>;
     try { payload = JSON.parse(raw); } catch { return reply(400, { error: "invalid_json" }, origin); }
     const messages = payload.messages;
