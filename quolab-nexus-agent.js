@@ -149,15 +149,22 @@
       .find(item => item.contentWindow === event.source);
     const details = event.data.details || {};
     const nestedKind = details.kind || event.data.kind || '';
-    recentEvents.push({
+    const record = {
       time: new Date().toISOString(),
       from: cleanText(details.tool || (frame ? frame.getAttribute('data-openq') : 'nexus'), 60),
       type: type,
       kind: cleanText(nestedKind, 60),
       details: cleanText(JSON.stringify(details.details || details), 1000),
       status: /ERROR|FAIL|REJECT/i.test(type) || /error/i.test(nestedKind) ? 'error' : /RESULT|OUTPUT|SUCCESS|READY/i.test(type) || /response|output|result/i.test(nestedKind) ? 'result' : 'event'
-    });
+    };
+    recentEvents.push(record);
     if (recentEvents.length > MAX_EVENTS) recentEvents.splice(0, recentEvents.length - MAX_EVENTS);
+    if (record.status === 'error') {
+      const detailMessage = details.message || details.error || nestedKind || type;
+      global.dispatchEvent(new CustomEvent('quolab:nexus-alert', {
+        detail: { tool: record.from, kind: record.kind, message: cleanText(detailMessage, 240) }
+      }));
+    }
   }
   global.addEventListener('message', recordMessage, true);
 
