@@ -23,6 +23,11 @@ for (const name of [
 
 assert.match(agent, /CENTRAL_SCREENS = Object\.freeze\(\['library','help'\]\)/);
 assert.match(agent, /SPECIALIST_INSTRUCTIONS = Object\.freeze/);
+for (const id of ['projects','architect','architect-pro','quantum-puzzle','quantum-app-studio']) {
+  assert.match(agent, new RegExp(id.replace(/[.*+?^${}()|[\\]\\]/g, '\\\\assert.match(agent, /SPECIALIST_INSTRUCTIONS = Object\.freeze/);') + \": ['\\\"]You are the"));
+}
+assert.match(agent, /const VERSION = '1\.2\.0'/);
+assert.match(connector, /const VERSION = '1\.2\.0'/);
 assert.match(agent, /getSpecialistInstructions: id => SPECIALIST_INSTRUCTIONS\[id\]/);
 assert.match(agent, /recordDelegation,/);
 assert.match(agent, /SPECIALIST_INSTRUCTIONS/);
@@ -58,4 +63,7 @@ assert.match(index, /exactly five tool specialists and no others/);
 assert.match(index, /Library and Help are central-agent responsibilities/);
 assert.match(index, /same language as the user's latest message/);
 
-console.log('PASS: exactly five specialists, central-owned general modules, and nested Quantum App Studio routing.');
+assert.match(index, /SPECIALIST WORKER MODE/);
+assert.match(index, /operation":"click\|fill\|type\|select\|scroll\|hover\|key\|drag/);
+assert.match(index, /QUOLAB NEXUS AI/);
+console.log('PASS: five specialist workers, central dispatch, telemetry, UI actions and nested App Studio routing.');
