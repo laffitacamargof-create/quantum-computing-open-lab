@@ -451,7 +451,7 @@ body::before{content:'';position:fixed;inset:0;
     <div class="ai-msgs" id="ai-messages">
       <div class="ai-msg bot">
         <div class="ai-lbl">QNEXUSAI</div>
-        <div class="markdown-body" id="ai-welcome">Welcome to QuOLab Nexus. I am your central AI coordinator. I coordinate five specialists: Projects, Quantum Notebook, Quantum Open Lab, Quantum Puzzle, and Quantum App Studio. I handle general help, diagnostics, programming, and the rest of the ecosystem. Would you like a guided tour or help with something you are working on?</div>
+        <div class="markdown-body" id="ai-welcome">Welcome to QuOLab Nexus. I am the single autonomous agent for QuOLab Nexus. I can operate Projects, Quantum Notebook, Quantum Open Lab, Quantum Puzzle, Quantum App Studio, Library and Help directly. I plan, execute, check results and continue until your task is verified or a concrete blocker is reached. Would you like a guided tour or help with something you are working on?</div>
       </div>
     </div>
     <div class="ai-loading" id="ai-loading">
@@ -466,7 +466,7 @@ body::before{content:'';position:fixed;inset:0;
       <span id="ai-stxt">Not connected — demo mode</span>
       <span style="margin-left:auto;display:flex;gap:.7rem;">
         <label class="ai-opt" title="Share what you are doing (screen, code, last output) with the assistant so it can advise you"><input type="checkbox" id="ai-opt-ctx" onchange="QuOLabNexus.aiOpt('ctx',this.checked)"> 👁 Context</label>
-        <span id="ai-specialist-count" style="color:var(--mu)">5 tool specialists</span>
+        <span id="ai-specialist-count" style="color:var(--mu)">One agent · all tools</span>
       </span>
     </div>
   </div>
@@ -2283,7 +2283,7 @@ CONTEXT: ${c}`;
   }
 
   function taskStatus(report){const t=String(report||'');return{status:((t.match(/TASK_STATUS\\s*:\\s*(COMPLETED|CONTINUE|BLOCKED)/i)||[])[1]||'').toUpperCase(),evidence:((t.match(/TASK_EVIDENCE\\s*:\\s*([^\\r\\n]+)/i)||[])[1]||'').trim()};}
-  function isExecutionRequest(msg){return /\\b(create|build|program|write|edit|fix|correct|run|execute|save|delete|publish|implement|deploy|configure|add|remove|construye|construir|crear|crea|programa|programar|escribe|escribir|edita|editar|corrige|corregir|arregla|arreglar|ejecuta|ejecutar|guarda|guardar|implementa|implementar|configura|configurar|añade|añadir|anade|anadir|elimina|eliminar|modifica|modificar|diseña|diseñar|disena|disenar|simula|simular)\\b/i.test(String(msg||''));}
+  function isExecutionRequest(msg){const t=String(msg||'');if(/^\\s*(open|abre|abrir|muestra|show|navigate|ir a|go to)\\b/i.test(t))return true;return /\\b(create|build|program|write|edit|fix|correct|run|execute|save|delete|publish|implement|deploy|configure|add|remove|construye|construir|crear|crea|programa|programar|escribe|escribir|edita|editar|corrige|corregir|arregla|arreglar|ejecuta|ejecutar|guarda|guardar|implementa|implementar|configura|configurar|añade|añadir|anade|anadir|elimina|eliminar|modifica|modificar|diseña|diseñar|disena|disenar|simula|simular)\\b/i.test(t);}
   function hasFreshOutput(ctx,execution){
     if((execution?.results||[]).some(x=>x.ok&&String(x.output||'').trim()))return true;
     const tools=Array.isArray(ctx?.tools)?ctx.tools:[];
