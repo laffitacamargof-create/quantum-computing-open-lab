@@ -7,6 +7,8 @@ const docs=fs.readFileSync('docs/QUOLAB_NEXUS_AI_ARCHITECTURE.md','utf8');
 const connector=fs.readFileSync('quolab-nexus-tool-connector.js','utf8');
 assert.ok(agent.includes("const VERSION = '1.8.0'"));
 assert.ok(agent.includes('item.function_api='));
+assert.ok(agent.includes('const FUNCTION_PURPOSES = Object.freeze'));
+assert.ok(agent.includes('purpose:FUNCTION_PURPOSES[name]||inferFunctionPurpose(name)'));
 assert.ok(agent.includes("details.details.ok===false"));
 assert.ok(agent.includes("quolab:nexus-activity"));
 assert.ok(agent.includes("mode: 'single_autonomous_agent'"));
