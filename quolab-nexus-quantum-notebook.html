@@ -349,6 +349,23 @@ body.expo-mode .nb-bottom{display:none;}
 .nb-circuit-help{margin-top:5px;color:#3d5a8a;font-size:9px;line-height:1.45}
 @media(max-width:600px){.nb-circuit-tools{flex-direction:column}.nb-cell-palette{width:100%;flex:0 0 auto}.nb-cell-palette-body{max-height:none}.nb-cell-pal-grid{grid-template-columns:repeat(5,minmax(0,1fr))}.nb-cell-pal-gate{min-height:44px;aspect-ratio:auto}.nb-cell-wire{min-width:220px}.nb-cell-circuit-wrap{touch-action:pan-x pan-y}}
 
+/* Original Architect circuit canvas, rendered read-only inside Notebook cells */
+.nb-original-circuit-scroll{max-width:100%;overflow-x:auto;overflow-y:hidden;padding:.5rem;background:#060912;overscroll-behavior-x:contain}
+.nb-original-circuit{position:relative;min-height:56px;background:#060912}
+.nb-original-circuit .q-row{display:flex;align-items:center;height:56px;position:relative}
+.nb-original-circuit .q-label{width:40px;text-align:right;padding-right:.5rem;font-family:var(--mono);font-size:.55rem;color:var(--mu);flex-shrink:0}
+.nb-original-circuit .q-wire{flex:1;position:relative;height:56px;min-width:200px;background:transparent}
+.nb-original-circuit .q-wire:before{content:'';position:absolute;left:0;right:0;top:50%;height:2px;background:linear-gradient(90deg,rgba(0,136,255,.3),rgba(0,136,255,.1));transform:translateY(-50%);pointer-events:none}
+.nb-original-circuit .placed-gate{position:absolute;top:50%;transform:translateY(-50%);z-index:5;cursor:default}
+.nb-original-circuit .pg-box{width:38px;height:38px;border-radius:6px;display:flex;align-items:center;justify-content:center;border:1.5px solid rgba(255,255,255,.2)}
+.nb-original-circuit .pg-sym{font-family:var(--mono);font-size:.8rem;font-weight:700;color:#fff}
+.nb-original-circuit .multi-gate-container,.nb-original-circuit .triple-gate-container{position:absolute;top:0;left:0;z-index:5;pointer-events:none}
+.nb-original-circuit .multi-gate-svg,.nb-original-circuit .triple-gate-svg{display:block;pointer-events:none}
+.nb-original-circuit .qcol-block{pointer-events:none}
+.nb-original-circuit-scroll::-webkit-scrollbar{height:7px}
+.nb-original-circuit-scroll::-webkit-scrollbar-track{background:#060912}
+.nb-original-circuit-scroll::-webkit-scrollbar-thumb{background:#26364f;border-radius:4px}
+
 /* ── MANAGE ── */
 #view-manage{display:none;flex:1;flex-direction:column;overflow:hidden;}
 .manage-wrap{display:flex;flex-direction:column;height:100%;overflow:hidden;}
@@ -646,31 +663,55 @@ function cellGateDef(id){return NB_GATE_DEFS[id]||null;}
 function cellGateSymbol(g){return g.def?.sym||cellGateDef(g.id)?.sym||g.id||'?';}
 function cellGateColor(g){return g.def?.bg||cellGateDef(g.id)?.bg||'#1a4a8a';}
 function buildInteractiveCircuitCell(cell){
- const cellArg="'"+String(cell.id).replace(/\\/g,"\\\\").replace(/'/g,"\\'")+"'";
- const data=cell.circuitData||{qubits:2,gates:[]},n=Math.max(1,Math.min(20,Number(data.qubits)||1)),gates=Array.isArray(data.gates)?data.gates:[];
+ const data=cell.circuitData||{qubits:2,gates:[]};
+ const n=Math.max(1,Math.min(20,Number(data.qubits)||1));
+ const gates=Array.isArray(data.gates)?data.gates:[];
  const ROW=56,STEP=52,depth=Array(n).fill(0);
- const placed=gates.map((g,i)=>{let col=0;if(g.block){for(let q=g.q;q<=g.q2;q++)col=Math.max(col,depth[q]||0);for(let q=g.q;q<=g.q2;q++)depth[q]=col+(g.block.w||1);}else if(g.q3!==undefined){col=Math.max(depth[g.q]||0,depth[g.q2]||0,depth[g.q3]||0);[g.q,g.q2,g.q3].forEach(q=>depth[q]=col+1);}else if(g.q2!==undefined){col=Math.max(depth[g.q]||0,depth[g.q2]||0);depth[g.q]=depth[g.q2]=col+1;}else{col=depth[g.q]||0;depth[g.q]=col+1;}return {...g,_index:i,_col:col};});
- const total=Math.max(1,...depth),width=total*STEP+90;
- let html='<div class="nb-cell-circuit-wrap"><div class="nb-cell-circuit" style="width:'+width+'px;height:'+(n*ROW)+'px">';
- for(let q=0;q<n;q++)html+='<div class="nb-cell-wire-row"><div class="nb-cell-wire-label">q['+q+']</div><div class="nb-cell-wire" data-cell="'+cell.id+'" data-qubit="'+q+'" aria-readonly="true"></div></div>';
- placed.forEach(g=>{
-  const left=g._col*STEP+55,color=cellGateColor(g),sym=cellGateSymbol(g);
-  if(g.block){html+='<div class="nb-cell-gate-multi" style="left:'+left+'px;top:'+(g.q*ROW+4)+'px;width:'+((g.block.w||1)*STEP-8)+'px;height:'+((g.q2-g.q+1)*ROW-8)+'px;background:linear-gradient(135deg,#4a148c,#8e24aa);border:1px solid #ce93d8;border-radius:7px;color:white;display:flex;flex-direction:column;align-items:center;justify-content:center;font:700 11px monospace">'+escH(g.block.label||'BLOCK')+'</div>';return;}
-  if(g.q3!==undefined||g.q2!==undefined){
-   const qs=[g.q,g.q2,...(g.q3!==undefined?[g.q3]:[])],top=Math.min(...qs),bottom=Math.max(...qs),h=(bottom-top)*ROW+ROW,cy=q=>(q-top)*ROW+ROW/2;
-   let svg='<svg width="50" height="'+h+'" viewBox="0 0 50 '+h+'" aria-label="'+escH(g.id)+'" style="cursor:default"><line x1="25" y1="'+cy(top)+'" x2="25" y2="'+cy(bottom)+'" stroke="'+color+'" stroke-width="2.5"/>';
-   if(g.q3!==undefined){
-    if(g.id==='CCX'){svg+='<circle cx="25" cy="'+cy(g.q)+'" r="8" fill="'+color+'"/><circle cx="25" cy="'+cy(g.q2)+'" r="8" fill="'+color+'"/><circle cx="25" cy="'+cy(g.q3)+'" r="14" fill="none" stroke="'+color+'" stroke-width="2.5"/><path d="M17 '+cy(g.q3)+'h16 M25 '+(cy(g.q3)-10)+'v20" stroke="'+color+'" stroke-width="2"/>';}
-    else{svg+='<circle cx="25" cy="'+cy(g.q)+'" r="8" fill="'+color+'"/>'+[g.q2,g.q3].map(q=>'<path d="M17 '+(cy(q)-9)+'l16 18 M33 '+(cy(q)-9)+'L17 '+(cy(q)+9)+'" stroke="'+color+'" stroke-width="2.5"/>').join('');}
-   }else if(g.id==='CX'){svg+='<circle cx="25" cy="'+cy(g.q)+'" r="8" fill="'+color+'"/><circle cx="25" cy="'+cy(g.q2)+'" r="14" fill="none" stroke="'+color+'" stroke-width="2.5"/><path d="M17 '+cy(g.q2)+'h16 M25 '+(cy(g.q2)-10)+'v20" stroke="'+color+'" stroke-width="2"/>';}
-   else if(g.id==='CZ'){svg+='<circle cx="25" cy="'+cy(g.q)+'" r="8" fill="'+color+'"/><circle cx="25" cy="'+cy(g.q2)+'" r="8" fill="'+color+'"/>';}
-   else{svg+=[g.q,g.q2].map(q=>'<path d="M15 '+(cy(q)-9)+'l20 18 M35 '+(cy(q)-9)+'L15 '+(cy(q)+9)+'" stroke="'+color+'" stroke-width="2.5"/>').join('');}
-   svg+='</svg>';html+='<div class="nb-cell-gate-multi" style="left:'+left+'px;top:'+(top*ROW)+'px" title="'+escH(g.id)+' · view only">'+svg+'</div>';return;
-  }
-  const display=sym.length>4?sym.slice(0,3):sym;
-  html+='<div class="nb-cell-gate" draggable="false" aria-readonly="true" style="left:'+left+'px;top:'+(g.q*ROW+ROW/2)+'px" title="'+escH(g.id)+' · drag to move, tap to remove"><div class="nb-cell-gate-box" style="background:'+color+'">'+escH(display)+'</div></div>';
+ const placed=gates.map(g=>{
+  let col;
+  if(g.block){col=0;for(let q=g.q;q<=g.q2;q++)col=Math.max(col,depth[q]||0);const w=g.block.w||1;for(let q=g.q;q<=g.q2;q++)depth[q]=col+w;}
+  else if(g.q3!==undefined){col=Math.max(depth[g.q]||0,depth[g.q2]||0,depth[g.q3]||0);[g.q,g.q2,g.q3].forEach(q=>depth[q]=col+1);}
+  else if(g.q2!==undefined){col=Math.max(depth[g.q]||0,depth[g.q2]||0);depth[g.q]=depth[g.q2]=col+1;}
+  else{col=depth[g.q]||0;depth[g.q]=col+1;}
+  return {...g,_col:col};
  });
- html+='</div></div>';return html;
+ const totalCols=Math.max(...depth,1),wireWidth=totalCols*STEP+70;
+ let html='<div class="nb-original-circuit-scroll"><div class="nb-original-circuit" style="min-width:'+wireWidth+'px;width:'+wireWidth+'px;position:relative">';
+ for(let q=0;q<n;q++)html+='<div class="q-row"><div class="q-label">q['+q+']</div><div class="q-wire" aria-readonly="true"></div></div>';
+ placed.forEach(g=>{
+  const left=g._col*STEP+15,color=cellGateColor(g),sym=cellGateSymbol(g);
+  if(g.block){
+   const bw=(g.block.w||1)*STEP-10,bh=(g.q2-g.q+1)*ROW-8;
+   html+='<div class="qcol-block" title="'+escH(g.block.tip||g.block.label||'')+'" aria-label="'+escH(g.block.tip||g.block.label||'')+'" style="position:absolute;left:'+left+'px;top:'+(g.q*ROW+4)+'px;width:'+bw+'px;height:'+bh+'px;box-sizing:border-box;background:linear-gradient(135deg,#4a148c,#8e24aa);border:1.5px solid #ce93d8;border-radius:8px;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;font:700 12px monospace;text-align:center;overflow:hidden;padding:2px">'+escH(g.block.label||'BLOCK')+'<span style="font-weight:400;font-size:9px;opacity:.85">'+escH(g.block.sub||'')+'</span></div>';
+   return;
+  }
+  if(g.q3!==undefined){
+   const qs=[g.q,g.q2,g.q3].sort((a,b)=>a-b),topY=qs[0]*ROW,height=(qs[2]-qs[0])*ROW,gCol=color;
+   let svg='';
+   if(g.id==='CCX'){
+    svg='<svg class="triple-gate-svg" width="52" height="'+(ROW+height)+'" viewBox="0 0 52 '+(ROW+height)+'" aria-label="'+escH(g.id)+'"><line x1="26" y1="0" x2="26" y2="'+(ROW+height)+'" stroke="'+gCol+'" stroke-width="2.5"/><circle cx="26" cy="'+(ROW/2)+'" r="8" fill="'+gCol+'" stroke="rgba(255,255,255,.9)" stroke-width="1.5"/><circle cx="26" cy="'+(ROW/2+(qs[1]-qs[0])*ROW)+'" r="8" fill="'+gCol+'" stroke="rgba(255,255,255,.9)" stroke-width="1.5"/><circle cx="26" cy="'+(ROW/2+height)+'" r="14" fill="none" stroke="'+gCol+'" stroke-width="2.5"/><line x1="18" y1="'+(ROW/2+height)+'" x2="34" y2="'+(ROW/2+height)+'" stroke="'+gCol+'" stroke-width="2"/><line x1="26" y1="'+(ROW/2+height-10)+'" x2="26" y2="'+(ROW/2+height+10)+'" stroke="'+gCol+'" stroke-width="2"/></svg>';
+   }else{
+    svg='<svg class="triple-gate-svg" width="52" height="'+(ROW+height)+'" viewBox="0 0 52 '+(ROW+height)+'" aria-label="'+escH(g.id)+'"><line x1="26" y1="0" x2="26" y2="'+(ROW+height)+'" stroke="'+gCol+'" stroke-width="2.5"/><circle cx="26" cy="'+(ROW/2)+'" r="8" fill="'+gCol+'" stroke="rgba(255,255,255,.9)" stroke-width="1.5"/><path d="M18 '+(ROW/2+(qs[1]-qs[0])*ROW-6)+'l16 12 M34 '+(ROW/2+(qs[1]-qs[0])*ROW-6)+'L18 '+(ROW/2+(qs[1]-qs[0])*ROW+6)+' M18 '+(ROW/2+height-6)+'l16 12 M34 '+(ROW/2+height-6)+'L18 '+(ROW/2+height+6)+'" stroke="'+gCol+'" stroke-width="2"/></svg>';
+   }
+   html+='<div class="triple-gate-container" style="left:'+left+'px;top:'+topY+'px">'+svg+'</div>';
+  }else if(g.q2!==undefined){
+   const topY=g.q*ROW,height=(g.q2-g.q)*ROW,gCol=color;
+   let svg='';
+   if(g.id==='CX'){
+    svg='<svg class="multi-gate-svg" width="48" height="'+(ROW+height)+'" viewBox="0 0 48 '+(ROW+height)+'" aria-label="'+escH(g.id)+'"><line x1="24" y1="0" x2="24" y2="'+(ROW+height)+'" stroke="'+gCol+'" stroke-width="2.5"/><circle cx="24" cy="'+(ROW/2)+'" r="8" fill="'+gCol+'" stroke="rgba(255,255,255,.9)" stroke-width="1.5"/><circle cx="24" cy="'+(ROW/2+height)+'" r="14" fill="none" stroke="'+gCol+'" stroke-width="2.5"/><line x1="16" y1="'+(ROW/2+height)+'" x2="32" y2="'+(ROW/2+height)+'" stroke="'+gCol+'" stroke-width="2"/><line x1="24" y1="'+(ROW/2+height-10)+'" x2="24" y2="'+(ROW/2+height+10)+'" stroke="'+gCol+'" stroke-width="2"/></svg>';
+   }else if(g.id==='CZ'){
+    svg='<svg class="multi-gate-svg" width="48" height="'+(ROW+height)+'" viewBox="0 0 48 '+(ROW+height)+'" aria-label="'+escH(g.id)+'"><line x1="24" y1="0" x2="24" y2="'+(ROW+height)+'" stroke="'+gCol+'" stroke-width="2.5"/><circle cx="24" cy="'+(ROW/2)+'" r="8" fill="'+gCol+'" stroke="rgba(255,255,255,.9)" stroke-width="1.5"/><circle cx="24" cy="'+(ROW/2+height)+'" r="8" fill="'+gCol+'" stroke="rgba(255,255,255,.9)" stroke-width="1.5"/></svg>';
+   }else{
+    svg='<svg class="multi-gate-svg" width="48" height="'+(ROW+height)+'" viewBox="0 0 48 '+(ROW+height)+'" aria-label="'+escH(g.id)+'"><line x1="24" y1="0" x2="24" y2="'+(ROW+height)+'" stroke="'+gCol+'" stroke-width="2.5"/><path d="M16 '+(ROW/2-6)+'l16 12 M32 '+(ROW/2-6)+'L16 '+(ROW/2+6)+' M16 '+(ROW/2+height-6)+'l16 12 M32 '+(ROW/2+height-6)+'L16 '+(ROW/2+height+6)+'" stroke="'+gCol+'" stroke-width="2"/></svg>';
+   }
+   html+='<div class="multi-gate-container" style="left:'+left+'px;top:'+topY+'px">'+svg+'</div>';
+  }else{
+   const display=sym.length>4?sym.slice(0,3):sym;
+   html+='<div class="placed-gate" aria-readonly="true" style="left:'+left+'px;top:'+(g.q*ROW+ROW/2)+'px;cursor:default"><div class="pg-box" style="background:'+color+';box-shadow:0 0 6px '+color+'"><span class="pg-sym">'+escH(display)+'</span></div></div>';
+  }
+ });
+ html+='</div></div>';
+ return html;
 }
 function cellGatePaletteHtml(cellId){
  let html='<div class="nb-cell-palette"><div class="nb-cell-palette-hdr">GATES · VIEW ONLY</div><div class="nb-cell-palette-body">';
@@ -710,10 +751,7 @@ function openCircuitEditor(cellId){
  notify('Opening this cell in Quantum Open Lab. Save and return to synchronize it.');
 }
 function toggleCircuitEditor(cellId){const cell=cells.find(c=>c.id===cellId);if(!cell||cell.type!=='circuit')return;openCircuitEditor(cellId);}
-function buildCircuitEditorControls(cell){
- const id=JSON.stringify(cell.id);
- return '<div class="nb-circuit-tools" onclick="event.stopPropagation()">'+cellGatePaletteHtml(cell.id)+'<div class="nb-cell-pal-actions"><div class="nb-cell-pal-label">CIRCUIT · READ ONLY</div><span class="nb-circuit-help">Circuit editing is locked in Quantum Notebook. Open Quantum Open Lab to make changes; Save and Return synchronizes the circuit back into this cell.</span><button type="button" class="nb-cell-open-lab" onclick="openCircuitEditor('+id+')">EDIT IN QUANTUM OPEN LAB ↗</button></div></div>';
-}
+function buildCircuitEditorControls(cell){return '';}
 
 // ── NAVIGATION ────────────────────────────────────────────────
 function goBack(){
@@ -2375,22 +2413,15 @@ function buildCellEl(cell,i){
     const restoreBtn = '';
     const circuitSVG = buildInteractiveCircuitCell(cell);
     const outContent = cell.output ? `<div class="cell-output-area" id="out-${cell.id}">${'<!-- output -->'}</div>` : '';
-    const editorControls = !_expositionMode ? buildCircuitEditorControls(cell) : '';
-    const warningHtml = cell.visualWarnings?.length ? `<div class="nb-circuit-warning">Some Qiskit operations are not drawn in this preview; the complete hidden source is still executed.</div>` : '';
     el.className='nb-cell circ-cell'+(curCellId===cell.id?' active':'');
     el.innerHTML=`${circuitToolbar}
       <div class="cell-gutter has-noise">
         <div class="cell-num">${cell.exec_count!==null?`[${cell.exec_count}]`:'[ ]'}</div>
         <div class="cell-btnrow"><button class="cell-run-btn" id="rbtn-${cell.id}"
-          onclick="event.stopPropagation();runCell('${cell.id}')" title="${hasCode?'Run circuit':'Edit the circuit first'}">▶</button>${`<button class="cell-run-btn cell-noise-btn" onclick="event.stopPropagation();noiseRun('${cell.id}')" title="Run with noise now (this cell's noise settings)" aria-label="Run with noise">🔊</button><button class="cell-run-btn cell-noise-cfg" onclick="event.stopPropagation();noiseCell('${cell.id}')" title="Noise settings for this cell" aria-label="Noise settings">⚙</button>`}</div>
+          onclick="event.stopPropagation();runCell('${cell.id}')" title="${hasCode?'Run circuit':'Open Quantum Open Lab to edit first'}">▶</button>${`<button class="cell-run-btn cell-noise-btn" onclick="event.stopPropagation();noiseRun('${cell.id}')" title="Run with noise now (this cell's noise settings)" aria-label="Run with noise">🔊</button><button class="cell-run-btn cell-noise-cfg" onclick="event.stopPropagation();noiseCell('${cell.id}')" title="Noise settings for this cell" aria-label="Noise settings">⚙</button>`}</div>
       </div>
       <div class="cell-body">
-        <div class="cell-type-badge ctb-circ">
-          ⚛ Visual Circuit
-        </div>
-        <div class="nb-cell-editor-layout">${editorControls}<div class="nb-cell-main"><div class="cell-circuit-preview" id="cprev-${cell.id}" title="Read-only circuit preview — edit through Quantum Open Lab">
-          <div class="circ-preview-hint">⚛ CIRCUIT — READ ONLY · EDIT THROUGH QUANTUM OPEN LAB</div>${circuitSVG}${!hasCircuit?'<div class="circ-empty-hint">Open Quantum Open Lab to build this circuit</div>':''}
-        </div>${warningHtml}</div></div>
+        <div class="cell-circuit-preview" id="cprev-${cell.id}" title="Read-only circuit — edit only in Quantum Open Lab">${circuitSVG}</div>
         <div class="cell-output-area" id="out-${cell.id}">${cell.output?`<div class="out-stdout">${escH(cell.output)}</div>`:''}</div>
         ${restoreBtn}
       </div>`;
