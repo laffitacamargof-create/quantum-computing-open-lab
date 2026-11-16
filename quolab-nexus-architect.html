@@ -768,10 +768,12 @@ function placeGate(gateId, qubit) {
     if (qCtrl === qSwap2) qSwap2 = (qSwap2 + 1) % circuit.qubits;
     if (qSwap1 === qSwap2) qSwap2 = (qSwap2 + 1) % circuit.qubits;
     const qs = [qCtrl, qSwap1, qSwap2].sort((a, b) => a - b);
+    if (circuit.gates.some(g => g.id === 'M' && qs.includes(g.q))) { isUpdatingFromCircuit = false; notify('❌ A gate cannot be placed after a measurement.'); return; }
     circuit.gates.push({ id: gateId, q: qs[0], q2: qs[1], q3: qs[2], def: def, uid: nextId++ });
   } else if (def.multi) {
     if (circuit.qubits < 2) { notify('You need at least 2 qubits'); isUpdatingFromCircuit = false; return; }
     const q2 = qubit + 1 < circuit.qubits ? qubit + 1 : qubit - 1;
+    if (circuit.gates.some(g => g.id === 'M' && (g.q === qubit || g.q === q2))) { isUpdatingFromCircuit = false; notify('❌ A gate cannot be placed after a measurement.'); return; }
     circuit.gates.push({ id: gateId, q: Math.min(qubit, q2), q2: Math.max(qubit, q2), def: def, uid: nextId++ });
   } else {
     if (gateId === 'M') {
@@ -825,13 +827,19 @@ function moveExistingGate(uid, newQubit) {
   
   if (gate.id === 'M') {
     if (!circuit.gates.some((g, i) => i !== idx && g.id !== 'M' && (g.q === newQubit || g.q2 === newQubit || g.q3 === newQubit))) {
-      isUpdatingFromCircuit = false; notify(`❌ q[${newQubit}] has no gate. A measurement must be at the end of a used wire.`); return;
+      isUpdatingFromCircuit = false;
+      notify('❌ A measurement must be placed after a gate on that wire.');
+      return;
     }
     if (circuit.gates.some((g, i) => i !== idx && g.id === 'M' && g.q === newQubit)) {
-      isUpdatingFromCircuit = false; notify(`q[${newQubit}] already has a measurement`); return;
+      isUpdatingFromCircuit = false;
+      notify('This wire already has a measurement.');
+      return;
     }
   } else if (circuit.gates.some((g, i) => i !== idx && g.id === 'M' && (g.q === newQubit || g.q2 === newQubit || g.q3 === newQubit))) {
-    isUpdatingFromCircuit = false; notify(`❌ q[${newQubit}] is already measured. A gate cannot be placed after its measurement.`); return;
+    isUpdatingFromCircuit = false;
+    notify('❌ A gate cannot be placed after a measurement.');
+    return;
   }
   circuit.gates.splice(idx, 1);
   
