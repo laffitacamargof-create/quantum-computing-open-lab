@@ -775,21 +775,18 @@ function placeGate(gateId, qubit) {
     circuit.gates.push({ id: gateId, q: Math.min(qubit, q2), q2: Math.max(qubit, q2), def: def, uid: nextId++ });
   } else {
     if (gateId === 'M') {
-      // One measurement per wire: preserve the existing gate and tell the user.
+      if (!circuit.gates.some(g => g.id !== 'M' && (g.q === qubit || g.q2 === qubit || g.q3 === qubit))) {
+        isUpdatingFromCircuit = false; notify(\`❌ q[\${qubit}] has no gate yet. Place its gates before the measurement.\`); return;
+      }
       if (circuit.gates.some(g => g.id === 'M' && g.q === qubit)) {
-        isUpdatingFromCircuit = false;
-        notify(`q[${qubit}] already has a measurement`);
-        return;
+        isUpdatingFromCircuit = false; notify(\`q[\${qubit}] already has a measurement\`); return;
       }
       circuit.gates.push({ id: gateId, q: qubit, def: def, uid: nextId++ });
     } else {
-      // Puerta normal: insertar antes de las mediciones de este qubit
-      const firstM = circuit.gates.findIndex(g => g.id === 'M' && g.q === qubit);
-      if (firstM >= 0) {
-        circuit.gates.splice(firstM, 0, { id: gateId, q: qubit, def: def, uid: nextId++ });
-      } else {
-        circuit.gates.push({ id: gateId, q: qubit, def: def, uid: nextId++ });
+      if (circuit.gates.some(g => g.id === 'M' && (g.q === qubit || g.q2 === qubit || g.q3 === qubit))) {
+        isUpdatingFromCircuit = false; notify(\`❌ q[\${qubit}] is already measured. A gate cannot be placed after its measurement.\`); return;
       }
+      circuit.gates.push({ id: gateId, q: qubit, def: def, uid: nextId++ });
     }
   }
   circuit.gates = normalizeMeasurements(circuit.gates);
@@ -826,10 +823,15 @@ function moveExistingGate(uid, newQubit) {
     return;
   }
   
-  if (gate.id === 'M' && circuit.gates.some((g, i) => i !== idx && g.id === 'M' && g.q === newQubit)) {
-    isUpdatingFromCircuit = false;
-    notify(`q[${newQubit}] already has a measurement`);
-    return;
+  if (gate.id === 'M') {
+    if (!circuit.gates.some((g, i) => i !== idx && g.id !== 'M' && (g.q === newQubit || g.q2 === newQubit || g.q3 === newQubit))) {
+      isUpdatingFromCircuit = false; notify(\`❌ q[\${newQubit}] has no gate. A measurement must be at the end of a used wire.\`); return;
+    }
+    if (circuit.gates.some((g, i) => i !== idx && g.id === 'M' && g.q === newQubit)) {
+      isUpdatingFromCircuit = false; notify(\`q[\${newQubit}] already has a measurement\`); return;
+    }
+  } else if (circuit.gates.some((g, i) => i !== idx && g.id === 'M' && (g.q === newQubit || g.q2 === newQubit || g.q3 === newQubit))) {
+    isUpdatingFromCircuit = false; notify(\`❌ q[\${newQubit}] is already measured. A gate cannot be placed after its measurement.\`); return;
   }
   circuit.gates.splice(idx, 1);
   
@@ -1067,6 +1069,33 @@ function updateBlochSelector() {
   if (sel.value !== currentBlochQubit.toString()) sel.value = currentBlochQubit;
 }
 
+// Valida el orden por cable y completa las mediciones que falten sin alterar las puertas.
+function validateAndCompleteMeasurements(source) {
+  const code = String(source || ''), calls = [];
+  const re = /\bqc\s*\.\s*([A-Za-z_]\w*)\s*\(((?:[^()'"]|'(?:\\.|[^'\\])*'|"(?:\\.|[^"\\])*"|\([^()]*\))*)\)/g;
+  let m;
+  while ((m = re.exec(code)) !== null) {
+    const lineStart = code.lastIndexOf('\n', m.index) + 1;
+    if (code.slice(lineStart, m.index).includes('#')) continue;
+    calls.push({name:m[1].toLowerCase(),args:_splitTopLevel(m[2]),index:m.index,line:code.slice(0,m.index).split('\n').length});
+  }
+  const measured=new Set(), used=new Set(), errors=[];
+  const wires = arg => { const a=String(arg||'').trim(); let q=_argIndices(a); if(!q.length){const x=a.match(/\bq\s*\[\s*(\d+)\s*\]/);if(x)q=[Number(x[1])];} return q; };
+  for(const c of calls){
+    if(c.name==='measure'){for(const q of wires(c.args[0])){if(measured.has(q))errors.push({line:c.line,message:\`q[\${q}] already has a measurement\`});measured.add(q);}continue;}
+    if(['measure_all','draw','barrier','save_statevector','save_counts'].includes(c.name))continue;
+    const n=_GQ1.has(c.name)?1:(_GQ2.has(c.name)?2:(_GQ3.has(c.name)?3:0)); if(!n)continue;
+    for(const q of c.args.slice(0,n).flatMap(wires)){used.add(q);if(measured.has(q))errors.push({line:c.line,message:\`q[\${q}] has a gate after its measurement; move the measurement to the end of that wire\`});}
+  }
+  if(errors.length)return {ok:false,code,error:errors[0].message,line:errors[0].line};
+  const missing=[...used].filter(q=>!measured.has(q)).sort((a,b)=>a-b);if(!missing.length)return {ok:true,code,added:false};
+  const hasM=measured.size>0||calls.some(c=>c.name==='measure_all');let additions;
+  if(!hasM){const nq=(code.match(/\bQuantumCircuit\s*\(\s*(\d+)/)||[])[1];additions=nq?[\`qc.measure(range(\${nq}), range(\${nq}))  # QNEXUS_AUTO_MEASURE\`]:missing.map(q=>\`qc.measure(\${q}, \${q})  # QNEXUS_AUTO_MEASURE\`);}
+  else additions=missing.map(q=>\`qc.measure(\${q}, \${q})  # QNEXUS_AUTO_MEASURE q[\${q}]\`);
+  let at=code.length;const terminal=/\b(?:qc\.draw\s*\(|simulator\.run\s*\(|\w+\.run\s*\(|get_counts\s*\()/m.exec(code);if(terminal)at=terminal.index;
+  return {ok:true,code:code.slice(0,at).replace(/\s*$/,'')+'\n'+additions.join('\n')+'\n'+code.slice(at),added:true};
+}
+
 // ═══════════════════════════════════════════════════════════
 // GENERACIÓN DE CÓDIGO COMPATIBLE CON QISKIT 1.0+  (lógica original ES)
 //   + mejora: QuantumCircuit(n, n) nunca queda por debajo del último qubit usado
@@ -1077,18 +1106,16 @@ function updateCodeFromCircuit() {
   if (syncQubitCount()) { renderCircuit(); updateCircuitInfo(); }
   const n = circuit.qubits;
   let code = `from qiskit import QuantumCircuit\nimport numpy as np\nfrom qiskit_aer import AerSimulator\n\nqc = QuantumCircuit(${n}, ${n})\n\n`;
-  // Explicit visual measurements take precedence; only use range when none exists.
-  const hasVisualMeasurements = circuit.gates.some(g => g.id === 'M');
+  // Preserve visual operations and ensure every used wire ends with one measurement.
+  const measuredWires = new Set(circuit.gates.filter(g => g.id === 'M').map(g => g.q));
+  const usedWires = new Set();
   circuit.gates.forEach(g => {
-    let line = g.def.code
-      .replace(/\{q2\}/g, g.q2 !== undefined ? g.q2 : 0)
-      .replace(/\{q3\}/g, g.q3 !== undefined ? g.q3 : 0)
-      .replace(/\{q\}/g, g.q);
+    if (g.id !== 'M') { usedWires.add(g.q); if (g.q2 !== undefined) usedWires.add(g.q2); if (g.q3 !== undefined) usedWires.add(g.q3); }
+    let line = g.def.code.replace(/\{q2\}/g, g.q2 !== undefined ? g.q2 : 0).replace(/\{q3\}/g, g.q3 !== undefined ? g.q3 : 0).replace(/\{q\}/g, g.q);
     code += line + '\n';
   });
-  if (!hasVisualMeasurements) {
-    code += `qc.measure(range(${n}), range(${n}))  # QNEXUS_AUTO_MEASURE\n`;
-  }
+  if (measuredWires.size === 0) code += \`qc.measure(range(\${n}), range(\${n}))  # QNEXUS_AUTO_MEASURE\n\`;
+  else [...usedWires].filter(q => !measuredWires.has(q)).sort((a,b)=>a-b).forEach(q => { code += \`qc.measure(\${q}, \${q})  # QNEXUS_AUTO_MEASURE q[\${q}]\n\`; });
   code += `\nprint(qc.draw(output='text'))\n\nsimulator = AerSimulator()\nresult = simulator.run(qc, shots=1024).result()\ncounts = result.get_counts()\nprint("Results:", counts)`;
   const ta = document.getElementById('code-ta');
   if (ta && ta.value !== code) { ta.value = code; updateSyntaxHighlight(); }
