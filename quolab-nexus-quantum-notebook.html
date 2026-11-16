@@ -314,7 +314,7 @@ body.expo-mode .nb-bottom{display:none;}
 
 
 /* Cell circuit editor — visual language ported from the original Architect UI */
-.nb-cell-editor-layout{display:flex;align-items:stretch;gap:8px;min-width:0;margin-top:7px}.nb-cell-main{flex:1;min-width:0;overflow:hidden}.nb-cell-main .cell-circuit-preview{margin-top:0}
+.nb-cell-editor-layout{display:flex;align-items:stretch;gap:8px;min-width:0;margin-top:7px}.nb-cell-main{flex:1;min-width:0;overflow:hidden}.nb-cell-main .cell-circuit-preview{margin-top:0};cursor:pointer;touch-action:manipulation
 @media(max-width:600px){.nb-cell-editor-layout{flex-direction:column}.nb-cell-main{width:100%}}
 .nb-circuit-tools{display:flex;align-items:stretch;gap:8px;margin-top:8px;padding:7px;background:rgba(6,9,18,.92);border:1px solid var(--bd);border-radius:7px;overflow:hidden}
 .nb-cell-palette{width:158px;flex:0 0 158px;background:#0f1626;border:1px solid #1a2a48;border-radius:5px;display:flex;flex-direction:column;overflow:hidden}
@@ -744,7 +744,7 @@ function removeVisualQubit(){notify('Circuit editing is locked in Quantum Notebo
 function clearVisualCircuit(){notify('Circuit editing is locked in Quantum Notebook. Open Quantum Open Lab.');}
 function openCircuitEditor(cellId){
  const cell=cells.find(c=>c.id===cellId);
- if(!cell||cell.type!=='circuit'||_expositionMode)return;
+ if(!cell||cell.type!=='circuit')return;
  _editingCellId=cellId;
  const source=(cell.hiddenCode||'').trim()||visualCircuitCode(cell.circuitData||{qubits:2,gates:[]});
  postCore('OPENQ_OPEN_ARCHITECT_EDIT',{cellId,code:source,circuitData:cell.circuitData||{qubits:2,gates:[]}});
@@ -2408,7 +2408,7 @@ function buildCellEl(cell,i){
     const circuitToolbar = `<div class="cell-toolbar">
         <button class="ct-btn" onclick="event.stopPropagation();moveCellUp('${cell.id}')" title="Move up">↑</button>
         <button class="ct-btn" onclick="event.stopPropagation();moveCellDown('${cell.id}')" title="Move down">↓</button>
-        ${_expositionMode ? '' : `<button class="ct-btn" onclick="event.stopPropagation();openCircuitEditor('${cell.id}')" title="Edit only in Quantum Open Lab">EDIT IN QUANTUM OPEN LAB ↗</button><button class="ct-btn danger" onclick="event.stopPropagation();deleteCell('${cell.id}')" title="Delete">✕</button>`}
+        ${_expositionMode ? '' : `<button class="ct-btn danger" onclick="event.stopPropagation();deleteCell('${cell.id}')" title="Delete">✕</button>`}
       </div>`;
     const restoreBtn = '';
     const circuitSVG = buildInteractiveCircuitCell(cell);
@@ -2421,7 +2421,7 @@ function buildCellEl(cell,i){
           onclick="event.stopPropagation();runCell('${cell.id}')" title="${hasCode?'Run circuit':'Open Quantum Open Lab to edit first'}">▶</button>${`<button class="cell-run-btn cell-noise-btn" onclick="event.stopPropagation();noiseRun('${cell.id}')" title="Run with noise now (this cell's noise settings)" aria-label="Run with noise">🔊</button><button class="cell-run-btn cell-noise-cfg" onclick="event.stopPropagation();noiseCell('${cell.id}')" title="Noise settings for this cell" aria-label="Noise settings">⚙</button>`}</div>
       </div>
       <div class="cell-body">
-        <div class="cell-circuit-preview" id="cprev-${cell.id}" title="Read-only circuit — edit only in Quantum Open Lab">${circuitSVG}</div>
+        <div class="cell-circuit-preview" id="cprev-${cell.id}" title="Tap to open and edit in Quantum Open Lab" role="button" tabindex="0" aria-label="Open this circuit in Quantum Open Lab" data-action-label="EDIT IN QUANTUM OPEN LAB ↗" onclick="event.stopPropagation();openCircuitEditor('${cell.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openCircuitEditor('${cell.id}')}" >${circuitSVG}</div>
         <div class="cell-output-area" id="out-${cell.id}">${cell.output?`<div class="out-stdout">${escH(cell.output)}</div>`:''}</div>
         ${restoreBtn}
       </div>`;
