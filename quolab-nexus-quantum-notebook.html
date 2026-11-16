@@ -649,11 +649,13 @@ function startCellGateDrag(event,cellId,gateId){
  _cellDragState={kind:'palette',cellId,gateId};
  event.dataTransfer.effectAllowed='copy';event.dataTransfer.setData('text/plain','palette:'+gateId);
 }
+let _cellSuppressClickUid=null;
+function onCellPlacedGateClick(event,cellId,uid){event.stopPropagation();if(_cellSuppressClickUid!==null&&String(_cellSuppressClickUid)===String(uid)){_cellSuppressClickUid=null;return;}removeVisualGateByUid(cellId,uid);}
 function startCellExistingDrag(event,cellId,uid){
- event.stopPropagation();_cellDragState={kind:'existing',cellId,uid};
+ event.stopPropagation();_cellSuppressClickUid=uid;_cellDragState={kind:'existing',cellId,uid};
  event.dataTransfer.effectAllowed='move';event.dataTransfer.setData('text/plain','existing:'+uid);
 }
-function endCellExistingDrag(){_cellDragState=null;document.querySelectorAll('.nb-original-wire.dh').forEach(x=>x.classList.remove('dh'));}
+function endCellExistingDrag(){_cellDragState=null;setTimeout(()=>{_cellSuppressClickUid=null;},250);document.querySelectorAll('.nb-original-wire.dh').forEach(x=>x.classList.remove('dh'));}
 function cellWireDragOver(event){if(!_cellDragState)return;event.preventDefault();event.dataTransfer.dropEffect=_cellDragState.kind==='existing'?'move':'copy';event.currentTarget.classList.add('dh');}
 function cellWireDragLeave(event){event.currentTarget.classList.remove('dh');}
 function dropCellGateOnWire(event,cellId,qubit){
@@ -1041,7 +1043,7 @@ function buildCircuitFromData(data,cellId){
     else if(q3!==undefined){col=Math.max(depth[q]||0,depth[q2]||0,depth[q3]||0);depth[q]=depth[q2]=depth[q3]=col+1;}
     else if(q2!==undefined){col=Math.max(depth[q]||0,depth[q2]||0);depth[q]=depth[q2]=col+1;}
     else{col=depth[q]||0;depth[q]=col+1;}
-    return {...g,q,q2,q3,_index:i,col};
+    if(g.uid===undefined||g.uid===null)g.uid='cell-'+cellId+'-'+i;return {...g,q,q2,q3,_index:i,col};
   });
   const cols=Math.max(...depth,1),W=cols*STEP+90,H=nQ*ROW;
   let html='<div class="nb-original-circuit" style="position:relative;min-width:'+W+'px;height:'+H+'px;width:max-content;">';
@@ -1058,7 +1060,7 @@ function buildCircuitFromData(data,cellId){
       html+='<div class="nb-original-block" style="left:'+left+'px;top:'+(g.q*ROW+4)+'px;width:'+bw+'px;height:'+bh+'px" title="'+escH(g.block.tip||'')+'">'+escH(g.block.label||'Block')+'<small>'+escH(g.block.sub||'')+'</small></div>';
     }else if(g.q3!==undefined){
       const qs=[g.q,g.q2,g.q3].sort((x,y)=>x-y),top=qs[0],h=(qs[2]-top)*ROW+ROW,cx=26;
-      let svg='<svg width="52" height="'+h+'" viewBox="0 0 52 '+h+'" class="nb-original-multigate" onclick="event.stopPropagation();removeVisualGateByUid(\''+cellId+'\','+g.uid+')" role="button" aria-label="Remove '+g.id+'">';
+      let svg='<svg width="52" height="'+h+'" viewBox="0 0 52 '+h+'" class="nb-original-multigate" onclick="event.stopPropagation();onCellPlacedGateClick(event,\''+cellId+'\','+g.uid+')" role="button" aria-label="Remove '+g.id+'">';
       svg+='<line x1="'+cx+'" y1="'+qY(qs[0],top)+'" x2="'+cx+'" y2="'+qY(qs[2],top)+'" stroke="'+clr+'" stroke-width="2.5"/>';
       if(g.id==='CCX'){
         svg+='<circle cx="'+cx+'" cy="'+qY(g.q,top)+'" r="8" fill="'+clr+'"/><circle cx="'+cx+'" cy="'+qY(g.q2,top)+'" r="8" fill="'+clr+'"/><circle cx="'+cx+'" cy="'+qY(g.q3,top)+'" r="14" fill="none" stroke="'+clr+'" stroke-width="2.5"/><path d="M '+(cx-8)+' '+qY(g.q3,top)+' h16 M '+cx+' '+(qY(g.q3,top)-10)+' v20" stroke="'+clr+'" stroke-width="2"/>';
@@ -1069,7 +1071,7 @@ function buildCircuitFromData(data,cellId){
       html+='<div class="nb-original-gate-position" style="left:'+left+'px;top:'+(top*ROW)+'px">'+svg+'</div>';
     }else if(g.q2!==undefined){
       const top=Math.min(g.q,g.q2),bottom=Math.max(g.q,g.q2),h=(bottom-top)*ROW+ROW,y1=qY(g.q,top),y2=qY(g.q2,top),lo=Math.min(y1,y2),hi=Math.max(y1,y2);
-      let svg='<svg width="48" height="'+h+'" viewBox="0 0 48 '+h+'" class="nb-original-multigate" onclick="event.stopPropagation();removeVisualGateByUid(\''+cellId+'\','+g.uid+')" role="button" aria-label="Remove '+g.id+'"><line x1="24" y1="'+lo+'" x2="24" y2="'+hi+'" stroke="'+clr+'" stroke-width="2.5"/>';
+      let svg='<svg width="48" height="'+h+'" viewBox="0 0 48 '+h+'" class="nb-original-multigate" onclick="event.stopPropagation();onCellPlacedGateClick(event,\''+cellId+'\','+g.uid+')" role="button" aria-label="Remove '+g.id+'"><line x1="24" y1="'+lo+'" x2="24" y2="'+hi+'" stroke="'+clr+'" stroke-width="2.5"/>';
       if(g.id==='CX')svg+='<circle cx="24" cy="'+y1+'" r="8" fill="'+clr+'"/><circle cx="24" cy="'+y2+'" r="14" fill="none" stroke="'+clr+'" stroke-width="2.5"/><path d="M 16 '+y2+' h16 M 24 '+(y2-10)+' v20" stroke="'+clr+'" stroke-width="2"/>';
       else if(g.id==='CZ')svg+='<circle cx="24" cy="'+y1+'" r="8" fill="'+clr+'"/><circle cx="24" cy="'+y2+'" r="8" fill="'+clr+'"/>';
       else if(g.id==='SWAP')svg+='<path d="M 14 '+(y1-9)+' L 34 '+(y1+9)+' M 34 '+(y1-9)+' L 14 '+(y1+9)+' M 14 '+(y2-9)+' L 34 '+(y2+9)+' M 34 '+(y2-9)+' L 14 '+(y2+9)+'" stroke="'+clr+'" stroke-width="2.5" stroke-linecap="round"/>';
