@@ -768,26 +768,31 @@ function placeGate(gateId, qubit) {
     if (qCtrl === qSwap2) qSwap2 = (qSwap2 + 1) % circuit.qubits;
     if (qSwap1 === qSwap2) qSwap2 = (qSwap2 + 1) % circuit.qubits;
     const qs = [qCtrl, qSwap1, qSwap2].sort((a, b) => a - b);
-    if (circuit.gates.some(g => g.id === 'M' && qs.includes(g.q))) { isUpdatingFromCircuit = false; notify('❌ A gate cannot be placed after a measurement.'); return; }
+    if (circuit.gates.some(g => g.id === 'M' && !g.autoMeasurement && qs.includes(g.q))) { isUpdatingFromCircuit = false; notify('❌ A gate cannot be placed after a measurement.'); return; }
+    removeAutoMeasurementsForWires(qs);
     circuit.gates.push({ id: gateId, q: qs[0], q2: qs[1], q3: qs[2], def: def, uid: nextId++ });
   } else if (def.multi) {
     if (circuit.qubits < 2) { notify('You need at least 2 qubits'); isUpdatingFromCircuit = false; return; }
     const q2 = qubit + 1 < circuit.qubits ? qubit + 1 : qubit - 1;
-    if (circuit.gates.some(g => g.id === 'M' && (g.q === qubit || g.q === q2))) { isUpdatingFromCircuit = false; notify('❌ A gate cannot be placed after a measurement.'); return; }
+    if (circuit.gates.some(g => g.id === 'M' && !g.autoMeasurement && (g.q === qubit || g.q === q2))) { isUpdatingFromCircuit = false; notify('❌ A gate cannot be placed after a measurement.'); return; }
+    removeAutoMeasurementsForWires([qubit, q2]);
     circuit.gates.push({ id: gateId, q: Math.min(qubit, q2), q2: Math.max(qubit, q2), def: def, uid: nextId++ });
   } else {
     if (gateId === 'M') {
       if (!circuit.gates.some(g => g.id !== 'M' && (g.q === qubit || g.q2 === qubit || g.q3 === qubit))) {
         isUpdatingFromCircuit = false; notify(`❌ q[${qubit}] has no gate yet. Place its gates before the measurement.`); return;
       }
-      if (circuit.gates.some(g => g.id === 'M' && g.q === qubit)) {
-        isUpdatingFromCircuit = false; notify(`q[${qubit}] already has a measurement`); return;
+      const _existingMeasurement = circuit.gates.find(g => g.id === 'M' && g.q === qubit);
+      if (_existingMeasurement) {
+        if (_existingMeasurement.autoMeasurement) { _existingMeasurement.autoMeasurement = false; updateCodeFromCircuit(); isUpdatingFromCircuit = false; notify('Measurement confirmed at wire end.'); return; }
+        isUpdatingFromCircuit = false; notify('This wire already has a measurement.'); return;
       }
       circuit.gates.push({ id: gateId, q: qubit, def: def, uid: nextId++ });
     } else {
-      if (circuit.gates.some(g => g.id === 'M' && (g.q === qubit || g.q2 === qubit || g.q3 === qubit))) {
+      if (circuit.gates.some(g => g.id === 'M' && !g.autoMeasurement && (g.q === qubit || g.q2 === qubit || g.q3 === qubit))) {
         isUpdatingFromCircuit = false; notify(`❌ q[${qubit}] is already measured. A gate cannot be placed after its measurement.`); return;
       }
+      removeAutoMeasurementsForWires([qubit]);
       circuit.gates.push({ id: gateId, q: qubit, def: def, uid: nextId++ });
     }
   }
@@ -1104,6 +1109,21 @@ function validateAndCompleteMeasurements(source) {
   return {ok:true,code:code.slice(0,at).replace(/\s*$/,'')+'\n'+additions.join('\n')+'\n'+code.slice(at),added:true};
 }
 
+function syncVisualMeasurementMarkers() {
+  const used = new Set();
+  circuit.gates.filter(g => g.id !== 'M').forEach(g => { used.add(g.q); if (g.q2 !== undefined) used.add(g.q2); if (g.q3 !== undefined) used.add(g.q3); });
+  const oldLength = circuit.gates.length;
+  circuit.gates = circuit.gates.filter(g => !(g.id === 'M' && g.autoMeasurement && !used.has(g.q)));
+  for (const q of used) if (!circuit.gates.some(g => g.id === 'M' && g.q === q)) {
+    const def = findGateDef('M'); if (def) circuit.gates.push({id:'M',q,def,uid:nextId++,autoMeasurement:true});
+  }
+  return oldLength !== circuit.gates.length;
+}
+function removeAutoMeasurementsForWires(wires) {
+  const set = new Set(wires);
+  circuit.gates = circuit.gates.filter(g => !(g.id === 'M' && g.autoMeasurement && set.has(g.q)));
+}
+
 // ═══════════════════════════════════════════════════════════
 // GENERACIÓN DE CÓDIGO COMPATIBLE CON QISKIT 1.0+  (lógica original ES)
 //   + mejora: QuantumCircuit(n, n) nunca queda por debajo del último qubit usado
@@ -1113,16 +1133,19 @@ function updateCodeFromCircuit() {
   if (nexusLocked()) return;   // nunca sobrescribir el código del usuario si hay bloques compuestos
   if (syncQubitCount()) { renderCircuit(); updateCircuitInfo(); }
   const n = circuit.qubits;
+  if (syncVisualMeasurementMarkers()) renderCircuit();
   let code = `from qiskit import QuantumCircuit\nimport numpy as np\nfrom qiskit_aer import AerSimulator\n\nqc = QuantumCircuit(${n}, ${n})\n\n`;
   // Preserve visual operations and ensure every used wire ends with one measurement.
   const measuredWires = new Set(circuit.gates.filter(g => g.id === 'M').map(g => g.q));
   const usedWires = new Set();
+  const hasExplicitMeasurements = circuit.gates.some(g => g.id === 'M' && !g.autoMeasurement);
   circuit.gates.forEach(g => {
     if (g.id !== 'M') { usedWires.add(g.q); if (g.q2 !== undefined) usedWires.add(g.q2); if (g.q3 !== undefined) usedWires.add(g.q3); }
+    if (g.id === 'M' && g.autoMeasurement && !hasExplicitMeasurements) return;
     let line = g.def.code.replace(/\{q2\}/g, g.q2 !== undefined ? g.q2 : 0).replace(/\{q3\}/g, g.q3 !== undefined ? g.q3 : 0).replace(/\{q\}/g, g.q);
     code += line + '\n';
   });
-  if (measuredWires.size === 0) code += `qc.measure(range(${n}), range(${n}))  # QNEXUS_AUTO_MEASURE\n`;
+  if (!hasExplicitMeasurements) code += `qc.measure(range(${n}), range(${n}))  # QNEXUS_AUTO_MEASURE\n`;
   else [...usedWires].filter(q => !measuredWires.has(q)).sort((a,b)=>a-b).forEach(q => { code += `qc.measure(${q}, ${q})  # QNEXUS_AUTO_MEASURE q[${q}]\n`; });
   code += `\nprint(qc.draw(output='text'))\n\nsimulator = AerSimulator()\nresult = simulator.run(qc, shots=1024).result()\ncounts = result.get_counts()\nprint("Results:", counts)`;
   const ta = document.getElementById('code-ta');
