@@ -2406,12 +2406,12 @@ function buildCellEl(cell,i){
     const circuitToolbar = `<div class="cell-toolbar">
         <button class="ct-btn" onclick="event.stopPropagation();moveCellUp('${cell.id}')" title="Move up">↑</button>
         <button class="ct-btn" onclick="event.stopPropagation();moveCellDown('${cell.id}')" title="Move down">↓</button>
-        ${_expositionMode ? '' : `<button class="ct-btn" onclick="event.stopPropagation();openCircuitEditor('${cell.id}')" title="Open in Quantum Open Lab">Open Lab ↗</button><button class="ct-btn danger" onclick="event.stopPropagation();deleteCell('${cell.id}')" title="Delete">✕</button>`}
+        ${_expositionMode ? '' : `<button class="ct-btn" onclick="event.stopPropagation();toggleCircuitEditor('${cell.id}')" title="Edit visual circuit">${cell.editorOpen===false?'Show controls':'Hide controls'}</button><button class="ct-btn" onclick="event.stopPropagation();openCircuitEditor('${cell.id}')" title="Open in Quantum Open Lab">Open Lab ↗</button><button class="ct-btn danger" onclick="event.stopPropagation();deleteCell('${cell.id}')" title="Delete">✕</button>`}
       </div>`;
     const restoreBtn = '';
     const circuitSVG = buildInteractiveCircuitCell(cell);
     const outContent = cell.output ? `<div class="cell-output-area" id="out-${cell.id}">${'<!-- output -->'}</div>` : '';
-    const editorControls = !_expositionMode ? buildCircuitEditorControls(cell) : '';
+    const editorControls = cell.editorOpen!==false&&!_expositionMode ? buildCircuitEditorControls(cell) : '';
     const warningHtml = cell.visualWarnings?.length ? `<div class="nb-circuit-warning">Some Qiskit operations are not drawn in this preview; the complete hidden source is still executed.</div>` : '';
     el.className='nb-cell circ-cell'+(curCellId===cell.id?' active':'');
     el.innerHTML=`${circuitToolbar}
@@ -2424,7 +2424,7 @@ function buildCellEl(cell,i){
         <div class="cell-type-badge ctb-circ">
           ⚛ Visual Circuit
         </div>
-        <div class="nb-cell-editor-layout">${editorControls}<div class="nb-cell-main"><div class="cell-circuit-preview" id="cprev-${cell.id}" title="Interactive quantum circuit; drag gates between qubit wires">
+        <div class="nb-cell-editor-layout">${editorControls}<div class="nb-cell-main"><div class="cell-circuit-preview" id="cprev-${cell.id}" onclick="event.stopPropagation();toggleCircuitEditor(\'${cell.id}\')" title="Interactive quantum circuit; drag gates between qubit wires">
           <div class="circ-preview-hint">⚛ CIRCUIT — drag gates from the palette to the wires</div>${circuitSVG}${!hasCircuit?'<div class="circ-empty-hint">Select a gate and tap a wire, or drag it onto a wire</div>':''}
         </div>${warningHtml}</div></div>
         <div class="cell-output-area" id="out-${cell.id}">${cell.output?`<div class="out-stdout">${escH(cell.output)}</div>`:''}</div>
