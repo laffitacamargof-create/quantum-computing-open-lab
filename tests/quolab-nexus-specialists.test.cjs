@@ -104,7 +104,7 @@ assert.ok(notebook.includes("Qiskit source stored in the hidden circuit layer"))
 assert.ok(notebook.includes("postCore('OPENQ_OPEN_ARCHITECT_EDIT'"));
 assert.ok(notebook.includes("d.type === 'OPENQ_CIRCUIT_RETURN'"));
 assert.ok(notebook.includes('function openCircuitEditor(cellId)'));
-assert.ok(notebook.includes(`onclick="event.stopPropagation();openCircuitEditor('${cell.id}')"`), 'clicking a visual circuit must open Quantum Open Lab for linked editing');
+assert.ok(notebook.includes('onclick="event.stopPropagation();openCircuitEditor('), 'clicking a visual circuit must open Quantum Open Lab for linked editing');
 assert.ok(notebook.includes("cell.hiddenCode = typeof d.code === 'string' ? d.code : (cell.hiddenCode || '')"));
 assert.ok(notebook.includes('const returnedData = d.circuitData && typeof d.circuitData === \'object\' ? d.circuitData : null'));
 assert.ok(notebook.includes('const incomingGates = Array.isArray(returnedData?.gates) ? returnedData.gates : null'));
