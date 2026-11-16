@@ -841,12 +841,13 @@ function moveExistingGate(uid, newQubit) {
       notify('This wire already has a measurement.');
       return;
     }
-  } else if (circuit.gates.some((g, i) => i !== idx && g.id === 'M' && (g.q === newQubit || g.q2 === newQubit || g.q3 === newQubit))) {
+  } else if (circuit.gates.some((g, i) => i !== idx && g.id === 'M' && !g.autoMeasurement && (g.q === newQubit || g.q2 === newQubit || g.q3 === newQubit))) {
     isUpdatingFromCircuit = false;
     notify('❌ A gate cannot be placed after a measurement.');
     return;
   }
   circuit.gates.splice(idx, 1);
+  if (gate.id !== 'M') circuit.gates = circuit.gates.filter(g => !(g.id === 'M' && g.autoMeasurement && g.q === newQubit));
   
   if (gate.id === 'M') {
     gate.q = newQubit;
