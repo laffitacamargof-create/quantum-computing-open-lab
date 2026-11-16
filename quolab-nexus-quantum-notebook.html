@@ -2293,11 +2293,11 @@ function buildCellEl(cell,i){
           ⚛ Visual Circuit
         </div>
         <div class="cell-circuit-preview" id="cprev-${cell.id}"
-          onclick="event.stopPropagation();toggleCircuitEditor('${cell.id}')"
-          title="Click to show or hide visual gate controls">
+          onclick="event.stopPropagation();openCircuitEditor('${cell.id}')"
+          title="Open this circuit in Quantum Open Lab; Save and Return synchronizes it to this cell">
           ${hasCircuit
-            ? `<div class="circ-preview-hint">⚛ QUANTUM CIRCUIT — click for gate controls</div>${circuitSVG}`
-            : `<div class="circ-empty-hint">⚛ Visual Circuit Cell<br><span style="font-size:.4rem;color:rgba(0,200,100,.4);">Use the controls below to add gates</span></div>`
+            ? `<div class="circ-preview-hint">⚛ QUANTUM CIRCUIT — click to edit in Quantum Open Lab</div>${circuitSVG}`
+            : `<div class="circ-empty-hint">⚛ Visual Circuit Cell<br><span style="font-size:.4rem;color:rgba(0,200,100,.4);">Open Quantum Open Lab to build and return this circuit</span></div>`
           }
         </div>
         ${editorControls}${warningHtml}
