@@ -3355,20 +3355,51 @@ window.addEventListener('message', e => {
         const sepBack = document.getElementById('sep-back-nb');
         if(btnBack){ btnBack.style.display=''; }
         if(sepBack){ sepBack.style.display=''; }
-        if(d.code && d.code.trim()){
-            const ta = document.getElementById('code-ta');
-            if(ta){
-                ta.value = d.code;
-                onCodeEdit();
-                updateCircuitFromCode();
-            }
-        } else if(d.circuitData && d.circuitData.gates){
-            circuit.qubits = d.circuitData.qubits || 2;
-            circuit.gates  = (d.circuitData.gates || []).map(g => g.id === 'BLK' ? { ...g, def: _BLOCK_DEF } : g);
+
+        // The visual payload is authoritative when opening a Notebook cell.
+        // Parsing generated Python first can silently discard gate metadata or
+        // multi-qubit topology, so hydrate the circuit before touching the code editor.
+        const incoming = d.circuitData && Array.isArray(d.circuitData.gates)
+            ? d.circuitData : null;
+        if(incoming){
+            const qCount = Math.max(1, Math.min(MAX_QUBITS, Number(incoming.qubits) || 2));
+            const hydrated = incoming.gates.map((g, i) => {
+                const baseDef = findGateDef(g.id) || {};
+                const savedDef = g.def && typeof g.def === 'object' ? g.def : {};
+                const uid = Number.isFinite(Number(g.uid)) ? Number(g.uid) : (nextId + i);
+                return {
+                    ...g,
+                    uid,
+                    def: {
+                        ...baseDef,
+                        ...savedDef,
+                        code: savedDef.code || baseDef.code || ''
+                    }
+                };
+            });
+            circuit = { qubits: qCount, gates: hydrated };
             circuit.gates = normalizeMeasurements(circuit.gates);
+            nextId = Math.max(nextId, ...circuit.gates.map(g => Number(g.uid) || 0).map(v => v + 1), 1);
+            for(let q=0;q<qCount;q++){
+                if(!blochStates[q]) blochStates[q] = { theta: 0, phi: 0 };
+            }
+            if(currentBlochQubit >= qCount) currentBlochQubit = qCount - 1;
             renderCircuit();
             updateCircuitInfo();
+        }
+
+        const ta = document.getElementById('code-ta');
+        if(ta && typeof d.code === 'string' && d.code.trim()){
+            ta.value = d.code;
+            // Do not call onCodeEdit here: its delayed parser/compiler sync can
+            // replace the exact circuitData just restored above.
+            if(typeof updateSyntaxHighlight === 'function') updateSyntaxHighlight();
+        } else if(incoming){
             updateCodeFromCircuit();
+        } else if(ta && typeof d.code === 'string'){
+            ta.value = d.code;
+            onCodeEdit();
+            updateCircuitFromCode();
         } else {
             clearCircuit();
         }
