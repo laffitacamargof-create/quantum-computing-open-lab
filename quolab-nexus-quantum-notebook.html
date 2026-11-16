@@ -620,28 +620,138 @@ function visualCircuitCode(data){
 function syncCircuitCellFromCode(cell,source){
  const parsed=parseQiskitCircuitCode(source);cell.hiddenCode=String(source||'');cell.code='';cell.circuitData=parsed.circuitData;cell.visualWarnings=parsed.warnings;return parsed;
 }
-let _cellPaletteDrag=null;
-function selectCellGate(cellId,gateId){const cell=cells.find(c=>c.id===cellId);if(!cell)return;if(cell.editorOpen===false){cell.editorOpen=true;renderCells();focusCell(cellId);}const el=document.getElementById('nb-gate-'+cellId);if(el)el.value=gateId;}
-function startCellGateDrag(event,cellId,gateId){_cellPaletteDrag={cellId,gateId};event.dataTransfer.effectAllowed='copy';event.dataTransfer.setData('text/plain',gateId);}
-function cellCircuitDragOver(event){if(!_cellPaletteDrag)return;event.preventDefault();event.dataTransfer.dropEffect='copy';event.currentTarget.classList.add('nb-drop-active');}
-function cellCircuitDragLeave(event){event.currentTarget.classList.remove('nb-drop-active');}
-function dropCellGate(event,cellId){event.preventDefault();event.currentTarget.classList.remove('nb-drop-active');const gateId=(_cellPaletteDrag?.cellId===cellId?_cellPaletteDrag.gateId:event.dataTransfer.getData('text/plain'))||'';_cellPaletteDrag=null;if(!NB_GATE_DEFS[gateId])return;const box=event.currentTarget.getBoundingClientRect();const q=Math.max(0,Math.min((cells.find(c=>c.id===cellId)?.circuitData?.qubits||1)-1,Math.floor(Math.max(0,event.clientY-box.top-22)/56)));addVisualGateAt(cellId,gateId,q);}
-function addVisualGateAt(cellId,gateId,q){const cell=cells.find(c=>c.id===cellId);if(!cell||cell.type!=='circuit'||_expositionMode)return;const def=NB_GATE_DEFS[gateId];if(!def)return;const is2=['CX','CZ','SWAP'].includes(gateId),is3=['CCX','CSWAP'].includes(gateId);if((is2||is3)&&cell.circuitData.qubits<2){notify('Add another qubit first');return;}if(is3&&cell.circuitData.qubits<3){notify('This gate requires three qubits');return;}const q2=Math.min(cell.circuitData.qubits-1,q+1),q3=Math.min(cell.circuitData.qubits-1,q+2);if(is2&&q===q2){notify('Choose two different qubits');return;}if(is3&&(q===q2||q===q3||q2===q3)){notify('Choose three different qubits');return;}cell.circuitData.gates.push({id:gateId,q,q2:is2||is3?q2:undefined,q3:is3?q3:undefined,uid:Date.now()+cell.circuitData.gates.length,def:{bg:def.bg,sym:def.sym,code:def.code}});cell.hiddenCode=visualCircuitCode(cell.circuitData);cell.visualWarnings=[];cell.editorOpen=true;renderCells();focusCell(cellId);saveCurrentNb(false);}
-function addVisualGate(cellId){
- const cell=cells.find(c=>c.id===cellId);if(!cell||cell.type!=='circuit'||_expositionMode)return;
- const gateId=document.getElementById('nb-gate-'+cellId)?.value||'H',def=NB_GATE_DEFS[gateId];if(!def)return;
- const q=Number(document.getElementById('nb-q-'+cellId)?.value||0),q2=Number(document.getElementById('nb-q2-'+cellId)?.value||1),q3=Number(document.getElementById('nb-q3-'+cellId)?.value||2);
- const is2=['CX','CZ','SWAP'].includes(gateId),is3=['CCX','CSWAP'].includes(gateId);
- if((is2||is3)&&cell.circuitData.qubits<2){notify('Add another qubit first');return;}
- if(is2&&q===q2){notify('Choose two different qubits');return;}
- if(is3&&(q===q2||q===q3||q2===q3)){notify('Choose three different qubits');return;}
- const g={id:gateId,q,q2:is2||is3?q2:undefined,q3:is3?q3:undefined,uid:Date.now()+cell.circuitData.gates.length,def:{bg:def.bg,sym:def.sym,code:def.code}};
- cell.circuitData.gates.push(g);cell.hiddenCode=visualCircuitCode(cell.circuitData);cell.visualWarnings=[];renderCells();focusCell(cellId);saveCurrentNb(false);
+let _cellDragState=null,_cellSelectedGates=Object.create(null);
+const NB_MULTI_GATES=new Set(['CX','CZ','SWAP']);
+const NB_TRIPLE_GATES=new Set(['CCX','CSWAP']);
+const NB_SINGLE_GATES=['H','X','Y','Z','S','T','SX','RX','RY','RZ'];
+function cellGateDef(id){const d=NB_GATE_DEFS[id];return d?{bg:d.bg,sym:d.sym,code:d.code,glow:d.bg}:null;}
+function normalizeCellMeasurements(gates){
+ const byQ=new Map(),out=[];
+ gates.forEach(g=>{if(g.id==='M')byQ.set(g.q,g);else out.push(g);});
+ return out.concat([...byQ.values()]);
 }
-function addVisualQubit(cellId){const c=cells.find(x=>x.id===cellId);if(!c||c.type!=='circuit'||_expositionMode)return;if(c.circuitData.qubits>=20){notify('Maximum 20 qubits');return;}c.circuitData.qubits++;c.hiddenCode=visualCircuitCode(c.circuitData);renderCells();focusCell(cellId);saveCurrentNb(false);}
-function removeVisualGate(cellId,index){const c=cells.find(x=>x.id===cellId);if(!c||c.type!=='circuit'||_expositionMode)return;c.circuitData.gates.splice(index,1);c.hiddenCode=visualCircuitCode(c.circuitData);renderCells();focusCell(cellId);saveCurrentNb(false);}
-function clearVisualCircuit(cellId){const c=cells.find(x=>x.id===cellId);if(!c||c.type!=='circuit'||_expositionMode)return;c.circuitData={qubits:Math.max(1,c.circuitData?.qubits||1),gates:[]};c.hiddenCode='';c.visualWarnings=[];c.output='';c._outputData=null;renderCells();focusCell(cellId);saveCurrentNb(false);}
-function openCircuitEditor(cellId){
+function cellCircuitChanged(cell){
+ cell.circuitData.gates=normalizeCellMeasurements(cell.circuitData.gates||[]);
+ cell.hiddenCode=visualCircuitCode(cell.circuitData);
+ cell.visualWarnings=[];
+ cell.errorLine=null;
+ saveCurrentNb(false);
+}
+function selectCellGate(cellId,gateId){
+ const cell=cells.find(c=>c.id===cellId);if(!cell||!NB_GATE_DEFS[gateId])return;
+ _cellSelectedGates[cellId]=gateId;
+ const root=document.getElementById('cprev-'+cellId);
+ if(root)root.querySelectorAll('.nb-palette-gate').forEach(b=>b.classList.toggle('selected',b.dataset.gate===gateId));
+ const sel=document.getElementById('nb-gate-'+cellId);if(sel)sel.value=gateId;
+ notify(gateId+' selected · tap a qubit wire to place');
+}
+function startCellGateDrag(event,cellId,gateId){
+ _cellDragState={kind:'palette',cellId,gateId};
+ event.dataTransfer.effectAllowed='copy';event.dataTransfer.setData('text/plain','palette:'+gateId);
+}
+function startCellExistingDrag(event,cellId,uid){
+ event.stopPropagation();_cellDragState={kind:'existing',cellId,uid};
+ event.dataTransfer.effectAllowed='move';event.dataTransfer.setData('text/plain','existing:'+uid);
+}
+function endCellExistingDrag(){_cellDragState=null;document.querySelectorAll('.nb-original-wire.dh').forEach(x=>x.classList.remove('dh'));}
+function cellWireDragOver(event){if(!_cellDragState)return;event.preventDefault();event.dataTransfer.dropEffect=_cellDragState.kind==='existing'?'move':'copy';event.currentTarget.classList.add('dh');}
+function cellWireDragLeave(event){event.currentTarget.classList.remove('dh');}
+function dropCellGateOnWire(event,cellId,qubit){
+ event.preventDefault();event.currentTarget.classList.remove('dh');
+ const drag=_cellDragState;_cellDragState=null;
+ if(!drag)return;
+ if(drag.cellId!==cellId){notify('Move gates within the same circuit cell');return;}
+ if(drag.kind==='existing'){moveVisualGate(cellId,drag.uid,qubit);return;}
+ if(drag.kind==='palette')placeVisualGate(cellId,drag.gateId,qubit);
+}
+function placeSelectedCellGate(cellId,qubit){
+ const gateId=_cellSelectedGates[cellId];if(gateId)placeVisualGate(cellId,gateId,qubit);
+}
+function dropCellGate(event,cellId){
+ event.preventDefault();event.currentTarget.classList.remove('nb-drop-active');
+ const drag=_cellDragState;_cellDragState=null;
+ if(!drag||drag.kind!=='palette'||drag.cellId!==cellId)return;
+ const box=event.currentTarget.getBoundingClientRect(),cell=cells.find(c=>c.id===cellId);
+ const q=Math.max(0,Math.min((cell?.circuitData?.qubits||1)-1,Math.floor((event.clientY-box.top-22)/56)));
+ placeVisualGate(cellId,drag.gateId,q);
+}
+function placeVisualGate(cellId,gateId,qubit,q2Choice,q3Choice){
+ const cell=cells.find(c=>c.id===cellId);if(!cell||cell.type!=='circuit'||_expositionMode)return;
+ const def=NB_GATE_DEFS[gateId];if(!def)return;
+ const n=Math.max(1,Math.min(20,Number(cell.circuitData?.qubits)||1)),q=Math.max(0,Math.min(n-1,Number(qubit)||0));
+ const gates=cell.circuitData.gates||(cell.circuitData.gates=[]);
+ if(gates.length>=500){notify('Circuit gate limit reached');return;}
+ let gate;
+ if(NB_TRIPLE_GATES.has(gateId)){
+   if(n<3){notify('This gate requires three qubits');return;}
+   let qs=[q,Number.isInteger(q2Choice)?q2Choice:(q+1)%n,Number.isInteger(q3Choice)?q3Choice:(q+2)%n];
+   if(new Set(qs).size!==3){notify('Choose three different qubits');return;}
+   gate={id:gateId,q:qs[0],q2:qs[1],q3:qs[2]};
+ }else if(NB_MULTI_GATES.has(gateId)){
+   if(n<2){notify('This gate requires two qubits');return;}
+   const target=Number.isInteger(q2Choice)?q2Choice:(q+1<n?q+1:q-1);
+   if(target<0||target>=n||target===q){notify('Choose two different qubits');return;}
+   gate={id:gateId,q:Math.min(q,target),q2:Math.max(q,target)};
+ }else{
+   gate={id:gateId,q};
+ }
+ if(gateId==='M'){
+   cell.circuitData.gates=cell.circuitData.gates.filter(g=>!(g.id==='M'&&g.q===q));
+   cell.circuitData.gates.push({...gate,uid:Date.now()+Math.random(),def:cellGateDef(gateId)});
+ }else{
+   const g={...gate,uid:Date.now()+Math.random(),def:cellGateDef(gateId)};
+   const firstM=cell.circuitData.gates.findIndex(x=>x.id==='M'&&x.q===q);
+   if(firstM>=0&&gate.q2===undefined&&gate.q3===undefined)cell.circuitData.gates.splice(firstM,0,g);
+   else cell.circuitData.gates.push(g);
+ }
+ cell.editorOpen=true;cellCircuitChanged(cell);renderCells();focusCell(cellId);
+ notify(gateId+' → q['+q+']');
+}
+function addVisualGateAt(cellId,gateId,q){placeVisualGate(cellId,gateId,q);}
+function addVisualGate(cellId){
+ const cell=cells.find(c=>c.id===cellId);if(!cell)return;
+ const gateId=document.getElementById('nb-gate-'+cellId)?.value||'H';
+ const q=Number(document.getElementById('nb-q-'+cellId)?.value||0);
+ const q2=Number(document.getElementById('nb-q2-'+cellId)?.value);
+ const q3=Number(document.getElementById('nb-q3-'+cellId)?.value);
+ placeVisualGate(cellId,gateId,q,q2,q3);
+}
+function removeVisualGateByUid(cellId,uid){
+ const cell=cells.find(c=>c.id===cellId);if(!cell||cell.type!=='circuit'||_expositionMode)return;
+ const before=cell.circuitData.gates.length;
+ cell.circuitData.gates=cell.circuitData.gates.filter(g=>String(g.uid)!==String(uid));
+ if(cell.circuitData.gates.length===before)return;
+ cellCircuitChanged(cell);renderCells();focusCell(cellId);
+}
+function removeVisualGate(cellId,index){
+ const cell=cells.find(c=>c.id===cellId);if(!cell||cell.type!=='circuit'||_expositionMode)return;
+ const gate=cell.circuitData.gates[index];if(gate)removeVisualGateByUid(cellId,gate.uid);
+}
+function moveVisualGate(cellId,uid,newQubit){
+ const cell=cells.find(c=>c.id===cellId);if(!cell||cell.type!=='circuit'||_expositionMode)return;
+ const idx=cell.circuitData.gates.findIndex(g=>String(g.uid)===String(uid));if(idx<0)return;
+ const gate=cell.circuitData.gates[idx],q=Math.max(0,Math.min(cell.circuitData.qubits-1,Number(newQubit)||0));
+ if(gate.q2!==undefined||gate.q3!==undefined){notify('2- and 3-qubit gates cannot be moved individually');return;}
+ cell.circuitData.gates.splice(idx,1);
+ if(gate.id==='M'){
+   cell.circuitData.gates=cell.circuitData.gates.filter(g=>!(g.id==='M'&&g.q===q));
+   gate.q=q;cell.circuitData.gates.push(gate);
+ }else{
+   gate.q=q;const firstM=cell.circuitData.gates.findIndex(g=>g.id==='M'&&g.q===q);
+   if(firstM>=0)cell.circuitData.gates.splice(firstM,0,gate);else cell.circuitData.gates.push(gate);
+ }
+ cellCircuitChanged(cell);renderCells();focusCell(cellId);notify(gate.id+' moved to q['+q+']');
+}
+function addVisualQubit(cellId){
+ const c=cells.find(x=>x.id===cellId);if(!c||c.type!=='circuit'||_expositionMode)return;
+ if(c.circuitData.qubits>=20){notify('Maximum 20 qubits');return;}
+ c.circuitData.qubits++;cellCircuitChanged(c);renderCells();focusCell(cellId);
+}
+function clearVisualCircuit(cellId){
+ const c=cells.find(x=>x.id===cellId);if(!c||c.type!=='circuit'||_expositionMode)return;
+ c.circuitData={qubits:Math.max(1,c.circuitData?.qubits||1),gates:[]};c.hiddenCode='';c.visualWarnings=[];c.output='';c._outputData=null;
+ renderCells();focusCell(cellId);saveCurrentNb(false);
+}function openCircuitEditor(cellId){
  const cell=cells.find(c=>c.id===cellId);
  if(!cell||cell.type!=='circuit'||_expositionMode)return;
  _editingCellId=cellId;
@@ -651,14 +761,15 @@ function openCircuitEditor(cellId){
 }
 function toggleCircuitEditor(cellId){const cell=cells.find(c=>c.id===cellId);if(!cell||cell.type!=='circuit'||_expositionMode)return;cell.editorOpen=cell.editorOpen===false;renderCells();focusCell(cellId);}
 function buildCircuitEditorControls(cell){
- const q=Math.max(1,cell.circuitData?.qubits||1);
+ const q=Math.max(1,cell.circuitData?.qubits||1),id=cell.id;
  const opts=Array.from({length:q},(_,i)=>'<option value="'+i+'">q['+i+']</option>').join('');
  const opts2=Array.from({length:q},(_,i)=>'<option value="'+i+'"'+(i===Math.min(1,q-1)?' selected':'')+'>q['+i+']</option>').join('');
  const opts3=Array.from({length:q},(_,i)=>'<option value="'+i+'"'+(i===Math.min(2,q-1)?' selected':'')+'>q['+i+']</option>').join('');
- const gates=Object.keys(NB_GATE_DEFS).map(id=>'<option value="'+id+'">'+id+'</option>').join('');
- const palette=Object.entries(NB_GATE_DEFS).map(([id,d])=>'<button class="nb-palette-gate" draggable="true" style="--gate-color:'+d.bg+'" ondragstart="startCellGateDrag(event,\''+cell.id+'\',\''+id+'\')" onclick="event.stopPropagation();selectCellGate(\''+cell.id+'\',\''+id+'\')" title="Drag onto a qubit wire or tap to select">'+d.sym+'</button>').join('');
- const gateList=(cell.circuitData?.gates||[]).map((g,i)=>'<button class="nb-gate-chip" onclick="event.stopPropagation();removeVisualGate(\''+cell.id+'\','+i+')" title="Remove gate">'+(g.def?.sym||NB_GATE_DEFS[g.id]?.sym||g.id)+' · q'+g.q+(g.q2!==undefined?'–q'+g.q2:'')+(g.q3!==undefined?'–q'+g.q3:'')+' ×</button>').join('');
- return '<div class="nb-circuit-tools" onclick="event.stopPropagation()"><div class="nb-circuit-palette" aria-label="Gate palette">'+palette+'</div><div class="nb-circuit-controls"><label>Gate <select id="nb-gate-'+cell.id+'" aria-label="Gate">'+gates+'</select></label><label>Target <select id="nb-q-'+cell.id+'" aria-label="Target qubit">'+opts+'</select></label><label>Qubit 2 <select id="nb-q2-'+cell.id+'" aria-label="Second qubit">'+opts2+'</select></label><label>Qubit 3 <select id="nb-q3-'+cell.id+'" aria-label="Third qubit">'+opts3+'</select></label><button onclick="addVisualGate(\''+cell.id+'\')">＋ Add gate</button><button onclick="addVisualQubit(\''+cell.id+'\')">＋ Qubit</button><button onclick="clearVisualCircuit(\''+cell.id+'\')">Clear</button></div><div class="nb-circuit-help">Drag a gate from the palette onto a wire, or select a gate and target qubits above. Tap a gate chip below to remove it.</div><div class="nb-gate-list">'+(gateList||'<span>No gates yet</span>')+'</div></div>';
+ const groups=[['1 QUBIT',['H','X','Y','Z','S','T','SX','RX','RY','RZ']],['2 QUBITS',['CX','CZ','SWAP']],['3 QUBITS',['CCX','CSWAP']],['MEASUREMENT',['M']]];
+ const palette=groups.map(([label,ids])=>'<div class="nb-palette-section">'+label+'</div>'+ids.map(g=>{const d=NB_GATE_DEFS[g];return '<button class="nb-palette-gate'+(_cellSelectedGates[id]===g?' selected':'')+'" data-gate="'+g+'" draggable="true" style="--gate-color:'+d.bg+'" ondragstart="startCellGateDrag(event,\''+id+'\',\''+g+'\')" onclick="event.stopPropagation();selectCellGate(\''+id+'\',\''+g+'\')" title="Drag onto a qubit wire or select then tap a wire">'+d.sym+'</button>';}).join('')).join('');
+ const gates=Object.keys(NB_GATE_DEFS).map(g=>'<option value="'+g+'">'+g+'</option>').join('');
+ const gateList=(cell.circuitData?.gates||[]).map(g=>'<button class="nb-gate-chip" onclick="event.stopPropagation();removeVisualGateByUid(\''+id+'\','+JSON.stringify(g.uid)+')" title="Tap to remove">'+(g.def?.sym||NB_GATE_DEFS[g.id]?.sym||g.id)+' · q'+g.q+(g.q2!==undefined?'–q'+g.q2:'')+(g.q3!==undefined?'–q'+g.q3:'')+' ×</button>').join('');
+ return '<div class="nb-circuit-tools" onclick="event.stopPropagation()"><div class="nb-circuit-palette" aria-label="Original circuit gate palette">'+palette+'</div><div class="nb-circuit-controls"><label>Gate <select id="nb-gate-'+id+'" aria-label="Gate">'+gates+'</select></label><label>Target <select id="nb-q-'+id+'" aria-label="Target qubit">'+opts+'</select></label><label>Qubit 2 <select id="nb-q2-'+id+'" aria-label="Second qubit">'+opts2+'</select></label><label>Qubit 3 <select id="nb-q3-'+id+'" aria-label="Third qubit">'+opts3+'</select></label><button onclick="addVisualGate(\''+id+'\')">＋ Add gate</button><button onclick="addVisualQubit(\''+id+'\')">＋ Qubit</button><button onclick="clearVisualCircuit(\''+id+'\')">Clear</button></div><div class="nb-circuit-help">Drag a gate onto a wire. Drag an existing one-qubit gate to another wire. Tap a placed gate to remove it. Multiqubit gates can be removed by tapping their connector.</div><div class="nb-gate-list">'+(gateList||'<span>No gates yet</span>')+'</div></div>';
 }
 
 // ── NAVIGATION ────────────────────────────────────────────────
@@ -2251,10 +2362,9 @@ function buildCellEl(cell,i){
         <div class="cell-type-badge ctb-circ">
           ⚛ Visual Circuit
         </div>
-        <div class="cell-circuit-preview" id="cprev-${cell.id}"
-          ondragover="cellCircuitDragOver(event)" ondragleave="cellCircuitDragLeave(event)" ondrop="dropCellGate(event,'${cell.id}')"
+        <div class="cell-circuit-preview nb-circuit-preview" id="cprev-${cell.id}"
           onclick="event.stopPropagation();toggleCircuitEditor('${cell.id}')"
-          title="Drag a palette gate onto a qubit wire; click to show or hide controls">
+          title="Original interactive quantum circuit; click to show or hide controls">
           ${hasCircuit
             ? `<div class="circ-preview-hint">⚛ QUANTUM CIRCUIT — click for gate controls</div>${circuitSVG}`
             : `<div class="circ-empty-hint">⚛ Visual Circuit Cell<br><span style="font-size:.4rem;color:rgba(0,200,100,.4);">Use the controls below to add gates</span></div>`
