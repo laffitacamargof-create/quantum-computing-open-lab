@@ -602,8 +602,15 @@ function addVisualGate(cellId){
 function addVisualQubit(cellId){const c=cells.find(x=>x.id===cellId);if(!c||c.type!=='circuit'||_expositionMode)return;if(c.circuitData.qubits>=20){notify('Maximum 20 qubits');return;}c.circuitData.qubits++;c.hiddenCode=visualCircuitCode(c.circuitData);renderCells();focusCell(cellId);saveCurrentNb(false);}
 function removeVisualGate(cellId,index){const c=cells.find(x=>x.id===cellId);if(!c||c.type!=='circuit'||_expositionMode)return;c.circuitData.gates.splice(index,1);c.hiddenCode=visualCircuitCode(c.circuitData);renderCells();focusCell(cellId);saveCurrentNb(false);}
 function clearVisualCircuit(cellId){const c=cells.find(x=>x.id===cellId);if(!c||c.type!=='circuit'||_expositionMode)return;c.circuitData={qubits:Math.max(1,c.circuitData?.qubits||1),gates:[]};c.hiddenCode='';c.visualWarnings=[];c.output='';c._outputData=null;renderCells();focusCell(cellId);saveCurrentNb(false);}
-function openCircuitEditor(cellId){const cell=cells.find(c=>c.id===cellId);if(!cell||cell.type!=='circuit')return;cell.editorOpen=true;renderCells();focusCell(cellId);}
-function toggleCircuitEditor(cellId){const cell=cells.find(c=>c.id===cellId);if(!cell||cell.type!=='circuit')return;cell.editorOpen=!cell.editorOpen;renderCells();focusCell(cellId);}
+function openCircuitEditor(cellId){
+ const cell=cells.find(c=>c.id===cellId);
+ if(!cell||cell.type!=='circuit'||_expositionMode)return;
+ _editingCellId=cellId;
+ const source=(cell.hiddenCode||'').trim()||visualCircuitCode(cell.circuitData||{qubits:2,gates:[]});
+ postCore('OPENQ_OPEN_ARCHITECT_EDIT',{cellId,code:source,circuitData:cell.circuitData||{qubits:2,gates:[]}});
+ notify('Opening this cell in Quantum Open Lab. Save and return to synchronize it.');
+}
+function toggleCircuitEditor(cellId){const cell=cells.find(c=>c.id===cellId);if(!cell||cell.type!=='circuit'||_expositionMode)return;cell.editorOpen=cell.editorOpen===false;renderCells();focusCell(cellId);}
 function buildCircuitEditorControls(cell){
  const q=cell.circuitData?.qubits||1,opts=Array.from({length:q},(_,i)=>'<option value="'+i+'">q['+i+']</option>').join(''),opts2=Array.from({length:q},(_,i)=>'<option value="'+i+'"'+(i===1?' selected':'')+'>q['+i+']</option>').join(''),opts3=Array.from({length:q},(_,i)=>'<option value="'+i+'"'+(i===2?' selected':'')+'>q['+i+']</option>').join('');
  const gates=Object.keys(NB_GATE_DEFS).map(id=>'<option value="'+id+'">'+id+'</option>').join('');
@@ -2267,12 +2274,12 @@ function buildCellEl(cell,i){
     const circuitToolbar = `<div class="cell-toolbar">
         <button class="ct-btn" onclick="event.stopPropagation();moveCellUp('${cell.id}')" title="Move up">↑</button>
         <button class="ct-btn" onclick="event.stopPropagation();moveCellDown('${cell.id}')" title="Move down">↓</button>
-        ${_expositionMode ? '' : `<button class="ct-btn" onclick="event.stopPropagation();toggleCircuitEditor('${cell.id}')" title="Edit visual circuit">${cell.editorOpen?'Done':'Edit'}</button><button class="ct-btn danger" onclick="event.stopPropagation();deleteCell('${cell.id}')" title="Delete">✕</button>`}
+        ${_expositionMode ? '' : `<button class="ct-btn" onclick="event.stopPropagation();toggleCircuitEditor('${cell.id}')" title="Edit visual circuit">${cell.editorOpen===false?'Show controls':'Hide controls'}</button><button class="ct-btn" onclick="event.stopPropagation();openCircuitEditor('${cell.id}')" title="Open in Quantum Open Lab">Open Lab ↗</button><button class="ct-btn danger" onclick="event.stopPropagation();deleteCell('${cell.id}')" title="Delete">✕</button>`}
       </div>`;
     const restoreBtn = '';
     const circuitSVG = hasCircuit ? buildCircuitFromData(cell.circuitData) : '';
     const outContent = cell.output ? `<div class="cell-output-area" id="out-${cell.id}">${'<!-- output -->'}</div>` : '';
-    const editorControls = cell.editorOpen&&!_expositionMode ? buildCircuitEditorControls(cell) : '';
+    const editorControls = cell.editorOpen!==false&&!_expositionMode ? buildCircuitEditorControls(cell) : '';
     const warningHtml = cell.visualWarnings?.length ? `<div class="nb-circuit-warning">Some Qiskit operations are not drawn in this preview; the complete hidden source is still executed.</div>` : '';
     el.className='nb-cell circ-cell'+(curCellId===cell.id?' active':'');
     el.innerHTML=`${circuitToolbar}
@@ -2286,11 +2293,11 @@ function buildCellEl(cell,i){
           ⚛ Visual Circuit
         </div>
         <div class="cell-circuit-preview" id="cprev-${cell.id}"
-          onclick="event.stopPropagation();openCircuitEditor('${cell.id}')"
-          title="Click to edit the circuit">
+          onclick="event.stopPropagation();toggleCircuitEditor('${cell.id}')"
+          title="Click to show or hide visual gate controls">
           ${hasCircuit
-            ? `<div class="circ-preview-hint">⚛ QUANTUM CIRCUIT — click to edit</div>${circuitSVG}`
-            : `<div class="circ-empty-hint" onclick="event.stopPropagation();openCircuitEditor('${cell.id}')">⚛ Visual Circuit Cell<br><span style="font-size:.4rem;color:rgba(0,200,100,.4);">Open visual gate controls</span></div>`
+            ? `<div class="circ-preview-hint">⚛ QUANTUM CIRCUIT — click for gate controls</div>${circuitSVG}`
+            : `<div class="circ-empty-hint">⚛ Visual Circuit Cell<br><span style="font-size:.4rem;color:rgba(0,200,100,.4);">Use the controls below to add gates</span></div>`
           }
         </div>
         ${editorControls}${warningHtml}
@@ -2495,9 +2502,19 @@ window.addEventListener('message',e=>{
     const cellId = d.cellId || _editingCellId;
     const cell   = cells.find(c => c.id === cellId);
     if(cell && cell.type === 'circuit'){
-      cell.hiddenCode  = d.code        || '';
-      cell.circuitData = d.circuitData || null;
+      cell.hiddenCode = typeof d.code === 'string' ? d.code : (cell.hiddenCode || '');
+      // Open Lab versions may return source without the visual payload. Rebuild the
+      // visual model from Qiskit source instead of leaving a circuit cell unusable.
+      const returnedData = d.circuitData && typeof d.circuitData === 'object' ? d.circuitData : null;
+      const parsedReturn = !returnedData && cell.hiddenCode ? parseQiskitCircuitCode(cell.hiddenCode) : null;
+      const incomingQubits = Number(returnedData?.qubits);
+      const incomingGates = Array.isArray(returnedData?.gates) ? returnedData.gates : null;
+      cell.circuitData = returnedData && incomingGates
+        ? { qubits: Math.max(1, Math.min(20, Number.isFinite(incomingQubits) ? incomingQubits : 1)), gates: incomingGates }
+        : (parsedReturn?.circuitData || cell.circuitData || { qubits: 1, gates: [] });
+      if (parsedReturn?.warnings?.length) cell.visualWarnings = parsedReturn.warnings;
       cell.output      = '';
+      cell.editorOpen = true;
       cell.exec_count  = null;
       cell.errorLine   = null;
       _editingCellId   = null;
@@ -2523,7 +2540,7 @@ window.addEventListener('message',e=>{
 
     document.getElementById('nb-name-inp').value = nb.title||nb.name||'Untitled';
     cells = (nb.cells && nb.cells.length > 0)
-      ? nb.cells.map(c=>({...c, id:genId(), output:'', exec_count:null, mdEdit:false, errorLine:null}))
+      ? nb.cells.map(c=>({...c, id:genId(), output:'', exec_count:null, mdEdit:false, errorLine:null, editorOpen:c.type==='circuit'?true:c.editorOpen}))
       : [];
 
     if(isExpo){
@@ -2644,8 +2661,9 @@ window.addEventListener('message',e=>{
       if(d.requestId)qnexusActionFinish(d,{ok:cells.length===before+1&&!!cell, message:cell?'Created '+cellType+' cell '+index+'.':'Could not create notebook cell.',cellIndex:index,cellId:cell&&cell.id});
     }else if(d.type==='OPENQ_AI_OPEN_CIRCUIT_EDITOR'){
       const cell=cells[d.cellIndex];
-      if(cell&&cell.type==='circuit'){openCircuitEditor(cell.id);if(d.requestId)qnexusActionFinish(d,{ok:true,message:'Opened the visual circuit editor for notebook cell '+d.cellIndex+'.',cellId:cell.id});}
-      else if(d.requestId)qnexusActionFinish(d,{ok:false,message:'The selected notebook cell is not a visual circuit cell.'});
+      if(cell&&cell.type==='circuit'){
+        if(d.requestId)qnexusActionFinish(d,{ok:false,message:'QNexusAi edits this visual circuit directly through set_code; the Quantum Open Lab handoff is reserved for user-initiated editing.',cellId:cell.id});
+      }else if(d.requestId)qnexusActionFinish(d,{ok:false,message:'The selected notebook cell is not a visual circuit cell.'});
     }else if(d.type==='OPENQ_AI_SET_MARKDOWN'&&typeof d.markdown==='string'){
       const c=cells[d.cellIndex];
       if(!c||c.type!=='markdown'||_expositionMode){if(d.requestId)qnexusActionFinish(d,{ok:false,message:'Target Markdown cell is unavailable or read-only.'});return;}
@@ -2656,7 +2674,7 @@ window.addEventListener('message',e=>{
     }else if(d.type==='OPENQ_AI_SET_CODE'&&typeof d.code==='string'){
       const c=cells[d.cellIndex];
       if(!c||c.type!=='circuit'||_expositionMode){if(d.requestId)qnexusActionFinish(d,{ok:false,message:'Target must be an editable visual circuit cell.'});return;}
-      const parsed=syncCircuitCellFromCode(c,d.code);c.editorOpen=false;renderCells();focusCell(c.id);
+      const parsed=syncCircuitCellFromCode(c,d.code);c.editorOpen=true;renderCells();focusCell(c.id);
       if(d.requestId)qnexusActionFinish(d,{ok:c.hiddenCode===d.code&&!!c.circuitData,message:'Qiskit source stored in the hidden circuit layer and visual preview refreshed.',cellId:c.id,visualGates:c.circuitData.gates.length,visualWarnings:parsed.warnings.length});
     }else if(d.type==='OPENQ_AI_NOISE'){
       const c=cells[d.cellIndex];
