@@ -652,38 +652,37 @@ function buildInteractiveCircuitCell(cell){
  const placed=gates.map((g,i)=>{let col=0;if(g.block){for(let q=g.q;q<=g.q2;q++)col=Math.max(col,depth[q]||0);for(let q=g.q;q<=g.q2;q++)depth[q]=col+(g.block.w||1);}else if(g.q3!==undefined){col=Math.max(depth[g.q]||0,depth[g.q2]||0,depth[g.q3]||0);[g.q,g.q2,g.q3].forEach(q=>depth[q]=col+1);}else if(g.q2!==undefined){col=Math.max(depth[g.q]||0,depth[g.q2]||0);depth[g.q]=depth[g.q2]=col+1;}else{col=depth[g.q]||0;depth[g.q]=col+1;}return {...g,_index:i,_col:col};});
  const total=Math.max(1,...depth),width=total*STEP+90;
  let html='<div class="nb-cell-circuit-wrap"><div class="nb-cell-circuit" style="width:'+width+'px;height:'+(n*ROW)+'px">';
- for(let q=0;q<n;q++)html+='<div class="nb-cell-wire-row"><div class="nb-cell-wire-label">q['+q+']</div><div class="nb-cell-wire" data-cell="'+cell.id+'" data-qubit="'+q+'" ondragover="cellWireDragOver(event)" ondragleave="cellWireDragLeave(event)" ondrop="cellWireDrop(event,'+cellArg+','+q+')" onclick="cellWireTap(event,'+cellArg+','+q+')"></div></div>';
+ for(let q=0;q<n;q++)html+='<div class="nb-cell-wire-row"><div class="nb-cell-wire-label">q['+q+']</div><div class="nb-cell-wire" data-cell="'+cell.id+'" data-qubit="'+q+'" aria-readonly="true"></div></div>';
  placed.forEach(g=>{
   const left=g._col*STEP+55,color=cellGateColor(g),sym=cellGateSymbol(g);
   if(g.block){html+='<div class="nb-cell-gate-multi" style="left:'+left+'px;top:'+(g.q*ROW+4)+'px;width:'+((g.block.w||1)*STEP-8)+'px;height:'+((g.q2-g.q+1)*ROW-8)+'px;background:linear-gradient(135deg,#4a148c,#8e24aa);border:1px solid #ce93d8;border-radius:7px;color:white;display:flex;flex-direction:column;align-items:center;justify-content:center;font:700 11px monospace">'+escH(g.block.label||'BLOCK')+'</div>';return;}
   if(g.q3!==undefined||g.q2!==undefined){
    const qs=[g.q,g.q2,...(g.q3!==undefined?[g.q3]:[])],top=Math.min(...qs),bottom=Math.max(...qs),h=(bottom-top)*ROW+ROW,cy=q=>(q-top)*ROW+ROW/2;
-   let svg='<svg width="50" height="'+h+'" viewBox="0 0 50 '+h+'" role="button" aria-label="Remove '+escH(g.id)+'" onclick="cellGateClick(event,'+cellArg+','+(g.uid??g._index)+')" style="cursor:pointer"><line x1="25" y1="'+cy(top)+'" x2="25" y2="'+cy(bottom)+'" stroke="'+color+'" stroke-width="2.5"/>';
+   let svg='<svg width="50" height="'+h+'" viewBox="0 0 50 '+h+'" aria-label="'+escH(g.id)+'" style="cursor:default"><line x1="25" y1="'+cy(top)+'" x2="25" y2="'+cy(bottom)+'" stroke="'+color+'" stroke-width="2.5"/>';
    if(g.q3!==undefined){
     if(g.id==='CCX'){svg+='<circle cx="25" cy="'+cy(g.q)+'" r="8" fill="'+color+'"/><circle cx="25" cy="'+cy(g.q2)+'" r="8" fill="'+color+'"/><circle cx="25" cy="'+cy(g.q3)+'" r="14" fill="none" stroke="'+color+'" stroke-width="2.5"/><path d="M17 '+cy(g.q3)+'h16 M25 '+(cy(g.q3)-10)+'v20" stroke="'+color+'" stroke-width="2"/>';}
     else{svg+='<circle cx="25" cy="'+cy(g.q)+'" r="8" fill="'+color+'"/>'+[g.q2,g.q3].map(q=>'<path d="M17 '+(cy(q)-9)+'l16 18 M33 '+(cy(q)-9)+'L17 '+(cy(q)+9)+'" stroke="'+color+'" stroke-width="2.5"/>').join('');}
    }else if(g.id==='CX'){svg+='<circle cx="25" cy="'+cy(g.q)+'" r="8" fill="'+color+'"/><circle cx="25" cy="'+cy(g.q2)+'" r="14" fill="none" stroke="'+color+'" stroke-width="2.5"/><path d="M17 '+cy(g.q2)+'h16 M25 '+(cy(g.q2)-10)+'v20" stroke="'+color+'" stroke-width="2"/>';}
    else if(g.id==='CZ'){svg+='<circle cx="25" cy="'+cy(g.q)+'" r="8" fill="'+color+'"/><circle cx="25" cy="'+cy(g.q2)+'" r="8" fill="'+color+'"/>';}
    else{svg+=[g.q,g.q2].map(q=>'<path d="M15 '+(cy(q)-9)+'l20 18 M35 '+(cy(q)-9)+'L15 '+(cy(q)+9)+'" stroke="'+color+'" stroke-width="2.5"/>').join('');}
-   svg+='</svg>';html+='<div class="nb-cell-gate-multi" style="left:'+left+'px;top:'+(top*ROW)+'px" title="'+escH(g.id)+' · tap to remove">'+svg+'</div>';return;
+   svg+='</svg>';html+='<div class="nb-cell-gate-multi" style="left:'+left+'px;top:'+(top*ROW)+'px" title="'+escH(g.id)+' · view only">'+svg+'</div>';return;
   }
   const display=sym.length>4?sym.slice(0,3):sym;
-  html+='<div class="nb-cell-gate" draggable="true" style="left:'+left+'px;top:'+(g.q*ROW+ROW/2)+'px" ondragstart="startCellExistingGateDrag(event,'+cellArg+','+(g.uid??g._index)+')" ondragend="endCellExistingGateDrag()" onclick="event.stopPropagation();removeVisualGateByUid('+cellArg+','+(g.uid??g._index)+')" title="'+escH(g.id)+' · drag to move, tap to remove"><div class="nb-cell-gate-box" style="background:'+color+'">'+escH(display)+'</div></div>';
+  html+='<div class="nb-cell-gate" draggable="false" aria-readonly="true" style="left:'+left+'px;top:'+(g.q*ROW+ROW/2)+'px" title="'+escH(g.id)+' · drag to move, tap to remove"><div class="nb-cell-gate-box" style="background:'+color+'">'+escH(display)+'</div></div>';
  });
  html+='</div></div>';return html;
 }
 function cellGatePaletteHtml(cellId){
- const cellArg="'"+String(cellId).replace(/\\/g,"\\\\").replace(/'/g,"\\'")+"'";
- let html='<div class="nb-cell-palette"><div class="nb-cell-palette-hdr">GATES</div><div class="nb-cell-palette-body">';
+ let html='<div class="nb-cell-palette"><div class="nb-cell-palette-hdr">GATES · VIEW ONLY</div><div class="nb-cell-palette-body">';
  Object.entries(NB_CELL_GATE_GROUPS).forEach(([label,ids])=>{
   html+='<div class="nb-cell-pal-sec"><div class="nb-cell-pal-label">'+label+'</div><div class="nb-cell-pal-grid">';
-  ids.forEach(id=>{const d=NB_GATE_DEFS[id];if(!d)return;html+='<button type="button" class="nb-cell-pal-gate" draggable="true" aria-label="Gate '+id+'" data-gate="'+id+'" style="background:'+d.bg+';box-shadow:0 0 6px '+d.bg+'" ondragstart="startCellGateDrag(event,'+cellArg+','+"'"+id+"'"+')" ondragend="endCellGateDrag()" onclick="event.stopPropagation();selectCellGate('+cellArg+','+"'"+id+"'"+')"><span class="nb-cell-pal-sym">'+d.sym+'</span><span class="nb-cell-pal-name">'+id+'</span></button>';});
+  ids.forEach(id=>{const d=NB_GATE_DEFS[id];if(!d)return;html+='<button type="button" class="nb-cell-pal-gate" disabled aria-disabled="true" tabindex="-1" data-gate="'+id+'" style="background:'+d.bg+';box-shadow:0 0 6px '+d.bg+';opacity:.72;cursor:not-allowed"><span class="nb-cell-pal-sym">'+d.sym+'</span><span class="nb-cell-pal-name">'+id+'</span></button>';});
   html+='</div></div>';
  });
  return html+'</div></div>';
 }
-function selectCellGate(cellId,gateId){const cell=cells.find(c=>c.id===cellId);if(!cell)return;_cellSelectedGate={cellId,gateId};cell.editorOpen=true;renderCells();focusCell(cellId);const el=document.getElementById('nb-gate-'+cellId);if(el)el.value=gateId;notify(gateId+' selected — tap a qubit wire to place it');}
-function cellWireTap(event,cellId,qubit){if(!_cellSelectedGate||_cellSelectedGate.cellId!==cellId)return;event.preventDefault();event.stopPropagation();const gateId=_cellSelectedGate.gateId;_cellSelectedGate=null;placeVisualGate(cellId,gateId,qubit);}
+function selectCellGate(){notify('Circuit editing is available only in Quantum Open Lab');}
+function cellWireTap(){return false;}
 function startCellGateDrag(event,cellId,gateId){event.stopPropagation();_cellPaletteDrag={cellId,gateId};_cellGateDrag=null;event.dataTransfer.effectAllowed='copy';event.dataTransfer.setData('text/plain',gateId);}
 function endCellGateDrag(){_cellPaletteDrag=null;}
 function startCellExistingGateDrag(event,cellId,uid){event.stopPropagation();_cellJustDragged=false;_cellGateDrag={cellId,uid};_cellPaletteDrag=null;event.dataTransfer.effectAllowed='move';event.dataTransfer.setData('text/plain','cell-gate:'+uid);}
@@ -692,7 +691,7 @@ function cellWireDragOver(event){event.preventDefault();event.dataTransfer.dropE
 function cellWireDragLeave(event){event.currentTarget.classList.remove('nb-wire-drop');}
 function cellWireDrop(event,cellId,qubit){event.preventDefault();event.stopPropagation();event.currentTarget.classList.remove('nb-wire-drop');if(_cellGateDrag&&_cellGateDrag.cellId===cellId){moveVisualGate(cellId,_cellGateDrag.uid,qubit);_cellGateDrag=null;return;}const gateId=(_cellPaletteDrag?.cellId===cellId?_cellPaletteDrag.gateId:event.dataTransfer.getData('text/plain'))||'';_cellPaletteDrag=null;if(NB_GATE_DEFS[gateId]){_cellSelectedGate=null;placeVisualGate(cellId,gateId,qubit);}}
 function normalizeCellMeasurements(gates){const byQ=new Map(),other=[];gates.forEach(g=>{if(g.id==='M')byQ.set(g.q,g);else other.push(g);});return [...other,...byQ.values()];}
-function placeVisualGate(cellId,gateId,qubit){
+function placeVisualGate(cellId,gateId,qubit){notify('Circuit editing is locked in Quantum Notebook. Open Quantum Open Lab.');return;/*
  const cell=cells.find(c=>c.id===cellId);if(!cell||cell.type!=='circuit'||_expositionMode)return;
  const data=cell.circuitData||(cell.circuitData={qubits:2,gates:[]}),gates=data.gates||(data.gates=[]),def=NB_GATE_DEFS[gateId];if(!def)return;
  if(gates.length>=150){notify('Maximum 150 gates per cell');return;}
@@ -714,7 +713,7 @@ function addVisualGate(cellId){
  if(id==='M'){data.gates=data.gates.filter(x=>!(x.id==='M'&&x.q===q));data.gates.push(g);}else data.gates.push(g);
  data.gates=normalizeCellMeasurements(data.gates);commitVisualCell(cellId);
 }
-function moveVisualGate(cellId,uid,newQubit){
+function moveVisualGate(cellId,uid,newQubit){notify('Circuit editing is locked in Quantum Notebook. Open Quantum Open Lab.');return;/*
  const cell=cells.find(c=>c.id===cellId);if(!cell||!cell.circuitData||_expositionMode)return;
  const gates=cell.circuitData.gates,idx=gates.findIndex((g,i)=>(g.uid??i)===uid);if(idx<0)return;
  const gate=gates[idx];if(gate.q2!==undefined||gate.q3!==undefined){notify('2- and 3-qubit gates cannot be dragged');return;}
@@ -724,11 +723,12 @@ function moveVisualGate(cellId,uid,newQubit){
  cell.circuitData.gates=normalizeCellMeasurements(cell.circuitData.gates);commitVisualCell(cellId);
 }
 function cellGateClick(event,cellId,uid){event.stopPropagation();if(_cellJustDragged)return;removeVisualGateByUid(cellId,uid);}
-function removeVisualGateByUid(cellId,uid){const c=cells.find(x=>x.id===cellId);if(!c||!c.circuitData||_expositionMode)return;const i=c.circuitData.gates.findIndex((g,k)=>(g.uid??k)===uid);if(i>=0){c.circuitData.gates.splice(i,1);commitVisualCell(cellId);}}
+function removeVisualGateByUid(cellId,uid){notify('Circuit editing is locked in Quantum Notebook. Open Quantum Open Lab.');return;/*const c=cells.find(x=>x.id===cellId);if(!c||!c.circuitData||_expositionMode)return;const i=c.circuitData.gates.findIndex((g,k)=>(g.uid??k)===uid);if(i>=0){c.circuitData.gates.splice(i,1);commitVisualCell(cellId);}}
 function removeVisualGate(cellId,index){const c=cells.find(x=>x.id===cellId);if(!c||c.type!=='circuit'||_expositionMode)return;if(index>=0&&index<c.circuitData.gates.length){c.circuitData.gates.splice(index,1);commitVisualCell(cellId);}}
-function commitVisualCell(cellId){const c=cells.find(x=>x.id===cellId);if(!c)return;c.hiddenCode=visualCircuitCode(c.circuitData);c.visualWarnings=[];c.editorOpen=true;renderCells();focusCell(cellId);saveCurrentNb(false);}
-function addVisualQubit(cellId){const c=cells.find(x=>x.id===cellId);if(!c||c.type!=='circuit'||_expositionMode)return;if(c.circuitData.qubits>=20){notify('Maximum 20 qubits');return;}c.circuitData.qubits++;commitVisualCell(cellId);}
-function removeVisualQubit(cellId){
+function commitVisualCell(cellId){notify('Circuit editing is locked in Quantum Notebook. Open Quantum Open Lab.');return;/*const c=cells.find(x=>x.id===cellId);if(!c)return;c.hiddenCode=visualCircuitCode(c.circuitData);c.visualWarnings=[];c.editorOpen=true;renderCells();focusCell(cellId);saveCurrentNb(false);}
+function addVisualQubit(cellId){notify('Circuit editing is locked in Quantum Notebook. Open Quantum Open Lab.');return;/*const c=cells.find(x=>x.id===cellId);if(!c||c.type!=='circuit'||_expositionMode)return;if(c.circuitData.qubits>=20){notify('Maximum 20 qubits');return;}c.circuitData.qubits++;commitVisualCell(cellId);}
+*/
+function removeVisualQubit(cellId){notify('Circuit editing is locked in Quantum Notebook. Open Quantum Open Lab.');return;/*
  const c=cells.find(x=>x.id===cellId);if(!c||c.type!=='circuit'||_expositionMode)return;
  const data=c.circuitData||(c.circuitData={qubits:1,gates:[]}),n=Math.max(1,Number(data.qubits)||1);
  if(n<=1)return;
@@ -736,7 +736,8 @@ function removeVisualQubit(cellId){
  data.gates=(data.gates||[]).filter(g=>g.q<n-1&&(g.q2===undefined||g.q2<n-1)&&(g.q3===undefined||g.q3<n-1));
  commitVisualCell(cellId);
 }
-function clearVisualCircuit(cellId){const c=cells.find(x=>x.id===cellId);if(!c||c.type!=='circuit'||_expositionMode)return;c.circuitData={qubits:Math.max(1,c.circuitData?.qubits||1),gates:[]};c.hiddenCode='';c.visualWarnings=[];c.output='';c._outputData=null;renderCells();focusCell(cellId);saveCurrentNb(false);}
+*/
+function clearVisualCircuit(cellId){notify('Circuit editing is locked in Quantum Notebook. Open Quantum Open Lab.');return;/*const c=cells.find(x=>x.id===cellId);if(!c||c.type!=='circuit'||_expositionMode)return;c.circuitData={qubits:Math.max(1,c.circuitData?.qubits||1),gates:[]};c.hiddenCode='';c.visualWarnings=[];c.output='';c._outputData=null;renderCells();focusCell(cellId);saveCurrentNb(false);}
 function openCircuitEditor(cellId){
  const cell=cells.find(c=>c.id===cellId);
  if(!cell||cell.type!=='circuit'||_expositionMode)return;
@@ -745,10 +746,10 @@ function openCircuitEditor(cellId){
  postCore('OPENQ_OPEN_ARCHITECT_EDIT',{cellId,code:source,circuitData:cell.circuitData||{qubits:2,gates:[]}});
  notify('Opening this cell in Quantum Open Lab. Save and return to synchronize it.');
 }
-function toggleCircuitEditor(cellId){const cell=cells.find(c=>c.id===cellId);if(!cell||cell.type!=='circuit'||_expositionMode)return;cell.editorOpen=cell.editorOpen===false;renderCells();focusCell(cellId);}
+function toggleCircuitEditor(cellId){const cell=cells.find(c=>c.id===cellId);if(!cell||cell.type!=='circuit')return;openCircuitEditor(cellId);}
 function buildCircuitEditorControls(cell){
- const id=JSON.stringify(cell.id),q=Math.max(1,Number(cell.circuitData?.qubits)||1);
- return '<div class="nb-circuit-tools" onclick="event.stopPropagation()">'+cellGatePaletteHtml(cell.id)+'<div class="nb-cell-pal-actions"><div class="nb-cell-pal-label">CIRCUIT</div><button type="button" onclick="addVisualQubit('+id+')">＋ Qubit</button><button type="button" onclick="removeVisualQubit('+id+')" '+(q<=1?'disabled':'')+'>－ Qubit</button><button type="button" class="nb-cell-clear" onclick="clearVisualCircuit('+id+')">Clear</button><div class="nb-circuit-help">Drag a gate onto a qubit wire, or select a gate and tap a wire. Drag a placed one-qubit gate to move it; tap a placed gate to remove it.</div></div></div>';
+ const id=JSON.stringify(cell.id);
+ return '<div class="nb-circuit-tools" onclick="event.stopPropagation()">'+cellGatePaletteHtml(cell.id)+'<div class="nb-cell-pal-actions"><div class="nb-cell-pal-label">CIRCUIT · READ ONLY</div><span class="nb-circuit-help">Circuit editing is locked in Quantum Notebook. Open Quantum Open Lab to make changes; Save and Return synchronizes the circuit back into this cell.</span><button type="button" class="nb-cell-open-lab" onclick="openCircuitEditor('+id+')">EDIT IN QUANTUM OPEN LAB ↗</button></div></div>';
 }
 
 // ── NAVIGATION ────────────────────────────────────────────────
@@ -2406,12 +2407,12 @@ function buildCellEl(cell,i){
     const circuitToolbar = `<div class="cell-toolbar">
         <button class="ct-btn" onclick="event.stopPropagation();moveCellUp('${cell.id}')" title="Move up">↑</button>
         <button class="ct-btn" onclick="event.stopPropagation();moveCellDown('${cell.id}')" title="Move down">↓</button>
-        ${_expositionMode ? '' : `<button class="ct-btn" onclick="event.stopPropagation();toggleCircuitEditor('${cell.id}')" title="Edit visual circuit">${cell.editorOpen===false?'Show controls':'Hide controls'}</button><button class="ct-btn" onclick="event.stopPropagation();openCircuitEditor('${cell.id}')" title="Open in Quantum Open Lab">Open Lab ↗</button><button class="ct-btn danger" onclick="event.stopPropagation();deleteCell('${cell.id}')" title="Delete">✕</button>`}
+        ${_expositionMode ? '' : `<button class="ct-btn" onclick="event.stopPropagation();openCircuitEditor('${cell.id}')" title="Edit only in Quantum Open Lab">EDIT IN OPEN LAB ↗</button><button class="ct-btn" onclick="event.stopPropagation();openCircuitEditor('${cell.id}')" title="Open in Quantum Open Lab">Open Lab ↗</button><button class="ct-btn danger" onclick="event.stopPropagation();deleteCell('${cell.id}')" title="Delete">✕</button>`}
       </div>`;
     const restoreBtn = '';
     const circuitSVG = buildInteractiveCircuitCell(cell);
     const outContent = cell.output ? `<div class="cell-output-area" id="out-${cell.id}">${'<!-- output -->'}</div>` : '';
-    const editorControls = cell.editorOpen!==false&&!_expositionMode ? buildCircuitEditorControls(cell) : '';
+    const editorControls = !_expositionMode ? buildCircuitEditorControls(cell) : '';
     const warningHtml = cell.visualWarnings?.length ? `<div class="nb-circuit-warning">Some Qiskit operations are not drawn in this preview; the complete hidden source is still executed.</div>` : '';
     el.className='nb-cell circ-cell'+(curCellId===cell.id?' active':'');
     el.innerHTML=`${circuitToolbar}
@@ -2424,8 +2425,8 @@ function buildCellEl(cell,i){
         <div class="cell-type-badge ctb-circ">
           ⚛ Visual Circuit
         </div>
-        <div class="nb-cell-editor-layout">${editorControls}<div class="nb-cell-main"><div class="cell-circuit-preview" id="cprev-${cell.id}" onclick="event.stopPropagation();toggleCircuitEditor(\'${cell.id}\')" title="Interactive quantum circuit; drag gates between qubit wires">
-          <div class="circ-preview-hint">⚛ CIRCUIT — drag gates from the palette to the wires</div>${circuitSVG}${!hasCircuit?'<div class="circ-empty-hint">Select a gate and tap a wire, or drag it onto a wire</div>':''}
+        <div class="nb-cell-editor-layout">${editorControls}<div class="nb-cell-main"><div class="cell-circuit-preview" id="cprev-${cell.id}" title="Read-only circuit preview — edit through Quantum Open Lab">
+          <div class="circ-preview-hint">⚛ CIRCUIT — READ ONLY · EDIT THROUGH QUANTUM OPEN LAB</div>${circuitSVG}${!hasCircuit?'<div class="circ-empty-hint">Open Quantum Open Lab to build this circuit</div>':''}
         </div>${warningHtml}</div></div>
         <div class="cell-output-area" id="out-${cell.id}">${cell.output?`<div class="out-stdout">${escH(cell.output)}</div>`:''}</div>
         ${restoreBtn}
