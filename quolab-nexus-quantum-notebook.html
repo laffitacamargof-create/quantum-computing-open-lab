@@ -1015,7 +1015,6 @@ function buildCircuitFromData(data){
 
 let _editingCellId = null;
 
-function openCircuitEditor(cellId){const cell=cells.find(c=>c.id===cellId);if(!cell||cell.type!=='circuit')return;cell.editorOpen=!cell.editorOpen;renderCells();focusCell(cellId);}
 
 function buildCircuitOut(text){
   if(!text.trim()) return '';
