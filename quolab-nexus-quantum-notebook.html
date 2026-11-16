@@ -613,14 +613,34 @@ function parseQiskitCircuitCode(source){
 }
 function visualCircuitCode(data){
  const n=Math.max(1,Math.min(20,Number(data?.qubits)||1)),gates=Array.isArray(data?.gates)?data.gates:[];
- const lines=['from qiskit import QuantumCircuit','import numpy as np','','qc = QuantumCircuit('+n+', '+n+')',''];
- gates.forEach(g=>{const def=NB_GATE_DEFS[g.id];if(def)lines.push(def.code.replace(/\{q3\}/g,g.q3??0).replace(/\{q2\}/g,g.q2??0).replace(/\{q\}/g,g.q));});
+ const lines=[
+  'from qiskit import QuantumCircuit',
+  'import numpy as np',
+  'from qiskit_aer import AerSimulator',
+  '',
+  'qc = QuantumCircuit('+n+', '+n+')',
+  ''
+ ];
+ gates.forEach(g=>{
+  const def=NB_GATE_DEFS[g.id];
+  if(def)lines.push(def.code.replace(/\{q3\}/g,g.q3??0).replace(/\{q2\}/g,g.q2??0).replace(/\{q\}/g,g.q));
+ });
+ lines.push(
+  '',
+  'qc.measure(range('+n+'), range('+n+'))',
+  "print(qc.draw(output='text'))",
+  '',
+  'simulator = AerSimulator()',
+  'result = simulator.run(qc, shots=1024).result()',
+  'counts = result.get_counts()',
+  'print("Results:", counts)'
+ );
  return lines.join('\n');
 }
 function syncCircuitCellFromCode(cell,source){
  const parsed=parseQiskitCircuitCode(source);cell.hiddenCode=String(source||'');cell.code='';cell.circuitData=parsed.circuitData;cell.visualWarnings=parsed.warnings;return parsed;
 }
-let _cellPaletteDrag=null,_cellGateDrag=null,_cellJustDragged=false;
+let _cellPaletteDrag=null,_cellGateDrag=null,_cellJustDragged=false,_cellSelectedGate=null;
 const NB_CELL_GATE_GROUPS={
  '1 QUBIT':['H','X','Y','Z','S','T','SX','RX','RY','RZ'],
  '2 QUBITS':['CX','CZ','SWAP'],
@@ -637,7 +657,7 @@ function buildInteractiveCircuitCell(cell){
  const placed=gates.map((g,i)=>{let col=0;if(g.block){for(let q=g.q;q<=g.q2;q++)col=Math.max(col,depth[q]||0);for(let q=g.q;q<=g.q2;q++)depth[q]=col+(g.block.w||1);}else if(g.q3!==undefined){col=Math.max(depth[g.q]||0,depth[g.q2]||0,depth[g.q3]||0);[g.q,g.q2,g.q3].forEach(q=>depth[q]=col+1);}else if(g.q2!==undefined){col=Math.max(depth[g.q]||0,depth[g.q2]||0);depth[g.q]=depth[g.q2]=col+1;}else{col=depth[g.q]||0;depth[g.q]=col+1;}return {...g,_index:i,_col:col};});
  const total=Math.max(1,...depth),width=total*STEP+90;
  let html='<div class="nb-cell-circuit-wrap"><div class="nb-cell-circuit" style="width:'+width+'px;height:'+(n*ROW)+'px">';
- for(let q=0;q<n;q++)html+='<div class="nb-cell-wire-row"><div class="nb-cell-wire-label">q['+q+']</div><div class="nb-cell-wire" data-cell="'+cell.id+'" data-qubit="'+q+'" ondragover="cellWireDragOver(event)" ondragleave="cellWireDragLeave(event)" ondrop="cellWireDrop(event,'+cellArg+','+q+')"></div></div>';
+ for(let q=0;q<n;q++)html+='<div class="nb-cell-wire-row"><div class="nb-cell-wire-label">q['+q+']</div><div class="nb-cell-wire" data-cell="'+cell.id+'" data-qubit="'+q+'" ondragover="cellWireDragOver(event)" ondragleave="cellWireDragLeave(event)" ondrop="cellWireDrop(event,'+cellArg+','+q+')" onclick="cellWireTap(event,'+cellArg+','+q+')"></div></div>';
  placed.forEach(g=>{
   const left=g._col*STEP+55,color=cellGateColor(g),sym=cellGateSymbol(g);
   if(g.block){html+='<div class="nb-cell-gate-multi" style="left:'+left+'px;top:'+(g.q*ROW+4)+'px;width:'+((g.block.w||1)*STEP-8)+'px;height:'+((g.q2-g.q+1)*ROW-8)+'px;background:linear-gradient(135deg,#4a148c,#8e24aa);border:1px solid #ce93d8;border-radius:7px;color:white;display:flex;flex-direction:column;align-items:center;justify-content:center;font:700 11px monospace">'+escH(g.block.label||'BLOCK')+'</div>';return;}
@@ -665,14 +685,15 @@ function cellGatePaletteHtml(cellId){
  html+='</div></div>';});
  return html+'</div>';
 }
-function selectCellGate(cellId,gateId){const cell=cells.find(c=>c.id===cellId);if(!cell)return;cell.editorOpen=true;renderCells();focusCell(cellId);const el=document.getElementById('nb-gate-'+cellId);if(el)el.value=gateId;}
+function selectCellGate(cellId,gateId){const cell=cells.find(c=>c.id===cellId);if(!cell)return;_cellSelectedGate={cellId,gateId};cell.editorOpen=true;renderCells();focusCell(cellId);const el=document.getElementById('nb-gate-'+cellId);if(el)el.value=gateId;notify(gateId+' selected — tap a qubit wire to place it');}
+function cellWireTap(event,cellId,qubit){if(!_cellSelectedGate||_cellSelectedGate.cellId!==cellId)return;event.preventDefault();event.stopPropagation();const gateId=_cellSelectedGate.gateId;_cellSelectedGate=null;placeVisualGate(cellId,gateId,qubit);}
 function startCellGateDrag(event,cellId,gateId){event.stopPropagation();_cellPaletteDrag={cellId,gateId};_cellGateDrag=null;event.dataTransfer.effectAllowed='copy';event.dataTransfer.setData('text/plain',gateId);}
 function endCellGateDrag(){_cellPaletteDrag=null;}
 function startCellExistingGateDrag(event,cellId,uid){event.stopPropagation();_cellJustDragged=false;_cellGateDrag={cellId,uid};_cellPaletteDrag=null;event.dataTransfer.effectAllowed='move';event.dataTransfer.setData('text/plain','cell-gate:'+uid);}
 function endCellExistingGateDrag(){if(_cellGateDrag){_cellJustDragged=true;setTimeout(()=>{_cellJustDragged=false;},350);}_cellGateDrag=null;document.querySelectorAll('.nb-cell-wire').forEach(w=>w.classList.remove('nb-wire-drop'));}
 function cellWireDragOver(event){event.preventDefault();event.dataTransfer.dropEffect=_cellGateDrag?'move':'copy';event.currentTarget.classList.add('nb-wire-drop');}
 function cellWireDragLeave(event){event.currentTarget.classList.remove('nb-wire-drop');}
-function cellWireDrop(event,cellId,qubit){event.preventDefault();event.stopPropagation();event.currentTarget.classList.remove('nb-wire-drop');if(_cellGateDrag&&_cellGateDrag.cellId===cellId){moveVisualGate(cellId,_cellGateDrag.uid,qubit);_cellGateDrag=null;return;}const gateId=(_cellPaletteDrag?.cellId===cellId?_cellPaletteDrag.gateId:event.dataTransfer.getData('text/plain'))||'';_cellPaletteDrag=null;if(NB_GATE_DEFS[gateId])placeVisualGate(cellId,gateId,qubit);}
+function cellWireDrop(event,cellId,qubit){event.preventDefault();event.stopPropagation();event.currentTarget.classList.remove('nb-wire-drop');if(_cellGateDrag&&_cellGateDrag.cellId===cellId){moveVisualGate(cellId,_cellGateDrag.uid,qubit);_cellGateDrag=null;return;}const gateId=(_cellPaletteDrag?.cellId===cellId?_cellPaletteDrag.gateId:event.dataTransfer.getData('text/plain'))||'';_cellPaletteDrag=null;if(NB_GATE_DEFS[gateId]){_cellSelectedGate=null;placeVisualGate(cellId,gateId,qubit);}}
 function normalizeCellMeasurements(gates){const byQ=new Map(),other=[];gates.forEach(g=>{if(g.id==='M')byQ.set(g.q,g);else other.push(g);});return [...other,...byQ.values()];}
 function placeVisualGate(cellId,gateId,qubit){
  const cell=cells.find(c=>c.id===cellId);if(!cell||cell.type!=='circuit'||_expositionMode)return;
