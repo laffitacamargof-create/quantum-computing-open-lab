@@ -610,7 +610,7 @@ function openCircuitEditor(cellId){
  postCore('OPENQ_OPEN_ARCHITECT_EDIT',{cellId,code:source,circuitData:cell.circuitData||{qubits:2,gates:[]}});
  notify('Opening this cell in Quantum Open Lab. Save and return to synchronize it.');
 }
-function toggleCircuitEditor(cellId){openCircuitEditor(cellId);}
+function toggleCircuitEditor(cellId){const cell=cells.find(c=>c.id===cellId);if(!cell||cell.type!=='circuit'||_expositionMode)return;cell.editorOpen=cell.editorOpen===false;renderCells();focusCell(cellId);}
 function buildCircuitEditorControls(cell){
  const q=cell.circuitData?.qubits||1,opts=Array.from({length:q},(_,i)=>'<option value="'+i+'">q['+i+']</option>').join(''),opts2=Array.from({length:q},(_,i)=>'<option value="'+i+'"'+(i===1?' selected':'')+'>q['+i+']</option>').join(''),opts3=Array.from({length:q},(_,i)=>'<option value="'+i+'"'+(i===2?' selected':'')+'>q['+i+']</option>').join('');
  const gates=Object.keys(NB_GATE_DEFS).map(id=>'<option value="'+id+'">'+id+'</option>').join('');
@@ -2061,7 +2061,7 @@ function addCellAt(afterIdx,type='markdown'){
   if(_expositionMode)return;
   if(!['markdown','circuit'].includes(type))type='circuit';
   const data={qubits:2,gates:[]};
-  const cell={id:genId(),type,code:'',output:'',exec_count:null,mdEdit:type==='markdown',errorLine:null,hiddenCode:'',circuitData:data,editorOpen:false};
+  const cell={id:genId(),type,code:'',output:'',exec_count:null,mdEdit:type==='markdown',errorLine:null,hiddenCode:'',circuitData:data,editorOpen:type==='circuit'};
   if(afterIdx===-1||afterIdx>=cells.length)cells.push(cell);
   else cells.splice(afterIdx+1,0,cell);
   renderCells();focusCell(cell.id);updateStatus();
@@ -2274,12 +2274,12 @@ function buildCellEl(cell,i){
     const circuitToolbar = `<div class="cell-toolbar">
         <button class="ct-btn" onclick="event.stopPropagation();moveCellUp('${cell.id}')" title="Move up">↑</button>
         <button class="ct-btn" onclick="event.stopPropagation();moveCellDown('${cell.id}')" title="Move down">↓</button>
-        ${_expositionMode ? '' : `<button class="ct-btn" onclick="event.stopPropagation();toggleCircuitEditor('${cell.id}')" title="Edit visual circuit">${cell.editorOpen?'Done':'Edit'}</button><button class="ct-btn danger" onclick="event.stopPropagation();deleteCell('${cell.id}')" title="Delete">✕</button>`}
+        ${_expositionMode ? '' : `<button class="ct-btn" onclick="event.stopPropagation();toggleCircuitEditor('${cell.id}')" title="Edit visual circuit">${cell.editorOpen===false?'Show controls':'Hide controls'}</button><button class="ct-btn" onclick="event.stopPropagation();openCircuitEditor('${cell.id}')" title="Open in Quantum Open Lab">Open Lab ↗</button><button class="ct-btn danger" onclick="event.stopPropagation();deleteCell('${cell.id}')" title="Delete">✕</button>`}
       </div>`;
     const restoreBtn = '';
     const circuitSVG = hasCircuit ? buildCircuitFromData(cell.circuitData) : '';
     const outContent = cell.output ? `<div class="cell-output-area" id="out-${cell.id}">${'<!-- output -->'}</div>` : '';
-    const editorControls = cell.editorOpen&&!_expositionMode ? buildCircuitEditorControls(cell) : '';
+    const editorControls = cell.editorOpen!==false&&!_expositionMode ? buildCircuitEditorControls(cell) : '';
     const warningHtml = cell.visualWarnings?.length ? `<div class="nb-circuit-warning">Some Qiskit operations are not drawn in this preview; the complete hidden source is still executed.</div>` : '';
     el.className='nb-cell circ-cell'+(curCellId===cell.id?' active':'');
     el.innerHTML=`${circuitToolbar}
@@ -2293,11 +2293,11 @@ function buildCellEl(cell,i){
           ⚛ Visual Circuit
         </div>
         <div class="cell-circuit-preview" id="cprev-${cell.id}"
-          onclick="event.stopPropagation();openCircuitEditor('${cell.id}')"
-          title="Click to edit the circuit">
+          onclick="event.stopPropagation();toggleCircuitEditor('${cell.id}')"
+          title="Click to show or hide visual gate controls">
           ${hasCircuit
-            ? `<div class="circ-preview-hint">⚛ QUANTUM CIRCUIT — click to edit</div>${circuitSVG}`
-            : `<div class="circ-empty-hint" onclick="event.stopPropagation();openCircuitEditor('${cell.id}')">⚛ Visual Circuit Cell<br><span style="font-size:.4rem;color:rgba(0,200,100,.4);">Open visual gate controls</span></div>`
+            ? `<div class="circ-preview-hint">⚛ QUANTUM CIRCUIT — click for gate controls</div>${circuitSVG}`
+            : `<div class="circ-empty-hint">⚛ Visual Circuit Cell<br><span style="font-size:.4rem;color:rgba(0,200,100,.4);">Use the controls below to add gates</span></div>`
           }
         </div>
         ${editorControls}${warningHtml}
@@ -2505,6 +2505,7 @@ window.addEventListener('message',e=>{
       cell.hiddenCode  = d.code        || '';
       cell.circuitData = d.circuitData || null;
       cell.output      = '';
+      cell.editorOpen = true;
       cell.exec_count  = null;
       cell.errorLine   = null;
       _editingCellId   = null;
@@ -2530,7 +2531,7 @@ window.addEventListener('message',e=>{
 
     document.getElementById('nb-name-inp').value = nb.title||nb.name||'Untitled';
     cells = (nb.cells && nb.cells.length > 0)
-      ? nb.cells.map(c=>({...c, id:genId(), output:'', exec_count:null, mdEdit:false, errorLine:null}))
+      ? nb.cells.map(c=>({...c, id:genId(), output:'', exec_count:null, mdEdit:false, errorLine:null, editorOpen:c.type==='circuit'?true:c.editorOpen}))
       : [];
 
     if(isExpo){
@@ -2664,7 +2665,7 @@ window.addEventListener('message',e=>{
     }else if(d.type==='OPENQ_AI_SET_CODE'&&typeof d.code==='string'){
       const c=cells[d.cellIndex];
       if(!c||c.type!=='circuit'||_expositionMode){if(d.requestId)qnexusActionFinish(d,{ok:false,message:'Target must be an editable visual circuit cell.'});return;}
-      const parsed=syncCircuitCellFromCode(c,d.code);c.editorOpen=false;renderCells();focusCell(c.id);
+      const parsed=syncCircuitCellFromCode(c,d.code);c.editorOpen=true;renderCells();focusCell(c.id);
       if(d.requestId)qnexusActionFinish(d,{ok:c.hiddenCode===d.code&&!!c.circuitData,message:'Qiskit source stored in the hidden circuit layer and visual preview refreshed.',cellId:c.id,visualGates:c.circuitData.gates.length,visualWarnings:parsed.warnings.length});
     }else if(d.type==='OPENQ_AI_NOISE'){
       const c=cells[d.cellIndex];
