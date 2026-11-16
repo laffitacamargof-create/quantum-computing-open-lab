@@ -104,8 +104,10 @@ assert.ok(notebook.includes("Qiskit source stored in the hidden circuit layer"))
 assert.ok(notebook.includes("postCore('OPENQ_OPEN_ARCHITECT_EDIT'"));
 assert.ok(notebook.includes("d.type === 'OPENQ_CIRCUIT_RETURN'"));
 assert.ok(notebook.includes('function openCircuitEditor(cellId)'));
-assert.ok(notebook.includes('cell.hiddenCode  = d.code'));
-assert.ok(notebook.includes('cell.circuitData = d.circuitData'));
+assert.ok(notebook.includes("cell.hiddenCode = typeof d.code === 'string' ? d.code : (cell.hiddenCode || '')"));
+assert.ok(notebook.includes('const returnedData = d.circuitData && typeof d.circuitData === \'object\' ? d.circuitData : null'));
+assert.ok(notebook.includes('const incomingGates = Array.isArray(returnedData?.gates) ? returnedData.gates : null'));
+assert.ok(notebook.includes('(parsedReturn?.circuitData || cell.circuitData || { qubits: 1, gates: [] })'));
 assert.ok(notebook.includes('const parsedReturn = !returnedData && cell.hiddenCode ? parseQiskitCircuitCode(cell.hiddenCode) : null'));
 assert.ok(notebook.includes("cell.circuitData = returnedData && incomingGates"));
 assert.ok(notebook.includes('Math.min(20, Number.isFinite(incomingQubits) ? incomingQubits : 1)'));
