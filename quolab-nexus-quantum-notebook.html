@@ -705,7 +705,8 @@ function moveVisualGate(cellId,uid,newQubit){
  else{gate.q=newQubit;const firstM=gates.findIndex(g=>g.id==='M'&&g.q===newQubit);if(firstM>=0)gates.splice(firstM,0,gate);else gates.push(gate);cell.circuitData.gates=gates;}
  cell.circuitData.gates=normalizeCellMeasurements(cell.circuitData.gates);commitVisualCell(cellId);
 }
-function cellGateClick(event,cellId,uid){event.stopPropagation();if(_cellJustDragged)return;removeVisualGateByUid(cellId,uid);}\nfunction removeVisualGateByUid(cellId,uid){const c=cells.find(x=>x.id===cellId);if(!c||!c.circuitData||_expositionMode)return;const i=c.circuitData.gates.findIndex((g,k)=>(g.uid??k)===uid);if(i>=0){c.circuitData.gates.splice(i,1);commitVisualCell(cellId);}}
+function cellGateClick(event,cellId,uid){event.stopPropagation();if(_cellJustDragged)return;removeVisualGateByUid(cellId,uid);}
+function removeVisualGateByUid(cellId,uid){const c=cells.find(x=>x.id===cellId);if(!c||!c.circuitData||_expositionMode)return;const i=c.circuitData.gates.findIndex((g,k)=>(g.uid??k)===uid);if(i>=0){c.circuitData.gates.splice(i,1);commitVisualCell(cellId);}}
 function removeVisualGate(cellId,index){const c=cells.find(x=>x.id===cellId);if(!c||c.type!=='circuit'||_expositionMode)return;if(index>=0&&index<c.circuitData.gates.length){c.circuitData.gates.splice(index,1);commitVisualCell(cellId);}}
 function commitVisualCell(cellId){const c=cells.find(x=>x.id===cellId);if(!c)return;c.hiddenCode=visualCircuitCode(c.circuitData);c.visualWarnings=[];c.editorOpen=true;renderCells();focusCell(cellId);saveCurrentNb(false);}
 function addVisualQubit(cellId){const c=cells.find(x=>x.id===cellId);if(!c||c.type!=='circuit'||_expositionMode)return;if(c.circuitData.qubits>=20){notify('Maximum 20 qubits');return;}c.circuitData.qubits++;commitVisualCell(cellId);}
