@@ -776,15 +776,15 @@ function placeGate(gateId, qubit) {
   } else {
     if (gateId === 'M') {
       if (!circuit.gates.some(g => g.id !== 'M' && (g.q === qubit || g.q2 === qubit || g.q3 === qubit))) {
-        isUpdatingFromCircuit = false; notify(\`❌ q[\${qubit}] has no gate yet. Place its gates before the measurement.\`); return;
+        isUpdatingFromCircuit = false; notify(`❌ q[${qubit}] has no gate yet. Place its gates before the measurement.`); return;
       }
       if (circuit.gates.some(g => g.id === 'M' && g.q === qubit)) {
-        isUpdatingFromCircuit = false; notify(\`q[\${qubit}] already has a measurement\`); return;
+        isUpdatingFromCircuit = false; notify(`q[${qubit}] already has a measurement`); return;
       }
       circuit.gates.push({ id: gateId, q: qubit, def: def, uid: nextId++ });
     } else {
       if (circuit.gates.some(g => g.id === 'M' && (g.q === qubit || g.q2 === qubit || g.q3 === qubit))) {
-        isUpdatingFromCircuit = false; notify(\`❌ q[\${qubit}] is already measured. A gate cannot be placed after its measurement.\`); return;
+        isUpdatingFromCircuit = false; notify(`❌ q[${qubit}] is already measured. A gate cannot be placed after its measurement.`); return;
       }
       circuit.gates.push({ id: gateId, q: qubit, def: def, uid: nextId++ });
     }
@@ -825,13 +825,13 @@ function moveExistingGate(uid, newQubit) {
   
   if (gate.id === 'M') {
     if (!circuit.gates.some((g, i) => i !== idx && g.id !== 'M' && (g.q === newQubit || g.q2 === newQubit || g.q3 === newQubit))) {
-      isUpdatingFromCircuit = false; notify(\`❌ q[\${newQubit}] has no gate. A measurement must be at the end of a used wire.\`); return;
+      isUpdatingFromCircuit = false; notify(`❌ q[${newQubit}] has no gate. A measurement must be at the end of a used wire.`); return;
     }
     if (circuit.gates.some((g, i) => i !== idx && g.id === 'M' && g.q === newQubit)) {
-      isUpdatingFromCircuit = false; notify(\`q[\${newQubit}] already has a measurement\`); return;
+      isUpdatingFromCircuit = false; notify(`q[${newQubit}] already has a measurement`); return;
     }
   } else if (circuit.gates.some((g, i) => i !== idx && g.id === 'M' && (g.q === newQubit || g.q2 === newQubit || g.q3 === newQubit))) {
-    isUpdatingFromCircuit = false; notify(\`❌ q[\${newQubit}] is already measured. A gate cannot be placed after its measurement.\`); return;
+    isUpdatingFromCircuit = false; notify(`❌ q[${newQubit}] is already measured. A gate cannot be placed after its measurement.`); return;
   }
   circuit.gates.splice(idx, 1);
   
@@ -1082,16 +1082,16 @@ function validateAndCompleteMeasurements(source) {
   const measured=new Set(), used=new Set(), errors=[];
   const wires = arg => { const a=String(arg||'').trim(); let q=_argIndices(a); if(!q.length){const x=a.match(/\bq\s*\[\s*(\d+)\s*\]/);if(x)q=[Number(x[1])];} return q; };
   for(const c of calls){
-    if(c.name==='measure'){for(const q of wires(c.args[0])){if(measured.has(q))errors.push({line:c.line,message:\`q[\${q}] already has a measurement\`});measured.add(q);}continue;}
+    if(c.name==='measure'){for(const q of wires(c.args[0])){if(measured.has(q))errors.push({line:c.line,message:`q[${q}] already has a measurement`});measured.add(q);}continue;}
     if(['measure_all','draw','barrier','save_statevector','save_counts'].includes(c.name))continue;
     const n=_GQ1.has(c.name)?1:(_GQ2.has(c.name)?2:(_GQ3.has(c.name)?3:0)); if(!n)continue;
-    for(const q of c.args.slice(0,n).flatMap(wires)){used.add(q);if(measured.has(q))errors.push({line:c.line,message:\`q[\${q}] has a gate after its measurement; move the measurement to the end of that wire\`});}
+    for(const q of c.args.slice(0,n).flatMap(wires)){used.add(q);if(measured.has(q))errors.push({line:c.line,message:`q[${q}] has a gate after its measurement; move the measurement to the end of that wire`});}
   }
   if(errors.length)return {ok:false,code,error:errors[0].message,line:errors[0].line};
   const missing=[...used].filter(q=>!measured.has(q)).sort((a,b)=>a-b);if(!missing.length)return {ok:true,code,added:false};
   const hasM=measured.size>0||calls.some(c=>c.name==='measure_all');let additions;
-  if(!hasM){const nq=(code.match(/\bQuantumCircuit\s*\(\s*(\d+)/)||[])[1];additions=nq?[\`qc.measure(range(\${nq}), range(\${nq}))  # QNEXUS_AUTO_MEASURE\`]:missing.map(q=>\`qc.measure(\${q}, \${q})  # QNEXUS_AUTO_MEASURE\`);}
-  else additions=missing.map(q=>\`qc.measure(\${q}, \${q})  # QNEXUS_AUTO_MEASURE q[\${q}]\`);
+  if(!hasM){const nq=(code.match(/\bQuantumCircuit\s*\(\s*(\d+)/)||[])[1];additions=nq?[`qc.measure(range(${nq}), range(${nq}))  # QNEXUS_AUTO_MEASURE`]:missing.map(q=>`qc.measure(${q}, ${q})  # QNEXUS_AUTO_MEASURE`);}
+  else additions=missing.map(q=>`qc.measure(${q}, ${q})  # QNEXUS_AUTO_MEASURE q[${q}]`);
   let at=code.length;const terminal=/\b(?:qc\.draw\s*\(|simulator\.run\s*\(|\w+\.run\s*\(|get_counts\s*\()/m.exec(code);if(terminal)at=terminal.index;
   return {ok:true,code:code.slice(0,at).replace(/\s*$/,'')+'\n'+additions.join('\n')+'\n'+code.slice(at),added:true};
 }
@@ -1114,8 +1114,8 @@ function updateCodeFromCircuit() {
     let line = g.def.code.replace(/\{q2\}/g, g.q2 !== undefined ? g.q2 : 0).replace(/\{q3\}/g, g.q3 !== undefined ? g.q3 : 0).replace(/\{q\}/g, g.q);
     code += line + '\n';
   });
-  if (measuredWires.size === 0) code += \`qc.measure(range(\${n}), range(\${n}))  # QNEXUS_AUTO_MEASURE\n\`;
-  else [...usedWires].filter(q => !measuredWires.has(q)).sort((a,b)=>a-b).forEach(q => { code += \`qc.measure(\${q}, \${q})  # QNEXUS_AUTO_MEASURE q[\${q}]\n\`; });
+  if (measuredWires.size === 0) code += `qc.measure(range(${n}), range(${n}))  # QNEXUS_AUTO_MEASURE\n`;
+  else [...usedWires].filter(q => !measuredWires.has(q)).sort((a,b)=>a-b).forEach(q => { code += `qc.measure(${q}, ${q})  # QNEXUS_AUTO_MEASURE q[${q}]\n`; });
   code += `\nprint(qc.draw(output='text'))\n\nsimulator = AerSimulator()\nresult = simulator.run(qc, shots=1024).result()\ncounts = result.get_counts()\nprint("Results:", counts)`;
   const ta = document.getElementById('code-ta');
   if (ta && ta.value !== code) { ta.value = code; updateSyntaxHighlight(); }
