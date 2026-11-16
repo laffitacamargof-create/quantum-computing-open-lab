@@ -2128,9 +2128,23 @@ async function syncFromServer(reason) {
 async function syncWithPyodide(retryCount = 0) {
     if (isUpdatingFromCircuit) return;
     isUpdatingFromCircuit = true;
-    const rawCode = document.getElementById('code-ta').value;
+    let rawCode = document.getElementById('code-ta').value;
     if (!rawCode.trim()) { isUpdatingFromCircuit = false; return; }
     const out = document.getElementById('out-body');
+    const _measurementCheck = validateAndCompleteMeasurements(rawCode);
+    if (!_measurementCheck.ok) {
+        _errorLine = _measurementCheck.line || -1;
+        updateSyntaxHighlight();
+        out.innerHTML += `<span class="er">❌ Measurement order error (line ${_measurementCheck.line}): ${escapeHtml(_measurementCheck.error)}</span>\n`;
+        notify('❌ A measurement must be the final operation on its wire.');
+        isUpdatingFromCircuit = false;
+        return;
+    }
+    if (_measurementCheck.code !== rawCode) {
+        rawCode = _measurementCheck.code;
+        document.getElementById('code-ta').value = rawCode;
+        updateSyntaxHighlight();
+    }
     out.innerHTML += '<span class="inf">🔄 Syncing code → visual circuit... (v4)</span>\n';
     try {
         const py = await initPyodide();
@@ -2527,8 +2541,16 @@ function nexusExtractPlots(output) {
 
 async function runServerCode() {
     autoFixQubitDeclarationInEditor();
-    const code = document.getElementById('code-ta').value.trim();
+    let code = document.getElementById('code-ta').value.trim();
     if (!code) { notify('Write code first'); return; }
+    const _measurementCheck = validateAndCompleteMeasurements(code);
+    if (!_measurementCheck.ok) {
+        const out = document.getElementById('out-body');
+        _errorLine = _measurementCheck.line || -1; updateSyntaxHighlight(); setTab('out');
+        out.innerHTML = `<span class="er">❌ Measurement order error (line ${_measurementCheck.line}): ${escapeHtml(_measurementCheck.error)}</span>\n`;
+        notify('❌ A measurement must be the final operation on its wire.'); return;
+    }
+    if (_measurementCheck.code !== code) { code = _measurementCheck.code; document.getElementById('code-ta').value = code; updateSyntaxHighlight(); }
     if (!engineOK || !engineURL) {
         notify('❌ No compiler configured. Set up the URL in the Founder panel.');
         const out = document.getElementById('out-body');
@@ -2742,6 +2764,17 @@ function onCodeEdit() {
 
     if (syncTimeout) clearTimeout(syncTimeout);
     syncTimeout = setTimeout(() => {
+        const _measurementCheck = validateAndCompleteMeasurements(document.getElementById('code-ta').value);
+        if (!_measurementCheck.ok) {
+            _errorLine = _measurementCheck.line || -1; updateSyntaxHighlight();
+            const out = document.getElementById('out-body');
+            if (out) out.innerHTML += `<span class="er">❌ Measurement order error (line ${_measurementCheck.line}): ${escapeHtml(_measurementCheck.error)}</span>\n`;
+            notify('❌ A measurement must be the final operation on its wire.');
+            return;
+        }
+        if (_measurementCheck.code !== document.getElementById('code-ta').value) {
+            document.getElementById('code-ta').value = _measurementCheck.code; updateSyntaxHighlight();
+        }
         autoFixQubitDeclarationInEditor();
         if (pyodide !== null) {
             syncWithPyodide().catch(() => {});
