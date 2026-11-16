@@ -775,8 +775,12 @@ function placeGate(gateId, qubit) {
     circuit.gates.push({ id: gateId, q: Math.min(qubit, q2), q2: Math.max(qubit, q2), def: def, uid: nextId++ });
   } else {
     if (gateId === 'M') {
-      // Medición: quitar M existente en este qubit y añadir al final
-      circuit.gates = circuit.gates.filter(g => !(g.id === 'M' && g.q === qubit));
+      // One measurement per wire: preserve the existing gate and tell the user.
+      if (circuit.gates.some(g => g.id === 'M' && g.q === qubit)) {
+        isUpdatingFromCircuit = false;
+        notify(`q[${qubit}] already has a measurement`);
+        return;
+      }
       circuit.gates.push({ id: gateId, q: qubit, def: def, uid: nextId++ });
     } else {
       // Puerta normal: insertar antes de las mediciones de este qubit
@@ -822,10 +826,14 @@ function moveExistingGate(uid, newQubit) {
     return;
   }
   
+  if (gate.id === 'M' && circuit.gates.some((g, i) => i !== idx && g.id === 'M' && g.q === newQubit)) {
+    isUpdatingFromCircuit = false;
+    notify(`q[${newQubit}] already has a measurement`);
+    return;
+  }
   circuit.gates.splice(idx, 1);
   
   if (gate.id === 'M') {
-    circuit.gates = circuit.gates.filter(g => !(g.id === 'M' && g.q === newQubit));
     gate.q = newQubit;
     circuit.gates.push(gate);
   } else {
@@ -1069,8 +1077,8 @@ function updateCodeFromCircuit() {
   if (syncQubitCount()) { renderCircuit(); updateCircuitInfo(); }
   const n = circuit.qubits;
   let code = `from qiskit import QuantumCircuit\nimport numpy as np\nfrom qiskit_aer import AerSimulator\n\nqc = QuantumCircuit(${n}, ${n})\n\n`;
-  // Each visual measurement is emitted exactly once, as an explicit q[i] -> c[i] pair.
-  // Do not append a second range-based measurement after rendering the M gates.
+  // Explicit visual measurements take precedence; only use range when none exists.
+  const hasVisualMeasurements = circuit.gates.some(g => g.id === 'M');
   circuit.gates.forEach(g => {
     let line = g.def.code
       .replace(/\{q2\}/g, g.q2 !== undefined ? g.q2 : 0)
@@ -1078,6 +1086,9 @@ function updateCodeFromCircuit() {
       .replace(/\{q\}/g, g.q);
     code += line + '\n';
   });
+  if (!hasVisualMeasurements) {
+    code += `qc.measure(range(${n}), range(${n}))  # QNEXUS_AUTO_MEASURE\n`;
+  }
   code += `\nprint(qc.draw(output='text'))\n\nsimulator = AerSimulator()\nresult = simulator.run(qc, shots=1024).result()\ncounts = result.get_counts()\nprint("Results:", counts)`;
   const ta = document.getElementById('code-ta');
   if (ta && ta.value !== code) { ta.value = code; updateSyntaxHighlight(); }
@@ -2333,14 +2344,15 @@ json.dumps({
 // Si el código no tiene ninguna medición, inserta una justo antes de dibujar/ejecutar
 // (así get_counts() no falla con 'No counts for experiment "0"'). No toca el editor.
 function ensureMeasurements(code) {
+    // Generated fallback is tagged so its M symbols never get mistaken for user-placed gates.
+    if (/QNEXUS_AUTO_MEASURE/.test(code)) return { code, added: true };
     if (/\.measure\s*\(/.test(code) || /measure_all\s*\(/.test(code)) return { code, added: false };
     if (!/^\s*qc\s*=\s*QuantumCircuit/m.test(code)) return { code, added: false };
     const lines = code.split('\n');
     let idx = lines.findIndex(l => !/^\s*#/.test(l) && /qc\.draw\s*\(|\.run\s*\(|get_counts|\bexecute\s*\(|\btranspile\s*\(/.test(l));
     if (idx < 0) idx = lines.length;
     const block = [
-        'for __q in range(qc.num_qubits):',
-        '    qc.measure(__q, __q)'
+        'qc.measure(range(qc.num_qubits), range(qc.num_qubits))  # QNEXUS_AUTO_MEASURE'
     ];
     lines.splice(idx, 0, ...block);
     return { code: lines.join('\n'), added: true };
