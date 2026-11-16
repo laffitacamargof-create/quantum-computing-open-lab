@@ -1957,7 +1957,7 @@ function handleImport(e){
         const hiddenCode = c.metadata?.hidden_code || (type==='circuit'?src:'');
         const parsed=type==='circuit'?(c.metadata?.circuit_data?{circuitData:c.metadata.circuit_data,warnings:[]}:parseQiskitCircuitCode(hiddenCode)):{circuitData:{qubits:2,gates:[]},warnings:[]};
         cells.push({id:genId(),type,code:type==='markdown'?src:'',output:'',exec_count:null,
-          mdEdit:false,errorLine:null,hiddenCode,circuitData:parsed.circuitData,visualWarnings:parsed.warnings,noiseCfg:c.metadata?.noise_cfg||null});
+          mdEdit:false,errorLine:null,hiddenCode,circuitData:parsed.circuitData,editorOpen:type==='circuit',visualWarnings:parsed.warnings,noiseCfg:c.metadata?.noise_cfg||null});
       });
       if(cells.length===0)addCellAt(-1,'circuit');
       else{renderCells();focusCell(cells[0].id);}
@@ -1967,7 +1967,7 @@ function handleImport(e){
   reader.readAsText(file);e.target.value='';
 }
 function getSavedNbs(){if(!curUser)return[];const key='qcol_nbs_'+(curUser.username||'dev');return JSON.parse(localStorage.getItem(key)||'[]');}
-function loadNb(name){const nbs=getSavedNbs();const nb=nbs.find(n=>n.name===name);if(!nb)return;cells=nb.cells.map(c=>{const x={...c,mdEdit:false};if(x.type==='code'||x.type==='qiskit'){syncCircuitCellFromCode(x,x.code||'');x.type='circuit';x.code='';}x.circuitData=x.circuitData||{qubits:2,gates:[]};return x;});document.getElementById('nb-name-inp').value=nb.name;renderCells();if(cells[0])focusCell(cells[0].id);setView('notebook');notify('📂 '+nb.name);}
+function loadNb(name){const nbs=getSavedNbs();const nb=nbs.find(n=>n.name===name);if(!nb)return;cells=nb.cells.map(c=>{const x={...c,mdEdit:false};if(x.type==='code'||x.type==='qiskit'){syncCircuitCellFromCode(x,x.code||'');x.type='circuit';x.code='';}x.circuitData=x.circuitData||{qubits:2,gates:[]};if(x.type==='circuit')x.editorOpen=true;return x;});document.getElementById('nb-name-inp').value=nb.name;renderCells();if(cells[0])focusCell(cells[0].id);setView('notebook');notify('📂 '+nb.name);}
 function deleteNb(name){if(!confirm('Delete "'+name+'"?'))return;const key='qcol_nbs_'+(curUser?.username||'dev');localStorage.setItem(key,JSON.stringify(getSavedNbs().filter(n=>n.name!==name)));refreshNbs();notify('🗑 Deleted');}
 function refreshNbs(){
   const grid=document.getElementById('nb-grid');if(!grid)return;
