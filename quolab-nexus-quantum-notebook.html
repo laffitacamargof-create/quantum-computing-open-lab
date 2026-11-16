@@ -631,6 +631,7 @@ function cellGateDef(id){return NB_GATE_DEFS[id]||null;}
 function cellGateSymbol(g){return g.def?.sym||cellGateDef(g.id)?.sym||g.id||'?';}
 function cellGateColor(g){return g.def?.bg||cellGateDef(g.id)?.bg||'#1a4a8a';}
 function buildInteractiveCircuitCell(cell){
+ const cellArg="'"+String(cell.id).replace(/\\/g,"\\\\").replace(/'/g,"\\'")+"'";
  const data=cell.circuitData||{qubits:2,gates:[]},n=Math.max(1,Math.min(20,Number(data.qubits)||1)),gates=Array.isArray(data.gates)?data.gates:[];
  const ROW=56,STEP=52,depth=Array(n).fill(0);
  const placed=gates.map((g,i)=>{let col=0;if(g.block){for(let q=g.q;q<=g.q2;q++)col=Math.max(col,depth[q]||0);for(let q=g.q;q<=g.q2;q++)depth[q]=col+(g.block.w||1);}else if(g.q3!==undefined){col=Math.max(depth[g.q]||0,depth[g.q2]||0,depth[g.q3]||0);[g.q,g.q2,g.q3].forEach(q=>depth[q]=col+1);}else if(g.q2!==undefined){col=Math.max(depth[g.q]||0,depth[g.q2]||0);depth[g.q]=depth[g.q2]=col+1;}else{col=depth[g.q]||0;depth[g.q]=col+1;}return {...g,_index:i,_col:col};});
@@ -657,6 +658,7 @@ function buildInteractiveCircuitCell(cell){
  html+='</div></div>';return html;
 }
 function cellGatePaletteHtml(cellId){
+ const cellArg="'"+String(cellId).replace(/\\/g,"\\\\").replace(/'/g,"\\'")+"'";
  let html='<div class="nb-circuit-palette-groups">';
  Object.entries(NB_CELL_GATE_GROUPS).forEach(([label,ids])=>{html+='<div class="nb-circuit-palette-group"><div class="nb-circuit-palette-title">'+label+'</div><div class="nb-circuit-palette">';
  ids.forEach(id=>{const d=NB_GATE_DEFS[id];html+='<button type="button" class="nb-palette-gate" draggable="true" data-gate="'+id+'" style="--gate-color:'+d.bg+'" ondragstart="startCellGateDrag(event,'+JSON.stringify(cellId)+','+JSON.stringify(id)+')" ondragend="endCellGateDrag()" onclick="event.stopPropagation();selectCellGate('+JSON.stringify(cellId)+','+JSON.stringify(id)+')">'+d.sym+'</button>';});
@@ -664,13 +666,13 @@ function cellGatePaletteHtml(cellId){
  return html+'</div>';
 }
 function selectCellGate(cellId,gateId){const cell=cells.find(c=>c.id===cellId);if(!cell)return;cell.editorOpen=true;renderCells();focusCell(cellId);const el=document.getElementById('nb-gate-'+cellId);if(el)el.value=gateId;}
-function startCellGateDrag(event,cellId,gateId){_cellPaletteDrag={cellId,gateId};_cellGateDrag=null;event.dataTransfer.effectAllowed='copy';event.dataTransfer.setData('text/plain',gateId);}
+function startCellGateDrag(event,cellId,gateId){event.stopPropagation();_cellPaletteDrag={cellId,gateId};_cellGateDrag=null;event.dataTransfer.effectAllowed='copy';event.dataTransfer.setData('text/plain',gateId);}
 function endCellGateDrag(){_cellPaletteDrag=null;}
 function startCellExistingGateDrag(event,cellId,uid){event.stopPropagation();_cellGateDrag={cellId,uid};_cellPaletteDrag=null;event.dataTransfer.effectAllowed='move';event.dataTransfer.setData('text/plain','cell-gate:'+uid);}
 function endCellExistingGateDrag(){_cellGateDrag=null;document.querySelectorAll('.nb-cell-wire').forEach(w=>w.classList.remove('nb-wire-drop'));}
 function cellWireDragOver(event){event.preventDefault();event.dataTransfer.dropEffect=_cellGateDrag?'move':'copy';event.currentTarget.classList.add('nb-wire-drop');}
 function cellWireDragLeave(event){event.currentTarget.classList.remove('nb-wire-drop');}
-function cellWireDrop(event,cellId,qubit){event.preventDefault();event.currentTarget.classList.remove('nb-wire-drop');if(_cellGateDrag&&_cellGateDrag.cellId===cellId){moveVisualGate(cellId,_cellGateDrag.uid,qubit);_cellGateDrag=null;return;}const gateId=(_cellPaletteDrag?.cellId===cellId?_cellPaletteDrag.gateId:event.dataTransfer.getData('text/plain'))||'';_cellPaletteDrag=null;if(NB_GATE_DEFS[gateId])placeVisualGate(cellId,gateId,qubit);}
+function cellWireDrop(event,cellId,qubit){event.preventDefault();event.stopPropagation();event.currentTarget.classList.remove('nb-wire-drop');if(_cellGateDrag&&_cellGateDrag.cellId===cellId){moveVisualGate(cellId,_cellGateDrag.uid,qubit);_cellGateDrag=null;return;}const gateId=(_cellPaletteDrag?.cellId===cellId?_cellPaletteDrag.gateId:event.dataTransfer.getData('text/plain'))||'';_cellPaletteDrag=null;if(NB_GATE_DEFS[gateId])placeVisualGate(cellId,gateId,qubit);}
 function normalizeCellMeasurements(gates){const byQ=new Map(),other=[];gates.forEach(g=>{if(g.id==='M')byQ.set(g.q,g);else other.push(g);});return [...other,...byQ.values()];}
 function placeVisualGate(cellId,gateId,qubit){
  const cell=cells.find(c=>c.id===cellId);if(!cell||cell.type!=='circuit'||_expositionMode)return;
