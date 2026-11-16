@@ -2502,8 +2502,17 @@ window.addEventListener('message',e=>{
     const cellId = d.cellId || _editingCellId;
     const cell   = cells.find(c => c.id === cellId);
     if(cell && cell.type === 'circuit'){
-      cell.hiddenCode  = d.code        || '';
-      cell.circuitData = d.circuitData || null;
+      cell.hiddenCode = typeof d.code === 'string' ? d.code : (cell.hiddenCode || '');
+      // Open Lab versions may return source without the visual payload. Rebuild the
+      // visual model from Qiskit source instead of leaving a circuit cell unusable.
+      const returnedData = d.circuitData && typeof d.circuitData === 'object' ? d.circuitData : null;
+      const parsedReturn = !returnedData && cell.hiddenCode ? parseQiskitCircuitCode(cell.hiddenCode) : null;
+      const incomingQubits = Number(returnedData?.qubits);
+      const incomingGates = Array.isArray(returnedData?.gates) ? returnedData.gates : null;
+      cell.circuitData = returnedData && incomingGates
+        ? { qubits: Math.max(1, Math.min(20, Number.isFinite(incomingQubits) ? incomingQubits : 1)), gates: incomingGates }
+        : (parsedReturn?.circuitData || cell.circuitData || { qubits: 1, gates: [] });
+      if (parsedReturn?.warnings?.length) cell.visualWarnings = parsedReturn.warnings;
       cell.output      = '';
       cell.editorOpen = true;
       cell.exec_count  = null;
