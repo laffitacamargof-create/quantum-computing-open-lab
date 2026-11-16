@@ -313,7 +313,24 @@ body.expo-mode .nb-bottom{display:none;}
 .nb-add-big:hover{background:rgba(0,255,221,.05);border-color:rgba(0,255,221,.45);color:var(--cy);}
 
 
-/* Original Architect cell-circuit interaction model */
+/* Cell circuit editor — visual language ported from the original Architect UI */
+.nb-circuit-tools{display:flex;align-items:stretch;gap:8px;margin-top:8px;padding:7px;background:rgba(6,9,18,.92);border:1px solid var(--bd);border-radius:7px;overflow:hidden}
+.nb-cell-palette{width:158px;flex:0 0 158px;background:#0f1626;border:1px solid #1a2a48;border-radius:5px;display:flex;flex-direction:column;overflow:hidden}
+.nb-cell-palette-hdr{padding:7px 9px;background:#060912;border-bottom:1px solid #1a2a48;font:700 9px 'Orbitron',monospace;color:#3d5a8a;letter-spacing:.08em}
+.nb-cell-palette-body{padding:7px;overflow-y:auto;max-height:330px}
+.nb-cell-pal-sec{margin-bottom:9px}
+.nb-cell-pal-label{font:700 8px 'Orbitron',monospace;color:#3d5a8a;padding:3px 4px;border-left:2px solid #1e3058;margin-bottom:5px}
+.nb-cell-pal-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px}
+.nb-cell-pal-gate{width:100%;aspect-ratio:1;border-radius:7px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:grab;border:1px solid rgba(255,255,255,.12);color:white;transition:transform .1s;touch-action:manipulation;padding:3px}
+.nb-cell-pal-gate:active{cursor:grabbing;transform:scale(.96)}
+.nb-cell-pal-gate:hover{filter:brightness(1.12)}
+.nb-cell-pal-sym{font:700 12px 'JetBrains Mono',monospace}
+.nb-cell-pal-name{font:6px 'Orbitron',monospace;color:rgba(255,255,255,.68);margin-top:2px}
+.nb-cell-pal-actions{display:flex;align-items:center;gap:5px;flex-wrap:wrap;padding:4px 2px}
+.nb-cell-pal-actions button{padding:5px 8px;border-radius:5px;background:rgba(30,48,88,.5);border:1px solid #1e3058;color:#8aa0c4;font:600 9px 'Orbitron',monospace;cursor:pointer}
+.nb-cell-pal-actions button:hover{background:rgba(0,136,255,.2);border-color:#0088ff;color:#00aaff}
+.nb-cell-pal-actions button:disabled{opacity:.35;cursor:not-allowed}
+.nb-cell-pal-actions .nb-cell-clear{color:#ff8899;border-color:rgba(255,68,102,.35)}
 .nb-cell-circuit{position:relative;min-width:max-content;padding:5px 8px 5px 0;min-height:56px}
 .nb-cell-wire-row{height:56px;display:flex;align-items:center;position:relative}
 .nb-cell-wire-label{width:48px;flex:0 0 48px;text-align:right;padding-right:8px;color:#bd93f9;font:600 11px 'JetBrains Mono',monospace}
@@ -326,33 +343,9 @@ body.expo-mode .nb-bottom{display:none;}
 .nb-cell-gate-multi{position:absolute;z-index:5;top:0;cursor:pointer}
 .nb-cell-gate-multi svg{display:block;overflow:visible}
 .nb-cell-gate-multi:hover{filter:brightness(1.3)}
-.nb-circuit-palette-groups{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-bottom:7px}
-.nb-circuit-palette-group{min-width:0;border:1px solid var(--bd);border-radius:6px;padding:5px;background:rgba(4,8,16,.35)}
-.nb-circuit-palette-title{font:600 9px 'Orbitron',monospace;color:var(--mu);margin-bottom:4px}
-.nb-circuit-palette-group .nb-circuit-palette{display:grid;grid-template-columns:repeat(3,minmax(28px,1fr));gap:3px}
-.nb-palette-gate{min-width:0;width:100%;height:30px;padding:2px;border:1px solid rgba(255,255,255,.15);border-radius:5px;background:var(--gate-color);color:white;font:700 10px 'JetBrains Mono',monospace;cursor:grab}
-.nb-palette-gate:active{cursor:grabbing}
 .nb-cell-circuit-wrap{overflow-x:auto;overflow-y:hidden;max-width:100%;padding:4px 0;overscroll-behavior-x:contain}
-.nb-cell-gate-hint{font-size:10px;color:var(--mu);padding:3px 0 6px}
-@media(max-width:600px){.nb-circuit-palette-groups{grid-template-columns:repeat(2,minmax(0,1fr))}.nb-cell-wire{min-width:220px}.nb-cell-circuit-wrap{touch-action:pan-x pan-y}}
-/* Circuit-cell editor restored from the original Architect interaction model. */
-.nb-circuit-palette{display:flex;gap:.3rem;flex-wrap:wrap;margin-bottom:.45rem}
-.nb-palette-gate{min-width:34px;height:32px;padding:.2rem .45rem;border:1px solid color-mix(in srgb,var(--gate-color),white 25%);border-radius:5px;background:color-mix(in srgb,var(--gate-color),transparent 55%);color:#fff;font:700 .68rem 'JetBrains Mono',monospace;cursor:grab;touch-action:manipulation}
-.nb-palette-gate:active{cursor:grabbing;transform:scale(.96)}
-.nb-circuit-controls label{display:flex;align-items:center;gap:.2rem;color:var(--tx2);font-size:.52rem}
-.nb-circuit-help{margin-top:.35rem;color:var(--mu);font-size:.5rem;line-height:1.45}
-.cell-circuit-preview{overflow-x:auto;overscroll-behavior-x:contain;touch-action:pan-x pan-y}
-.cell-circuit-preview.nb-drop-active{outline:1px dashed var(--cy);outline-offset:-3px;background:rgba(0,255,221,.035)}
-.nb-circuit-controls select{max-width:100%}
-@media(max-width:600px){.nb-circuit-controls{gap:.25rem}.nb-circuit-controls label{flex:1 1 42%}.nb-palette-gate{min-width:32px;height:34px}}
-/* Visual-only circuit cell controls; source code remains internal to the cell model. */
-.nb-circuit-tools{margin-top:.5rem;padding:.45rem;background:rgba(0,20,30,.55);border:1px solid rgba(0,255,221,.14);border-radius:6px;}
-.nb-circuit-controls{display:flex;gap:.35rem;flex-wrap:wrap;align-items:center;}
-.nb-circuit-controls select,.nb-circuit-controls button{min-height:28px;background:#0b1521;color:var(--tx);border:1px solid var(--bd2);border-radius:4px;padding:.2rem .42rem;font-size:.58rem;}
-.nb-circuit-controls button{cursor:pointer;color:var(--cy);}
-.nb-gate-list{display:flex;gap:.25rem;flex-wrap:wrap;margin-top:.4rem;}
-.nb-gate-chip{border:1px solid rgba(0,170,255,.25);border-radius:4px;background:rgba(0,100,180,.12);color:var(--tx2);padding:.18rem .35rem;font-size:.52rem;cursor:pointer;}
-.nb-circuit-warning{color:#ffbd66;font-size:.54rem;margin-top:.3rem;}
+.nb-circuit-help{margin-top:5px;color:#3d5a8a;font-size:9px;line-height:1.45}
+@media(max-width:600px){.nb-circuit-tools{flex-direction:column}.nb-cell-palette{width:100%;flex:0 0 auto}.nb-cell-palette-body{max-height:none}.nb-cell-pal-grid{grid-template-columns:repeat(5,minmax(0,1fr))}.nb-cell-pal-gate{min-height:44px;aspect-ratio:auto}.nb-cell-wire{min-width:220px}.nb-cell-circuit-wrap{touch-action:pan-x pan-y}}
 
 /* ── MANAGE ── */
 #view-manage{display:none;flex:1;flex-direction:column;overflow:hidden;}
@@ -679,11 +672,13 @@ function buildInteractiveCircuitCell(cell){
 }
 function cellGatePaletteHtml(cellId){
  const cellArg="'"+String(cellId).replace(/\\/g,"\\\\").replace(/'/g,"\\'")+"'";
- let html='<div class="nb-circuit-palette-groups">';
- Object.entries(NB_CELL_GATE_GROUPS).forEach(([label,ids])=>{html+='<div class="nb-circuit-palette-group"><div class="nb-circuit-palette-title">'+label+'</div><div class="nb-circuit-palette">';
- ids.forEach(id=>{const d=NB_GATE_DEFS[id];html+='<button type="button" class="nb-palette-gate" draggable="true" data-gate="'+id+'" style="--gate-color:'+d.bg+'" ondragstart="startCellGateDrag(event,'+cellArg+','+("'"+id+"'")+')" ondragend="endCellGateDrag()" onclick="event.stopPropagation();selectCellGate('+cellArg+','+("'"+id+"'")+')">'+d.sym+'</button>';});
- html+='</div></div>';});
- return html+'</div>';
+ let html='<div class="nb-cell-palette"><div class="nb-cell-palette-hdr">GATES</div><div class="nb-cell-palette-body">';
+ Object.entries(NB_CELL_GATE_GROUPS).forEach(([label,ids])=>{
+  html+='<div class="nb-cell-pal-sec"><div class="nb-cell-pal-label">'+label+'</div><div class="nb-cell-pal-grid">';
+  ids.forEach(id=>{const d=NB_GATE_DEFS[id];if(!d)return;html+='<button type="button" class="nb-cell-pal-gate" draggable="true" aria-label="Gate '+id+'" data-gate="'+id+'" style="background:'+d.bg+';box-shadow:0 0 6px '+d.bg+'" ondragstart="startCellGateDrag(event,'+cellArg+','+"'"+id+"'"+')" ondragend="endCellGateDrag()" onclick="event.stopPropagation();selectCellGate('+cellArg+','+"'"+id+"'"+')"><span class="nb-cell-pal-sym">'+d.sym+'</span><span class="nb-cell-pal-name">'+id+'</span></button>';});
+  html+='</div></div>';
+ });
+ return html+'</div></div>';
 }
 function selectCellGate(cellId,gateId){const cell=cells.find(c=>c.id===cellId);if(!cell)return;_cellSelectedGate={cellId,gateId};cell.editorOpen=true;renderCells();focusCell(cellId);const el=document.getElementById('nb-gate-'+cellId);if(el)el.value=gateId;notify(gateId+' selected — tap a qubit wire to place it');}
 function cellWireTap(event,cellId,qubit){if(!_cellSelectedGate||_cellSelectedGate.cellId!==cellId)return;event.preventDefault();event.stopPropagation();const gateId=_cellSelectedGate.gateId;_cellSelectedGate=null;placeVisualGate(cellId,gateId,qubit);}
@@ -731,6 +726,14 @@ function removeVisualGateByUid(cellId,uid){const c=cells.find(x=>x.id===cellId);
 function removeVisualGate(cellId,index){const c=cells.find(x=>x.id===cellId);if(!c||c.type!=='circuit'||_expositionMode)return;if(index>=0&&index<c.circuitData.gates.length){c.circuitData.gates.splice(index,1);commitVisualCell(cellId);}}
 function commitVisualCell(cellId){const c=cells.find(x=>x.id===cellId);if(!c)return;c.hiddenCode=visualCircuitCode(c.circuitData);c.visualWarnings=[];c.editorOpen=true;renderCells();focusCell(cellId);saveCurrentNb(false);}
 function addVisualQubit(cellId){const c=cells.find(x=>x.id===cellId);if(!c||c.type!=='circuit'||_expositionMode)return;if(c.circuitData.qubits>=20){notify('Maximum 20 qubits');return;}c.circuitData.qubits++;commitVisualCell(cellId);}
+function removeVisualQubit(cellId){
+ const c=cells.find(x=>x.id===cellId);if(!c||c.type!=='circuit'||_expositionMode)return;
+ const data=c.circuitData||(c.circuitData={qubits:1,gates:[]}),n=Math.max(1,Number(data.qubits)||1);
+ if(n<=1)return;
+ data.qubits=n-1;
+ data.gates=(data.gates||[]).filter(g=>g.q<n-1&&(g.q2===undefined||g.q2<n-1)&&(g.q3===undefined||g.q3<n-1));
+ commitVisualCell(cellId);
+}
 function clearVisualCircuit(cellId){const c=cells.find(x=>x.id===cellId);if(!c||c.type!=='circuit'||_expositionMode)return;c.circuitData={qubits:Math.max(1,c.circuitData?.qubits||1),gates:[]};c.hiddenCode='';c.visualWarnings=[];c.output='';c._outputData=null;renderCells();focusCell(cellId);saveCurrentNb(false);}
 function openCircuitEditor(cellId){
  const cell=cells.find(c=>c.id===cellId);
@@ -742,11 +745,8 @@ function openCircuitEditor(cellId){
 }
 function toggleCircuitEditor(cellId){const cell=cells.find(c=>c.id===cellId);if(!cell||cell.type!=='circuit'||_expositionMode)return;cell.editorOpen=cell.editorOpen===false;renderCells();focusCell(cellId);}
 function buildCircuitEditorControls(cell){
- const q=Math.max(1,cell.circuitData?.qubits||1),opts=Array.from({length:q},(_,i)=>'<option value="'+i+'">q['+i+']</option>').join('');
- const opts2=Array.from({length:q},(_,i)=>'<option value="'+i+'"'+(i===Math.min(1,q-1)?' selected':'')+'>q['+i+']</option>').join('');
- const opts3=Array.from({length:q},(_,i)=>'<option value="'+i+'"'+(i===Math.min(2,q-1)?' selected':'')+'>q['+i+']</option>').join('');
- const gates=Object.keys(NB_GATE_DEFS).map(id=>'<option value="'+id+'">'+id+'</option>').join('');
- return '<div class="nb-circuit-tools" onclick="event.stopPropagation()">'+cellGatePaletteHtml(cell.id)+'<div class="nb-circuit-controls"><label>Gate <select id="nb-gate-'+cell.id+'">'+gates+'</select></label><label>Target <select id="nb-q-'+cell.id+'">'+opts+'</select></label><label>Qubit 2 <select id="nb-q2-'+cell.id+'">'+opts2+'</select></label><label>Qubit 3 <select id="nb-q3-'+cell.id+'">'+opts3+'</select></label><button onclick="addVisualGate('+JSON.stringify(cell.id)+')">＋ Add gate</button><button onclick="addVisualQubit('+JSON.stringify(cell.id)+')">＋ Qubit</button><button onclick="clearVisualCircuit('+JSON.stringify(cell.id)+')">Clear</button></div><div class="nb-circuit-help">Original cell logic: drag a gate from the palette to a qubit wire; drag an existing one-qubit gate to another wire; tap a placed gate to remove it. Multi-qubit gates are removed by tapping.</div></div>';
+ const id=JSON.stringify(cell.id),q=Math.max(1,Number(cell.circuitData?.qubits)||1);
+ return '<div class="nb-circuit-tools" onclick="event.stopPropagation()">'+cellGatePaletteHtml(cell.id)+'<div class="nb-cell-pal-actions"><div class="nb-cell-pal-label">CIRCUIT</div><button type="button" onclick="addVisualQubit('+id+')">＋ Qubit</button><button type="button" onclick="removeVisualQubit('+id+')" '+(q<=1?'disabled':'')+'>－ Qubit</button><button type="button" class="nb-cell-clear" onclick="clearVisualCircuit('+id+')">Clear</button><div class="nb-circuit-help">Drag a gate onto a qubit wire, or select a gate and tap a wire. Drag a placed one-qubit gate to move it; tap a placed gate to remove it.</div></div></div>';
 }
 
 // ── NAVIGATION ────────────────────────────────────────────────
@@ -2409,7 +2409,7 @@ function buildCellEl(cell,i){
     const restoreBtn = '';
     const circuitSVG = buildInteractiveCircuitCell(cell);
     const outContent = cell.output ? `<div class="cell-output-area" id="out-${cell.id}">${'<!-- output -->'}</div>` : '';
-    const editorControls = cell.editorOpen!==false&&!_expositionMode ? buildCircuitEditorControls(cell) : '';
+    const editorControls = !_expositionMode ? buildCircuitEditorControls(cell) : '';
     const warningHtml = cell.visualWarnings?.length ? `<div class="nb-circuit-warning">Some Qiskit operations are not drawn in this preview; the complete hidden source is still executed.</div>` : '';
     el.className='nb-cell circ-cell'+(curCellId===cell.id?' active':'');
     el.innerHTML=`${circuitToolbar}
