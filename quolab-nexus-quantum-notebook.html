@@ -313,6 +313,28 @@ body.expo-mode .nb-bottom{display:none;}
 .nb-add-big:hover{background:rgba(0,255,221,.05);border-color:rgba(0,255,221,.45);color:var(--cy);}
 
 
+/* Original Quantum Architect circuit interaction model, scoped to each Notebook cell. */
+.nb-circuit-preview{overflow:auto!important;max-width:100%;padding:.5rem!important;overscroll-behavior:contain;touch-action:pan-x pan-y}
+.nb-original-circuit{min-height:56px;isolation:isolate}
+.nb-original-wire-row{pointer-events:none}
+.nb-original-q-label{position:absolute;left:0;top:50%;transform:translateY(-50%);width:50px;text-align:right;padding-right:6px;color:#bd93f9;font:600 11px 'JetBrains Mono',monospace}
+.nb-original-wire{position:absolute;left:52px;right:0;top:50%;height:18px;transform:translateY(-50%);border-top:2px solid rgba(0,136,255,.35);pointer-events:auto;cursor:crosshair;z-index:1}
+.nb-original-wire.dh,.nb-original-wire:hover{border-top-color:#00ffdd;background:rgba(0,255,221,.06)}
+.nb-original-single-gate{position:absolute;z-index:5;width:40px;height:40px;transform:translateY(-50%);display:flex;align-items:center;justify-content:center;border-radius:6px;border:1.5px solid rgba(255,255,255,.35);background:color-mix(in srgb,var(--gate-color),#07101d 35%);box-shadow:0 0 8px color-mix(in srgb,var(--gate-color),transparent 35%);cursor:grab;touch-action:pan-y}
+.nb-original-single-gate:active{cursor:grabbing}
+.nb-original-single-gate span{font:700 12px 'JetBrains Mono',monospace;color:white;pointer-events:none}
+.nb-original-gate-position{position:absolute;z-index:6;pointer-events:none}
+.nb-original-multigate{display:block;pointer-events:auto;cursor:pointer;overflow:visible}
+.nb-original-block{position:absolute;box-sizing:border-box;background:linear-gradient(135deg,#4a148c,#8e24aa);border:1.5px solid #ce93d8;border-radius:8px;color:white;display:flex;flex-direction:column;align-items:center;justify-content:center;font:700 12px 'JetBrains Mono',monospace;text-align:center;overflow:hidden;padding:2px;z-index:5}
+.nb-original-block small{font-size:9px;font-weight:400;opacity:.85}
+.nb-circuit-palette{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.35rem;margin-bottom:.5rem}
+.nb-palette-section{grid-column:1/-1;color:var(--mu);font:600 .48rem 'Orbitron',monospace;padding:.25rem 0 .05rem;border-bottom:1px solid var(--bd)}
+.nb-palette-gate{min-width:0;height:36px;padding:.2rem;border:1px solid color-mix(in srgb,var(--gate-color),white 25%);border-radius:6px;background:color-mix(in srgb,var(--gate-color),transparent 58%);color:#fff;font:700 .68rem 'JetBrains Mono',monospace;cursor:grab;touch-action:manipulation}
+.nb-palette-gate:active{cursor:grabbing;filter:brightness(1.25)}
+.nb-palette-gate.selected{outline:2px solid var(--cy);outline-offset:1px}
+.nb-original-circuit .nb-original-gate-position{pointer-events:none}
+.nb-original-circuit .nb-original-gate-position svg{pointer-events:auto}
+@media(max-width:600px){.nb-circuit-preview{padding:.35rem!important}.nb-original-single-gate{width:36px;height:36px}.nb-circuit-palette{grid-template-columns:repeat(5,minmax(0,1fr))}}
 /* Circuit-cell editor restored from the original Architect interaction model. */
 .nb-circuit-palette{display:flex;gap:.3rem;flex-wrap:wrap;margin-bottom:.45rem}
 .nb-palette-gate{min-width:34px;height:32px;padding:.2rem .45rem;border:1px solid color-mix(in srgb,var(--gate-color),white 25%);border-radius:5px;background:color-mix(in srgb,var(--gate-color),transparent 55%);color:#fff;font:700 .68rem 'JetBrains Mono',monospace;cursor:grab;touch-action:manipulation}
@@ -895,145 +917,62 @@ function buildTextOut(text){
 }
 
 
-function buildCircuitFromData(data){
-  if(!data || !data.gates) return '';
-  const {qubits: nQ, gates} = data;
-  const ROW_HEIGHT=56, step=52;
-
-  const depth = new Array(nQ).fill(0);
-  const placed = gates.map(g => {
+function buildCircuitFromData(data,cellId){
+  if(!data||!Array.isArray(data.gates))return '';
+  const nQ=Math.max(1,Math.min(20,Number(data.qubits)||1)),gates=data.gates;
+  const ROW=56,STEP=52,depth=Array(nQ).fill(0);
+  const placed=gates.map((g,i)=>{
+    const q=Math.max(0,Math.min(nQ-1,Number(g.q)||0));
+    const q2=g.q2===undefined?undefined:Math.max(0,Math.min(nQ-1,Number(g.q2)));
+    const q3=g.q3===undefined?undefined:Math.max(0,Math.min(nQ-1,Number(g.q3)));
     let col;
-    if(g.block){ col=0; for(let k=g.q;k<=g.q2;k++) col=Math.max(col,depth[k]||0); const w=g.block.w||1; for(let k=g.q;k<=g.q2;k++) depth[k]=col+w; }
-    else if(g.q3!==undefined){ col=Math.max(depth[g.q]||0,depth[g.q2]||0,depth[g.q3]||0); depth[g.q]=col+1;depth[g.q2]=col+1;depth[g.q3]=col+1; }
-    else if(g.q2!==undefined){ col=Math.max(depth[g.q]||0,depth[g.q2]||0); depth[g.q]=col+1;depth[g.q2]=col+1; }
-    else { col=depth[g.q]||0; depth[g.q]=col+1; }
-    return {...g, col};
+    if(g.block){col=0;for(let k=q;k<=q2;k++)col=Math.max(col,depth[k]||0);for(let k=q;k<=q2;k++)depth[k]=col+(g.block.w||1);}
+    else if(q3!==undefined){col=Math.max(depth[q]||0,depth[q2]||0,depth[q3]||0);depth[q]=depth[q2]=depth[q3]=col+1;}
+    else if(q2!==undefined){col=Math.max(depth[q]||0,depth[q2]||0);depth[q]=depth[q2]=col+1;}
+    else{col=depth[q]||0;depth[q]=col+1;}
+    return {...g,q,q2,q3,_index:i,col};
   });
-
-  const totalCols = Math.max(...depth, 1);
-  const W = totalCols*step+90, H = nQ*ROW_HEIGHT;
-  const qY = (q,topQ) => (q-topQ)*ROW_HEIGHT+ROW_HEIGHT/2;
-
-  let html=`<div style="position:relative;min-width:${W}px;height:${H}px;">`;
-
+  const cols=Math.max(...depth,1),W=cols*STEP+90,H=nQ*ROW;
+  let html='<div class="nb-original-circuit" style="position:relative;min-width:'+W+'px;height:'+H+'px;width:max-content;">';
   for(let q=0;q<nQ;q++){
-    html+=`<div style="position:absolute;top:${q*ROW_HEIGHT}px;left:0;right:0;height:${ROW_HEIGHT}px;">
-      <div style="position:absolute;left:0;top:50%;transform:translateY(-50%);
-        width:50px;text-align:right;padding-right:6px;
-        font-family:JetBrains Mono,monospace;font-size:11px;font-weight:600;color:#bd93f9;">q[${q}]</div>
-      <div style="position:absolute;left:52px;right:0;top:50%;
-        border-top:1.8px solid rgba(0,136,255,.22);"></div>
-    </div>`;
+    html+='<div class="nb-original-wire-row" style="position:absolute;top:'+(q*ROW)+'px;left:0;right:0;height:'+ROW+'px;">'+
+      '<div class="nb-original-q-label">q['+q+']</div>'+
+      '<div class="nb-original-wire" data-cell="'+escH(cellId)+'" data-qubit="'+q+'" onclick="event.stopPropagation();placeSelectedCellGate(\''+cellId+'\','+q+')" ondragover="cellWireDragOver(event)" ondragleave="cellWireDragLeave(event)" ondrop="dropCellGateOnWire(event,\''+cellId+'\','+q+')" title="Drop or tap to place a gate"></div></div>';
   }
-
+  const qY=(q,top)=>((q-top)*ROW+ROW/2);
   placed.forEach(g=>{
-    const left=g.col*step+56;
-    const clr=g.def?.bg||'#1a4a8a';
-    const sym=g.def?.sym||g.id||'?';
-
+    const left=g.col*STEP+56,clr=g.def?.bg||NB_GATE_DEFS[g.id]?.bg||'#1a4a8a',sym=g.def?.sym||NB_GATE_DEFS[g.id]?.sym||g.id||'?';
     if(g.block){
-      const bw=(g.block.w||1)*step-8, bh=(g.q2-g.q+1)*ROW_HEIGHT-8;
-      html+=`<div title="${escH(g.block.tip||'')}" style="position:absolute;left:${left}px;top:${g.q*ROW_HEIGHT+4}px;width:${bw}px;height:${bh}px;box-sizing:border-box;background:linear-gradient(135deg,#4a148c,#8e24aa);border:1.5px solid #ce93d8;border-radius:8px;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;font:700 12px JetBrains Mono,monospace;text-align:center;overflow:hidden;padding:2px;cursor:help;">${escH(g.block.label)}<span style="font-weight:400;font-size:9px;opacity:.85;">${escH(g.block.sub||'')}</span></div>`;
-    } else if(g.q3!==undefined){
-      const qs=[g.q,g.q2,g.q3].sort((a,b)=>a-b);
-      const topQ=qs[0], topY=topQ*ROW_HEIGHT;
-      const svgH=(qs[2]-qs[0])*ROW_HEIGHT+ROW_HEIGHT;
-      let svg='';
+      const bw=(g.block.w||1)*STEP-8,bh=(g.q2-g.q+1)*ROW-8;
+      html+='<div class="nb-original-block" style="left:'+left+'px;top:'+(g.q*ROW+4)+'px;width:'+bw+'px;height:'+bh+'px" title="'+escH(g.block.tip||'')+'">'+escH(g.block.label||'Block')+'<small>'+escH(g.block.sub||'')+'</small></div>';
+    }else if(g.q3!==undefined){
+      const qs=[g.q,g.q2,g.q3].sort((x,y)=>x-y),top=qs[0],h=(qs[2]-top)*ROW+ROW,cx=26;
+      let svg='<svg width="52" height="'+h+'" viewBox="0 0 52 '+h+'" class="nb-original-multigate" onclick="event.stopPropagation();removeVisualGateByUid(\''+cellId+'\','+g.uid+')" role="button" aria-label="Remove '+g.id+'">';
+      svg+='<line x1="'+cx+'" y1="'+qY(qs[0],top)+'" x2="'+cx+'" y2="'+qY(qs[2],top)+'" stroke="'+clr+'" stroke-width="2.5"/>';
       if(g.id==='CCX'){
-        svg=`<svg width="52" height="${svgH}" viewBox="0 0 52 ${svgH}">
-          <line x1="26" y1="${qY(qs[0],topQ)}" x2="26" y2="${qY(qs[2],topQ)}" stroke="${clr}" stroke-width="2.5"/>
-          <circle cx="26" cy="${qY(g.q,topQ)}" r="8" fill="${clr}" stroke="rgba(255,255,255,.9)" stroke-width="1.5"/>
-          <circle cx="26" cy="${qY(g.q2,topQ)}" r="8" fill="${clr}" stroke="rgba(255,255,255,.9)" stroke-width="1.5"/>
-          <circle cx="26" cy="${qY(g.q3,topQ)}" r="14" fill="none" stroke="${clr}" stroke-width="2.5"/>
-          <line x1="18" y1="${qY(g.q3,topQ)}" x2="34" y2="${qY(g.q3,topQ)}" stroke="${clr}" stroke-width="2"/>
-          <line x1="26" y1="${qY(g.q3,topQ)-10}" x2="26" y2="${qY(g.q3,topQ)+10}" stroke="${clr}" stroke-width="2"/>
-        </svg>`;
-      } else {
-        svg=`<svg width="52" height="${svgH}" viewBox="0 0 52 ${svgH}">
-          <line x1="26" y1="${qY(qs[0],topQ)}" x2="26" y2="${qY(qs[2],topQ)}" stroke="${clr}" stroke-width="2.5"/>
-          <circle cx="26" cy="${qY(g.q,topQ)}" r="8" fill="${clr}" stroke="rgba(255,255,255,.9)" stroke-width="1.5"/>
-          <line x1="16" y1="${qY(g.q2,topQ)-9}" x2="36" y2="${qY(g.q2,topQ)+9}" stroke="${clr}" stroke-width="2.5" stroke-linecap="round"/>
-          <line x1="36" y1="${qY(g.q2,topQ)-9}" x2="16" y2="${qY(g.q2,topQ)+9}" stroke="${clr}" stroke-width="2.5" stroke-linecap="round"/>
-          <line x1="16" y1="${qY(g.q3,topQ)-9}" x2="36" y2="${qY(g.q3,topQ)+9}" stroke="${clr}" stroke-width="2.5" stroke-linecap="round"/>
-          <line x1="36" y1="${qY(g.q3,topQ)-9}" x2="16" y2="${qY(g.q3,topQ)+9}" stroke="${clr}" stroke-width="2.5" stroke-linecap="round"/>
-        </svg>`;
+        svg+='<circle cx="'+cx+'" cy="'+qY(g.q,top)+'" r="8" fill="'+clr+'"/><circle cx="'+cx+'" cy="'+qY(g.q2,top)+'" r="8" fill="'+clr+'"/><circle cx="'+cx+'" cy="'+qY(g.q3,top)+'" r="14" fill="none" stroke="'+clr+'" stroke-width="2.5"/><path d="M '+(cx-8)+' '+qY(g.q3,top)+' h16 M '+cx+' '+(qY(g.q3,top)-10)+' v20" stroke="'+clr+'" stroke-width="2"/>';
+      }else{
+        svg+='<circle cx="'+cx+'" cy="'+qY(g.q,top)+'" r="8" fill="'+clr+'"/>';
+        [g.q2,g.q3].forEach(q=>{const y=qY(q,top);svg+='<path d="M 16 '+(y-9)+' L 36 '+(y+9)+' M 36 '+(y-9)+' L 16 '+(y+9)+'" stroke="'+clr+'" stroke-width="2.5" stroke-linecap="round"/>';});
       }
-      html+=`<div style="position:absolute;left:${left}px;top:${topY}px;">${svg}</div>`;
-
-    } else if(g.q2!==undefined){
-      const topQ=Math.min(g.q,g.q2), botQ=Math.max(g.q,g.q2);
-      const topY=topQ*ROW_HEIGHT, svgH=(botQ-topQ)*ROW_HEIGHT+ROW_HEIGHT;
-      const cy1=qY(g.q,topQ), cy2=qY(g.q2,topQ);
-      const ly1=Math.min(cy1,cy2), ly2=Math.max(cy1,cy2);
-      let svg='';
-      if(g.id==='CX'){
-        svg=`<svg width="48" height="${svgH}" viewBox="0 0 48 ${svgH}">
-          <line x1="24" y1="${ly1}" x2="24" y2="${ly2}" stroke="${clr}" stroke-width="2.5"/>
-          <circle cx="24" cy="${cy1}" r="8" fill="${clr}" stroke="rgba(255,255,255,.9)" stroke-width="1.5"/>
-          <circle cx="24" cy="${cy2}" r="14" fill="none" stroke="${clr}" stroke-width="2.5"/>
-          <line x1="16" y1="${cy2}" x2="32" y2="${cy2}" stroke="${clr}" stroke-width="2"/>
-          <line x1="24" y1="${cy2-10}" x2="24" y2="${cy2+10}" stroke="${clr}" stroke-width="2"/>
-        </svg>`;
-      } else if(g.id==='CZ'){
-        svg=`<svg width="48" height="${svgH}" viewBox="0 0 48 ${svgH}">
-          <line x1="24" y1="${ly1}" x2="24" y2="${ly2}" stroke="${clr}" stroke-width="2.5"/>
-          <circle cx="24" cy="${cy1}" r="8" fill="${clr}" stroke="rgba(255,255,255,.9)" stroke-width="1.5"/>
-          <circle cx="24" cy="${cy2}" r="8" fill="${clr}" stroke="rgba(255,255,255,.9)" stroke-width="1.5"/>
-        </svg>`;
-      } else if(g.id==='SWAP'){
-        svg=`<svg width="48" height="${svgH}" viewBox="0 0 48 ${svgH}">
-          <line x1="24" y1="${ly1}" x2="24" y2="${ly2}" stroke="${clr}" stroke-width="2.5"/>
-          <line x1="14" y1="${cy1-9}" x2="34" y2="${cy1+9}" stroke="${clr}" stroke-width="2.5" stroke-linecap="round"/>
-          <line x1="34" y1="${cy1-9}" x2="14" y2="${cy1+9}" stroke="${clr}" stroke-width="2.5" stroke-linecap="round"/>
-          <line x1="14" y1="${cy2-9}" x2="34" y2="${cy2+9}" stroke="${clr}" stroke-width="2.5" stroke-linecap="round"/>
-          <line x1="34" y1="${cy2-9}" x2="14" y2="${cy2+9}" stroke="${clr}" stroke-width="2.5" stroke-linecap="round"/>
-        </svg>`;
-      } else {
-        svg=`<svg width="48" height="${svgH}" viewBox="0 0 48 ${svgH}">
-          <line x1="24" y1="${ly1}" x2="24" y2="${ly2}" stroke="${clr}" stroke-width="2.5"/>
-          <circle cx="24" cy="${cy1}" r="8" fill="${clr}" stroke="rgba(255,255,255,.9)" stroke-width="1.5"/>
-          <rect x="4" y="${cy2-19}" width="40" height="38" rx="6" fill="${clr}" stroke="rgba(255,255,255,.28)" stroke-width="1.4" fill-opacity=".85"/>
-          <rect x="6" y="${cy2-17}" width="36" height="4" rx="4" fill="rgba(255,255,255,.18)"/>
-          <text x="24" y="${cy2+4}" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="11" font-weight="bold" fill="white">${sym}</text>
-        </svg>`;
-      }
-      html+=`<div style="position:absolute;left:${left}px;top:${topY}px;">${svg}</div>`;
-
-    } else {
-      const yPos=g.q*ROW_HEIGHT;
-      const display=sym.length>4?sym.slice(0,3):sym;
-      const fs=display.length<=2?13:display.length===3?11:9;
-      if(g.id==='M'){
-        html+=`<div style="position:absolute;left:${left}px;top:${yPos+ROW_HEIGHT/2}px;transform:translateY(-50%);">
-          <svg width="44" height="38" viewBox="0 0 44 38">
-            <rect x="1" y="1" width="42" height="36" rx="6" fill="rgba(109,76,65,.3)" stroke="#6d4c41" stroke-width="1.8"/>
-            <rect x="3" y="3" width="38" height="4" rx="4" fill="rgba(255,255,255,.12)"/>
-            <path d="M 8 30 A 14 14 0 0 1 36 30" fill="none" stroke="#ff9580" stroke-width="1.8" stroke-linecap="round"/>
-            <line x1="22" y1="30" x2="32" y2="14" stroke="#ff9580" stroke-width="1.6" stroke-linecap="round"/>
-            <circle cx="22" cy="30" r="2.5" fill="#ff9580"/>
-          </svg>
-        </div>`;
-      } else {
-        const gid=`gq_d_${g.col||0}_${g.q}`;
-        html+=`<div style="position:absolute;left:${left}px;top:${yPos+ROW_HEIGHT/2}px;transform:translateY(-50%);">
-          <svg width="44" height="38" viewBox="0 0 44 38">
-            <defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="${clr}" stop-opacity=".95"/>
-              <stop offset="100%" stop-color="${clr}" stop-opacity=".6"/>
-            </linearGradient></defs>
-            <rect x="1" y="1" width="42" height="36" rx="6" fill="url(#${gid})" stroke="rgba(255,255,255,.3)" stroke-width="1.4"/>
-            <rect x="3" y="3" width="38" height="4" rx="4" fill="rgba(255,255,255,.2)"/>
-            <text x="22" y="${19+fs/3}" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="${fs}" font-weight="bold" fill="white">${escH(display)}</text>
-          </svg>
-        </div>`;
-      }
+      html+='<div class="nb-original-gate-position" style="left:'+left+'px;top:'+(top*ROW)+'px">'+svg+'</div>';
+    }else if(g.q2!==undefined){
+      const top=Math.min(g.q,g.q2),bottom=Math.max(g.q,g.q2),h=(bottom-top)*ROW+ROW,y1=qY(g.q,top),y2=qY(g.q2,top),lo=Math.min(y1,y2),hi=Math.max(y1,y2);
+      let svg='<svg width="48" height="'+h+'" viewBox="0 0 48 '+h+'" class="nb-original-multigate" onclick="event.stopPropagation();removeVisualGateByUid(\''+cellId+'\','+g.uid+')" role="button" aria-label="Remove '+g.id+'"><line x1="24" y1="'+lo+'" x2="24" y2="'+hi+'" stroke="'+clr+'" stroke-width="2.5"/>';
+      if(g.id==='CX')svg+='<circle cx="24" cy="'+y1+'" r="8" fill="'+clr+'"/><circle cx="24" cy="'+y2+'" r="14" fill="none" stroke="'+clr+'" stroke-width="2.5"/><path d="M 16 '+y2+' h16 M 24 '+(y2-10)+' v20" stroke="'+clr+'" stroke-width="2"/>';
+      else if(g.id==='CZ')svg+='<circle cx="24" cy="'+y1+'" r="8" fill="'+clr+'"/><circle cx="24" cy="'+y2+'" r="8" fill="'+clr+'"/>';
+      else if(g.id==='SWAP')svg+='<path d="M 14 '+(y1-9)+' L 34 '+(y1+9)+' M 34 '+(y1-9)+' L 14 '+(y1+9)+' M 14 '+(y2-9)+' L 34 '+(y2+9)+' M 34 '+(y2-9)+' L 14 '+(y2+9)+'" stroke="'+clr+'" stroke-width="2.5" stroke-linecap="round"/>';
+      else svg+='<circle cx="24" cy="'+y1+'" r="8" fill="'+clr+'"/><rect x="4" y="'+(y2-19)+'" width="40" height="38" rx="6" fill="'+clr+'"/><text x="24" y="'+(y2+4)+'" text-anchor="middle" fill="white" font-size="11">'+escH(sym)+'</text>';
+      svg+='</svg>';
+      html+='<div class="nb-original-gate-position" style="left:'+left+'px;top:'+(top*ROW)+'px">'+svg+'</div>';
+    }else{
+      const y=g.q*ROW+ROW/2,isMeasure=g.id==='M',display=sym.length>4?sym.slice(0,3):sym;
+      html+='<div class="nb-original-single-gate" draggable="true" data-uid="'+g.uid+'" style="left:'+left+'px;top:'+y+'px;--gate-color:'+clr+'" ondragstart="startCellExistingDrag(event,\''+cellId+'\','+g.uid+')" ondragend="endCellExistingDrag()" onclick="event.stopPropagation();removeVisualGateByUid(\''+cellId+'\','+g.uid+')" title="Drag to another qubit or tap to remove"><span>'+(isMeasure?'M':escH(display))+'</span></div>';
     }
   });
-
   html+='</div>';
   return html;
 }
-
 let _editingCellId = null;
 
 
