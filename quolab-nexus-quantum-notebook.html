@@ -314,6 +314,8 @@ body.expo-mode .nb-bottom{display:none;}
 
 
 /* Cell circuit editor — visual language ported from the original Architect UI */
+.nb-cell-editor-layout{display:flex;align-items:stretch;gap:8px;min-width:0;margin-top:7px}.nb-cell-main{flex:1;min-width:0;overflow:hidden}.nb-cell-main .cell-circuit-preview{margin-top:0}
+@media(max-width:600px){.nb-cell-editor-layout{flex-direction:column}.nb-cell-main{width:100%}}
 .nb-circuit-tools{display:flex;align-items:stretch;gap:8px;margin-top:8px;padding:7px;background:rgba(6,9,18,.92);border:1px solid var(--bd);border-radius:7px;overflow:hidden}
 .nb-cell-palette{width:158px;flex:0 0 158px;background:#0f1626;border:1px solid #1a2a48;border-radius:5px;display:flex;flex-direction:column;overflow:hidden}
 .nb-cell-palette-hdr{padding:7px 9px;background:#060912;border-bottom:1px solid #1a2a48;font:700 9px 'Orbitron',monospace;color:#3d5a8a;letter-spacing:.08em}
@@ -2404,7 +2406,7 @@ function buildCellEl(cell,i){
     const circuitToolbar = `<div class="cell-toolbar">
         <button class="ct-btn" onclick="event.stopPropagation();moveCellUp('${cell.id}')" title="Move up">↑</button>
         <button class="ct-btn" onclick="event.stopPropagation();moveCellDown('${cell.id}')" title="Move down">↓</button>
-        ${_expositionMode ? '' : `<button class="ct-btn" onclick="event.stopPropagation();toggleCircuitEditor('${cell.id}')" title="Edit visual circuit">${cell.editorOpen===false?'Show controls':'Hide controls'}</button><button class="ct-btn" onclick="event.stopPropagation();openCircuitEditor('${cell.id}')" title="Open in Quantum Open Lab">Open Lab ↗</button><button class="ct-btn danger" onclick="event.stopPropagation();deleteCell('${cell.id}')" title="Delete">✕</button>`}
+        ${_expositionMode ? '' : `<button class="ct-btn" onclick="event.stopPropagation();openCircuitEditor('${cell.id}')" title="Open in Quantum Open Lab">Open Lab ↗</button><button class="ct-btn danger" onclick="event.stopPropagation();deleteCell('${cell.id}')" title="Delete">✕</button>`}
       </div>`;
     const restoreBtn = '';
     const circuitSVG = buildInteractiveCircuitCell(cell);
@@ -2422,12 +2424,9 @@ function buildCellEl(cell,i){
         <div class="cell-type-badge ctb-circ">
           ⚛ Visual Circuit
         </div>
-        <div class="cell-circuit-preview" id="cprev-${cell.id}"
-          onclick="event.stopPropagation();toggleCircuitEditor('${cell.id}')"
-          title="Interactive quantum circuit; drag gates between qubit wires">
-          <div class="circ-preview-hint">⚛ QUANTUM CIRCUIT — drag gates between wires · click for controls</div>${circuitSVG}${!hasCircuit?'<div class="circ-empty-hint">Add gates from the palette below</div>':''}
-        </div>
-        ${editorControls}${warningHtml}
+        <div class="nb-cell-editor-layout">${editorControls}<div class="nb-cell-main"><div class="cell-circuit-preview" id="cprev-${cell.id}" title="Interactive quantum circuit; drag gates between qubit wires">
+          <div class="circ-preview-hint">⚛ CIRCUIT — drag gates from the palette to the wires</div>${circuitSVG}${!hasCircuit?'<div class="circ-empty-hint">Select a gate and tap a wire, or drag it onto a wire</div>':''}
+        </div>${warningHtml}</div></div>
         <div class="cell-output-area" id="out-${cell.id}">${cell.output?`<div class="out-stdout">${escH(cell.output)}</div>`:''}</div>
         ${restoreBtn}
       </div>`;
