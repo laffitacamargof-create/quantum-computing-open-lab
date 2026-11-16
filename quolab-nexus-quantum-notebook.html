@@ -643,7 +643,7 @@ function buildInteractiveCircuitCell(cell){
   if(g.block){html+='<div class="nb-cell-gate-multi" style="left:'+left+'px;top:'+(g.q*ROW+4)+'px;width:'+((g.block.w||1)*STEP-8)+'px;height:'+((g.q2-g.q+1)*ROW-8)+'px;background:linear-gradient(135deg,#4a148c,#8e24aa);border:1px solid #ce93d8;border-radius:7px;color:white;display:flex;flex-direction:column;align-items:center;justify-content:center;font:700 11px monospace">'+escH(g.block.label||'BLOCK')+'</div>';return;}
   if(g.q3!==undefined||g.q2!==undefined){
    const qs=[g.q,g.q2,...(g.q3!==undefined?[g.q3]:[])],top=Math.min(...qs),bottom=Math.max(...qs),h=(bottom-top)*ROW+ROW,cy=q=>(q-top)*ROW+ROW/2;
-   let svg='<svg width="50" height="'+h+'" viewBox="0 0 50 '+h+'" role="button" aria-label="Remove '+escH(g.id)+'" onclick="removeVisualGateByUid('+cellArg+','+JSON.stringify(g.uid??g._index)+')" style="cursor:pointer"><line x1="25" y1="'+cy(top)+'" x2="25" y2="'+cy(bottom)+'" stroke="'+color+'" stroke-width="2.5"/>';
+   let svg='<svg width="50" height="'+h+'" viewBox="0 0 50 '+h+'" role="button" aria-label="Remove '+escH(g.id)+'" onclick="event.stopPropagation();removeVisualGateByUid('+cellArg+','+(g.uid??g._index)+')" style="cursor:pointer"><line x1="25" y1="'+cy(top)+'" x2="25" y2="'+cy(bottom)+'" stroke="'+color+'" stroke-width="2.5"/>';
    if(g.q3!==undefined){
     if(g.id==='CCX'){svg+='<circle cx="25" cy="'+cy(g.q)+'" r="8" fill="'+color+'"/><circle cx="25" cy="'+cy(g.q2)+'" r="8" fill="'+color+'"/><circle cx="25" cy="'+cy(g.q3)+'" r="14" fill="none" stroke="'+color+'" stroke-width="2.5"/><path d="M17 '+cy(g.q3)+'h16 M25 '+(cy(g.q3)-10)+'v20" stroke="'+color+'" stroke-width="2"/>';}
     else{svg+='<circle cx="25" cy="'+cy(g.q)+'" r="8" fill="'+color+'"/>'+[g.q2,g.q3].map(q=>'<path d="M17 '+(cy(q)-9)+'l16 18 M33 '+(cy(q)-9)+'L17 '+(cy(q)+9)+'" stroke="'+color+'" stroke-width="2.5"/>').join('');}
@@ -653,7 +653,7 @@ function buildInteractiveCircuitCell(cell){
    svg+='</svg>';html+='<div class="nb-cell-gate-multi" style="left:'+left+'px;top:'+(top*ROW)+'px" title="'+escH(g.id)+' · tap to remove">'+svg+'</div>';return;
   }
   const display=sym.length>4?sym.slice(0,3):sym;
-  html+='<div class="nb-cell-gate" draggable="true" style="left:'+left+'px;top:'+(g.q*ROW+ROW/2)+'px" ondragstart="startCellExistingGateDrag(event,'+cellArg+','+JSON.stringify(g.uid??g._index)+')" ondragend="endCellExistingGateDrag()" onclick="removeVisualGateByUid('+cellArg+','+JSON.stringify(g.uid??g._index)+')" title="'+escH(g.id)+' · drag to move, tap to remove"><div class="nb-cell-gate-box" style="background:'+color+'">'+escH(display)+'</div></div>';
+  html+='<div class="nb-cell-gate" draggable="true" style="left:'+left+'px;top:'+(g.q*ROW+ROW/2)+'px" ondragstart="startCellExistingGateDrag(event,'+cellArg+','+(g.uid??g._index)+')" ondragend="endCellExistingGateDrag()" onclick="event.stopPropagation();removeVisualGateByUid('+cellArg+','+(g.uid??g._index)+')" title="'+escH(g.id)+' · drag to move, tap to remove"><div class="nb-cell-gate-box" style="background:'+color+'">'+escH(display)+'</div></div>';
  });
  html+='</div></div>';return html;
 }
