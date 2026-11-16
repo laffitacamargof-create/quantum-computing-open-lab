@@ -691,53 +691,16 @@ function cellWireDragOver(event){event.preventDefault();event.dataTransfer.dropE
 function cellWireDragLeave(event){event.currentTarget.classList.remove('nb-wire-drop');}
 function cellWireDrop(event,cellId,qubit){event.preventDefault();event.stopPropagation();event.currentTarget.classList.remove('nb-wire-drop');if(_cellGateDrag&&_cellGateDrag.cellId===cellId){moveVisualGate(cellId,_cellGateDrag.uid,qubit);_cellGateDrag=null;return;}const gateId=(_cellPaletteDrag?.cellId===cellId?_cellPaletteDrag.gateId:event.dataTransfer.getData('text/plain'))||'';_cellPaletteDrag=null;if(NB_GATE_DEFS[gateId]){_cellSelectedGate=null;placeVisualGate(cellId,gateId,qubit);}}
 function normalizeCellMeasurements(gates){const byQ=new Map(),other=[];gates.forEach(g=>{if(g.id==='M')byQ.set(g.q,g);else other.push(g);});return [...other,...byQ.values()];}
-function placeVisualGate(cellId,gateId,qubit){notify('Circuit editing is locked in Quantum Notebook. Open Quantum Open Lab.');return;/*
- const cell=cells.find(c=>c.id===cellId);if(!cell||cell.type!=='circuit'||_expositionMode)return;
- const data=cell.circuitData||(cell.circuitData={qubits:2,gates:[]}),gates=data.gates||(data.gates=[]),def=NB_GATE_DEFS[gateId];if(!def)return;
- if(gates.length>=150){notify('Maximum 150 gates per cell');return;}
- const is2=['CX','CZ','SWAP'].includes(gateId),is3=['CCX','CSWAP'].includes(gateId);
- if(is3&&data.qubits<3){notify('This gate requires at least 3 qubits');return;}if(is2&&data.qubits<2){notify('This gate requires at least 2 qubits');return;}
- const g={id:gateId,q:qubit,uid:Date.now()+gates.length,def:{bg:def.bg,sym:def.sym,code:def.code}};
- if(is3){let q2=qubit+1<data.qubits?qubit+1:qubit-1,q3=qubit+2<data.qubits?qubit+2:qubit-2;if(q2<0)q2=0;if(q3<0)q3=0;if(q2===qubit)q2=(q2+1)%data.qubits;if(q3===qubit||q3===q2)q3=(q3+1)%data.qubits;if(q2===q3)q3=(q3+1)%data.qubits;g.q=Math.min(qubit,q2,q3);g.q2=[qubit,q2,q3].sort((a,b)=>a-b)[1];g.q3=Math.max(qubit,q2,q3);}
- else if(is2){const q2=qubit+1<data.qubits?qubit+1:qubit-1;g.q=Math.min(qubit,q2);g.q2=Math.max(qubit,q2);}
- if(gateId==='M'){for(let i=gates.length-1;i>=0;i--)if(gates[i].id==='M'&&gates[i].q===qubit)gates.splice(i,1);gates.push(g);}
- else{const firstM=gates.findIndex(x=>x.id==='M'&&x.q===qubit);if(firstM>=0)gates.splice(firstM,0,g);else gates.push(g);}
- data.gates=normalizeCellMeasurements(gates);commitVisualCell(cellId);
-}
-function addVisualGate(cellId){
- const cell=cells.find(c=>c.id===cellId);if(!cell||cell.type!=='circuit'||_expositionMode)return;
- const id=document.getElementById('nb-gate-'+cellId)?.value||'H',q=Number(document.getElementById('nb-q-'+cellId)?.value||0),q2=Number(document.getElementById('nb-q2-'+cellId)?.value||1),q3=Number(document.getElementById('nb-q3-'+cellId)?.value||2);
- const def=NB_GATE_DEFS[id],data=cell.circuitData;if(!def||!data)return;
- const is2=['CX','CZ','SWAP'].includes(id),is3=['CCX','CSWAP'].includes(id);if((is2||is3)&&data.qubits<2)return notify('Add another qubit first');if(is3&&data.qubits<3)return notify('This gate requires three qubits');if(is2&&q===q2||is3&&(q===q2||q===q3||q2===q3))return notify('Choose different qubits');
- const g={id,q,q2:is2||is3?q2:undefined,q3:is3?q3:undefined,uid:Date.now()+data.gates.length,def:{bg:def.bg,sym:def.sym,code:def.code}};
- if(id==='M'){data.gates=data.gates.filter(x=>!(x.id==='M'&&x.q===q));data.gates.push(g);}else data.gates.push(g);
- data.gates=normalizeCellMeasurements(data.gates);commitVisualCell(cellId);
-}
-function moveVisualGate(cellId,uid,newQubit){notify('Circuit editing is locked in Quantum Notebook. Open Quantum Open Lab.');return;/*
- const cell=cells.find(c=>c.id===cellId);if(!cell||!cell.circuitData||_expositionMode)return;
- const gates=cell.circuitData.gates,idx=gates.findIndex((g,i)=>(g.uid??i)===uid);if(idx<0)return;
- const gate=gates[idx];if(gate.q2!==undefined||gate.q3!==undefined){notify('2- and 3-qubit gates cannot be dragged');return;}
- gates.splice(idx,1);
- if(gate.id==='M'){cell.circuitData.gates=gates.filter(g=>!(g.id==='M'&&g.q===newQubit));gate.q=newQubit;cell.circuitData.gates.push(gate);}
- else{gate.q=newQubit;const firstM=gates.findIndex(g=>g.id==='M'&&g.q===newQubit);if(firstM>=0)gates.splice(firstM,0,gate);else gates.push(gate);cell.circuitData.gates=gates;}
- cell.circuitData.gates=normalizeCellMeasurements(cell.circuitData.gates);commitVisualCell(cellId);
-}
-function cellGateClick(event,cellId,uid){event.stopPropagation();if(_cellJustDragged)return;removeVisualGateByUid(cellId,uid);}
-function removeVisualGateByUid(cellId,uid){notify('Circuit editing is locked in Quantum Notebook. Open Quantum Open Lab.');return;/*const c=cells.find(x=>x.id===cellId);if(!c||!c.circuitData||_expositionMode)return;const i=c.circuitData.gates.findIndex((g,k)=>(g.uid??k)===uid);if(i>=0){c.circuitData.gates.splice(i,1);commitVisualCell(cellId);}}
-function removeVisualGate(cellId,index){const c=cells.find(x=>x.id===cellId);if(!c||c.type!=='circuit'||_expositionMode)return;if(index>=0&&index<c.circuitData.gates.length){c.circuitData.gates.splice(index,1);commitVisualCell(cellId);}}
-function commitVisualCell(cellId){notify('Circuit editing is locked in Quantum Notebook. Open Quantum Open Lab.');return;/*const c=cells.find(x=>x.id===cellId);if(!c)return;c.hiddenCode=visualCircuitCode(c.circuitData);c.visualWarnings=[];c.editorOpen=true;renderCells();focusCell(cellId);saveCurrentNb(false);}
-function addVisualQubit(cellId){notify('Circuit editing is locked in Quantum Notebook. Open Quantum Open Lab.');return;/*const c=cells.find(x=>x.id===cellId);if(!c||c.type!=='circuit'||_expositionMode)return;if(c.circuitData.qubits>=20){notify('Maximum 20 qubits');return;}c.circuitData.qubits++;commitVisualCell(cellId);}
-*/
-function removeVisualQubit(cellId){notify('Circuit editing is locked in Quantum Notebook. Open Quantum Open Lab.');return;/*
- const c=cells.find(x=>x.id===cellId);if(!c||c.type!=='circuit'||_expositionMode)return;
- const data=c.circuitData||(c.circuitData={qubits:1,gates:[]}),n=Math.max(1,Number(data.qubits)||1);
- if(n<=1)return;
- data.qubits=n-1;
- data.gates=(data.gates||[]).filter(g=>g.q<n-1&&(g.q2===undefined||g.q2<n-1)&&(g.q3===undefined||g.q3<n-1));
- commitVisualCell(cellId);
-}
-*/
-function clearVisualCircuit(cellId){notify('Circuit editing is locked in Quantum Notebook. Open Quantum Open Lab.');return;/*const c=cells.find(x=>x.id===cellId);if(!c||c.type!=='circuit'||_expositionMode)return;c.circuitData={qubits:Math.max(1,c.circuitData?.qubits||1),gates:[]};c.hiddenCode='';c.visualWarnings=[];c.output='';c._outputData=null;renderCells();focusCell(cellId);saveCurrentNb(false);}
+function placeVisualGate(){notify('Circuit editing is locked in Quantum Notebook. Open Quantum Open Lab.');}
+function addVisualGate(){notify('Circuit editing is locked in Quantum Notebook. Open Quantum Open Lab.');}
+function moveVisualGate(){notify('Circuit editing is locked in Quantum Notebook. Open Quantum Open Lab.');}
+function cellGateClick(){notify('Circuit editing is locked in Quantum Notebook. Open Quantum Open Lab.');}
+function removeVisualGateByUid(){notify('Circuit editing is locked in Quantum Notebook. Open Quantum Open Lab.');}
+function removeVisualGate(){notify('Circuit editing is locked in Quantum Notebook. Open Quantum Open Lab.');}
+function commitVisualCell(){notify('Circuit editing is locked in Quantum Notebook. Open Quantum Open Lab.');}
+function addVisualQubit(){notify('Circuit editing is locked in Quantum Notebook. Open Quantum Open Lab.');}
+function removeVisualQubit(){notify('Circuit editing is locked in Quantum Notebook. Open Quantum Open Lab.');}
+function clearVisualCircuit(){notify('Circuit editing is locked in Quantum Notebook. Open Quantum Open Lab.');}
 function openCircuitEditor(cellId){
  const cell=cells.find(c=>c.id===cellId);
  if(!cell||cell.type!=='circuit'||_expositionMode)return;
