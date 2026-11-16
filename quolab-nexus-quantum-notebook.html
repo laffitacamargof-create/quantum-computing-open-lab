@@ -620,7 +620,7 @@ function visualCircuitCode(data){
 function syncCircuitCellFromCode(cell,source){
  const parsed=parseQiskitCircuitCode(source);cell.hiddenCode=String(source||'');cell.code='';cell.circuitData=parsed.circuitData;cell.visualWarnings=parsed.warnings;return parsed;
 }
-let _cellPaletteDrag=null,_cellGateDrag=null;
+let _cellPaletteDrag=null,_cellGateDrag=null,_cellJustDragged=false;
 const NB_CELL_GATE_GROUPS={
  '1 QUBIT':['H','X','Y','Z','S','T','SX','RX','RY','RZ'],
  '2 QUBITS':['CX','CZ','SWAP'],
@@ -643,7 +643,7 @@ function buildInteractiveCircuitCell(cell){
   if(g.block){html+='<div class="nb-cell-gate-multi" style="left:'+left+'px;top:'+(g.q*ROW+4)+'px;width:'+((g.block.w||1)*STEP-8)+'px;height:'+((g.q2-g.q+1)*ROW-8)+'px;background:linear-gradient(135deg,#4a148c,#8e24aa);border:1px solid #ce93d8;border-radius:7px;color:white;display:flex;flex-direction:column;align-items:center;justify-content:center;font:700 11px monospace">'+escH(g.block.label||'BLOCK')+'</div>';return;}
   if(g.q3!==undefined||g.q2!==undefined){
    const qs=[g.q,g.q2,...(g.q3!==undefined?[g.q3]:[])],top=Math.min(...qs),bottom=Math.max(...qs),h=(bottom-top)*ROW+ROW,cy=q=>(q-top)*ROW+ROW/2;
-   let svg='<svg width="50" height="'+h+'" viewBox="0 0 50 '+h+'" role="button" aria-label="Remove '+escH(g.id)+'" onclick="event.stopPropagation();removeVisualGateByUid('+cellArg+','+(g.uid??g._index)+')" style="cursor:pointer"><line x1="25" y1="'+cy(top)+'" x2="25" y2="'+cy(bottom)+'" stroke="'+color+'" stroke-width="2.5"/>';
+   let svg='<svg width="50" height="'+h+'" viewBox="0 0 50 '+h+'" role="button" aria-label="Remove '+escH(g.id)+'" onclick="cellGateClick(event,'+cellArg+','+(g.uid??g._index)+')" style="cursor:pointer"><line x1="25" y1="'+cy(top)+'" x2="25" y2="'+cy(bottom)+'" stroke="'+color+'" stroke-width="2.5"/>';
    if(g.q3!==undefined){
     if(g.id==='CCX'){svg+='<circle cx="25" cy="'+cy(g.q)+'" r="8" fill="'+color+'"/><circle cx="25" cy="'+cy(g.q2)+'" r="8" fill="'+color+'"/><circle cx="25" cy="'+cy(g.q3)+'" r="14" fill="none" stroke="'+color+'" stroke-width="2.5"/><path d="M17 '+cy(g.q3)+'h16 M25 '+(cy(g.q3)-10)+'v20" stroke="'+color+'" stroke-width="2"/>';}
     else{svg+='<circle cx="25" cy="'+cy(g.q)+'" r="8" fill="'+color+'"/>'+[g.q2,g.q3].map(q=>'<path d="M17 '+(cy(q)-9)+'l16 18 M33 '+(cy(q)-9)+'L17 '+(cy(q)+9)+'" stroke="'+color+'" stroke-width="2.5"/>').join('');}
@@ -668,8 +668,8 @@ function cellGatePaletteHtml(cellId){
 function selectCellGate(cellId,gateId){const cell=cells.find(c=>c.id===cellId);if(!cell)return;cell.editorOpen=true;renderCells();focusCell(cellId);const el=document.getElementById('nb-gate-'+cellId);if(el)el.value=gateId;}
 function startCellGateDrag(event,cellId,gateId){event.stopPropagation();_cellPaletteDrag={cellId,gateId};_cellGateDrag=null;event.dataTransfer.effectAllowed='copy';event.dataTransfer.setData('text/plain',gateId);}
 function endCellGateDrag(){_cellPaletteDrag=null;}
-function startCellExistingGateDrag(event,cellId,uid){event.stopPropagation();_cellGateDrag={cellId,uid};_cellPaletteDrag=null;event.dataTransfer.effectAllowed='move';event.dataTransfer.setData('text/plain','cell-gate:'+uid);}
-function endCellExistingGateDrag(){_cellGateDrag=null;document.querySelectorAll('.nb-cell-wire').forEach(w=>w.classList.remove('nb-wire-drop'));}
+function startCellExistingGateDrag(event,cellId,uid){event.stopPropagation();_cellJustDragged=false;_cellGateDrag={cellId,uid};_cellPaletteDrag=null;event.dataTransfer.effectAllowed='move';event.dataTransfer.setData('text/plain','cell-gate:'+uid);}
+function endCellExistingGateDrag(){if(_cellGateDrag){_cellJustDragged=true;setTimeout(()=>{_cellJustDragged=false;},350);}_cellGateDrag=null;document.querySelectorAll('.nb-cell-wire').forEach(w=>w.classList.remove('nb-wire-drop'));}
 function cellWireDragOver(event){event.preventDefault();event.dataTransfer.dropEffect=_cellGateDrag?'move':'copy';event.currentTarget.classList.add('nb-wire-drop');}
 function cellWireDragLeave(event){event.currentTarget.classList.remove('nb-wire-drop');}
 function cellWireDrop(event,cellId,qubit){event.preventDefault();event.stopPropagation();event.currentTarget.classList.remove('nb-wire-drop');if(_cellGateDrag&&_cellGateDrag.cellId===cellId){moveVisualGate(cellId,_cellGateDrag.uid,qubit);_cellGateDrag=null;return;}const gateId=(_cellPaletteDrag?.cellId===cellId?_cellPaletteDrag.gateId:event.dataTransfer.getData('text/plain'))||'';_cellPaletteDrag=null;if(NB_GATE_DEFS[gateId])placeVisualGate(cellId,gateId,qubit);}
@@ -705,7 +705,7 @@ function moveVisualGate(cellId,uid,newQubit){
  else{gate.q=newQubit;const firstM=gates.findIndex(g=>g.id==='M'&&g.q===newQubit);if(firstM>=0)gates.splice(firstM,0,gate);else gates.push(gate);cell.circuitData.gates=gates;}
  cell.circuitData.gates=normalizeCellMeasurements(cell.circuitData.gates);commitVisualCell(cellId);
 }
-function removeVisualGateByUid(cellId,uid){const c=cells.find(x=>x.id===cellId);if(!c||!c.circuitData||_expositionMode)return;const i=c.circuitData.gates.findIndex((g,k)=>(g.uid??k)===uid);if(i>=0){c.circuitData.gates.splice(i,1);commitVisualCell(cellId);}}
+function cellGateClick(event,cellId,uid){event.stopPropagation();if(_cellJustDragged)return;removeVisualGateByUid(cellId,uid);}\nfunction removeVisualGateByUid(cellId,uid){const c=cells.find(x=>x.id===cellId);if(!c||!c.circuitData||_expositionMode)return;const i=c.circuitData.gates.findIndex((g,k)=>(g.uid??k)===uid);if(i>=0){c.circuitData.gates.splice(i,1);commitVisualCell(cellId);}}
 function removeVisualGate(cellId,index){const c=cells.find(x=>x.id===cellId);if(!c||c.type!=='circuit'||_expositionMode)return;if(index>=0&&index<c.circuitData.gates.length){c.circuitData.gates.splice(index,1);commitVisualCell(cellId);}}
 function commitVisualCell(cellId){const c=cells.find(x=>x.id===cellId);if(!c)return;c.hiddenCode=visualCircuitCode(c.circuitData);c.visualWarnings=[];c.editorOpen=true;renderCells();focusCell(cellId);saveCurrentNb(false);}
 function addVisualQubit(cellId){const c=cells.find(x=>x.id===cellId);if(!c||c.type!=='circuit'||_expositionMode)return;if(c.circuitData.qubits>=20){notify('Maximum 20 qubits');return;}c.circuitData.qubits++;commitVisualCell(cellId);}
