@@ -1113,12 +1113,14 @@ function validateAndCompleteMeasurements(source) {
 function syncVisualMeasurementMarkers() {
   const used = new Set();
   circuit.gates.filter(g => g.id !== 'M').forEach(g => { used.add(g.q); if (g.q2 !== undefined) used.add(g.q2); if (g.q3 !== undefined) used.add(g.q3); });
-  const oldLength = circuit.gates.length;
+  const before = circuit.gates.length;
   circuit.gates = circuit.gates.filter(g => !(g.id === 'M' && g.autoMeasurement && !used.has(g.q)));
+  let changed = circuit.gates.length !== before;
   for (const q of used) if (!circuit.gates.some(g => g.id === 'M' && g.q === q)) {
-    const def = findGateDef('M'); if (def) circuit.gates.push({id:'M',q,def,uid:nextId++,autoMeasurement:true});
+    const def = findGateDef('M');
+    if (def) { circuit.gates.push({id:'M',q,def,uid:nextId++,autoMeasurement:true}); changed = true; }
   }
-  return oldLength !== circuit.gates.length;
+  return changed;
 }
 function removeAutoMeasurementsForWires(wires) {
   const set = new Set(wires);
