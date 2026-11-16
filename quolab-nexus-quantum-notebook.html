@@ -313,6 +313,16 @@ body.expo-mode .nb-bottom{display:none;}
 .nb-add-big:hover{background:rgba(0,255,221,.05);border-color:rgba(0,255,221,.45);color:var(--cy);}
 
 
+/* Circuit-cell editor restored from the original Architect interaction model. */
+.nb-circuit-palette{display:flex;gap:.3rem;flex-wrap:wrap;margin-bottom:.45rem}
+.nb-palette-gate{min-width:34px;height:32px;padding:.2rem .45rem;border:1px solid color-mix(in srgb,var(--gate-color),white 25%);border-radius:5px;background:color-mix(in srgb,var(--gate-color),transparent 55%);color:#fff;font:700 .68rem 'JetBrains Mono',monospace;cursor:grab;touch-action:manipulation}
+.nb-palette-gate:active{cursor:grabbing;transform:scale(.96)}
+.nb-circuit-controls label{display:flex;align-items:center;gap:.2rem;color:var(--tx2);font-size:.52rem}
+.nb-circuit-help{margin-top:.35rem;color:var(--mu);font-size:.5rem;line-height:1.45}
+.cell-circuit-preview{overflow-x:auto;overscroll-behavior-x:contain;touch-action:pan-x pan-y}
+.cell-circuit-preview.nb-drop-active{outline:1px dashed var(--cy);outline-offset:-3px;background:rgba(0,255,221,.035)}
+.nb-circuit-controls select{max-width:100%}
+@media(max-width:600px){.nb-circuit-controls{gap:.25rem}.nb-circuit-controls label{flex:1 1 42%}.nb-palette-gate{min-width:32px;height:34px}}
 /* Visual-only circuit cell controls; source code remains internal to the cell model. */
 .nb-circuit-tools{margin-top:.5rem;padding:.45rem;background:rgba(0,20,30,.55);border:1px solid rgba(0,255,221,.14);border-radius:6px;}
 .nb-circuit-controls{display:flex;gap:.35rem;flex-wrap:wrap;align-items:center;}
@@ -588,6 +598,13 @@ function visualCircuitCode(data){
 function syncCircuitCellFromCode(cell,source){
  const parsed=parseQiskitCircuitCode(source);cell.hiddenCode=String(source||'');cell.code='';cell.circuitData=parsed.circuitData;cell.visualWarnings=parsed.warnings;return parsed;
 }
+let _cellPaletteDrag=null;
+function selectCellGate(cellId,gateId){const el=document.getElementById('nb-gate-'+cellId);if(el)el.value=gateId;const cell=cells.find(c=>c.id===cellId);if(cell){cell.editorOpen=true;renderCells();focusCell(cellId);} }
+function startCellGateDrag(event,cellId,gateId){_cellPaletteDrag={cellId,gateId};event.dataTransfer.effectAllowed='copy';event.dataTransfer.setData('text/plain',gateId);}
+function cellCircuitDragOver(event){if(!_cellPaletteDrag)return;event.preventDefault();event.dataTransfer.dropEffect='copy';event.currentTarget.classList.add('nb-drop-active');}
+function cellCircuitDragLeave(event){event.currentTarget.classList.remove('nb-drop-active');}
+function dropCellGate(event,cellId){event.preventDefault();event.currentTarget.classList.remove('nb-drop-active');const gateId=(_cellPaletteDrag?.cellId===cellId?_cellPaletteDrag.gateId:event.dataTransfer.getData('text/plain'))||'';_cellPaletteDrag=null;if(!NB_GATE_DEFS[gateId])return;const box=event.currentTarget.getBoundingClientRect();const q=Math.max(0,Math.min((cells.find(c=>c.id===cellId)?.circuitData?.qubits||1)-1,Math.floor((event.clientY-box.top)/56)));addVisualGateAt(cellId,gateId,q);}
+function addVisualGateAt(cellId,gateId,q){const cell=cells.find(c=>c.id===cellId);if(!cell||cell.type!=='circuit'||_expositionMode)return;const def=NB_GATE_DEFS[gateId];if(!def)return;const is2=['CX','CZ','SWAP'].includes(gateId),is3=['CCX','CSWAP'].includes(gateId);if((is2||is3)&&cell.circuitData.qubits<2){notify('Add another qubit first');return;}if(is3&&cell.circuitData.qubits<3){notify('This gate requires three qubits');return;}const q2=Math.min(cell.circuitData.qubits-1,q+1),q3=Math.min(cell.circuitData.qubits-1,q+2);if(is2&&q===q2){notify('Choose two different qubits');return;}if(is3&&(q===q2||q===q3||q2===q3)){notify('Choose three different qubits');return;}cell.circuitData.gates.push({id:gateId,q,q2:is2||is3?q2:undefined,q3:is3?q3:undefined,uid:Date.now()+cell.circuitData.gates.length,def:{bg:def.bg,sym:def.sym,code:def.code}});cell.hiddenCode=visualCircuitCode(cell.circuitData);cell.visualWarnings=[];cell.editorOpen=true;renderCells();focusCell(cellId);saveCurrentNb(false);}
 function addVisualGate(cellId){
  const cell=cells.find(c=>c.id===cellId);if(!cell||cell.type!=='circuit'||_expositionMode)return;
  const gateId=document.getElementById('nb-gate-'+cellId)?.value||'H',def=NB_GATE_DEFS[gateId];if(!def)return;
@@ -612,10 +629,14 @@ function openCircuitEditor(cellId){
 }
 function toggleCircuitEditor(cellId){const cell=cells.find(c=>c.id===cellId);if(!cell||cell.type!=='circuit'||_expositionMode)return;cell.editorOpen=cell.editorOpen===false;renderCells();focusCell(cellId);}
 function buildCircuitEditorControls(cell){
- const q=cell.circuitData?.qubits||1,opts=Array.from({length:q},(_,i)=>'<option value="'+i+'">q['+i+']</option>').join(''),opts2=Array.from({length:q},(_,i)=>'<option value="'+i+'"'+(i===1?' selected':'')+'>q['+i+']</option>').join(''),opts3=Array.from({length:q},(_,i)=>'<option value="'+i+'"'+(i===2?' selected':'')+'>q['+i+']</option>').join('');
+ const q=Math.max(1,cell.circuitData?.qubits||1);
+ const opts=Array.from({length:q},(_,i)=>'<option value="'+i+'">q['+i+']</option>').join('');
+ const opts2=Array.from({length:q},(_,i)=>'<option value="'+i+'"'+(i===Math.min(1,q-1)?' selected':'')+'>q['+i+']</option>').join('');
+ const opts3=Array.from({length:q},(_,i)=>'<option value="'+i+'"'+(i===Math.min(2,q-1)?' selected':'')+'>q['+i+']</option>').join('');
  const gates=Object.keys(NB_GATE_DEFS).map(id=>'<option value="'+id+'">'+id+'</option>').join('');
- const gateList=(cell.circuitData?.gates||[]).map((g,i)=>'<button class="nb-gate-chip" onclick="event.stopPropagation();removeVisualGate(\''+cell.id+'\','+i+')" title="Remove gate">'+(g.def?.sym||g.id)+' · q'+g.q+(g.q2!==undefined?'–q'+g.q2:'')+' ×</button>').join('');
- return '<div class="nb-circuit-tools" onclick="event.stopPropagation()"><div class="nb-circuit-controls"><select id="nb-gate-'+cell.id+'" aria-label="Gate">'+gates+'</select><select id="nb-q-'+cell.id+'" aria-label="Target qubit">'+opts+'</select><select id="nb-q2-'+cell.id+'" aria-label="Second qubit">'+opts2+'</select><select id="nb-q3-'+cell.id+'" aria-label="Third qubit">'+opts3+'</select><button onclick="addVisualGate(\''+cell.id+'\')">＋ Gate</button><button onclick="addVisualQubit(\''+cell.id+'\')">＋ Qubit</button><button onclick="clearVisualCircuit(\''+cell.id+'\')">Clear</button></div><div class="nb-gate-list">'+(gateList||'<span>No gates yet</span>')+'</div></div>';
+ const palette=Object.entries(NB_GATE_DEFS).map(([id,d])=>'<button class="nb-palette-gate" draggable="true" style="--gate-color:'+d.bg+'" ondragstart="startCellGateDrag(event,\\''+cell.id+'\\',\\''+id+'\\')" onclick="event.stopPropagation();selectCellGate(\\''+cell.id+'\\',\\''+id+'\\')" title="Drag onto a qubit wire or tap to select">'+d.sym+'</button>').join('');
+ const gateList=(cell.circuitData?.gates||[]).map((g,i)=>'<button class="nb-gate-chip" onclick="event.stopPropagation();removeVisualGate(\\''+cell.id+'\\','+i+')" title="Remove gate">'+(g.def?.sym||NB_GATE_DEFS[g.id]?.sym||g.id)+' · q'+g.q+(g.q2!==undefined?'–q'+g.q2:'')+(g.q3!==undefined?'–q'+g.q3:'')+' ×</button>').join('');
+ return '<div class="nb-circuit-tools" onclick="event.stopPropagation()"><div class="nb-circuit-palette" aria-label="Gate palette">'+palette+'</div><div class="nb-circuit-controls"><label>Gate <select id="nb-gate-'+cell.id+'" aria-label="Gate">'+gates+'</select></label><label>Target <select id="nb-q-'+cell.id+'" aria-label="Target qubit">'+opts+'</select></label><label>Qubit 2 <select id="nb-q2-'+cell.id+'" aria-label="Second qubit">'+opts2+'</select></label><label>Qubit 3 <select id="nb-q3-'+cell.id+'" aria-label="Third qubit">'+opts3+'</select></label><button onclick="addVisualGate(\\''+cell.id+'\\')">＋ Add gate</button><button onclick="addVisualQubit(\\''+cell.id+'\\')">＋ Qubit</button><button onclick="clearVisualCircuit(\\''+cell.id+'\\')">Clear</button></div><div class="nb-circuit-help">Drag a gate from the palette onto a wire, or select a gate and target qubits above. Tap a gate chip below to remove it.</div><div class="nb-gate-list">'+(gateList||'<span>No gates yet</span>')+'</div></div>';
 }
 
 // ── NAVIGATION ────────────────────────────────────────────────
@@ -2292,8 +2313,9 @@ function buildCellEl(cell,i){
           ⚛ Visual Circuit
         </div>
         <div class="cell-circuit-preview" id="cprev-${cell.id}"
+          ondragover="cellCircuitDragOver(event)" ondragleave="cellCircuitDragLeave(event)" ondrop="dropCellGate(event,'${cell.id}')"
           onclick="event.stopPropagation();toggleCircuitEditor('${cell.id}')"
-          title="Click to show or hide visual gate controls">
+          title="Drag a palette gate onto a qubit wire; click to show or hide controls">
           ${hasCircuit
             ? `<div class="circ-preview-hint">⚛ QUANTUM CIRCUIT — click for gate controls</div>${circuitSVG}`
             : `<div class="circ-empty-hint">⚛ Visual Circuit Cell<br><span style="font-size:.4rem;color:rgba(0,200,100,.4);">Use the controls below to add gates</span></div>`
