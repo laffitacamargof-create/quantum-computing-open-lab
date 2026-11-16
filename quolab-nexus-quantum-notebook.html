@@ -2421,7 +2421,7 @@ function buildCellEl(cell,i){
           onclick="event.stopPropagation();runCell('${cell.id}')" title="${hasCode?'Run circuit':'Open Quantum Open Lab to edit first'}">▶</button>${`<button class="cell-run-btn cell-noise-btn" onclick="event.stopPropagation();noiseRun('${cell.id}')" title="Run with noise now (this cell's noise settings)" aria-label="Run with noise">🔊</button><button class="cell-run-btn cell-noise-cfg" onclick="event.stopPropagation();noiseCell('${cell.id}')" title="Noise settings for this cell" aria-label="Noise settings">⚙</button>`}</div>
       </div>
       <div class="cell-body">
-        <div class="cell-circuit-preview" id="cprev-${cell.id}" title="Tap to open and edit in Quantum Open Lab" role="button" tabindex="0" aria-label="Open this circuit in Quantum Open Lab" onclick="openCircuitEditor('${cell.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openCircuitEditor('${cell.id}')}" >${circuitSVG}</div>
+        <div class="cell-circuit-preview" id="cprev-${cell.id}" title="Tap to open and edit in Quantum Open Lab" role="button" tabindex="0" aria-label="Open this circuit in Quantum Open Lab" data-action-label="EDIT IN QUANTUM OPEN LAB ↗" onclick="openCircuitEditor('${cell.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openCircuitEditor('${cell.id}')}" >${circuitSVG}</div>
         <div class="cell-output-area" id="out-${cell.id}">${cell.output?`<div class="out-stdout">${escH(cell.output)}</div>`:''}</div>
         ${restoreBtn}
       </div>`;
