@@ -2,7 +2,7 @@
 <html lang="en" id="root">
 <head>
 <script src="quolab-nexus-core.js"></script>
-<script defer src="quolab-nexus-agent.js?v=1.8.0"></script>
+<script defer src="quolab-nexus-agent.js?v=1.9.0"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>QuOLab Nexus — Quantum Computing Open Lab</title>
@@ -2103,7 +2103,7 @@ class QuOLabNexusConfigSyncReader {
     } else if (!aiOptGet('ctx')) {
       ctx.note='Optional conversation extras are disabled; sanitized operational tool state remains available.';
     }
-    return window.QuOLabNexusAgent ? window.QuOLabNexusAgent.collectContext(ctx) : ctx;
+    return window.QuOLabNexusAgent ? window.QuOLabNexusAgent.collectContext(ctx, {consumeEventDelta:true}) : ctx;
   }
 
   function inferAIContextTools(prompt, ctx) {
@@ -2176,7 +2176,8 @@ class QuOLabNexusConfigSyncReader {
       loaded_tools:allTools.filter(tool=>tool.loaded).map(tool=>({id:tool.id,name:tool.tool_name||tool.name})),
       tool_index:toolIndex,
       live_state:compactTools,
-      recent_events:(ctx?.recent_events||[]).slice(-6),
+      recent_events:(ctx?.recent_events||[]).slice(0,8),
+      event_delta:ctx?.event_delta||null,
       user_context:{screen:ctx?.user_context?.screen,url_hash:ctx?.user_context?.url_hash,
         user_role:ctx?.user_context?.user_role,opened_item:ctx?.user_context?.opened_item},
       module_context:compactModuleContext
@@ -2202,7 +2203,7 @@ class QuOLabNexusConfigSyncReader {
       packed.selected_manuals = packed.selected_manuals.slice(0,1);
       // Preserve the active module's function API even when DOM context must be dropped.
       packed.live_state = compactTools.map(tool=>({id:tool.id,name:tool.name,functions:(tool.functions||[]).slice(0,60)}));
-      packed.recent_events = (packed.recent_events||[]).slice(-3);
+      packed.recent_events = (packed.recent_events||[]).slice(0,4).map(group=>({...group,events:(group.events||[]).slice(0,6)}));
       c = JSON.stringify(packed);
     }
     return `
@@ -2416,7 +2417,7 @@ CONTEXT (staged and size-limited): ${c}`;
         if (typeof fn !== 'function') return {ok:false,message:'The function is no longer callable in the live module.'};
         const sensitive = /password|passphrase|secret|token|api.?key|private.?key|credential|authorization|cookie|session/i;
         if (JSON.stringify(a.args || []).length > 12000 || sensitive.test(JSON.stringify(a.args || []))) return {ok:false,message:'Function arguments exceed the safe limit or contain sensitive credential-like data.'};
-        if (/delete|remove|publish|approve|reject|reset|clear|overwrite|disconnect|logout/i.test(a.functionName) && !confirm('QNexusAi requests '+a.functionName+' in '+a.screen+'. Continue?')) return {ok:false,message:'Function call cancelled by user.'};
+        if (/delete|remove|publish|approve|reject|reset|clear|overwrite|disconnect|logout|^load|^sync|^update/i.test(a.functionName) && !confirm('QNexusAi requests '+a.functionName+' in '+a.screen+'. Continue?')) return {ok:false,message:'Function call cancelled by user.'};
         try {
           const value = await Promise.race([Promise.resolve(fn.apply(view,a.args||[])),new Promise((_,reject)=>setTimeout(()=>reject(new Error('Function call timed out after 30 seconds.')),30000))]);
           let output='';try{output=JSON.stringify(value);}catch(_){output=String(value??'');}
@@ -2495,7 +2496,8 @@ CONTEXT (staged and size-limited): ${c}`;
             'If needed, emit up to 3 valid actions (including tool_call for a documented callable module function), each inside its own fenced code block labeled openq-action. Use TASK_STATUS: CONTINUE until all criteria are verified. COMPLETED requires TASK_EVIDENCE grounded in fresh context. Use BLOCKED only for a concrete blocker. Questions are completed directly.'
           ].filter(Boolean).join('\n\n');
           const raw=await callAI(prompt,ctx,{historyLimit:0,systemSuffix:'\nTASK TURN: retain the original objective and checklist; work only on the next small batch. Never resend an action whose receipt is confirmed.'});
-          const parsed=extractActions(raw);finalText=parsed.text||raw;const status=taskStatus(finalText);
+          window.QuOLabNexusAgent?.acknowledgeEventDelta(ctx?.event_delta?.to_sequence);
+           const parsed=extractActions(raw);finalText=parsed.text||raw;const status=taskStatus(finalText);
           if(parsed.actions.length){
             lastExecution=await executeAIActionSequence(parsed.actions,ctx);ctx=await gatherAIContext();
             const changed=before!==JSON.stringify(ctx||{}),ack=lastExecution.ok&&lastExecution.results.length===parsed.actions.length;
@@ -2930,7 +2932,7 @@ CONTEXT (staged and size-limited): ${c}`;
 
 })();
 
-window.QUOLAB_NEXUS_BUILD = '2026-11-15-qnexusai-tool-knowledge-v1.6.0';
+window.QUOLAB_NEXUS_BUILD = '2026-11-15-qnexusai-v1.9.0';
 window.OPENQ_BUILD = window.QUOLAB_NEXUS_BUILD; // Compatibilidad temporal
 console.log('%cQuOLab Nexus build ' + window.QUOLAB_NEXUS_BUILD, 'color:#00ffdd');
 window.QuOLabNexus = QuOLabNexus;

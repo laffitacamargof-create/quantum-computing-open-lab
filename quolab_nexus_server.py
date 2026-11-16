@@ -1,173 +1,103 @@
+"""QuOLab Nexus HTTP engine with fail-closed isolated Python execution."""
+import os
+import sys
+from threading import BoundedSemaphore
+
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import sys, io, time, traceback
+
+from quolab_execution_sandbox import execute_isolated, is_safe, sandbox_runtime_status
+
+MAX_REQUEST_BYTES = 24 * 1024
+MAX_CODE_BYTES = 20 * 1024
+MAX_CONCURRENT_EXECUTIONS = 2
 
 app = Flask(__name__)
-CORS(app)
+app.config["MAX_CONTENT_LENGTH"] = MAX_REQUEST_BYTES
+_execution_slots = BoundedSemaphore(MAX_CONCURRENT_EXECUTIONS)
 
-# Seguridad básica
-BLOCKED = ['import os', 'import subprocess', 'import socket',
-           '__import__("os")', 'open(', 'os.system', 'shutil.']
+ALLOWED_ORIGINS = [
+    origin.strip() for origin in os.environ.get(
+        "QUOLAB_ALLOWED_ORIGINS",
+        "https://laffitacamargof-create.github.io,https://quantum-computing-open-lab.vercel.app,http://localhost:8000,http://localhost:5000,http://127.0.0.1:8000,http://127.0.0.1:5000"
+    ).split(",") if origin.strip()
+]
+CORS(app, origins=ALLOWED_ORIGINS, methods=["GET", "POST", "OPTIONS"],
+     allow_headers=["Content-Type"])
 
-def is_safe(code):
-    for b in BLOCKED:
-        if b in code:
-            return False, f'Operación no permitida: {b}'
-    return True, 'OK'
+def engine_health():
+    versions = {}
+    for module_name, display_name in (
+        ("qiskit", "qiskit"), ("qiskit_aer", "qiskit-aer"),
+        ("cirq", "cirq"), ("numpy", "numpy")
+    ):
+        try:
+            module = __import__(module_name)
+            versions[display_name] = getattr(module, "__version__", "ok")
+        except Exception:
+            versions[display_name] = "no instalado"
+    runtime = sandbox_runtime_status()
+    return {
+        "name": "QuOLab Nexus Motor",
+        "status": "online" if runtime["ready"] else "degraded",
+        "version": "2.2.0",
+        "python": sys.version.split()[0],
+        "libs": list(versions.keys()),
+        "versions": versions,
+        "sandbox": {
+            **runtime,
+            "policy": "fail-closed; no unsandboxed fallback",
+            "max_code_bytes": MAX_CODE_BYTES,
+            "max_concurrent_executions": MAX_CONCURRENT_EXECUTIONS
+        }
+    }
 
-@app.route('/')
+@app.errorhandler(413)
+def request_too_large(_error):
+    return jsonify({"success": False, "output": "Solicitud demasiado grande."}), 413
+
+@app.route("/")
 def index():
-    return jsonify({
-        'name': 'QuOLab Nexus Motor',
-        'status': 'online',
-        'version': '2.0',
-        'endpoints': ['/health', '/run', '/version']
-    })
+    return jsonify(engine_health())
 
-@app.route('/health')
+@app.route("/health")
 def health():
-    try:
-        import qiskit
-        qiskit_v = qiskit.__version__
-    except:
-        qiskit_v = 'no instalado'
-    try:
-        import cirq
-        cirq_v = cirq.__version__
-    except:
-        cirq_v = 'no instalado'
+    status = engine_health()
+    return jsonify(status), 200 if status["sandbox"]["ready"] else 503
+
+@app.route("/version")
+def version():
+    status = engine_health()
     return jsonify({
-        'status': 'ok',
-        'engine': 'QCOL-Render',
-        'libs': ['qiskit', 'cirq'],
-        'qiskit': qiskit_v,
-        'cirq': cirq_v,
+        "python": status["python"],
+        "libraries": status["versions"],
+        "sandbox": status["sandbox"]
     })
 
-@app.route('/version')
-def version():
-    try:
-        import qiskit, numpy
-        return jsonify({
-            'qiskit': qiskit.__version__,
-            'numpy': numpy.__version__,
-            'python': sys.version.split()[0]
-        })
-    except Exception as e:
-        return jsonify({'error': str(e)})
-
-@app.route('/run', methods=['POST', 'OPTIONS'])
+@app.route("/run", methods=["POST", "OPTIONS"])
 def run():
-    # CORS preflight
-    if request.method == 'OPTIONS':
-        r = jsonify({'ok': True})
-        r.headers['Access-Control-Allow-Origin'] = '*'
-        r.headers['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
-        r.headers['Access-Control-Allow-Headers'] = 'Content-Type'
-        return r
-
-    data = request.get_json()
-    if not data or 'code' not in data:
-        return jsonify({'success': False, 'output': 'No se recibió código'})
-
-    code = data.get('code', '')
-    if len(code) > 20000:
-        return jsonify({'success': False, 'output': 'Código muy largo'})
-
-    safe, msg = is_safe(code)
+    if request.method == "OPTIONS":
+        return ("", 204)
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({"success": False, "output": "JSON inválido."}), 400
+    code = data.get("code")
+    if not isinstance(code, str):
+        values = data.get("data")
+        code = values[0] if isinstance(values, list) and values and isinstance(values[0], str) else None
+    if code is None:
+        return jsonify({"success": False, "output": "Se requiere code o data[0] como texto."}), 400
+    if len(code.encode("utf-8")) > MAX_CODE_BYTES:
+        return jsonify({"success": False, "output": "Código demasiado largo (máximo 20 KB)."}), 413
+    safe, message = is_safe(code)
     if not safe:
-        return jsonify({'success': False, 'output': msg})
-
-    # Capturar output
-    old_out, old_err = sys.stdout, sys.stderr
-    sys.stdout = buf = io.StringIO()
-    sys.stderr = buf_err = io.StringIO()
-
-    t0 = time.time()
-    result = {}
-
+        return jsonify({"success": False, "output": message}), 400
+    if not _execution_slots.acquire(blocking=False):
+        return jsonify({"success": False, "output": "Servidor ocupado; inténtalo de nuevo."}), 429
     try:
-        import qiskit, cirq, numpy as np
-        from numpy import pi
-
-        exec_env = {
-            'qiskit': qiskit,
-            'cirq': cirq,
-            'np': np,
-            'pi': pi,
-            '__builtins__': __builtins__
-        }
-        exec(code, exec_env)
-
-        output = buf.getvalue()
-        warnings = buf_err.getvalue()
-        if warnings and 'DeprecationWarning' not in warnings:
-            output += '\n' + warnings
-
-        # Extraer probabilidades si hay circuito Qiskit
-        qc = exec_env.get('qc', None)
-        bloch_data = None
-
-        if qc is not None:
-            try:
-                from qiskit.quantum_info import Statevector
-                from qiskit_aer import AerSimulator
-                from qiskit import transpile
-
-                has_measure = any(
-                    inst.operation.name == 'measure'
-                    for inst in qc.data
-                )
-
-                if has_measure:
-                    sim = AerSimulator()
-                    qc_t = transpile(qc, sim)
-                    res = sim.run(qc_t, shots=1024).result()
-                    counts = res.get_counts()
-                    total = sum(counts.values())
-                    bloch_data = {
-                        'counts': counts,
-                        'probabilities': {k: v/total for k, v in counts.items()},
-                        'shots': 1024
-                    }
-                else:
-                    sv = Statevector(qc)
-                    probs = sv.probabilities_dict()
-                    bloch_data = {
-                        'probabilities': {k: float(v) for k, v in probs.items()}
-                    }
-            except Exception:
-                pass
-
-        result = {
-            'success': True,
-            'output': output.strip() if output.strip() else '✅ Ejecutado sin output',
-            'bloch': bloch_data,
-            'time': round(time.time() - t0, 3)
-        }
-
-    except SyntaxError as e:
-        result = {
-            'success': False,
-            'output': f'Error de sintaxis línea {e.lineno}:\n{e.msg}'
-        }
-    except Exception as e:
-        tb = traceback.format_exc()
-        lineas = [l for l in tb.split('\n')
-                  if 'File "<string>"' in l or 'Error' in l or 'error' in l.lower()]
-        result = {
-            'success': False,
-            'output': 'Error:\n' + '\n'.join(lineas) if lineas else str(e)
-        }
+        return jsonify(execute_isolated(code))
     finally:
-        sys.stdout = old_out
-        sys.stderr = old_err
+        _execution_slots.release()
 
-    return jsonify(result)
-
-
-if __name__ == '__main__':
-    import os
-    port = int(os.environ.get('PORT', 5000))
-    print(f'🚀 QuOLab Nexus Motor iniciando en puerto {port}')
-    app.run(host='0.0.0.0', port=port)
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
