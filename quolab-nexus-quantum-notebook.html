@@ -2403,10 +2403,7 @@ function buildCellEl(cell,i){
         <div class="cell-circuit-preview" id="cprev-${cell.id}"
           onclick="event.stopPropagation();toggleCircuitEditor('${cell.id}')"
           title="Interactive quantum circuit; drag gates between qubit wires">
-          ${hasCircuit
-            ? `<div class="circ-preview-hint">⚛ QUANTUM CIRCUIT — click for gate controls</div>${circuitSVG}`
-            : `<div class="circ-empty-hint">⚛ Visual Circuit Cell<br><span style="font-size:.4rem;color:rgba(0,200,100,.4);">Use the controls below to add gates</span></div>`
-          }
+          <div class="circ-preview-hint">⚛ QUANTUM CIRCUIT — drag gates between wires · click for controls</div>${circuitSVG}${!hasCircuit?'<div class="circ-empty-hint">Add gates from the palette below</div>':''}
         </div>
         ${editorControls}${warningHtml}
         <div class="cell-output-area" id="out-${cell.id}">${cell.output?`<div class="out-stdout">${escH(cell.output)}</div>`:''}</div>
