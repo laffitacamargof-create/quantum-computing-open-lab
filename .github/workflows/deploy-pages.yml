@@ -20,6 +20,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Configure GitHub Pages deployment
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
       - name: Assemble static site without backend or database files
         run: |
           rm -rf dist
@@ -28,6 +32,7 @@ jobs:
           cp quolab-nexus-*.html dist/
           cp quolab-nexus-*.js dist/
           test -s dist/index.html
+          test -s dist/quolab-nexus-quantum-notebook.html
           test -s dist/quolab-nexus-supabase-config.js
           test -s dist/quolab-nexus-tool-connector.js
           test ! -e dist/app.py
