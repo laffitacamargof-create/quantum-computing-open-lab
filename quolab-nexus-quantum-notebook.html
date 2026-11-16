@@ -632,7 +632,7 @@ function cellGateSymbol(g){return g.def?.sym||cellGateDef(g.id)?.sym||g.id||'?';
 function cellGateColor(g){return g.def?.bg||cellGateDef(g.id)?.bg||'#1a4a8a';}
 function buildInteractiveCircuitCell(cell){
  const cellArg="'"+String(cell.id).replace(/\\/g,"\\\\").replace(/'/g,"\\'")+"'";
- const cellArg="'"+String(cell.id).replace(/\\/g,"\\\\").replace(/'/g,"\\'")+"'";\n const data=cell.circuitData||{qubits:2,gates:[]},n=Math.max(1,Math.min(20,Number(data.qubits)||1)),gates=Array.isArray(data.gates)?data.gates:[];
+ const data=cell.circuitData||{qubits:2,gates:[]},n=Math.max(1,Math.min(20,Number(data.qubits)||1)),gates=Array.isArray(data.gates)?data.gates:[];
  const ROW=56,STEP=52,depth=Array(n).fill(0);
  const placed=gates.map((g,i)=>{let col=0;if(g.block){for(let q=g.q;q<=g.q2;q++)col=Math.max(col,depth[q]||0);for(let q=g.q;q<=g.q2;q++)depth[q]=col+(g.block.w||1);}else if(g.q3!==undefined){col=Math.max(depth[g.q]||0,depth[g.q2]||0,depth[g.q3]||0);[g.q,g.q2,g.q3].forEach(q=>depth[q]=col+1);}else if(g.q2!==undefined){col=Math.max(depth[g.q]||0,depth[g.q2]||0);depth[g.q]=depth[g.q2]=col+1;}else{col=depth[g.q]||0;depth[g.q]=col+1;}return {...g,_index:i,_col:col};});
  const total=Math.max(1,...depth),width=total*STEP+90;
@@ -659,7 +659,7 @@ function buildInteractiveCircuitCell(cell){
 }
 function cellGatePaletteHtml(cellId){
  const cellArg="'"+String(cellId).replace(/\\/g,"\\\\").replace(/'/g,"\\'")+"'";
- const cellArg="'"+String(cellId).replace(/\\/g,"\\\\").replace(/'/g,"\\'")+"'";\n let html='<div class="nb-circuit-palette-groups">';
+ let html='<div class="nb-circuit-palette-groups">';
  Object.entries(NB_CELL_GATE_GROUPS).forEach(([label,ids])=>{html+='<div class="nb-circuit-palette-group"><div class="nb-circuit-palette-title">'+label+'</div><div class="nb-circuit-palette">';
  ids.forEach(id=>{const d=NB_GATE_DEFS[id];html+='<button type="button" class="nb-palette-gate" draggable="true" data-gate="'+id+'" style="--gate-color:'+d.bg+'" ondragstart="startCellGateDrag(event,'+cellArg+','+("'"+id+"'")+')" ondragend="endCellGateDrag()" onclick="event.stopPropagation();selectCellGate('+cellArg+','+("'"+id+"'")+')">'+d.sym+'</button>';});
  html+='</div></div>';});
