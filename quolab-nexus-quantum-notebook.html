@@ -2370,7 +2370,7 @@ function buildCellEl(cell,i){
     const circuitToolbar = `<div class="cell-toolbar">
         <button class="ct-btn" onclick="event.stopPropagation();moveCellUp('${cell.id}')" title="Move up">↑</button>
         <button class="ct-btn" onclick="event.stopPropagation();moveCellDown('${cell.id}')" title="Move down">↓</button>
-        ${_expositionMode ? '' : `<button class="ct-btn" onclick="event.stopPropagation();openCircuitEditor('${cell.id}')" title="Edit only in Quantum Open Lab">EDIT IN OPEN LAB ↗</button><button class="ct-btn" onclick="event.stopPropagation();openCircuitEditor('${cell.id}')" title="Open in Quantum Open Lab">Open Lab ↗</button><button class="ct-btn danger" onclick="event.stopPropagation();deleteCell('${cell.id}')" title="Delete">✕</button>`}
+        ${_expositionMode ? '' : `<button class="ct-btn" onclick="event.stopPropagation();openCircuitEditor('${cell.id}')" title="Edit only in Quantum Open Lab">EDIT IN OPEN LAB ↗</button><button class="ct-btn danger" onclick="event.stopPropagation();deleteCell('${cell.id}')" title="Delete">✕</button>`}
       </div>`;
     const restoreBtn = '';
     const circuitSVG = buildInteractiveCircuitCell(cell);
