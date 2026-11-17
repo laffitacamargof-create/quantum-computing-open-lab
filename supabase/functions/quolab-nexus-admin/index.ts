@@ -29,7 +29,7 @@ function reply(status: number, body: Record<string, unknown>, origin: string | n
 function rateLimited(req: Request, action: string) {
   const ip = req.headers.get("cf-connecting-ip") || req.headers.get("x-real-ip") ||
     req.headers.get("x-forwarded-for")?.split(",").at(-1)?.trim() || "unknown";
-  const limit = action === "repo_is_founder" ? 5 : founderActions.has(action) ? 10 : 20;
+  const limit = action === "repo_is_founder" || action === "repo_founder_session" ? 5 : founderActions.has(action) ? 10 : 20;
   const key = ip + ":" + action, now = Date.now(), bucket = buckets.get(key);
   if (!bucket || now - bucket.start >= WINDOW) {
     buckets.set(key, { start: now, count: 1 });
@@ -100,6 +100,20 @@ Deno.serve(async (req: Request) => {
       const { data, error } = await db.rpc("repo_is_founder", { p_key: key });
       if (error) return reply(503, { error: "authorization_check_failed" }, origin);
       return reply(200, { data: data === true }, origin);
+    }
+    if (action === "repo_founder_session") {
+      const key = typeof params.p_key === "string" ? params.p_key : "";
+      if (key.length < 8 || key.length > 512) return reply(403, { error: "founder_key_required" }, origin);
+      const { data, error } = await db.rpc("repo_create_founder_session", { p_key: key });
+      if (error) return reply(403, { error: "forbidden" }, origin);
+      return reply(200, { data }, origin);
+    }
+    if (action === "repo_founder_revoke") {
+      const token = typeof params.p_key === "string" ? params.p_key : "";
+      if (token.length < 32 || token.length > 512) return reply(400, { error: "invalid_session" }, origin);
+      const { data, error } = await db.rpc("repo_revoke_founder_session", { p_token: token });
+      if (error) return reply(400, { error: "session_revoke_failed" }, origin);
+      return reply(200, { data }, origin);
     }
     if (founderActions.has(action)) {
       const key = action === "quantum_config_save" ? params.p_founder_key : params.p_key;
