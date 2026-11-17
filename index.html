@@ -1898,8 +1898,17 @@ class QuOLabNexusConfigSyncReader {
         body: JSON.stringify({ action: 'repo_founder_session', params: { p_key: password } }), cache: 'no-store'
       });
       const payload = await response.json().catch(() => ({}));
-      if (!response.ok || typeof payload.data !== 'string' || payload.data.length < 32)
-        throw new Error(response.status === 429 ? 'Too many attempts. Wait and retry.' : 'Founder credential rejected');
+      if (!response.ok || typeof payload.data !== 'string' || payload.data.length < 32) {
+        const authErrors = {
+          backend_not_configured: 'El servicio de autenticación de fundador no está configurado en Supabase.',
+          authorization_check_failed: 'Supabase no pudo verificar la credencial de fundador.',
+          founder_key_required: 'La credencial de fundador está incompleta.',
+          forbidden: 'La contraseña de fundador no coincide.',
+          origin_not_allowed: 'El sitio actual no está autorizado para iniciar sesión como fundador.',
+          missing_api_key: 'Falta la clave pública de conexión con Supabase.'
+        };
+        throw new Error(response.status === 429 ? 'Demasiados intentos. Espera un minuto y vuelve a probar.' : (authErrors[payload.error] || ('Falló la autenticación de fundador (HTTP ' + response.status + ').')));
+      }
       sessionStorage.setItem('qnexus_founder_session', payload.data);
       curUser = { name: 'Founder', username: 'founder', role: 'founder', canUpload: true };
       localStorage.setItem('openq_cur_user', JSON.stringify(curUser));

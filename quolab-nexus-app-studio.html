@@ -834,9 +834,11 @@
     window.addEventListener('message', async (event) => {
         // Only process pyCall if the origin is the same (blob:iframe origin is the same)
         if (event.data.type === 'pyCall') {
-            // Verify origin to prevent abuse
-            if (isEmbedded && parentOrigin && event.origin !== parentOrigin) return;
-            if (!isEmbedded && event.origin !== window.location.origin && window.location.origin !== 'null') return;
+            // srcdoc runners can have an opaque ('null') origin; validate their exact Window.
+            const runner = document.getElementById('app-iframe');
+            const preview = document.getElementById('preview-iframe');
+            if (event.source !== runner?.contentWindow && event.source !== preview?.contentWindow) return;
+            if (event.origin !== window.location.origin && event.origin !== 'null') return;
             
             const { id, func, args, serverUrl, pythonCode } = event.data;
             try {
@@ -849,9 +851,9 @@
                     (result.startsWith('[') && result.endsWith(']'))) {
                     try { result = JSON.parse(result); } catch(e) {}
                 }
-                event.source.postMessage({ type: 'pyResult', id: id, result: result }, event.origin);
+                event.source.postMessage({ type: 'pyResult', id: id, result: result }, '*');
             } catch(err) {
-                event.source.postMessage({ type: 'pyResult', id: id, error: err.message }, event.origin);
+                event.source.postMessage({ type: 'pyResult', id: id, error: err.message }, '*');
             }
         }
     });
@@ -880,7 +882,7 @@
                     else resolve(event.data.result);
                 };
                 window.addEventListener('message', handler);
-                window.parent.postMessage({ type: 'pyCall', id: msgId, func: funcName, args: args, serverUrl: window.__serverUrl, pythonCode: window.__pyCode }, location.origin);
+                window.parent.postMessage({ type: 'pyCall', id: msgId, func: funcName, args: args, serverUrl: window.__serverUrl, pythonCode: window.__pyCode }, '*');
             });
         };
         console.log('QuOLab local app bridge ready; Python server:', window.__serverUrl || 'not configured');
