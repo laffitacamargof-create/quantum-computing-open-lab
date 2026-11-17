@@ -652,106 +652,17 @@ function visualCircuitCode(data){
 function syncCircuitCellFromCode(cell,source){
  const parsed=parseQiskitCircuitCode(source);cell.hiddenCode=String(source||'');cell.code='';cell.circuitData=parsed.circuitData;cell.visualWarnings=parsed.warnings;return parsed;
 }
-let _cellPaletteDrag=null,_cellGateDrag=null,_cellJustDragged=false,_cellSelectedGate=null;
-const NB_CELL_GATE_GROUPS={
- '1 QUBIT':['H','X','Y','Z','S','T','SX','RX','RY','RZ'],
- '2 QUBITS':['CX','CZ','SWAP'],
- '3 QUBITS':['CCX','CSWAP'],
- 'MEASUREMENT':['M']
-};
-function cellGateDef(id){return NB_GATE_DEFS[id]||null;}
-function cellGateSymbol(g){return g.def?.sym||cellGateDef(g.id)?.sym||g.id||'?';}
-function cellGateColor(g){return g.def?.bg||cellGateDef(g.id)?.bg||'#1a4a8a';}
-function buildInteractiveCircuitCell(cell){
- const data=cell.circuitData||{qubits:2,gates:[]};
- const n=Math.max(1,Math.min(20,Number(data.qubits)||1));
- const gates=Array.isArray(data.gates)?data.gates:[];
- const ROW=56,STEP=52,depth=Array(n).fill(0);
- const placed=gates.map(g=>{
-  let col;
-  if(g.block){col=0;for(let q=g.q;q<=g.q2;q++)col=Math.max(col,depth[q]||0);const w=g.block.w||1;for(let q=g.q;q<=g.q2;q++)depth[q]=col+w;}
-  else if(g.q3!==undefined){col=Math.max(depth[g.q]||0,depth[g.q2]||0,depth[g.q3]||0);[g.q,g.q2,g.q3].forEach(q=>depth[q]=col+1);}
-  else if(g.q2!==undefined){col=Math.max(depth[g.q]||0,depth[g.q2]||0);depth[g.q]=depth[g.q2]=col+1;}
-  else{col=depth[g.q]||0;depth[g.q]=col+1;}
-  return {...g,_col:col};
- });
- const totalCols=Math.max(...depth,1),wireWidth=totalCols*STEP+70;
- let html='<div class="nb-original-circuit-scroll"><div class="nb-original-circuit" style="min-width:'+wireWidth+'px;width:'+wireWidth+'px;position:relative">';
- for(let q=0;q<n;q++)html+='<div class="q-row"><div class="q-label">q['+q+']</div><div class="q-wire" aria-readonly="true"></div></div>';
- placed.forEach(g=>{
-  const left=g._col*STEP+15,color=cellGateColor(g),sym=cellGateSymbol(g);
-  if(g.block){
-   const bw=(g.block.w||1)*STEP-10,bh=(g.q2-g.q+1)*ROW-8;
-   html+='<div class="qcol-block" title="'+escH(g.block.tip||g.block.label||'')+'" aria-label="'+escH(g.block.tip||g.block.label||'')+'" style="position:absolute;left:'+left+'px;top:'+(g.q*ROW+4)+'px;width:'+bw+'px;height:'+bh+'px;box-sizing:border-box;background:linear-gradient(135deg,#4a148c,#8e24aa);border:1.5px solid #ce93d8;border-radius:8px;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;font:700 12px monospace;text-align:center;overflow:hidden;padding:2px">'+escH(g.block.label||'BLOCK')+'<span style="font-weight:400;font-size:9px;opacity:.85">'+escH(g.block.sub||'')+'</span></div>';
-   return;
-  }
-  if(g.q3!==undefined){
-   const qs=[g.q,g.q2,g.q3].sort((a,b)=>a-b),topY=qs[0]*ROW,height=(qs[2]-qs[0])*ROW,gCol=color;
-   let svg='';
-   if(g.id==='CCX'){
-    svg='<svg class="triple-gate-svg" width="52" height="'+(ROW+height)+'" viewBox="0 0 52 '+(ROW+height)+'" aria-label="'+escH(g.id)+'"><line x1="26" y1="0" x2="26" y2="'+(ROW+height)+'" stroke="'+gCol+'" stroke-width="2.5"/><circle cx="26" cy="'+(ROW/2)+'" r="8" fill="'+gCol+'" stroke="rgba(255,255,255,.9)" stroke-width="1.5"/><circle cx="26" cy="'+(ROW/2+(qs[1]-qs[0])*ROW)+'" r="8" fill="'+gCol+'" stroke="rgba(255,255,255,.9)" stroke-width="1.5"/><circle cx="26" cy="'+(ROW/2+height)+'" r="14" fill="none" stroke="'+gCol+'" stroke-width="2.5"/><line x1="18" y1="'+(ROW/2+height)+'" x2="34" y2="'+(ROW/2+height)+'" stroke="'+gCol+'" stroke-width="2"/><line x1="26" y1="'+(ROW/2+height-10)+'" x2="26" y2="'+(ROW/2+height+10)+'" stroke="'+gCol+'" stroke-width="2"/></svg>';
-   }else{
-    svg='<svg class="triple-gate-svg" width="52" height="'+(ROW+height)+'" viewBox="0 0 52 '+(ROW+height)+'" aria-label="'+escH(g.id)+'"><line x1="26" y1="0" x2="26" y2="'+(ROW+height)+'" stroke="'+gCol+'" stroke-width="2.5"/><circle cx="26" cy="'+(ROW/2)+'" r="8" fill="'+gCol+'" stroke="rgba(255,255,255,.9)" stroke-width="1.5"/><path d="M18 '+(ROW/2+(qs[1]-qs[0])*ROW-6)+'l16 12 M34 '+(ROW/2+(qs[1]-qs[0])*ROW-6)+'L18 '+(ROW/2+(qs[1]-qs[0])*ROW+6)+' M18 '+(ROW/2+height-6)+'l16 12 M34 '+(ROW/2+height-6)+'L18 '+(ROW/2+height+6)+'" stroke="'+gCol+'" stroke-width="2"/></svg>';
-   }
-   html+='<div class="triple-gate-container" style="left:'+left+'px;top:'+topY+'px">'+svg+'</div>';
-  }else if(g.q2!==undefined){
-   const topY=g.q*ROW,height=(g.q2-g.q)*ROW,gCol=color;
-   let svg='';
-   if(g.id==='CX'){
-    svg='<svg class="multi-gate-svg" width="48" height="'+(ROW+height)+'" viewBox="0 0 48 '+(ROW+height)+'" aria-label="'+escH(g.id)+'"><line x1="24" y1="0" x2="24" y2="'+(ROW+height)+'" stroke="'+gCol+'" stroke-width="2.5"/><circle cx="24" cy="'+(ROW/2)+'" r="8" fill="'+gCol+'" stroke="rgba(255,255,255,.9)" stroke-width="1.5"/><circle cx="24" cy="'+(ROW/2+height)+'" r="14" fill="none" stroke="'+gCol+'" stroke-width="2.5"/><line x1="16" y1="'+(ROW/2+height)+'" x2="32" y2="'+(ROW/2+height)+'" stroke="'+gCol+'" stroke-width="2"/><line x1="24" y1="'+(ROW/2+height-10)+'" x2="24" y2="'+(ROW/2+height+10)+'" stroke="'+gCol+'" stroke-width="2"/></svg>';
-   }else if(g.id==='CZ'){
-    svg='<svg class="multi-gate-svg" width="48" height="'+(ROW+height)+'" viewBox="0 0 48 '+(ROW+height)+'" aria-label="'+escH(g.id)+'"><line x1="24" y1="0" x2="24" y2="'+(ROW+height)+'" stroke="'+gCol+'" stroke-width="2.5"/><circle cx="24" cy="'+(ROW/2)+'" r="8" fill="'+gCol+'" stroke="rgba(255,255,255,.9)" stroke-width="1.5"/><circle cx="24" cy="'+(ROW/2+height)+'" r="8" fill="'+gCol+'" stroke="rgba(255,255,255,.9)" stroke-width="1.5"/></svg>';
-   }else{
-    svg='<svg class="multi-gate-svg" width="48" height="'+(ROW+height)+'" viewBox="0 0 48 '+(ROW+height)+'" aria-label="'+escH(g.id)+'"><line x1="24" y1="0" x2="24" y2="'+(ROW+height)+'" stroke="'+gCol+'" stroke-width="2.5"/><path d="M16 '+(ROW/2-6)+'l16 12 M32 '+(ROW/2-6)+'L16 '+(ROW/2+6)+' M16 '+(ROW/2+height-6)+'l16 12 M32 '+(ROW/2+height-6)+'L16 '+(ROW/2+height+6)+'" stroke="'+gCol+'" stroke-width="2"/></svg>';
-   }
-   html+='<div class="multi-gate-container" style="left:'+left+'px;top:'+topY+'px">'+svg+'</div>';
-  }else{
-   const display=sym.length>4?sym.slice(0,3):sym;
-   html+='<div class="placed-gate" aria-readonly="true" style="left:'+left+'px;top:'+(g.q*ROW+ROW/2)+'px;cursor:default"><div class="pg-box" style="background:'+color+';box-shadow:0 0 6px '+color+'"><span class="pg-sym">'+escH(display)+'</span></div></div>';
-  }
- });
- html+='</div></div>';
- return html;
-}
-function cellGatePaletteHtml(cellId){
- let html='<div class="nb-cell-palette"><div class="nb-cell-palette-hdr">GATES · VIEW ONLY</div><div class="nb-cell-palette-body">';
- Object.entries(NB_CELL_GATE_GROUPS).forEach(([label,ids])=>{
-  html+='<div class="nb-cell-pal-sec"><div class="nb-cell-pal-label">'+label+'</div><div class="nb-cell-pal-grid">';
-  ids.forEach(id=>{const d=NB_GATE_DEFS[id];if(!d)return;html+='<button type="button" class="nb-cell-pal-gate" disabled aria-disabled="true" tabindex="-1" data-gate="'+id+'" style="background:'+d.bg+';box-shadow:0 0 6px '+d.bg+';opacity:.72;cursor:not-allowed"><span class="nb-cell-pal-sym">'+d.sym+'</span><span class="nb-cell-pal-name">'+id+'</span></button>';});
-  html+='</div></div>';
- });
- return html+'</div></div>';
-}
-function selectCellGate(){notify('Circuit editing is available only in Quantum Open Lab');}
-function cellWireTap(){return false;}
-function startCellGateDrag(event,cellId,gateId){event.stopPropagation();_cellPaletteDrag={cellId,gateId};_cellGateDrag=null;event.dataTransfer.effectAllowed='copy';event.dataTransfer.setData('text/plain',gateId);}
-function endCellGateDrag(){_cellPaletteDrag=null;}
-function startCellExistingGateDrag(event,cellId,uid){event.stopPropagation();_cellJustDragged=false;_cellGateDrag={cellId,uid};_cellPaletteDrag=null;event.dataTransfer.effectAllowed='move';event.dataTransfer.setData('text/plain','cell-gate:'+uid);}
-function endCellExistingGateDrag(){if(_cellGateDrag){_cellJustDragged=true;setTimeout(()=>{_cellJustDragged=false;},350);}_cellGateDrag=null;document.querySelectorAll('.nb-cell-wire').forEach(w=>w.classList.remove('nb-wire-drop'));}
-function cellWireDragOver(event){event.preventDefault();event.dataTransfer.dropEffect=_cellGateDrag?'move':'copy';event.currentTarget.classList.add('nb-wire-drop');}
-function cellWireDragLeave(event){event.currentTarget.classList.remove('nb-wire-drop');}
-function cellWireDrop(event,cellId,qubit){event.preventDefault();event.stopPropagation();event.currentTarget.classList.remove('nb-wire-drop');if(_cellGateDrag&&_cellGateDrag.cellId===cellId){moveVisualGate(cellId,_cellGateDrag.uid,qubit);_cellGateDrag=null;return;}const gateId=(_cellPaletteDrag?.cellId===cellId?_cellPaletteDrag.gateId:event.dataTransfer.getData('text/plain'))||'';_cellPaletteDrag=null;if(NB_GATE_DEFS[gateId]){_cellSelectedGate=null;placeVisualGate(cellId,gateId,qubit);}}
-function normalizeCellMeasurements(gates){const byQ=new Map(),other=[];gates.forEach(g=>{if(g.id==='M')byQ.set(g.q,g);else other.push(g);});return [...other,...byQ.values()];}
-function placeVisualGate(){notify('Circuit editing is locked in Quantum Notebook. Open Quantum Open Lab.');}
-function addVisualGate(){notify('Circuit editing is locked in Quantum Notebook. Open Quantum Open Lab.');}
-function moveVisualGate(){notify('Circuit editing is locked in Quantum Notebook. Open Quantum Open Lab.');}
-function cellGateClick(){notify('Circuit editing is locked in Quantum Notebook. Open Quantum Open Lab.');}
-function removeVisualGateByUid(){notify('Circuit editing is locked in Quantum Notebook. Open Quantum Open Lab.');}
-function removeVisualGate(){notify('Circuit editing is locked in Quantum Notebook. Open Quantum Open Lab.');}
-function commitVisualCell(){notify('Circuit editing is locked in Quantum Notebook. Open Quantum Open Lab.');}
-function addVisualQubit(){notify('Circuit editing is locked in Quantum Notebook. Open Quantum Open Lab.');}
-function removeVisualQubit(){notify('Circuit editing is locked in Quantum Notebook. Open Quantum Open Lab.');}
-function clearVisualCircuit(){notify('Circuit editing is locked in Quantum Notebook. Open Quantum Open Lab.');}
 function openCircuitEditor(cellId){
  const cell=cells.find(c=>c.id===cellId);
  if(!cell||cell.type!=='circuit')return;
  _editingCellId=cellId;
- const source=(cell.hiddenCode||'').trim()||visualCircuitCode(cell.circuitData||{qubits:2,gates:[]});
- postCore('OPENQ_OPEN_ARCHITECT_EDIT',{cellId,code:source,circuitData:cell.circuitData||{qubits:2,gates:[]}});
- notify('Opening this cell in Quantum Open Lab. Save and return to synchronize it.');
+ postCore('OPENQ_OPEN_ARCHITECT_EDIT',{
+   cellId,
+   code:        cell.hiddenCode || '',
+   circuitData: cell.circuitData || null
+ });
+ notify('⚛ Opening circuit editor...');
 }
-function toggleCircuitEditor(cellId){const cell=cells.find(c=>c.id===cellId);if(!cell||cell.type!=='circuit')return;openCircuitEditor(cellId);}
-function buildCircuitEditorControls(cell){return '';}
 
 // ── NAVIGATION ────────────────────────────────────────────────
 function goBack(){
@@ -2226,7 +2137,7 @@ function changeCellType(id){if(_expositionMode)return;const cell=cells.find(c=>c
 function clearCellContent(id) {
   const cell = cells.find(c => c.id === id);
   if (!cell) return;
-  if(cell.type==='circuit'){clearVisualCircuit(id);return;}
+  if(cell.type==='circuit'){cell.circuitData={qubits:Math.max(1,cell.circuitData?.qubits||1),gates:[]};cell.hiddenCode='';cell.visualWarnings=[];cell.output='';cell._outputData=null;renderCells();focusCell(id);saveCurrentNb(false);return;}
   cell.code = '';
   cell.errorLine = null;
   const ta = document.getElementById('ta-'+id) || document.getElementById('mta-'+id);
@@ -2411,7 +2322,7 @@ function buildCellEl(cell,i){
         ${_expositionMode ? '' : `<button class="ct-btn danger" onclick="event.stopPropagation();deleteCell('${cell.id}')" title="Delete">✕</button>`}
       </div>`;
     const restoreBtn = '';
-    const circuitSVG = buildInteractiveCircuitCell(cell);
+    const circuitSVG = hasCircuit ? buildCircuitFromData(cell.circuitData) : '';
     const outContent = cell.output ? `<div class="cell-output-area" id="out-${cell.id}">${'<!-- output -->'}</div>` : '';
     el.className='nb-cell circ-cell'+(curCellId===cell.id?' active':'');
     el.innerHTML=`${circuitToolbar}
@@ -2421,7 +2332,27 @@ function buildCellEl(cell,i){
           onclick="event.stopPropagation();runCell('${cell.id}')" title="${hasCode?'Run circuit':'Open Quantum Open Lab to edit first'}">▶</button>${`<button class="cell-run-btn cell-noise-btn" onclick="event.stopPropagation();noiseRun('${cell.id}')" title="Run with noise now (this cell's noise settings)" aria-label="Run with noise">🔊</button><button class="cell-run-btn cell-noise-cfg" onclick="event.stopPropagation();noiseCell('${cell.id}')" title="Noise settings for this cell" aria-label="Noise settings">⚙</button>`}</div>
       </div>
       <div class="cell-body">
-        <div class="cell-circuit-preview" id="cprev-${cell.id}" title="Tap to open and edit in Quantum Open Lab" role="button" tabindex="0" aria-label="Open this circuit in Quantum Open Lab" data-action-label="EDIT IN QUANTUM OPEN LAB ↗" onclick="event.stopPropagation();openCircuitEditor('${cell.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openCircuitEditor('${cell.id}')}" >${circuitSVG}</div>
+        <div class="cell-type-badge ctb-circ">
+          ⚛ Visual Circuit${hasCode?' · <span style="color:rgba(0,200,100,.5);font-size:.38rem;">code ready</span>':' · <span style="color:rgba(255,180,0,.6);font-size:.38rem;">no code</span>'}
+        </div>
+        <div class="cell-circuit-preview" id="cprev-${cell.id}"
+          onclick="event.stopPropagation();openCircuitEditor('${cell.id}')"
+          title="Click to edit the circuit">
+          ${hasCircuit
+            ? `<div class="circ-preview-hint">⚛ QUANTUM CIRCUIT — click to edit</div>${circuitSVG}`
+            : `<div class="circ-empty-hint" onclick="event.stopPropagation();openCircuitEditor('${cell.id}')">
+                ⚛ Visual Circuit Cell<br>
+                <span style="font-size:.4rem;color:rgba(0,200,100,.4);">Click to edit the visual circuit</span>
+              </div>`
+          }
+        </div>
+        <div style="display:flex;gap:.4rem;margin-top:.3rem;align-items:center;">
+          <button class="circ-edit-btn" onclick="event.stopPropagation();openCircuitEditor('${cell.id}')">
+            ✏ Edit Circuit
+          </button>
+          ${hasCode?`<button class="circ-edit-btn" style="background:rgba(0,136,255,.1);border-color:rgba(0,136,255,.3);color:var(--bl2);"
+            onclick="event.stopPropagation();runCell('${cell.id}')">▶ Run</button>`:''}
+        </div>
         <div class="cell-output-area" id="out-${cell.id}">${cell.output?`<div class="out-stdout">${escH(cell.output)}</div>`:''}</div>
         ${restoreBtn}
       </div>`;
@@ -2623,19 +2554,9 @@ window.addEventListener('message',e=>{
     const cellId = d.cellId || _editingCellId;
     const cell   = cells.find(c => c.id === cellId);
     if(cell && cell.type === 'circuit'){
-      cell.hiddenCode = typeof d.code === 'string' ? d.code : (cell.hiddenCode || '');
-      // Open Lab versions may return source without the visual payload. Rebuild the
-      // visual model from Qiskit source instead of leaving a circuit cell unusable.
-      const returnedData = d.circuitData && typeof d.circuitData === 'object' ? d.circuitData : null;
-      const parsedReturn = !returnedData && cell.hiddenCode ? parseQiskitCircuitCode(cell.hiddenCode) : null;
-      const incomingQubits = Number(returnedData?.qubits);
-      const incomingGates = Array.isArray(returnedData?.gates) ? returnedData.gates : null;
-      cell.circuitData = returnedData && incomingGates
-        ? { qubits: Math.max(1, Math.min(20, Number.isFinite(incomingQubits) ? incomingQubits : 1)), gates: incomingGates }
-        : (parsedReturn?.circuitData || cell.circuitData || { qubits: 1, gates: [] });
-      if (parsedReturn?.warnings?.length) cell.visualWarnings = parsedReturn.warnings;
+      cell.hiddenCode  = d.code        || '';
+      cell.circuitData = d.circuitData || null;
       cell.output      = '';
-      cell.editorOpen = true;
       cell.exec_count  = null;
       cell.errorLine   = null;
       _editingCellId   = null;
