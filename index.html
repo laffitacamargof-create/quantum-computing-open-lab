@@ -1104,7 +1104,7 @@ class QuOLabNexusConfigSyncReader {
 
   window.addEventListener('message', e => {
     const d = e.data; if (!d?.type) return;
-    if (e.origin !== location.origin && e.origin !== 'null') return;
+    if (e.origin !== location.origin) return;
     // Protocolo central QuOLab Nexus: acepta NEXUS_, OPENQ_ y QCOL_ durante la migración.
     if (window.QuOLabNexusCore) Object.assign(d, window.QuOLabNexusCore.normalizeIncoming(d));
     else if (typeof d.type === 'string' && /^(?:NEXUS|QCOL)_/.test(d.type)) d.type = 'OPENQ_' + d.type.replace(/^(?:NEXUS|QCOL)_/, '');
@@ -2863,7 +2863,13 @@ CONTEXT (staged and size-limited): ${c}`;
     }
 
     const saved = localStorage.getItem('openq_cur_user');
-    if (saved) try { curUser = JSON.parse(saved); } catch(e) {}
+    if (saved) try {
+      curUser = JSON.parse(saved);
+      if (curUser?.role === 'founder' && !sessionStorage.getItem('qnexus_founder_session')) {
+        curUser = null;
+        localStorage.removeItem('openq_cur_user');
+      }
+    } catch(e) { curUser = null; }
 
     await dbInit().then(() => {
         renderMenu();
@@ -2889,10 +2895,7 @@ CONTEXT (staged and size-limited): ${c}`;
         if (key === 'ai_config' || key === 'deepseek_config') {
           setupAI();
         }
-        if (key === 'founder_password') {
-          console.log('🔑 Founder password actualizada en la nube');
-        }
-      };
+       };
       
       const checkConfigSyncReady = setInterval(() => {
         if (window.configSync && window.configSync.isReady) {
