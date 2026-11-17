@@ -227,19 +227,24 @@ class QuOLabNexusQuantumSync {
         throw new Error('Tipo de aplicación no permitido');
     }
 
-    async syncAll(force = false) {
-        if (this._syncInProgress && !force) return;
+    async syncAll() {
+        // A single in-flight promise prevents overlapping refreshes even when
+        // visibility events, UI callbacks and the retry poll fire together.
+        if (this._syncPromise) return this._syncPromise;
         this._syncInProgress = true;
-        try {
-            await this.syncPendingApps();
-            await this.syncPublishedApps();
-            this._lastSync = Date.now();
-            if (this.onSyncComplete) this.onSyncComplete();
-        } catch (error) {
-            console.error('Sync error:', error.message);
-        } finally {
-            this._syncInProgress = false;
-        }
+        this._syncPromise = (async () => {
+            try {
+                await Promise.all([this.syncPendingApps(), this.syncPublishedApps()]);
+                this._lastSync = Date.now();
+                if (this.onSyncComplete) this.onSyncComplete();
+            } catch (error) {
+                console.error('Sync error:', error.message);
+            } finally {
+                this._syncInProgress = false;
+                this._syncPromise = null;
+            }
+        })();
+        return this._syncPromise;
     }
 
     async syncPendingApps() {
