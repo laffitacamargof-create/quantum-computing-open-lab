@@ -979,7 +979,9 @@ function openAppInStudio(app, sourceType) {
         attempts++;
         if (studioIframeReady && studioIframe && studioIframe.contentWindow) {
             clearInterval(timer);
-            parent.postMessage({ type: 'NEXUS_STUDIO_COMMAND', message: command }, location.origin);
+            // Send the selected app directly to the nested Studio iframe.
+            // Studio still reports its responses through the authenticated top-level relay.
+            studioIframe.contentWindow.postMessage(command, location.origin);
         } else if (attempts >= 40) {
             clearInterval(timer);
             showNotification('Quantum App Studio did not become ready. Try opening it again.');
@@ -1242,12 +1244,14 @@ function openQuantumAppStudio() {
     setTimeout(function() {
         var sf = document.getElementById('studioIframe');
         if (sf && sf.contentWindow) {
-            parent.postMessage({ type: 'NEXUS_STUDIO_COMMAND', message: { type: 'QCOL_REQUEST_STUDIO_CONNECTION' } }, location.origin);
+            // The Studio iframe is nested directly inside this Puzzle frame. Send the
+            // handshake to that exact frame instead of depending on an index relay.
+            sf.contentWindow.postMessage({ type: 'QCOL_REQUEST_STUDIO_CONNECTION' }, location.origin);
             if (window.quantumSync && window.quantumSync.isReady) {
                 window.quantumSync.connectStudio(sf);
                 const url = compilerUrl || localStorage.getItem('qcol_colab_url') || '';
                 if (url) {
-                    parent.postMessage({ type: 'NEXUS_STUDIO_COMMAND', message: { type: 'QCOL_SET_COMPILER_URL', url: url } }, location.origin);
+                            sf.contentWindow.postMessage({ type: 'QCOL_SET_COMPILER_URL', url: url }, location.origin);
                 }
             }
         }
