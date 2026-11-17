@@ -553,7 +553,7 @@ body::before{
 (async function initQuantumSync() {
     try {
         const { QUOLAB_NEXUS_SUPABASE_CONFIG } = await import('./quolab-nexus-supabase-config.js');
-        const { default: QuOLabNexusQuantumSync } = await import('./quolab-nexus-quantum-sync.js?v=20261117-cloud-auth-1');
+        const { default: QuOLabNexusQuantumSync } = await import('./quolab-nexus-quantum-sync.js?v=20261117-founder-edit-2');
         
         console.log('📦 Módulos importados correctamente');
         console.log('📌 Supabase endpoint:', QUOLAB_NEXUS_SUPABASE_CONFIG.supabaseUrl);
@@ -723,6 +723,7 @@ function hasFounderSession() {
     catch (e) { return false; }
 }
 function canManageApps() { return isFounder || hasFounderSession(); }
+try { if (canManageApps()) document.getElementById('adminBar')?.classList.add('show'); } catch (e) {}
 let activeTagFilter = "all";
 let studioIframeReady = false;
 let studioIframeLoaded = false;
@@ -887,7 +888,7 @@ async function renderPublishedApps() {
                 <div class="card-header"><span class="badge-app">⚛️ QUANTUM APP</span></div>
                 <div class="card-body">
                     <div class="card-title">${escapeHtml(app.title || 'Untitled App')}</div>
-                    <div class="card-desc">${escapeHtml(app.desc || 'No description')}</div>
+                    <div class="card-desc">${escapeHtml(app.description || app.desc || 'No description')}</div>
                     <div class="card-meta"><span>⏱️ ${app.duration || 8} min</span></div>
                     <div class="tags">${tagsHtml}</div>
                     <div class="card-actions">
