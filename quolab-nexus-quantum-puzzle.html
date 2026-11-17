@@ -718,6 +718,10 @@ body::before{
 let currentUser = null;
 let isAdmin = false;
 let isFounder = false;
+function hasFounderSession() {
+    try { return !!sessionStorage.getItem('qnexus_founder_session'); }
+    catch (e) { return false; }
+}
 let activeTagFilter = "all";
 let studioIframeReady = false;
 let studioIframeLoaded = false;
@@ -735,7 +739,10 @@ async function getPublishedApps() {
     // Supabase (or its cache of that same public repository).
     // Private Quantum App Studio projects must never be read or merged here.
     if (window.quantumSync && Array.isArray(window.quantumSync.publishedApps)) {
-        return window.quantumSync.publishedApps;
+        // Trust an initialized cloud result (including a genuinely empty repository).
+        if (window.quantumSync.isReady || window.quantumSync.publishedApps.length) {
+            return window.quantumSync.publishedApps;
+        }
     }
     try {
         const cached = JSON.parse(localStorage.getItem('quolab_nexus_published_apps_cache') || '[]');
@@ -872,7 +879,7 @@ async function renderPublishedApps() {
     filtered.forEach(app => {
         const tagsArray = (app.tags || "").split(',').map(t => t.trim()).filter(t => t);
         const tagsHtml = tagsArray.map(tag => `<span class="tag">#${escapeHtml(tag)}</span>`).join('');
-        const canDelete = isFounder;
+        const canDelete = isFounder || hasFounderSession();
         const delBtn = canDelete ? `<button class="btn-icon" onclick="window.deletePublishedApp('${app.id}')">🗑️</button>` : '';
         gridHtml += `
             <div class="card">
@@ -1347,7 +1354,7 @@ async function rejectPendingApp(appId) {
 // 🔥 DELETE PUBLISHED APP
 // ============================================================
 async function deletePublishedApp(appId) {
-    if(!isFounder) { showNotification("Only founder can delete published apps"); return; }
+    if(!isFounder && !hasFounderSession()) { showNotification("Only founder can delete published apps"); return; }
     if(!confirm(`Delete app from repository?`)) return;
     
     if (!window.quantumSync || !window.quantumSync.isReady) {
