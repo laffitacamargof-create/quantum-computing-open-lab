@@ -533,13 +533,16 @@
     }
 
     function saveProjects() {
-        // 🛡️ Overwrite protection: save a backup of the previous version
-        const previousBackup = localStorage.getItem('quantum_apps_repo_v2');
-        if (previousBackup) {
-            localStorage.setItem('quantum_apps_repo_v2_backup', previousBackup);
+        // Preserve the previous valid snapshot before writing the next version.
+        try {
+            const previousBackup = localStorage.getItem('quantum_apps_repo_v2');
+            if (previousBackup) localStorage.setItem('quantum_apps_repo_v2_backup', previousBackup);
+            localStorage.setItem('quantum_apps_repo_v2', JSON.stringify(projects));
+        } catch (error) {
+            console.error('[Quantum App Studio] Could not persist projects:', error);
+            notify('Could not save locally. Existing saved data was not intentionally cleared.');
+            throw error;
         }
-
-        localStorage.setItem('quantum_apps_repo_v2', JSON.stringify(projects));
         if (isEmbedded && currentEditId && parentOrigin) {
             const proj = projects.find(p => p.id === currentEditId);
             if (proj) notifyParentAboutChange('save', currentEditId, { name: proj.name, serverUrl: proj.serverUrl });
@@ -961,19 +964,8 @@
         // serverUrl comes from Founder automatically, not from input (hidden)
         const urlVal   = localStorage.getItem('qcol_colab_url') || '';
 
-        // 🛡️ PROTECTION: Check if editor content matches another project (contamination)
-        if (currentEditId) {
-            const contaminated = projects.some(p => 
-                p.id !== currentEditId && 
-                p.pythonCode === pyVal && 
-                p.htmlCode === htmlVal &&
-                pyVal.length > 10
-            );
-            if (contaminated) {
-                notify("⚠️ Editor contains code from another project. Switch projects to fix.");
-                return;
-            }
-        }
+        // Project identity is determined by its ID, not by code equality.
+        // Different projects are allowed to contain identical source code.
 
         if (!currentEditId) {
             // Create new project
