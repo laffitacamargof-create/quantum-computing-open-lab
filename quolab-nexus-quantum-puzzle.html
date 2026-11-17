@@ -231,11 +231,14 @@ body::before{
     font-family:var(--mono);
     color:var(--bl2);
 }
-.card-actions{
+ .card-actions{
     display:flex;
+    flex-wrap:wrap;
     gap:.6rem;
     margin-top:.5rem;
 }
+.card-actions .btn-execute{flex:1 1 100%;}
+.card-actions .btn-icon{white-space:nowrap;}
 .btn-execute{
     flex:1;
     background:linear-gradient(95deg, rgba(0,136,255,0.2), rgba(0,200,255,0.05));
@@ -966,6 +969,9 @@ function openAppInStudio(app, sourceType) {
         pythonCode: app.python_code || app.pythonCode || '',
         htmlCode: app.html_code || app.htmlCode || '',
         serverUrl: app.server_url || app.serverUrl || '',
+        description: app.description || app.desc || '',
+        tags: app.tags || '',
+        duration: app.duration || 8,
         sourceType
     };
     let attempts = 0;
