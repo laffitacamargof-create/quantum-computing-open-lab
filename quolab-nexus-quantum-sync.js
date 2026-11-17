@@ -19,6 +19,14 @@ class QuOLabNexusQuantumSync {
         this.syncInterval = null;
         this.pendingApps = [];
         this.publishedApps = [];
+        // Keep the last successful public repository snapshot available while offline
+        // or while Supabase is reconnecting.
+        try {
+            const cachedPublished = JSON.parse(localStorage.getItem('quolab_nexus_published_apps_cache') || '[]');
+            if (Array.isArray(cachedPublished)) this.publishedApps = cachedPublished;
+        } catch (cacheError) {
+            console.warn('Ignoring invalid published-app cache:', cacheError);
+        }
         this._syncInProgress = false;
         this._lastSync = 0;
         this._onlineHandler = () => { if (!this._syncInProgress) this.init(); };
@@ -40,7 +48,7 @@ class QuOLabNexusQuantumSync {
                 method: 'GET',
                 headers: {
                     'apikey': this.SUPABASE_ANON_KEY,
-                    'Authorization': `Bearer ${this.SUPABASE_ANON_KEY}`
+                    // Publishable keys belong in apikey only; they are not JWT bearer tokens.
                 }
             });
             
@@ -116,7 +124,7 @@ class QuOLabNexusQuantumSync {
             method: 'GET',
             headers: {
                 'apikey': this.SUPABASE_ANON_KEY,
-                'Authorization': `Bearer ${this.SUPABASE_ANON_KEY}`,
+                    // Publishable keys belong in apikey only; they are not JWT bearer tokens.
                 'Cache-Control': 'no-cache, no-store, must-revalidate',
                 'Pragma': 'no-cache'
             }
@@ -135,7 +143,7 @@ class QuOLabNexusQuantumSync {
             headers: {
                 'Content-Type': 'application/json',
                 'apikey': this.SUPABASE_ANON_KEY,
-                'Authorization': `Bearer ${this.SUPABASE_ANON_KEY}`
+                    // Publishable keys belong in apikey only; they are not JWT bearer tokens.
             },
             body: JSON.stringify({ action: name, params: body })
         });
@@ -156,7 +164,7 @@ class QuOLabNexusQuantumSync {
             headers: {
                 'Content-Type': 'application/json',
                 'apikey': this.SUPABASE_ANON_KEY,
-                'Authorization': `Bearer ${this.SUPABASE_ANON_KEY}`,
+                    // Publishable keys belong in apikey only; they are not JWT bearer tokens.
                 'Prefer': 'return=representation'
             },
             body: JSON.stringify(data)
@@ -175,7 +183,7 @@ class QuOLabNexusQuantumSync {
             headers: {
                 'Content-Type': 'application/json',
                 'apikey': this.SUPABASE_ANON_KEY,
-                'Authorization': `Bearer ${this.SUPABASE_ANON_KEY}`,
+                    // Publishable keys belong in apikey only; they are not JWT bearer tokens.
                 'Prefer': 'return=representation'
             },
             body: JSON.stringify(data)
@@ -195,7 +203,7 @@ class QuOLabNexusQuantumSync {
             method: 'DELETE',
             headers: {
                 'apikey': this.SUPABASE_ANON_KEY,
-                'Authorization': `Bearer ${this.SUPABASE_ANON_KEY}`,
+                    // Publishable keys belong in apikey only; they are not JWT bearer tokens.
                 'Prefer': 'return=representation'
             }
         });

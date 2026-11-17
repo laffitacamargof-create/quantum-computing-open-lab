@@ -576,10 +576,41 @@
                     localStorage.setItem('quantum_apps_repo_v2', JSON.stringify(projects));
                 }
             } catch (e) {
-                notify('Saved projects could not be read. Original data was preserved.');
-                console.error('[Quantum App Studio] Refusing to overwrite invalid saved data.', e);
-                projects = [];
-                return;
+                // Recover from the last known-good snapshot without overwriting the
+                // original invalid value until the backup has been validated.
+                let recovered = false;
+                try {
+                    const backup = localStorage.getItem('quantum_apps_repo_v2_backup');
+                    const backupItems = backup ? JSON.parse(backup) : null;
+                    if (Array.isArray(backupItems)) {
+                        projects = backupItems.map(normalizeStoredProject);
+                        localStorage.setItem('quantum_apps_repo_v2', JSON.stringify(projects));
+                        notify('Recovered saved apps from the local backup.');
+                        recovered = true;
+                    }
+                } catch (backupError) {
+                    console.error('[Quantum App Studio] Backup recovery failed:', backupError);
+                }
+                if (!recovered) {
+                    notify('Saved projects could not be read. Original data was preserved.');
+                    console.error('[Quantum App Studio] Refusing to overwrite invalid saved data.', e);
+                    projects = [];
+                    return;
+                }
+            }
+        } else {
+            // A missing primary key can happen after an interrupted browser write.
+            // Restore only a valid array backup; an intentional empty array remains empty.
+            try {
+                const backup = localStorage.getItem('quantum_apps_repo_v2_backup');
+                const backupItems = backup ? JSON.parse(backup) : null;
+                if (Array.isArray(backupItems) && backupItems.length) {
+                    projects = backupItems.map(normalizeStoredProject);
+                    localStorage.setItem('quantum_apps_repo_v2', JSON.stringify(projects));
+                    notify('Recovered saved apps from the local backup.');
+                }
+            } catch (backupError) {
+                console.error('[Quantum App Studio] Backup recovery failed:', backupError);
             }
         }
         if (!projects.length && stored === null) {
