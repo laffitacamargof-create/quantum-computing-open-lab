@@ -622,7 +622,7 @@
         if (section) section.classList.toggle('hidden', !founderSessionAvailable);
         if (!founderSessionAvailable) return;
         if (!pendingReviewApps.length) {
-            container.innerHTML = '<div style="color:var(--tx2);font-size:0.65rem;">No pending apps downloaded yet. As founder, select “EDITAR” in Quantum Puzzle's pending list.</div>';
+            container.innerHTML = "<div style=\"color:var(--tx2);font-size:0.65rem;\">No pending apps downloaded yet. As founder, select “EDITAR” in Quantum Puzzle's pending list.</div>";
             return;
         }
         container.innerHTML = pendingReviewApps.map(app => {
