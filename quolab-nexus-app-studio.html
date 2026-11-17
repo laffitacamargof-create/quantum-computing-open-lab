@@ -263,7 +263,7 @@
     </div>
     <section class="pending-review-section" id="pending-review-section">
         <div class="pending-review-title">⬇ PENDING APPS · REVIEW WORKSPACE</div>
-        <div id="pending-review-grid"><div style="color:var(--tx2);font-size:0.65rem;">No pending apps downloaded yet. Select “NUEVA · STUDIO” in Quantum Puzzle.</div></div>
+        <div id="pending-review-grid"><div style="color:var(--tx2);font-size:0.65rem;">No pending apps downloaded yet. As founder, select “EDITAR” in Quantum Puzzle's pending list.</div></div>
     </section>
     <div class="projects-grid" id="projects-grid"></div>
 </div>
@@ -633,7 +633,7 @@
         if (section) section.classList.toggle('hidden', !founderSessionAvailable);
         if (!founderSessionAvailable) return;
         if (!pendingReviewApps.length) {
-            container.innerHTML = '<div style="color:var(--tx2);font-size:0.65rem;">No pending apps downloaded yet. Select “NUEVA · STUDIO” in Quantum Puzzle.</div>';
+            container.innerHTML = '<div style="color:var(--tx2);font-size:0.65rem;">No pending apps downloaded yet. As founder, select “EDITAR” in Quantum Puzzle's pending list.</div>';
             return;
         }
         container.innerHTML = pendingReviewApps.map(app => {

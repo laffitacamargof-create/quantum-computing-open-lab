@@ -938,7 +938,7 @@ async function renderPendingList() {
     pending.forEach(app => {
         const title = app.title || app.name || 'Untitled App';
         const appId = app.id;
-        const founderTools = canManageApps() ? `<button class="btn" style="background:#245a88;" onclick="window.openPendingAppInStudio('${appId}')">＋ NUEVA · STUDIO</button><button class="btn" style="background:#6d28d9;" onclick="window.previewPendingApp('${appId}')">▶ PREVIEW</button>` : '';
+        const founderTools = canManageApps() ? `<button class="btn" style="background:#245a88;" onclick="window.openPendingAppInStudio('${appId}')">✎ EDITAR</button><button class="btn" style="background:#6d28d9;" onclick="window.previewPendingApp('${appId}')">▶ PREVIEW</button>` : '';
         html += `<div style="background: #0a1222; border-radius: 16px; margin-bottom: 12px; padding: 12px;">
                     <strong>${escapeHtml(title)}</strong>
                     <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">
