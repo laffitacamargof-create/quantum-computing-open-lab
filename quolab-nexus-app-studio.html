@@ -417,43 +417,45 @@
         }
         
         if (data.type === 'QCOL_OPEN_APP_FROM_PUZZLE') {
-            const { appId, appName, pythonCode, htmlCode, serverUrl } = data;
+            const { appId, appName, pythonCode, htmlCode, serverUrl, description, tags, duration } = data;
             if (appId && appName) {
-                // ── PROTECTION: save current state before loading the puzzle app
-                if (currentEditId && currentEditId !== appId) {
+                const sourceType = ['pending', 'published'].includes(data.sourceType) ? data.sourceType : '';
+                const sourceId = String(data.sourceId || appId);
+                const projectId = sourceType ? ('cloud-' + sourceType + '-' + sourceId) : String(appId);
+                if (currentEditId && currentEditId !== projectId) {
                     const prevIdx = projects.findIndex(p => p.id === currentEditId);
                     if (prevIdx !== -1) {
                         projects[prevIdx].pythonCode = document.getElementById('python-editor').value;
-                        projects[prevIdx].htmlCode   = document.getElementById('html-editor').value;
-                        projects[prevIdx].name       = document.getElementById('project-name-input').value.trim() || projects[prevIdx].name;
+                        projects[prevIdx].htmlCode = document.getElementById('html-editor').value;
+                        projects[prevIdx].name = document.getElementById('project-name-input').value.trim() || projects[prevIdx].name;
                         saveProjects();
                     }
                 }
-                let existing = projects.find(p => p.id === appId);
+                let existing = projects.find(p => p.id === projectId);
                 if (existing) {
-                    currentEditId = appId;
+                    currentEditId = projectId;
+                    existing.sourceType = sourceType;
+                    existing.sourceId = sourceId;
+                    existing.description = description || existing.description || '';
+                    existing.tags = tags || existing.tags || '';
+                    existing.duration = duration || existing.duration || 8;
                     document.getElementById('project-name-input').value = existing.name;
-                    document.getElementById('python-editor').value      = '';
-                    document.getElementById('html-editor').value        = '';
-                    document.getElementById('python-editor').value      = existing.pythonCode || '';
-                    document.getElementById('html-editor').value        = existing.htmlCode   || '';
+                    document.getElementById('python-editor').value = existing.pythonCode || '';
+                    document.getElementById('html-editor').value = existing.htmlCode || '';
                     if (existing.serverUrl) setServerUrl(existing.serverUrl);
                 } else {
                     const newProj = {
-                        id: appId,
-                        name: appName,
-                        pythonCode: pythonCode || '# Python Code\n',
-                        htmlCode: htmlCode || '<!DOCTYPE html>\n<html>\n<body>\n<h1>App from Puzzle</h1>\n</body>\n</html>',
-                        serverUrl: serverUrl || '',
-                        createdAt: Date.now()
+                        id: projectId, sourceType, sourceId, name: appName,
+                        description: description || '', tags: tags || '', duration: duration || 8,
+                        pythonCode: pythonCode || '# Python Code\\n',
+                        htmlCode: htmlCode || '<!DOCTYPE html>\\n<html>\\n<body>\\n<h1>App from Puzzle</h1>\\n</body>\\n</html>',
+                        serverUrl: serverUrl || '', createdAt: Date.now()
                     };
                     projects.push(newProj);
-                    currentEditId = appId;
+                    currentEditId = projectId;
                     document.getElementById('project-name-input').value = newProj.name;
-                    document.getElementById('python-editor').value      = '';
-                    document.getElementById('html-editor').value        = '';
-                    document.getElementById('python-editor').value      = newProj.pythonCode;
-                    document.getElementById('html-editor').value        = newProj.htmlCode;
+                    document.getElementById('python-editor').value = newProj.pythonCode;
+                    document.getElementById('html-editor').value = newProj.htmlCode;
                     if (newProj.serverUrl) setServerUrl(newProj.serverUrl);
                     saveProjects();
                 }
@@ -462,7 +464,9 @@
             }
             return;
         }
-        
+
+        if (data.type === 'QCOL_STUDIO_NEW_PROJECT') { startNewProject(); return; }
+
         if (data.type === 'QCOL_GET_APPS') {
             const apps = projects.map(p => ({ id: p.id, name: p.name, serverUrl: p.serverUrl, createdAt: p.createdAt }));
             sendToParent({ type: 'QCOL_APPS_LIST', apps });
@@ -540,13 +544,14 @@
             localStorage.setItem('quantum_apps_repo_v2', JSON.stringify(projects));
         } catch (error) {
             console.error('[Quantum App Studio] Could not persist projects:', error);
-            notify('Could not save locally. Existing saved data was not intentionally cleared.');
-            throw error;
+            notify('Browser storage is unavailable. Changes remain in this session but may not persist after closing.');
+            return false;
         }
         if (isEmbedded && currentEditId && parentOrigin) {
             const proj = projects.find(p => p.id === currentEditId);
             if (proj) notifyParentAboutChange('save', currentEditId, { name: proj.name, serverUrl: proj.serverUrl });
         }
+        return true;
     }
 
     function normalizeStoredProject(raw, index) {
@@ -1011,29 +1016,8 @@
             saveProjects();
             notify(`Project "${nameVal}" created`);
             
-            // ── Sincronizar con la nube (Supabase) ──
-            if (window.quantumSync && window.quantumSync.isReady) {
-                try {
-                    window.quantumSync.submitApp({
-                        id: newId,
-                        name: nameVal,
-                        title: nameVal,
-                        description: '',
-                        tags: '',
-                        pythonCode: pyVal,
-                        htmlCode: htmlVal,
-                        serverUrl: urlVal,
-                        duration: 8
-                    }).then(() => {
-                        notify('☁️ App sincronizada con la nube (pendiente)');
-                    }).catch((err) => {
-                        console.warn('⚠️ No se pudo sincronizar con la nube:', err);
-                    });
-                } catch (error) {
-                    console.warn('⚠️ No se pudo sincronizar con la nube:', error);
-                }
-            }
-            
+            // Private Studio projects remain local until explicitly launched.
+
             showScreen('repo');
             renderRepository();
             return;
@@ -1055,29 +1039,20 @@
         saveProjects();
         notify("Project saved");
         
-        // ── Sincronizar con la nube (Supabase) ──
-        if (window.quantumSync && window.quantumSync.isReady) {
-            try {
-                window.quantumSync.submitApp({
-                    id: currentEditId,
-                    name: nameVal || projects[idx].name,
-                    title: nameVal || projects[idx].name,
-                    description: '',
-                    tags: '',
-                    pythonCode: pyVal,
-                    htmlCode: htmlVal,
-                    serverUrl: urlVal,
-                    duration: 8
-                }).then(() => {
-                    notify('☁️ App sincronizada con la nube (pendiente)');
-                }).catch((err) => {
-                    console.warn('⚠️ No se pudo sincronizar con la nube:', err);
-                });
-            } catch (error) {
-                console.warn('⚠️ No se pudo sincronizar con la nube:', error);
-            }
+        const savedProject = projects[idx];
+        if (savedProject.sourceType && savedProject.sourceId && isEmbedded && parentOrigin) {
+            sendToParent({
+                type: savedProject.sourceType === 'published' ? 'QCOL_STUDIO_UPDATE_PUBLISHED' : 'QCOL_STUDIO_UPDATE_PENDING',
+                appId: savedProject.sourceId,
+                appData: {
+                    id: savedProject.sourceId, name: savedProject.name, title: savedProject.name,
+                    description: savedProject.description || '', tags: savedProject.tags || '',
+                    pythonCode: pyVal, htmlCode: htmlVal, serverUrl: urlVal,
+                    duration: savedProject.duration || 8
+                }
+            });
         }
-        
+
         showScreen('repo');
         renderRepository();
     }
@@ -1130,10 +1105,25 @@
         // test-server-btn hidden — URL arrives automatically from Founder Panel
     }
 
-    // Initialization
-    loadProjects();
-    renderRepository();
+    // Bind controls first; a storage failure must not leave the editor inert.
     bindEvents();
+    try {
+        loadProjects();
+    } catch (initError) {
+        console.error('[Quantum App Studio] Initialization failed:', initError);
+        notify('Studio initialization failed: ' + (initError?.message || 'unknown error'), 6000);
+        const grid = document.getElementById('projects-grid');
+        if (grid) grid.innerHTML = '<div style="padding:1rem;color:#ffd700">Studio could not read local projects. Existing saved data was not intentionally deleted.</div>';
+    }
+    renderRepository();
+    window.addEventListener('error', event => {
+        console.error('[Quantum App Studio] Runtime error:', event.error || event.message);
+        notify('Studio runtime error: ' + (event.message || 'unknown error'), 6000);
+    });
+    window.addEventListener('unhandledrejection', event => {
+        console.error('[Quantum App Studio] Unhandled rejection:', event.reason);
+        notify('Studio operation failed: ' + (event.reason?.message || 'unknown error'), 6000);
+    });
     
     if (window.parent !== window) {
         setTimeout(() => {

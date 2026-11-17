@@ -675,7 +675,7 @@ body::before{
 <!-- PENDING MODAL (admin/founder only) -->
 <div class="modal-ov" id="pendingModal">
     <div class="modal" style="max-width:780px;">
-        <div class="modal-title">📋 APPS PENDING APPROVAL</div>
+        <div class="modal-title" style="display:flex;align-items:center;justify-content:space-between;gap:8px;">📋 APPS PENDING APPROVAL <button class="btn btn-pri" onclick="window.newAppFromPending()">＋ NEW IN STUDIO</button></div>
         <div id="pendingListContainer" style="max-height: 60vh; overflow-y: auto;"></div>
         <div class="btn-row"><button class="btn-cancel" onclick="closePendingModal()">CLOSE</button></div>
     </div>
@@ -879,8 +879,11 @@ async function renderPublishedApps() {
     filtered.forEach(app => {
         const tagsArray = (app.tags || "").split(',').map(t => t.trim()).filter(t => t);
         const tagsHtml = tagsArray.map(tag => `<span class="tag">#${escapeHtml(tag)}</span>`).join('');
-        const canDelete = isFounder || hasFounderSession();
-        const delBtn = canDelete ? `<button class="btn-icon" onclick="window.deletePublishedApp('${app.id}')">🗑️</button>` : '';
+        const canManagePublic = isFounder || hasFounderSession();
+        const safeId = JSON.stringify(String(app.id));
+        const manageBtns = canManagePublic
+            ? `<button class="btn-icon" onclick='window.editPublishedApp(${safeId})' title="Edit as founder">✏️</button><button class="btn-icon" onclick='window.deletePublishedApp(${safeId})' title="Delete as founder">🗑️</button>`
+            : '';
         gridHtml += `
             <div class="card">
                 <div class="card-header"><span class="badge-app">⚛️ QUANTUM APP</span></div>
@@ -892,7 +895,7 @@ async function renderPublishedApps() {
                     <div class="card-actions">
                         <button class="btn-execute" onclick="window.executeQuantumApp('${app.id}')">▶ RUN PROGRAM</button>
                         <button class="btn-icon" onclick="window.copyAppLink('${app.id}')" title="Copy direct link / Copiar enlace directo">🔗</button>
-                        ${delBtn}
+                        ${manageBtns}
                     </div>
                 </div>
             </div>
@@ -935,9 +938,10 @@ async function renderPendingList() {
         const appId = app.id;
         html += `<div style="background: #0a1222; border-radius: 16px; margin-bottom: 12px; padding: 12px;">
                     <strong>${escapeHtml(title)}</strong>
-                    <div style="margin-top:8px; display:flex; gap:8px;">
-                        <button class="btn" style="background: #00aa66;" onclick="window.publishPendingApp('${appId}')">✅ PUBLISH</button>
-                        <button class="btn" style="background: #aa3355;" onclick="window.rejectPendingApp('${appId}')">🗑️ REJECT</button>
+                    <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">
+                        <button class="btn" style="background:#2463a6;" onclick='window.editPendingApp(${JSON.stringify(String(appId))})'>✏️ EDIT IN STUDIO</button>
+                        <button class="btn" style="background:#00aa66;" onclick="window.publishPendingApp('${appId}')">✅ PUBLISH</button>
+                        <button class="btn" style="background:#aa3355;" onclick="window.rejectPendingApp('${appId}')">🗑️ REJECT</button>
                     </div>
                 </div>`;
     });
@@ -1179,6 +1183,26 @@ window.addEventListener('message', async function(e) {
     const data = e.data;
     if (!data || typeof data !== 'object') return;
     
+    if (data.type === 'QCOL_STUDIO_UPDATE_PENDING' || data.type === 'QCOL_STUDIO_UPDATE_PUBLISHED') {
+        if (!isFounder && !hasFounderSession()) { showNotification('Only the founder can update public apps.'); return; }
+        if (!window.quantumSync || !window.quantumSync.isReady) { showNotification('Cloud connection unavailable. The private Studio copy remains saved.'); return; }
+        try {
+            if (data.type === 'QCOL_STUDIO_UPDATE_PENDING') await window.quantumSync.updatePendingApp(data.appId, data.appData);
+            else await window.quantumSync.updatePublishedApp(data.appId, data.appData);
+            await window.quantumSync.syncPendingApps();
+            await window.quantumSync.syncPublishedApps();
+            cachedPendingApps = cachedPendingHTML = cachedPublishedApps = cachedPublishedHTML = null;
+            await renderPendingList();
+            renderTagFilters();
+            await renderPublishedApps();
+            showNotification('Application updated in the public repository.');
+        } catch (error) {
+            console.error('Founder app update failed:', error);
+            showNotification('Could not update public app: ' + error.message);
+        }
+        return;
+    }
+
     if (data.type === 'QCOL_STUDIO_SYNC_APP') {
         const { appId, appData } = data;
         
@@ -1286,18 +1310,60 @@ window.addEventListener('message', (e) => {
 });
 
 function openPendingManager() {
-    if(!isFounder && !isAdmin) { showNotification("Access for founders/admins only"); return; }
+    if(!isFounder && !hasFounderSession()) { showNotification("Founder access required"); return; }
     renderPendingList();
     document.getElementById('pendingModal').classList.add('open');
 }
 function closePendingModal() { document.getElementById('pendingModal').classList.remove('open'); }
 
+function sendStudioCommand(message) {
+    openQuantumAppStudio();
+    setTimeout(() => {
+        const frame = document.getElementById('studioIframe');
+        if (!frame || !frame.contentWindow) { showNotification('Quantum App Studio is not available yet.'); return; }
+        frame.contentWindow.postMessage({ type: 'QCOL_REQUEST_STUDIO_CONNECTION' }, location.origin);
+        setTimeout(() => frame.contentWindow.postMessage(message, location.origin), 180);
+    }, 700);
+}
+function newAppFromPending() {
+    if (!isFounder && !hasFounderSession()) { showNotification('Only the founder can manage pending apps.'); return; }
+    closePendingModal();
+    sendStudioCommand({ type: 'QCOL_STUDIO_NEW_PROJECT' });
+}
+function editPendingApp(appId) {
+    if (!isFounder && !hasFounderSession()) { showNotification('Only the founder can edit pending apps.'); return; }
+    const app = (window.quantumSync?.pendingApps || []).find(item => String(item.id) === String(appId));
+    if (!app) { showNotification('Pending app not found. Refresh the list and try again.'); return; }
+    closePendingModal();
+    sendStudioCommand({
+        type: 'QCOL_OPEN_APP_FROM_PUZZLE', sourceType: 'pending', sourceId: String(app.id),
+        appId: String(app.id), appName: app.title || app.name || 'Pending app',
+        pythonCode: app.python_code || app.pythonCode || '',
+        htmlCode: app.html_code || app.htmlCode || '',
+        serverUrl: app.server_url || app.serverUrl || '',
+        description: app.description || '', tags: app.tags || '', duration: app.duration || 8
+    });
+}
+function editPublishedApp(appId) {
+    if (!isFounder && !hasFounderSession()) { showNotification('Only the founder can edit published apps.'); return; }
+    const app = (window.quantumSync?.publishedApps || []).find(item => String(item.id) === String(appId));
+    if (!app) { showNotification('Published app not found. Refresh the repository and try again.'); return; }
+    sendStudioCommand({
+        type: 'QCOL_OPEN_APP_FROM_PUZZLE', sourceType: 'published', sourceId: String(app.id),
+        appId: String(app.id), appName: app.title || app.name || 'Published app',
+        pythonCode: app.python_code || app.pythonCode || '',
+        htmlCode: app.html_code || app.htmlCode || '',
+        serverUrl: app.server_url || app.serverUrl || '',
+        description: app.description || '', tags: app.tags || '', duration: app.duration || 8
+    });
+}
+
 // ============================================================
 // 🔥 PUBLISH PENDING APP
 // ============================================================
 async function publishPendingApp(appId) {
-    if (!isFounder && !isAdmin) { 
-        showNotification("Solo fundadores/admins pueden publicar"); 
+    if (!isFounder && !hasFounderSession()) { 
+        showNotification("Solo el fundador puede publicar"); 
         return; 
     }
     
@@ -1328,7 +1394,7 @@ async function publishPendingApp(appId) {
 // 🔥 REJECT PENDING APP
 // ============================================================
 async function rejectPendingApp(appId) {
-    if (!isFounder && !isAdmin) return;
+    if (!isFounder && !hasFounderSession()) return;
     if (!confirm("Delete this pending app?")) return;
     
     if (!window.quantumSync || !window.quantumSync.isReady) {
@@ -1393,6 +1459,9 @@ window.showNotification = showNotification;
 window.publishPendingApp = publishPendingApp;
 window.rejectPendingApp = rejectPendingApp;
 window.deletePublishedApp = deletePublishedApp;
+window.editPublishedApp = editPublishedApp;
+window.editPendingApp = editPendingApp;
+window.newAppFromPending = newAppFromPending;
 window.openPendingManager = openPendingManager;
 window.openQuantumAppStudio = openQuantumAppStudio;
 window.closeStudioModal = closeStudioModal;

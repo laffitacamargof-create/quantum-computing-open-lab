@@ -367,6 +367,37 @@ class QuOLabNexusQuantumSync {
         } catch (error) { console.error('Error deleting:', error.message); throw error; }
     }
 
+    async updatePublishedApp(appId, appData) {
+        const founderKey = sessionStorage.getItem('qnexus_founder_session') || '';
+        if (!founderKey) throw new Error('Se requiere la llave de fundador');
+        const p_app = this._buildEditableAppPayload(appData);
+        const result = await this._rpc('quantum_update_published_app', { p_id: String(appId), p_app, p_key: founderKey });
+        await this.syncPublishedApps();
+        return result;
+    }
+
+    async updatePendingApp(appId, appData) {
+        const founderKey = sessionStorage.getItem('qnexus_founder_session') || '';
+        if (!founderKey) throw new Error('Se requiere la llave de fundador');
+        const p_app = this._buildEditableAppPayload(appData);
+        const result = await this._rpc('quantum_update_pending_app', { p_id: String(appId), p_app, p_key: founderKey });
+        await this.syncPendingApps();
+        return result;
+    }
+
+    _buildEditableAppPayload(appData) {
+        return {
+            name: String(appData.name || appData.title || 'Untitled').slice(0, 100),
+            title: String(appData.title || appData.name || 'Untitled').slice(0, 100),
+            description: String(appData.description || '').slice(0, 500),
+            tags: String(appData.tags || '').slice(0, 300),
+            duration: Math.max(1, Math.min(240, Number.parseInt(appData.duration, 10) || 8)),
+            python_code: String(appData.pythonCode || appData.python_code || ''),
+            html_code: String(appData.htmlCode || appData.html_code || ''),
+            server_url: String(appData.serverUrl || appData.server_url || '')
+        };
+    }
+
     _generateId() {
         return Date.now() + '-' + Math.random().toString(36).substring(2, 10);
     }
