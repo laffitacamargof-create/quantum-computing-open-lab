@@ -1113,14 +1113,18 @@ class QuOLabNexusConfigSyncReader {
     // Enrutador central: las órdenes y respuestas de App Studio atraviesan index.html.
     if (d.type === 'OPENQ_STUDIO_COMMAND' || d.type === 'NEXUS_STUDIO_COMMAND') {
       const puzzle = iframes['quantum-puzzle'];
-      const studio = puzzle && puzzle.contentDocument && puzzle.contentDocument.getElementById('studioIframe');
+      if (!puzzle || e.source !== puzzle.contentWindow) return;
+      const studio = puzzle.contentDocument && puzzle.contentDocument.getElementById('studioIframe');
       if (studio && studio.contentWindow) studio.contentWindow.postMessage(d.message || {}, location.origin);
       else notify('Quantum App Studio todavía no está disponible');
       return;
     }
     if (d.type === 'OPENQ_STUDIO_EVENT' || d.type === 'NEXUS_STUDIO_EVENT') {
       const puzzle = iframes['quantum-puzzle'];
-      if (puzzle && puzzle.contentWindow) puzzle.contentWindow.postMessage(d.message || {}, location.origin);
+      const studio = puzzle && puzzle.contentDocument && puzzle.contentDocument.getElementById('studioIframe');
+      // Accept Studio events only from the exact nested Studio iframe, then mark the trusted relay.
+      if (!puzzle || !studio || e.source !== studio.contentWindow || !d.message || typeof d.message !== 'object') return;
+      puzzle.contentWindow.postMessage({ ...d.message, __nexusStudioRelay: true }, location.origin);
       return;
     }
 
