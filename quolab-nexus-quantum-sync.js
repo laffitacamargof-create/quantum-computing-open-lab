@@ -19,6 +19,14 @@ class QuOLabNexusQuantumSync {
         this.syncInterval = null;
         this.pendingApps = [];
         this.publishedApps = [];
+        // Keep the last successful public repository snapshot available while offline
+        // or while Supabase is reconnecting.
+        try {
+            const cachedPublished = JSON.parse(localStorage.getItem('quolab_nexus_published_apps_cache') || '[]');
+            if (Array.isArray(cachedPublished)) this.publishedApps = cachedPublished;
+        } catch (cacheError) {
+            console.warn('Ignoring invalid published-app cache:', cacheError);
+        }
         this._syncInProgress = false;
         this._lastSync = 0;
         this._onlineHandler = () => { if (!this._syncInProgress) this.init(); };
