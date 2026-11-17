@@ -730,63 +730,20 @@ let pendingCompileRequest = null;
 // 🔄 FUNCIONES CON INTEGRACIÓN SUPABASE SYNC - SOLO NUBE
 // ============================================================
 
-function getLocalStudioApps() {
+async function getPublishedApps() {
+    // Quantum Puzzle is the PUBLIC repository: show only apps loaded from
+    // Supabase (or its cache of that same public repository).
+    // Private Quantum App Studio projects must never be read or merged here.
+    if (window.quantumSync && Array.isArray(window.quantumSync.publishedApps)) {
+        return window.quantumSync.publishedApps;
+    }
     try {
-        let raw = localStorage.getItem('quantum_apps_repo_v2');
-        let items = raw ? JSON.parse(raw) : null;
-        if (!Array.isArray(items) && raw !== null) {
-            // Preserve the primary value and attempt the last known-good local snapshot.
-            const backupRaw = localStorage.getItem('quantum_apps_repo_v2_backup');
-            const backupItems = backupRaw ? JSON.parse(backupRaw) : null;
-            if (Array.isArray(backupItems)) {
-                items = backupItems;
-                localStorage.setItem('quantum_apps_repo_v2', JSON.stringify(items));
-            }
-        } else if (raw === null) {
-            const backupRaw = localStorage.getItem('quantum_apps_repo_v2_backup');
-            const backupItems = backupRaw ? JSON.parse(backupRaw) : null;
-            if (Array.isArray(backupItems) && backupItems.length) {
-                items = backupItems;
-                localStorage.setItem('quantum_apps_repo_v2', JSON.stringify(items));
-            }
-        }
-        if (!Array.isArray(items)) return [];
-        return items.filter(p => p && typeof p === 'object').map((p, i) => ({
-            id: String(p.id || p.appId || ('local-' + i)),
-            title: p.name || p.title || 'Untitled local app',
-            name: p.name || p.title || 'Untitled local app',
-            desc: p.description || 'Saved on this device',
-            description: p.description || 'Saved on this device',
-            tags: p.tags || 'local',
-            duration: p.duration || 8,
-            python_code: p.pythonCode || p.python_code || p.python || '',
-            html_code: p.htmlCode || p.html_code || p.html || '',
-            server_url: p.serverUrl || p.server_url || '',
-            _local: true
-        }));
+        const cached = JSON.parse(localStorage.getItem('quolab_nexus_published_apps_cache') || '[]');
+        return Array.isArray(cached) ? cached : [];
     } catch (e) {
-        console.warn('[Quantum Puzzle] Could not read local Studio apps:', e);
+        console.warn('[Quantum Puzzle] Public repository cache is invalid:', e);
         return [];
     }
-}
-
-async function getPublishedApps() {
-    let cloud = [];
-    if (window.quantumSync && Array.isArray(window.quantumSync.publishedApps)) {
-        cloud = window.quantumSync.publishedApps;
-    } else {
-        try {
-            const cached = JSON.parse(localStorage.getItem('quolab_nexus_published_apps_cache') || '[]');
-            if (Array.isArray(cached)) cloud = cached;
-        } catch (e) {
-            console.warn('[Quantum Puzzle] Published-app cache is invalid:', e);
-        }
-    }
-    const local = getLocalStudioApps();
-    const byId = new Map();
-    cloud.forEach(app => byId.set(String(app.id), app));
-    local.forEach(app => { if (!byId.has(String(app.id))) byId.set(String(app.id), app); });
-    return Array.from(byId.values());
 }
 
 // ✅ No guardar nada en localStorage
