@@ -732,8 +732,24 @@ let pendingCompileRequest = null;
 
 function getLocalStudioApps() {
     try {
-        const raw = localStorage.getItem('quantum_apps_repo_v2');
-        const items = raw ? JSON.parse(raw) : [];
+        let raw = localStorage.getItem('quantum_apps_repo_v2');
+        let items = raw ? JSON.parse(raw) : null;
+        if (!Array.isArray(items) && raw !== null) {
+            // Preserve the primary value and attempt the last known-good local snapshot.
+            const backupRaw = localStorage.getItem('quantum_apps_repo_v2_backup');
+            const backupItems = backupRaw ? JSON.parse(backupRaw) : null;
+            if (Array.isArray(backupItems)) {
+                items = backupItems;
+                localStorage.setItem('quantum_apps_repo_v2', JSON.stringify(items));
+            }
+        } else if (raw === null) {
+            const backupRaw = localStorage.getItem('quantum_apps_repo_v2_backup');
+            const backupItems = backupRaw ? JSON.parse(backupRaw) : null;
+            if (Array.isArray(backupItems) && backupItems.length) {
+                items = backupItems;
+                localStorage.setItem('quantum_apps_repo_v2', JSON.stringify(items));
+            }
+        }
         if (!Array.isArray(items)) return [];
         return items.filter(p => p && typeof p === 'object').map((p, i) => ({
             id: String(p.id || p.appId || ('local-' + i)),
