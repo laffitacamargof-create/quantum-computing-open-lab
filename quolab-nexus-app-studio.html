@@ -733,14 +733,10 @@
                 const pyVal   = document.getElementById('python-editor').value;
                 const htmlVal = document.getElementById('html-editor').value;
                 const nameVal = document.getElementById('project-name-input').value.trim();
-                const isContaminated = projects.some((p, i) =>
-                    i !== prevIdx && p.pythonCode === pyVal && p.htmlCode === htmlVal);
-                if (!isContaminated) {
-                    projects[prevIdx].pythonCode = pyVal;
-                    projects[prevIdx].htmlCode   = htmlVal;
-                    projects[prevIdx].name       = nameVal || projects[prevIdx].name;
-                    saveProjects();
-                }
+                projects[prevIdx].pythonCode = pyVal;
+                projects[prevIdx].htmlCode   = htmlVal;
+                projects[prevIdx].name       = nameVal || projects[prevIdx].name;
+                saveProjects();
             }
         }
 
