@@ -231,11 +231,14 @@ body::before{
     font-family:var(--mono);
     color:var(--bl2);
 }
-.card-actions{
+ .card-actions{
     display:flex;
+    flex-wrap:wrap;
     gap:.6rem;
     margin-top:.5rem;
 }
+.card-actions .btn-execute{flex:1 1 100%;}
+.card-actions .btn-icon{white-space:nowrap;}
 .btn-execute{
     flex:1;
     background:linear-gradient(95deg, rgba(0,136,255,0.2), rgba(0,200,255,0.05));
@@ -553,7 +556,7 @@ body::before{
 (async function initQuantumSync() {
     try {
         const { QUOLAB_NEXUS_SUPABASE_CONFIG } = await import('./quolab-nexus-supabase-config.js');
-        const { default: QuOLabNexusQuantumSync } = await import('./quolab-nexus-quantum-sync.js?v=20261117-cloud-auth-1');
+        const { default: QuOLabNexusQuantumSync } = await import('./quolab-nexus-quantum-sync.js?v=20261117-founder-edit-2');
         
         console.log('📦 Módulos importados correctamente');
         console.log('📌 Supabase endpoint:', QUOLAB_NEXUS_SUPABASE_CONFIG.supabaseUrl);
@@ -668,7 +671,7 @@ body::before{
             <span>🌀 QUANTUM APP STUDIO · Quantum application editor</span>
             <button class="btn-cancel" onclick="closeStudioModal()" style="margin:0;">CLOSE</button>
         </div>
-        <iframe id="studioIframe" class="studio-iframe" src="quolab-nexus-app-studio.html?v=20261117-4" sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-modals allow-same-origin"></iframe>
+        <iframe id="studioIframe" class="studio-iframe" src="quolab-nexus-app-studio.html?v=20261117-5" sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-modals allow-same-origin"></iframe>
     </div>
 </div>
 
@@ -722,6 +725,8 @@ function hasFounderSession() {
     try { return !!sessionStorage.getItem('qnexus_founder_session'); }
     catch (e) { return false; }
 }
+function canManageApps() { return isFounder || hasFounderSession(); }
+try { if (canManageApps()) document.getElementById('adminBar')?.classList.add('show'); } catch (e) {}
 let activeTagFilter = "all";
 let studioIframeReady = false;
 let studioIframeLoaded = false;
@@ -843,7 +848,7 @@ async function renderPublishedApps() {
     const apps = await getPublishedApps();
     const searchTerm = document.getElementById('searchInput')?.value.toLowerCase() || "";
     
-    const appsString = JSON.stringify(apps);
+    const appsString = JSON.stringify(apps) + '|founder-ui:' + (canManageApps() ? '1' : '0');
     if (cachedPublishedApps === appsString && searchTerm === "") {
         return;
     }
@@ -879,20 +884,20 @@ async function renderPublishedApps() {
     filtered.forEach(app => {
         const tagsArray = (app.tags || "").split(',').map(t => t.trim()).filter(t => t);
         const tagsHtml = tagsArray.map(tag => `<span class="tag">#${escapeHtml(tag)}</span>`).join('');
-        const canDelete = isFounder || hasFounderSession();
-        const delBtn = canDelete ? `<button class="btn-icon" onclick="window.deletePublishedApp('${app.id}')">🗑️</button>` : '';
+        const canEdit = canManageApps();
+        const adminActions = canEdit ? `<button class="btn-icon edit" onclick="window.editPublishedApp('${app.id}')" title="Edit in Quantum App Studio">✏️ EDIT</button><button class="btn-icon" onclick="window.deletePublishedApp('${app.id}')" title="Delete public app">🗑️ DELETE</button>` : '';
         gridHtml += `
             <div class="card">
                 <div class="card-header"><span class="badge-app">⚛️ QUANTUM APP</span></div>
                 <div class="card-body">
                     <div class="card-title">${escapeHtml(app.title || 'Untitled App')}</div>
-                    <div class="card-desc">${escapeHtml(app.desc || 'No description')}</div>
+                    <div class="card-desc">${escapeHtml(app.description || app.desc || 'No description')}</div>
                     <div class="card-meta"><span>⏱️ ${app.duration || 8} min</span></div>
                     <div class="tags">${tagsHtml}</div>
                     <div class="card-actions">
                         <button class="btn-execute" onclick="window.executeQuantumApp('${app.id}')">▶ RUN PROGRAM</button>
                         <button class="btn-icon" onclick="window.copyAppLink('${app.id}')" title="Copy direct link / Copiar enlace directo">🔗</button>
-                        ${delBtn}
+                        ${adminActions}
                     </div>
                 </div>
             </div>
@@ -914,7 +919,7 @@ async function renderPendingList() {
     const container = document.getElementById('pendingListContainer');
     if(!container) return;
     
-    const pendingString = JSON.stringify(pending);
+    const pendingString = JSON.stringify(pending) + '|founder-ui:' + (canManageApps() ? '1' : '0');
     if (cachedPendingApps === pendingString) {
         return;
     }
@@ -933,9 +938,11 @@ async function renderPendingList() {
     pending.forEach(app => {
         const title = app.title || app.name || 'Untitled App';
         const appId = app.id;
+        const founderTools = canManageApps() ? `<button class="btn" style="background:#245a88;" onclick="window.openPendingAppInStudio('${appId}')">＋ NUEVA · STUDIO</button><button class="btn" style="background:#6d28d9;" onclick="window.previewPendingApp('${appId}')">▶ PREVIEW</button>` : '';
         html += `<div style="background: #0a1222; border-radius: 16px; margin-bottom: 12px; padding: 12px;">
                     <strong>${escapeHtml(title)}</strong>
-                    <div style="margin-top:8px; display:flex; gap:8px;">
+                    <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">
+                        ${founderTools}
                         <button class="btn" style="background: #00aa66;" onclick="window.publishPendingApp('${appId}')">✅ PUBLISH</button>
                         <button class="btn" style="background: #aa3355;" onclick="window.rejectPendingApp('${appId}')">🗑️ REJECT</button>
                     </div>
@@ -948,6 +955,76 @@ async function renderPendingList() {
         cachedPendingHTML = html;
     }
 }
+
+// Founder-only workflow: open a public or pending app in the private Studio editor.
+function openAppInStudio(app, sourceType) {
+    if (!canManageApps()) { showNotification('Founder access required'); return; }
+    if (!app) { showNotification('App not found'); return; }
+    openQuantumAppStudio();
+    studioIframeReady = false;
+    const command = {
+        type: 'QCOL_OPEN_APP_FROM_PUZZLE',
+        appId: String(app.id),
+        appName: app.title || app.name || 'Quantum App',
+        pythonCode: app.python_code || app.pythonCode || '',
+        htmlCode: app.html_code || app.htmlCode || '',
+        serverUrl: app.server_url || app.serverUrl || '',
+        description: app.description || app.desc || '',
+        tags: app.tags || '',
+        duration: app.duration || 8,
+        sourceType
+    };
+    let attempts = 0;
+    const timer = setInterval(() => {
+        attempts++;
+        if (studioIframeReady && studioIframe && studioIframe.contentWindow) {
+            clearInterval(timer);
+            parent.postMessage({ type: 'NEXUS_STUDIO_COMMAND', message: command }, location.origin);
+        } else if (attempts >= 40) {
+            clearInterval(timer);
+            showNotification('Quantum App Studio did not become ready. Try opening it again.');
+        }
+    }, 150);
+}
+
+async function editPublishedApp(appId) {
+    if (!canManageApps()) { showNotification('Founder access required'); return; }
+    const apps = await getPublishedApps();
+    const app = apps.find(item => String(item.id) === String(appId));
+    if (!app) { showNotification('Published app not found'); return; }
+    openAppInStudio(app, 'published');
+}
+window.editPublishedApp = editPublishedApp;
+
+async function openPendingAppInStudio(appId) {
+    if (!canManageApps()) { showNotification('Founder access required'); return; }
+    const apps = await getPendingApps();
+    const app = apps.find(item => String(item.id) === String(appId));
+    if (!app) { showNotification('Pending app not found'); return; }
+    openAppInStudio(app, 'pending');
+}
+window.openPendingAppInStudio = openPendingAppInStudio;
+
+async function previewPendingApp(appId) {
+    if (!canManageApps()) { showNotification('Founder access required'); return; }
+    const apps = await getPendingApps();
+    const app = apps.find(item => String(item.id) === String(appId));
+    if (!app) { showNotification('Pending app not found'); return; }
+    const frame = document.getElementById('previewIframe');
+    const modal = document.getElementById('previewAppModal');
+    if (!frame || !modal) { showNotification('Preview panel unavailable'); return; }
+    frame.srcdoc = _buildAppBlob(app.python_code || app.pythonCode || '', app.html_code || app.htmlCode || '', app.server_url || app.serverUrl || compilerUrl || '');
+    modal.classList.add('open');
+}
+window.previewPendingApp = previewPendingApp;
+
+function closePreviewModal() {
+    const modal = document.getElementById('previewAppModal');
+    const frame = document.getElementById('previewIframe');
+    if (modal) modal.classList.remove('open');
+    if (frame) { frame.removeAttribute('srcdoc'); frame.src = 'about:blank'; }
+}
+window.closePreviewModal = closePreviewModal;
 
 // ========== EXECUTE APP USING QUANTUM APP STUDIO ==========
 
@@ -1153,6 +1230,7 @@ function openQuantumAppStudio() {
         return;
     }
     studioModal.classList.add('open');
+    studioIframeReady = false;
     setTimeout(function() {
         var sf = document.getElementById('studioIframe');
         if (sf && sf.contentWindow) {
@@ -1179,6 +1257,36 @@ window.addEventListener('message', async function(e) {
     const data = e.data;
     if (!data || typeof data !== 'object') return;
     
+    if (data.type === 'QCOL_STUDIO_ADMIN_SAVE') {
+        if (!canManageApps()) {
+            try { studioIframe.contentWindow.postMessage({ type: 'QCOL_STUDIO_ADMIN_SAVE_RESULT', success: false, error: 'Founder access required' }, location.origin); } catch (e) {}
+            return;
+        }
+        const sourceType = data.sourceType === 'pending' ? 'pending' : 'published';
+        const appId = String(data.sourceAppId || '');
+        const appData = data.appData && typeof data.appData === 'object' ? data.appData : null;
+        if (!appId || !appData || !window.quantumSync || !window.quantumSync.isReady) {
+            try { studioIframe.contentWindow.postMessage({ type: 'QCOL_STUDIO_ADMIN_SAVE_RESULT', success: false, error: 'Cloud sync unavailable or invalid app data' }, location.origin); } catch (e) {}
+            return;
+        }
+        try {
+            if (sourceType === 'pending') await window.quantumSync.updatePendingApp(appId, appData);
+            else await window.quantumSync.updatePublishedApp(appId, appData);
+            cachedPublishedApps = cachedPublishedHTML = cachedPendingApps = cachedPendingHTML = cachedTags = null;
+            await window.quantumSync.syncAll();
+            await renderPendingList();
+            renderTagFilters();
+            await renderPublishedApps();
+            try { studioIframe.contentWindow.postMessage({ type: 'QCOL_STUDIO_ADMIN_SAVE_RESULT', success: true }, location.origin); } catch (e) {}
+            showNotification(sourceType === 'pending' ? 'Pending app updated' : 'Published app updated');
+        } catch (error) {
+            console.error('Founder app update failed:', error);
+            try { studioIframe.contentWindow.postMessage({ type: 'QCOL_STUDIO_ADMIN_SAVE_RESULT', success: false, error: error.message }, location.origin); } catch (e) {}
+            showNotification('Could not update app: ' + error.message);
+        }
+        return;
+    }
+
     if (data.type === 'QCOL_STUDIO_SYNC_APP') {
         const { appId, appData } = data;
         
@@ -1279,14 +1387,15 @@ window.addEventListener('message', (e) => {
         isAdmin = (currentUser?.role === 'admin' || currentUser?.role === 'founder');
         isFounder = (currentUser?.role === 'founder');
         const adminBar = document.getElementById('adminBar');
-        if(adminBar) adminBar.classList.toggle('show', isFounder);
+        if(adminBar) adminBar.classList.toggle('show', canManageApps());
+        cachedPublishedApps = cachedPublishedHTML = cachedPendingApps = cachedPendingHTML = cachedTags = null;
         renderTagFilters();
         renderPublishedApps();
     }
 });
 
 function openPendingManager() {
-    if(!isFounder && !isAdmin) { showNotification("Access for founders/admins only"); return; }
+    if(!canManageApps()) { showNotification("Founder access required"); return; }
     renderPendingList();
     document.getElementById('pendingModal').classList.add('open');
 }
@@ -1296,8 +1405,8 @@ function closePendingModal() { document.getElementById('pendingModal').classList
 // 🔥 PUBLISH PENDING APP
 // ============================================================
 async function publishPendingApp(appId) {
-    if (!isFounder && !isAdmin) { 
-        showNotification("Solo fundadores/admins pueden publicar"); 
+    if (!canManageApps()) { 
+        showNotification("Solo el fundador puede publicar"); 
         return; 
     }
     
@@ -1328,7 +1437,7 @@ async function publishPendingApp(appId) {
 // 🔥 REJECT PENDING APP
 // ============================================================
 async function rejectPendingApp(appId) {
-    if (!isFounder && !isAdmin) return;
+    if (!canManageApps()) return;
     if (!confirm("Delete this pending app?")) return;
     
     if (!window.quantumSync || !window.quantumSync.isReady) {
@@ -1354,7 +1463,7 @@ async function rejectPendingApp(appId) {
 // 🔥 DELETE PUBLISHED APP
 // ============================================================
 async function deletePublishedApp(appId) {
-    if(!isFounder && !hasFounderSession()) { showNotification("Only founder can delete published apps"); return; }
+    if(!canManageApps()) { showNotification("Only founder can delete published apps"); return; }
     if(!confirm(`Delete app from repository?`)) return;
     
     if (!window.quantumSync || !window.quantumSync.isReady) {

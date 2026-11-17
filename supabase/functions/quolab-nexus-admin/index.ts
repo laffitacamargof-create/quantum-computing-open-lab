@@ -9,7 +9,7 @@ const origins = new Set([
 ]);
 const founderActions = new Set([
   "quantum_list_pending", "quantum_approve_app", "quantum_reject_app",
-  "quantum_delete_published_app", "quantum_config_save",
+  "quantum_delete_published_app", "quantum_update_published_app", "quantum_update_pending_app", "quantum_config_save",
 ]);
 const buckets = new Map<string, { start: number; count: number }>();
 const MAX_BODY = 2_300_000;
@@ -129,6 +129,8 @@ Deno.serve(async (req: Request) => {
       case "quantum_approve_app": result = await db.rpc("quantum_approve_app", { p_id: params.p_id, p_key: params.p_key }); break;
       case "quantum_reject_app": result = await db.rpc("quantum_reject_app", { p_id: params.p_id, p_key: params.p_key }); break;
       case "quantum_delete_published_app": result = await db.rpc("quantum_delete_published_app", { p_id: params.p_id, p_key: params.p_key }); break;
+      case "quantum_update_published_app": result = await db.rpc("quantum_update_published_app", { p_id: params.p_id, p_app: params.p_app, p_key: params.p_key }); break;
+      case "quantum_update_pending_app": result = await db.rpc("quantum_update_pending_app", { p_id: params.p_id, p_app: params.p_app, p_key: params.p_key }); break;
       case "quantum_config_save":
         result = await db.rpc("quantum_config_save", { p_key: params.p_key, p_value: params.p_value, p_founder_key: params.p_founder_key }); break;
       case "repo_create": result = await db.rpc("repo_create", params); break;
