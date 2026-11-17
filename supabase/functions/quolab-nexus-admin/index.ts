@@ -72,8 +72,12 @@ Deno.serve(async (req: Request) => {
   if (!req.headers.get("apikey")) return reply(401, { error: "missing_api_key" }, origin);
 
   const url = Deno.env.get("SUPABASE_URL")?.trim() || "";
-  const secret = Deno.env.get("QUOLAB_NEXUS_SECRET_KEY")?.trim() || "";
-  if (!url || !secret.startsWith("sb_secret_")) {
+  // Prefer the newer secret API key; retain compatibility with the existing server-only service_role JWT.
+  const secret = Deno.env.get("QUOLAB_NEXUS_SECRET_KEY")?.trim() ||
+    Deno.env.get("QUOLAB_SERVICE_ROLE_KEY")?.trim() || "";
+  const isSecretKey = secret.startsWith("sb_secret_");
+  const isLegacyServiceRoleJwt = secret.startsWith("eyJ") && secret.split(".").length === 3;
+  if (!url || (!isSecretKey && !isLegacyServiceRoleJwt)) {
     console.error("QuOLab Nexus admin backend configuration is incomplete");
     return reply(503, { error: "backend_not_configured" }, origin);
   }
