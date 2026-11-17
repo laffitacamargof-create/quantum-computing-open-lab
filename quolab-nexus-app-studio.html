@@ -607,7 +607,7 @@
             return;
         }
         container.innerHTML = pendingReviewApps.map(app => {
-            const id = escapeHtml(app.id);
+            const id = encodeURIComponent(String(app.id));
             return '<article class="pending-review-card">' +
                 '<div class="project-name">📥 ' + escapeHtml(app.name) + '</div>' +
                 '<div class="pending-review-meta">Downloaded from Supabase pending queue · ' + new Date(app.downloadedAt || Date.now()).toLocaleString() + '</div>' +
@@ -616,8 +616,8 @@
                 '<button class="btn-secondary" data-review-run="' + id + '">▶ Run preview</button>' +
                 '</div></article>';
         }).join('');
-        container.querySelectorAll('[data-review-edit]').forEach(button => button.addEventListener('click', () => editPendingReviewApp(button.getAttribute('data-review-edit'))));
-        container.querySelectorAll('[data-review-run]').forEach(button => button.addEventListener('click', () => runPendingReviewApp(button.getAttribute('data-review-run'))));
+        container.querySelectorAll('[data-review-edit]').forEach(button => button.addEventListener('click', () => editPendingReviewApp(decodeURIComponent(button.getAttribute('data-review-edit')))));
+        container.querySelectorAll('[data-review-run]').forEach(button => button.addEventListener('click', () => runPendingReviewApp(decodeURIComponent(button.getAttribute('data-review-run')))));
     }
 
     function editPendingReviewApp(id) {
