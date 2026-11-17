@@ -309,6 +309,7 @@
     let isEmbedded = false;
     let parentOrigin = null;          // trusted origin when embedded
     let receivedUrl = false;
+    let externalEditContext = null;
 
     // ═══════════════════════════════════════════════════════════
     // 🛡️ PROTECTION: Force English AI + Clean editor on project switch
@@ -398,6 +399,10 @@
 
         // --- From here the message comes from a trusted origin ---
         
+        if (data.type === 'QCOL_STUDIO_ADMIN_SAVE_RESULT') {
+            notify(data.success ? 'Cloud record updated successfully.' : ('Cloud update failed: ' + (data.error || 'unknown error')));
+            return;
+        }
         if (data.type === 'QCOL_COMPILER_URL' && data.url) {
             setServerUrl(data.url);
             return;
@@ -417,52 +422,42 @@
         }
         
         if (data.type === 'QCOL_OPEN_APP_FROM_PUZZLE') {
-            const { appId, appName, pythonCode, htmlCode, serverUrl } = data;
+            const { appId, appName, pythonCode, htmlCode, serverUrl, sourceType } = data;
             if (appId && appName) {
-                // ── PROTECTION: save current state before loading the puzzle app
-                if (currentEditId && currentEditId !== appId) {
+                if (currentEditId) {
                     const prevIdx = projects.findIndex(p => p.id === currentEditId);
                     if (prevIdx !== -1) {
                         projects[prevIdx].pythonCode = document.getElementById('python-editor').value;
-                        projects[prevIdx].htmlCode   = document.getElementById('html-editor').value;
-                        projects[prevIdx].name       = document.getElementById('project-name-input').value.trim() || projects[prevIdx].name;
+                        projects[prevIdx].htmlCode = document.getElementById('html-editor').value;
+                        projects[prevIdx].name = document.getElementById('project-name-input').value.trim() || projects[prevIdx].name;
                         saveProjects();
                     }
                 }
-                let existing = projects.find(p => p.id === appId);
-                if (existing) {
-                    currentEditId = appId;
-                    document.getElementById('project-name-input').value = existing.name;
-                    document.getElementById('python-editor').value      = '';
-                    document.getElementById('html-editor').value        = '';
-                    document.getElementById('python-editor').value      = existing.pythonCode || '';
-                    document.getElementById('html-editor').value        = existing.htmlCode   || '';
-                    if (existing.serverUrl) setServerUrl(existing.serverUrl);
-                } else {
-                    const newProj = {
-                        id: appId,
-                        name: appName,
-                        pythonCode: pythonCode || '# Python Code\n',
-                        htmlCode: htmlCode || '<!DOCTYPE html>\n<html>\n<body>\n<h1>App from Puzzle</h1>\n</body>\n</html>',
-                        serverUrl: serverUrl || '',
-                        createdAt: Date.now()
-                    };
-                    projects.push(newProj);
-                    currentEditId = appId;
-                    document.getElementById('project-name-input').value = newProj.name;
-                    document.getElementById('python-editor').value      = '';
-                    document.getElementById('html-editor').value        = '';
-                    document.getElementById('python-editor').value      = newProj.pythonCode;
-                    document.getElementById('html-editor').value        = newProj.htmlCode;
-                    if (newProj.serverUrl) setServerUrl(newProj.serverUrl);
-                    saveProjects();
+                const externalType = sourceType === 'pending' ? 'pending' : 'published';
+                const localId = 'nexus-' + externalType + '-' + String(appId);
+                let localProject = projects.find(p => p.id === localId);
+                if (!localProject) {
+                    localProject = { id: localId, name: appName, pythonCode: '', htmlCode: '', serverUrl: '', createdAt: Date.now() };
+                    projects.push(localProject);
                 }
+                localProject.name = appName;
+                localProject.pythonCode = pythonCode || '';
+                localProject.htmlCode = htmlCode || '';
+                localProject.serverUrl = serverUrl || '';
+                currentEditId = localId;
+                externalEditContext = { type: externalType, id: String(appId) };
+                document.getElementById('project-name-input').value = localProject.name;
+                document.getElementById('python-editor').value = localProject.pythonCode;
+                document.getElementById('html-editor').value = localProject.htmlCode;
+                if (localProject.serverUrl) setServerUrl(localProject.serverUrl);
+                saveProjects();
                 showScreen('editor');
-                sendToParent({ type: 'QCOL_STUDIO_APP_LOADED', appId: currentEditId });
+                notify(externalType === 'pending' ? 'Pending app opened in Studio' : 'Published app opened for founder editing');
+                sendToParent({ type: 'QCOL_STUDIO_APP_LOADED', appId: String(appId), sourceType: externalType });
             }
             return;
         }
-        
+
         if (data.type === 'QCOL_GET_APPS') {
             const apps = projects.map(p => ({ id: p.id, name: p.name, serverUrl: p.serverUrl, createdAt: p.createdAt }));
             sendToParent({ type: 'QCOL_APPS_LIST', apps });
@@ -618,7 +613,7 @@
                 id: generateId(),
                 name: "Demo: Quantum greeting",
                 pythonCode: `def greet(name):\n    return f"Hello {name}! from Python on quantum server 🧪"\n\ndef add(a,b):\n    return a+b`,
-                htmlCode: `<!DOCTYPE html>\n<html>\n<head><meta charset="UTF-8"></head>\n<body style="background:#0a0e1a; color:white; font-family:monospace; padding:1rem;">\n<h2>Interactive Demo</h2>\n<input id="nameInput" placeholder="Your name" style="padding:0.3rem;">\n<button onclick="callGreet()">Greet</button>\n<p id="result"></p>\n<script>\nwindow.callGreet = async () => {\n    const name = document.getElementById('nameInput').value;\n    const res = await window.pyCall("greet", name);\n    document.getElementById('result').innerText = res;\n};\n<\\/script>\n</body>\n</html>`,
+                htmlCode: `<!DOCTYPE html>\n<html>\n<head><meta charset="UTF-8"></head>\n<body style="background:#0a0e1a; color:white; font-family:monospace; padding:1rem;">\n<h2>Interactive Demo</h2>\n<input id="nameInput" placeholder="Your name" style="padding:0.3rem;">\n<button onclick="callGreet()">Greet</button>\n<p id="result"></p>\n<script>\nwindow.callGreet = async () => {\n    const name = document.getElementById('nameInput').value;\n    const res = await window.pyCall("greet", name);\n    document.getElementById('result').innerText = res;\n};\n<\/script>\n</body>\n</html>`,
                 serverUrl: "",
                 createdAt: Date.now()
             });
@@ -861,8 +856,8 @@
     async function buildAppBlob(pythonCode, htmlCode, serverUrl) {
         const connectorUrl = new URL('quolab-nexus-tool-connector.js?v=1.3.1', location.href).href;
         const bridge = `
-        <script>window.__QUOLAB_NEXUS_TOOL='quantum-app-studio';<\\/script>
-        <script src="${connectorUrl}"><\\/script>
+        <script>window.__QUOLAB_NEXUS_TOOL='quantum-app-studio';<\/script>
+        <script src="${connectorUrl}"><\/script>
         <script>
         window.__serverUrl = ${JSON.stringify(serverUrl || '')};
         window.__pyCode = ${JSON.stringify(pythonCode || '')};
@@ -886,7 +881,7 @@
             });
         };
         console.log('QuOLab local app bridge ready; Python server:', window.__serverUrl || 'not configured');
-        <\\/script>
+        <\/script>
         `;
         let finalHtml = typeof htmlCode === 'string' ? htmlCode : '';
         if (!finalHtml.trim()) finalHtml = '<!doctype html><html><head><meta charset="utf-8"></head><body><p>This saved app has no HTML interface. Open Edit to restore its interface code.</p></body></html>';
@@ -971,6 +966,7 @@
             // ── When returning to repository, clear the editor
             // Prevents seeing residues from the previous project when opening another
             currentEditId = null;
+            externalEditContext = null;
             document.getElementById('project-name-input').value = '';
             document.getElementById('python-editor').value      = '';
             document.getElementById('html-editor').value        = '';
@@ -985,99 +981,51 @@
     // 🔄 INTEGRACIÓN CON SUPABASE SYNC
     // ============================================================
     function saveCurrentEdit() {
-        const nameVal  = document.getElementById('project-name-input').value.trim();
-        const pyVal    = document.getElementById('python-editor').value;
-        const htmlVal  = document.getElementById('html-editor').value;
-        // serverUrl comes from Founder automatically, not from input (hidden)
-        const urlVal   = localStorage.getItem('qcol_colab_url') || '';
+        const nameVal = document.getElementById('project-name-input').value.trim();
+        const pyVal = document.getElementById('python-editor').value;
+        const htmlVal = document.getElementById('html-editor').value;
+        const urlVal = localStorage.getItem('qcol_colab_url') || '';
+        if (!nameVal) { notify('Enter a name'); return; }
 
-        // Project identity is determined by its ID, not by code equality.
-        // Different projects are allowed to contain identical source code.
-
-        if (!currentEditId) {
-            // Create new project
-            if (!nameVal) { notify("Enter a name"); return; }
-            const newId  = generateId();
-            const newProj = {
-                id:         newId,
-                name:       nameVal,
-                pythonCode: pyVal,
-                htmlCode:   htmlVal,
-                serverUrl:  urlVal,
-                createdAt:  Date.now()
-            };
-            projects.push(newProj);
-            currentEditId = newId;
-            saveProjects();
-            notify(`Project "${nameVal}" created`);
-            
-            // ── Sincronizar con la nube (Supabase) ──
-            if (window.quantumSync && window.quantumSync.isReady) {
-                try {
-                    window.quantumSync.submitApp({
-                        id: newId,
-                        name: nameVal,
-                        title: nameVal,
-                        description: '',
-                        tags: '',
-                        pythonCode: pyVal,
-                        htmlCode: htmlVal,
-                        serverUrl: urlVal,
-                        duration: 8
-                    }).then(() => {
-                        notify('☁️ App sincronizada con la nube (pendiente)');
-                    }).catch((err) => {
-                        console.warn('⚠️ No se pudo sincronizar con la nube:', err);
-                    });
-                } catch (error) {
-                    console.warn('⚠️ No se pudo sincronizar con la nube:', error);
-                }
-            }
-            
-            showScreen('repo');
-            renderRepository();
-            return;
-        }
-
-        // Update existing project — verify that the id still exists
-        const idx = projects.findIndex(p => p.id === currentEditId);
+        let idx = projects.findIndex(p => p.id === currentEditId);
         if (idx === -1) {
-            notify("❌ Error: project not found. Create a new one.");
-            currentEditId = null;
-            return;
+            const newId = generateId();
+            projects.push({ id: newId, name: nameVal, pythonCode: pyVal, htmlCode: htmlVal, serverUrl: urlVal, createdAt: Date.now() });
+            currentEditId = newId;
+            idx = projects.length - 1;
+        } else {
+            projects[idx].name = nameVal;
+            projects[idx].pythonCode = pyVal;
+            projects[idx].htmlCode = htmlVal;
+            projects[idx].serverUrl = urlVal;
         }
-        // ── PROTECTION: only update the project whose id matches exactly
-        // Never touch other projects
-        projects[idx].name       = nameVal || projects[idx].name;
-        projects[idx].pythonCode = pyVal;
-        projects[idx].htmlCode   = htmlVal;
-        projects[idx].serverUrl  = urlVal;
-        saveProjects();
-        notify("Project saved");
-        
-        // ── Sincronizar con la nube (Supabase) ──
-        if (window.quantumSync && window.quantumSync.isReady) {
-            try {
-                window.quantumSync.submitApp({
-                    id: currentEditId,
-                    name: nameVal || projects[idx].name,
-                    title: nameVal || projects[idx].name,
-                    description: '',
-                    tags: '',
-                    pythonCode: pyVal,
-                    htmlCode: htmlVal,
-                    serverUrl: urlVal,
-                    duration: 8
-                }).then(() => {
-                    notify('☁️ App sincronizada con la nube (pendiente)');
-                }).catch((err) => {
-                    console.warn('⚠️ No se pudo sincronizar con la nube:', err);
-                });
-            } catch (error) {
-                console.warn('⚠️ No se pudo sincronizar con la nube:', error);
-            }
+
+        try { saveProjects(); }
+        catch (error) { notify('Could not save this project locally.'); return; }
+
+        if (externalEditContext && currentEditId === 'nexus-' + externalEditContext.type + '-' + externalEditContext.id) {
+            const project = projects[idx];
+            sendToParent({
+                type: 'QCOL_STUDIO_ADMIN_SAVE',
+                sourceType: externalEditContext.type,
+                sourceAppId: externalEditContext.id,
+                appData: {
+                    id: externalEditContext.id,
+                    name: project.name,
+                    title: project.name,
+                    description: project.description || '',
+                    tags: project.tags || '',
+                    duration: project.duration || 8,
+                    pythonCode: project.pythonCode,
+                    htmlCode: project.htmlCode,
+                    serverUrl: project.serverUrl
+                }
+            });
+            notify('Saved locally. Sending founder update to Quantum Puzzle…');
+        } else {
+            notify('Project saved privately in Quantum App Studio');
         }
-        
+
         showScreen('repo');
         renderRepository();
     }
