@@ -860,10 +860,10 @@
         `;
         let finalHtml = typeof htmlCode === 'string' ? htmlCode : '';
         if (!finalHtml.trim()) finalHtml = '<!doctype html><html><head><meta charset="utf-8"></head><body><p>This saved app has no HTML interface. Open Edit to restore its interface code.</p></body></html>';
-        if (/<head\\b[^>]*>/i.test(finalHtml)) {
-            finalHtml = finalHtml.replace(/<head\\b[^>]*>/i, match => match + bridge);
-        } else if (/<html\\b[^>]*>/i.test(finalHtml)) {
-            finalHtml = finalHtml.replace(/<html\\b[^>]*>/i, match => match + '<head>' + bridge + '</head>');
+        if (/<head\b[^>]*>/i.test(finalHtml)) {
+            finalHtml = finalHtml.replace(/<head\b[^>]*>/i, match => match + bridge);
+        } else if (/<html\b[^>]*>/i.test(finalHtml)) {
+            finalHtml = finalHtml.replace(/<html\b[^>]*>/i, match => match + '<head>' + bridge + '</head>');
         } else {
             finalHtml = '<!doctype html><html><head>' + bridge + '</head><body>' + finalHtml + '</body></html>';
         }
