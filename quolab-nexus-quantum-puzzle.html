@@ -1310,7 +1310,7 @@ window.addEventListener('message', (e) => {
 });
 
 function openPendingManager() {
-    if(!isFounder && !isAdmin) { showNotification("Access for founders/admins only"); return; }
+    if(!isFounder && !hasFounderSession()) { showNotification("Founder access required"); return; }
     renderPendingList();
     document.getElementById('pendingModal').classList.add('open');
 }
@@ -1353,7 +1353,8 @@ function editPublishedApp(appId) {
         appId: String(app.id), appName: app.title || app.name || 'Published app',
         pythonCode: app.python_code || app.pythonCode || '',
         htmlCode: app.html_code || app.htmlCode || '',
-        serverUrl: app.server_url || app.serverUrl || ''
+        serverUrl: app.server_url || app.serverUrl || '',
+        description: app.description || '', tags: app.tags || '', duration: app.duration || 8
     });
 }
 
@@ -1361,8 +1362,8 @@ function editPublishedApp(appId) {
 // 🔥 PUBLISH PENDING APP
 // ============================================================
 async function publishPendingApp(appId) {
-    if (!isFounder && !isAdmin) { 
-        showNotification("Solo fundadores/admins pueden publicar"); 
+    if (!isFounder && !hasFounderSession()) { 
+        showNotification("Solo el fundador puede publicar"); 
         return; 
     }
     
@@ -1393,7 +1394,7 @@ async function publishPendingApp(appId) {
 // 🔥 REJECT PENDING APP
 // ============================================================
 async function rejectPendingApp(appId) {
-    if (!isFounder && !isAdmin) return;
+    if (!isFounder && !hasFounderSession()) return;
     if (!confirm("Delete this pending app?")) return;
     
     if (!window.quantumSync || !window.quantumSync.isReady) {
