@@ -422,7 +422,7 @@
         }
         
         if (data.type === 'QCOL_OPEN_APP_FROM_PUZZLE') {
-            const { appId, appName, pythonCode, htmlCode, serverUrl, sourceType } = data;
+            const { appId, appName, pythonCode, htmlCode, serverUrl, sourceType, description, tags, duration } = data;
             if (appId && appName) {
                 if (currentEditId) {
                     const prevIdx = projects.findIndex(p => p.id === currentEditId);
@@ -444,6 +444,9 @@
                 localProject.pythonCode = pythonCode || '';
                 localProject.htmlCode = htmlCode || '';
                 localProject.serverUrl = serverUrl || '';
+                localProject.description = description || '';
+                localProject.tags = tags || '';
+                localProject.duration = duration || 8;
                 currentEditId = localId;
                 externalEditContext = { type: externalType, id: String(appId) };
                 document.getElementById('project-name-input').value = localProject.name;
@@ -984,7 +987,7 @@
         const nameVal = document.getElementById('project-name-input').value.trim();
         const pyVal = document.getElementById('python-editor').value;
         const htmlVal = document.getElementById('html-editor').value;
-        const urlVal = localStorage.getItem('qcol_colab_url') || '';
+        const urlVal = localStorage.getItem('qcol_colab_url') || (projects.find(p => p.id === currentEditId)?.serverUrl || '');
         if (!nameVal) { notify('Enter a name'); return; }
 
         let idx = projects.findIndex(p => p.id === currentEditId);
