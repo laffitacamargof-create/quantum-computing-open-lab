@@ -1082,7 +1082,7 @@ window.addEventListener('message', async function _execPyCallHandler(ev) {
     const d = ev.data;
     if (!d || d.type !== 'pyCall') return;
     const iframe = document.getElementById('execIframe');
-    if (!iframe || ev.source !== iframe.contentWindow || ev.origin !== location.origin) return;
+    if (!iframe || ev.source !== iframe.contentWindow || (ev.origin !== location.origin && ev.origin !== 'null')) return;
     const { id, func, args, serverUrl: appUrl, pythonCode } = d;
     const src = ev.source;
     if (typeof id !== 'string' || id.length > 120 || typeof func !== 'string' ||
@@ -1090,7 +1090,7 @@ window.addEventListener('message', async function _execPyCallHandler(ev) {
 
     const tid = setTimeout(() => {
         _execPyCalls.delete(id);
-        try { src.postMessage({ type: 'pyResult', id, error: 'Timeout 35s' }, location.origin); } catch(e) {}
+        try { src.postMessage({ type: 'pyResult', id, error: 'Timeout 35s' }, '*'); } catch(e) {}
     }, 60000);
     _execPyCalls.set(id, { src, tid });
 
@@ -1106,10 +1106,10 @@ window.addEventListener('message', async function _execPyCallHandler(ev) {
         clearTimeout(tid); _execPyCalls.delete(id);
         let parsed = (output || '').trim();
         try { parsed = JSON.parse(parsed); } catch(e) {}
-        src.postMessage({ type: 'pyResult', id, result: parsed }, location.origin);
+        src.postMessage({ type: 'pyResult', id, result: parsed }, '*');
     } catch(err) {
         clearTimeout(tid); _execPyCalls.delete(id);
-        src.postMessage({ type: 'pyResult', id, error: err.message }, location.origin);
+        src.postMessage({ type: 'pyResult', id, error: err.message }, '*');
     }
 });
 
@@ -1151,7 +1151,7 @@ function _buildAppBlob(pythonCode, htmlCode, serverUrl) {
             }, 60000);
             function handler(ev) {
                 var d = ev.data;
-                if (ev.origin !== location.origin || ev.source !== window.parent) return;
+                if ((ev.origin !== location.origin && ev.origin !== 'null') || ev.source !== window.parent) return;
                 if (d && d.type === 'pyResult' && d.id === msgId) {
                     clearTimeout(timeout);
                     window.removeEventListener('message', handler);
@@ -1163,7 +1163,7 @@ function _buildAppBlob(pythonCode, htmlCode, serverUrl) {
             window.parent.postMessage({
                 type: 'pyCall', id: msgId, func: funcName, args: args,
                 serverUrl: window.__serverUrl, pythonCode: window.__pyCode
-            }, location.origin);
+            }, '*');
         });
     };
 })();
