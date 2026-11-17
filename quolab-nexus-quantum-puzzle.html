@@ -553,7 +553,7 @@ body::before{
 (async function initQuantumSync() {
     try {
         const { QUOLAB_NEXUS_SUPABASE_CONFIG } = await import('./quolab-nexus-supabase-config.js');
-        const { default: QuOLabNexusQuantumSync } = await import('./quolab-nexus-quantum-sync.js');
+        const { default: QuOLabNexusQuantumSync } = await import('./quolab-nexus-quantum-sync.js?v=20261117-cloud-auth-1');
         
         console.log('📦 Módulos importados correctamente');
         console.log('📌 Supabase endpoint:', QUOLAB_NEXUS_SUPABASE_CONFIG.supabaseUrl);
@@ -668,7 +668,7 @@ body::before{
             <span>🌀 QUANTUM APP STUDIO · Quantum application editor</span>
             <button class="btn-cancel" onclick="closeStudioModal()" style="margin:0;">CLOSE</button>
         </div>
-        <iframe id="studioIframe" class="studio-iframe" src="quolab-nexus-app-studio.html?v=20261117-3" sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-modals allow-same-origin"></iframe>
+        <iframe id="studioIframe" class="studio-iframe" src="quolab-nexus-app-studio.html?v=20261117-4" sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-modals allow-same-origin"></iframe>
     </div>
 </div>
 
@@ -771,8 +771,17 @@ function getLocalStudioApps() {
 }
 
 async function getPublishedApps() {
-    const cloud = window.quantumSync && Array.isArray(window.quantumSync.publishedApps)
-        ? window.quantumSync.publishedApps : [];
+    let cloud = [];
+    if (window.quantumSync && Array.isArray(window.quantumSync.publishedApps)) {
+        cloud = window.quantumSync.publishedApps;
+    } else {
+        try {
+            const cached = JSON.parse(localStorage.getItem('quolab_nexus_published_apps_cache') || '[]');
+            if (Array.isArray(cached)) cloud = cached;
+        } catch (e) {
+            console.warn('[Quantum Puzzle] Published-app cache is invalid:', e);
+        }
+    }
     const local = getLocalStudioApps();
     const byId = new Map();
     cloud.forEach(app => byId.set(String(app.id), app));
