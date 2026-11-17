@@ -1111,14 +1111,14 @@ class QuOLabNexusConfigSyncReader {
     if (typeof d.key === 'string' && d.key.indexOf('qcol_') === 0) d.key = 'openq_' + d.key.slice(5);
 
     // Enrutador central: las órdenes y respuestas de App Studio atraviesan index.html.
-    if (d.type === 'OPENQ_STUDIO_COMMAND') {
+    if (d.type === 'OPENQ_STUDIO_COMMAND' || d.type === 'NEXUS_STUDIO_COMMAND') {
       const puzzle = iframes['quantum-puzzle'];
       const studio = puzzle && puzzle.contentDocument && puzzle.contentDocument.getElementById('studioIframe');
       if (studio && studio.contentWindow) studio.contentWindow.postMessage(d.message || {}, location.origin);
       else notify('Quantum App Studio todavía no está disponible');
       return;
     }
-    if (d.type === 'OPENQ_STUDIO_EVENT') {
+    if (d.type === 'OPENQ_STUDIO_EVENT' || d.type === 'NEXUS_STUDIO_EVENT') {
       const puzzle = iframes['quantum-puzzle'];
       if (puzzle && puzzle.contentWindow) puzzle.contentWindow.postMessage(d.message || {}, location.origin);
       return;
