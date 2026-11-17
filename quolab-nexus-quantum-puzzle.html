@@ -1090,11 +1090,11 @@ function _buildAppBlob(pythonCode, htmlCode, serverUrl) {
         });
     };
 })();
-<\\/script>`;
+<\/script>`;
     let html = typeof htmlCode === 'string' ? htmlCode : '';
     if (!html.trim()) html = '<!doctype html><html><head><meta charset="utf-8"></head><body><h2>App without interface</h2></body></html>';
-    if (/<head\\b[^>]*>/i.test(html)) html = html.replace(/<head\\b[^>]*>/i, m => m + bridge);
-    else if (/<html\\b[^>]*>/i.test(html)) html = html.replace(/<html\\b[^>]*>/i, m => m + '<head>' + bridge + '</head>');
+    if (/<head\b[^>]*>/i.test(html)) html = html.replace(/<head\b[^>]*>/i, m => m + bridge);
+    else if (/<html\b[^>]*>/i.test(html)) html = html.replace(/<html\b[^>]*>/i, m => m + '<head>' + bridge + '</head>');
     else html = '<!doctype html><html><head>' + bridge + '</head><body>' + html + '</body></html>';
     return html;
 }
