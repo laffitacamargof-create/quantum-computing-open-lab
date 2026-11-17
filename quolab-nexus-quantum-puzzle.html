@@ -730,6 +730,8 @@ try { if (canManageApps()) document.getElementById('adminBar')?.classList.add('s
 let activeTagFilter = "all";
 let studioIframeReady = false;
 let studioIframeLoaded = false;
+let pendingAppOpening = false;
+const studioOpenRequests = new Map();
 let pendingPreviewApp = null;
 let compilerUrl = '';
 let currentExecutingApp = null;
@@ -960,9 +962,15 @@ async function renderPendingList() {
 function openAppInStudio(app, sourceType) {
     if (!canManageApps()) { showNotification('Founder access required'); return; }
     if (!app) { showNotification('App not found'); return; }
+
+    // Close the pending-list overlay first so it cannot cover the Studio editor.
+    if (sourceType === 'pending') closePendingModal();
     openQuantumAppStudio();
+
+    const requestId = 'studio-open-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
     const command = {
         type: 'QCOL_OPEN_APP_FROM_PUZZLE',
+        requestId,
         appId: String(app.id),
         appName: app.title || app.name || 'Quantum App',
         pythonCode: app.python_code || app.pythonCode || '',
@@ -973,16 +981,25 @@ function openAppInStudio(app, sourceType) {
         duration: app.duration || 8,
         sourceType
     };
+
     let attempts = 0;
     const timer = setInterval(() => {
         attempts++;
         if (studioIframeReady && studioIframe && studioIframe.contentWindow) {
             clearInterval(timer);
-            // Verify the target frame is still the currently mounted Studio instance.
             try {
+                studioOpenRequests.set(requestId, { appId: String(app.id), sourceType, startedAt: Date.now() });
                 studioIframe.contentWindow.postMessage(command, location.origin);
-                showNotification('Opening selected pending app in Quantum App Studio…', 2500);
+                showNotification('Opening app in the Studio editor…', 2500);
+                // Require an explicit editor-loaded acknowledgement; do not silently leave the list on top.
+                setTimeout(() => {
+                    if (studioOpenRequests.has(requestId)) {
+                        studioOpenRequests.delete(requestId);
+                        showNotification('Studio did not confirm that the editor opened. Reopen the pending list and retry.', 5000);
+                    }
+                }, 12000);
             } catch (error) {
+                studioOpenRequests.delete(requestId);
                 console.error('Could not transfer pending app to Studio:', error);
                 showNotification('Could not send the selected app to Studio: ' + error.message);
             }
@@ -1003,19 +1020,26 @@ async function editPublishedApp(appId) {
 window.editPublishedApp = editPublishedApp;
 
 async function openPendingAppInStudio(appId) {
+    if (pendingAppOpening) return;
     if (!canManageApps()) { showNotification('Founder access required'); return; }
     if (!hasFounderSession()) { showNotification('Founder session expired. Sign in again to download pending apps.'); return; }
     if (!window.quantumSync || !window.quantumSync.isReady) {
         showNotification('Supabase is not connected. The pending app was not downloaded.');
         return;
     }
-    // Always fetch the selected item from the founder-only Supabase pending queue.
-    // Do not fall back to a stale in-memory or browser copy for an administrative edit.
-    const apps = await window.quantumSync.syncPendingApps();
-    if (!Array.isArray(apps)) { showNotification('Could not load pending apps from Supabase.'); return; }
-    const app = apps.find(item => String(item.id) === String(appId));
-    if (!app) { showNotification('Pending app not found in Supabase. Refresh the pending list and try again.'); return; }
-    openAppInStudio(app, 'pending');
+    pendingAppOpening = true;
+    try {
+        // Always fetch the selected item from the founder-only Supabase pending queue.
+        const apps = await window.quantumSync.syncPendingApps();
+        if (!Array.isArray(apps)) throw new Error('Could not load pending apps from Supabase.');
+        const app = apps.find(item => String(item.id) === String(appId));
+        if (!app) throw new Error('Pending app not found in Supabase. Refresh the pending list and try again.');
+        openAppInStudio(app, 'pending');
+    } catch (error) {
+        showNotification(error.message || 'Could not open the pending app.');
+    } finally {
+        pendingAppOpening = false;
+    }
 }
 window.openPendingAppInStudio = openPendingAppInStudio;
 
@@ -1243,8 +1267,9 @@ function openQuantumAppStudio() {
         showNotification('Quantum App Studio cannot open: its panel is missing.');
         return;
     }
+    const alreadyOpen = studioModal.classList.contains('open');
     studioModal.classList.add('open');
-    studioIframeReady = false;
+    if (!alreadyOpen && studioIframe && studioIframe.contentWindow) studioIframeReady = false;
     // The nested Studio iframe can finish loading after the modal is opened.
     // Retry the same idempotent handshake until Studio confirms readiness.
     let handshakeAttempts = 0;
@@ -1398,10 +1423,18 @@ window.addEventListener('message', (e) => {
         return; 
     }
     if (data.type === 'QCOL_STUDIO_OPENED') {
-        // Accept readiness only from the exact nested Studio iframe and same origin.
         if (!studioIframe || e.source !== studioIframe.contentWindow || e.origin !== location.origin) return;
         studioIframeReady = true;
-        showNotification('⚡ Quantum App Studio ready', 1500);
+        return;
+    }
+    if (data.type === 'QCOL_STUDIO_APP_LOADED') {
+        if (!studioIframe || e.source !== studioIframe.contentWindow || e.origin !== location.origin) return;
+        const requestId = data.requestId;
+        if (!requestId || !studioOpenRequests.has(requestId)) return;
+        studioOpenRequests.delete(requestId);
+        // The Studio confirms the editor is visible; the pending-list modal was already closed.
+        if (data.sourceType === 'pending') closePendingModal();
+        showNotification('Application opened in Quantum App Studio. You can now review, run and edit it.', 3500);
         return;
     }
     if (data.type === 'QCOL_APP_SAVED') { 

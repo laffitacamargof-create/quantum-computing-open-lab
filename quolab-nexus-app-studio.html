@@ -452,7 +452,7 @@
         }
         
         if (data.type === 'QCOL_OPEN_APP_FROM_PUZZLE') {
-            const { appId, appName, pythonCode, htmlCode, serverUrl, sourceType, description, tags, duration } = data;
+            const { requestId, appId, appName, pythonCode, htmlCode, serverUrl, sourceType, description, tags, duration } = data;
             if (appId && appName) {
                 const externalType = sourceType === 'pending' ? 'pending' : 'published';
                 if (externalType === 'pending') {
@@ -475,7 +475,10 @@
                     if (reviewCopy.serverUrl) setServerUrl(reviewCopy.serverUrl);
                     showScreen('editor');
                     notify('Pending app opened directly in the Studio editor');
-                    sendToParent({ type: 'QCOL_STUDIO_APP_LOADED', appId: String(appId), sourceType: externalType, section: 'editor' });
+                    const loadedMessage = { type: 'QCOL_STUDIO_APP_LOADED', requestId: requestId || null, appId: String(appId), sourceType: externalType, section: 'editor' };
+                    // Acknowledge directly to Puzzle only after showScreen('editor') has run.
+                    try { window.parent.postMessage(loadedMessage, parentOrigin || event.origin); } catch (error) { console.warn('[Quantum App Studio] Editor-open acknowledgement failed:', error); }
+                    sendToParent(loadedMessage);
                     return;
                 }
 
