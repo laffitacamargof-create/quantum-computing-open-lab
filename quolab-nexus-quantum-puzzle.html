@@ -1321,7 +1321,8 @@ function sendStudioCommand(message) {
     setTimeout(() => {
         const frame = document.getElementById('studioIframe');
         if (!frame || !frame.contentWindow) { showNotification('Quantum App Studio is not available yet.'); return; }
-        frame.contentWindow.postMessage(message, location.origin);
+        frame.contentWindow.postMessage({ type: 'QCOL_REQUEST_STUDIO_CONNECTION' }, location.origin);
+        setTimeout(() => frame.contentWindow.postMessage(message, location.origin), 180);
     }, 700);
 }
 function newAppFromPending() {
@@ -1339,7 +1340,8 @@ function editPendingApp(appId) {
         appId: String(app.id), appName: app.title || app.name || 'Pending app',
         pythonCode: app.python_code || app.pythonCode || '',
         htmlCode: app.html_code || app.htmlCode || '',
-        serverUrl: app.server_url || app.serverUrl || ''
+        serverUrl: app.server_url || app.serverUrl || '',
+        description: app.description || '', tags: app.tags || '', duration: app.duration || 8
     });
 }
 function editPublishedApp(appId) {
