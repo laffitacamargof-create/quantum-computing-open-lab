@@ -730,14 +730,38 @@ let pendingCompileRequest = null;
 // 🔄 FUNCIONES CON INTEGRACIÓN SUPABASE SYNC - SOLO NUBE
 // ============================================================
 
-async function getPublishedApps() {
-    // ✅ SOLO usar la nube, NUNCA localStorage
-    if (window.quantumSync && window.quantumSync.isReady) {
-        await window.quantumSync.syncAll(true);
-        return window.quantumSync.publishedApps || [];
+function getLocalStudioApps() {
+    try {
+        const raw = localStorage.getItem('quantum_apps_repo_v2');
+        const items = raw ? JSON.parse(raw) : [];
+        if (!Array.isArray(items)) return [];
+        return items.filter(p => p && typeof p === 'object').map((p, i) => ({
+            id: String(p.id || p.appId || ('local-' + i)),
+            title: p.name || p.title || 'Untitled local app',
+            name: p.name || p.title || 'Untitled local app',
+            desc: p.description || 'Saved on this device',
+            description: p.description || 'Saved on this device',
+            tags: p.tags || 'local',
+            duration: p.duration || 8,
+            python_code: p.pythonCode || p.python_code || p.python || '',
+            html_code: p.htmlCode || p.html_code || p.html || '',
+            server_url: p.serverUrl || p.server_url || '',
+            _local: true
+        }));
+    } catch (e) {
+        console.warn('[Quantum Puzzle] Could not read local Studio apps:', e);
+        return [];
     }
-    console.warn('⚠️ Sin conexión a la nube, devolviendo lista vacía');
-    return [];
+}
+
+async function getPublishedApps() {
+    const cloud = window.quantumSync && Array.isArray(window.quantumSync.publishedApps)
+        ? window.quantumSync.publishedApps : [];
+    const local = getLocalStudioApps();
+    const byId = new Map();
+    cloud.forEach(app => byId.set(String(app.id), app));
+    local.forEach(app => { if (!byId.has(String(app.id))) byId.set(String(app.id), app); });
+    return Array.from(byId.values());
 }
 
 // ✅ No guardar nada en localStorage
@@ -747,13 +771,8 @@ async function savePublishedApps(apps) {
 }
 
 async function getPendingApps() {
-    // ✅ SOLO usar la nube, NUNCA localStorage
-    if (window.quantumSync && window.quantumSync.isReady) {
-        await window.quantumSync.syncAll(true);
-        return window.quantumSync.pendingApps || [];
-    }
-    console.warn('⚠️ Sin conexión a la nube, devolviendo lista vacía');
-    return [];
+    return window.quantumSync && Array.isArray(window.quantumSync.pendingApps)
+        ? window.quantumSync.pendingApps : [];
 }
 
 // ✅ No guardar nada en localStorage
@@ -788,16 +807,15 @@ let renderTimer = null;
 // 🔥 FUNCIÓN DE REFRESCO MANUAL
 // ============================================================
 async function refreshApps() {
-    showNotification('🔄 Sincronizando con la nube...');
+    showNotification('🔄 Actualizando aplicaciones...');
     if (window.quantumSync && window.quantumSync.isReady) {
-        await window.quantumSync.syncAll(true);
-        renderTagFilters();
-        renderPublishedApps();
-        renderPendingList();
-        showNotification('✅ Sincronización completada');
-    } else {
-        showNotification('❌ No hay conexión con la nube');
+        await window.quantumSync.syncAll();
     }
+    cachedPublishedApps = cachedPublishedHTML = cachedPendingApps = cachedPendingHTML = cachedTags = null;
+    renderTagFilters();
+    renderPublishedApps();
+    renderPendingList();
+    showNotification(navigator.onLine ? '✅ Lista actualizada' : '📴 Mostrando aplicaciones locales');
 }
 
 // ============================================================
@@ -972,7 +990,9 @@ function executeQuantumApp(appId) {
         }
         
         // ✅ Verificar que la app tiene código
-        if (!app.python_code || !app.html_code || app.python_code.trim() === '' || app.html_code.trim() === '') {
+        const pythonCode = app.python_code || app.pythonCode || '';
+        const htmlCode = app.html_code || app.htmlCode || '';
+        if (!htmlCode.trim()) {
             showNotification('⚠️ This app has no code. Edit it in Quantum App Studio first.');
             return;
         }
@@ -987,7 +1007,7 @@ function executeQuantumApp(appId) {
         }
         titleSpan.textContent = `⚛️ ${app.title || app.name || 'Quantum App'}`;
         modal.classList.add('open');
-        executeWithStudio(app);
+        executeWithStudio({ ...app, python_code: pythonCode, html_code: htmlCode, server_url: app.server_url || app.serverUrl || '' });
     });
 }
 
