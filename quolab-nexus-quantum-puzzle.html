@@ -730,14 +730,38 @@ let pendingCompileRequest = null;
 // 🔄 FUNCIONES CON INTEGRACIÓN SUPABASE SYNC - SOLO NUBE
 // ============================================================
 
-async function getPublishedApps() {
-    // ✅ SOLO usar la nube, NUNCA localStorage
-    if (window.quantumSync && window.quantumSync.isReady) {
-        await window.quantumSync.syncAll(true);
-        return window.quantumSync.publishedApps || [];
+function getLocalStudioApps() {
+    try {
+        const raw = localStorage.getItem('quantum_apps_repo_v2');
+        const items = raw ? JSON.parse(raw) : [];
+        if (!Array.isArray(items)) return [];
+        return items.filter(p => p && typeof p === 'object').map((p, i) => ({
+            id: String(p.id || p.appId || ('local-' + i)),
+            title: p.name || p.title || 'Untitled local app',
+            name: p.name || p.title || 'Untitled local app',
+            desc: p.description || 'Saved on this device',
+            description: p.description || 'Saved on this device',
+            tags: p.tags || 'local',
+            duration: p.duration || 8,
+            python_code: p.pythonCode || p.python_code || p.python || '',
+            html_code: p.htmlCode || p.html_code || p.html || '',
+            server_url: p.serverUrl || p.server_url || '',
+            _local: true
+        }));
+    } catch (e) {
+        console.warn('[Quantum Puzzle] Could not read local Studio apps:', e);
+        return [];
     }
-    console.warn('⚠️ Sin conexión a la nube, devolviendo lista vacía');
-    return [];
+}
+
+async function getPublishedApps() {
+    const cloud = window.quantumSync && Array.isArray(window.quantumSync.publishedApps)
+        ? window.quantumSync.publishedApps : [];
+    const local = getLocalStudioApps();
+    const byId = new Map();
+    cloud.forEach(app => byId.set(String(app.id), app));
+    local.forEach(app => { if (!byId.has(String(app.id))) byId.set(String(app.id), app); });
+    return Array.from(byId.values());
 }
 
 // ✅ No guardar nada en localStorage
@@ -747,13 +771,8 @@ async function savePublishedApps(apps) {
 }
 
 async function getPendingApps() {
-    // ✅ SOLO usar la nube, NUNCA localStorage
-    if (window.quantumSync && window.quantumSync.isReady) {
-        await window.quantumSync.syncAll(true);
-        return window.quantumSync.pendingApps || [];
-    }
-    console.warn('⚠️ Sin conexión a la nube, devolviendo lista vacía');
-    return [];
+    return window.quantumSync && Array.isArray(window.quantumSync.pendingApps)
+        ? window.quantumSync.pendingApps : [];
 }
 
 // ✅ No guardar nada en localStorage
@@ -788,16 +807,15 @@ let renderTimer = null;
 // 🔥 FUNCIÓN DE REFRESCO MANUAL
 // ============================================================
 async function refreshApps() {
-    showNotification('🔄 Sincronizando con la nube...');
+    showNotification('🔄 Actualizando aplicaciones...');
     if (window.quantumSync && window.quantumSync.isReady) {
-        await window.quantumSync.syncAll(true);
-        renderTagFilters();
-        renderPublishedApps();
-        renderPendingList();
-        showNotification('✅ Sincronización completada');
-    } else {
-        showNotification('❌ No hay conexión con la nube');
+        await window.quantumSync.syncAll();
     }
+    cachedPublishedApps = cachedPublishedHTML = cachedPendingApps = cachedPendingHTML = cachedTags = null;
+    renderTagFilters();
+    renderPublishedApps();
+    renderPendingList();
+    showNotification(navigator.onLine ? '✅ Lista actualizada' : '📴 Mostrando aplicaciones locales');
 }
 
 // ============================================================
@@ -972,7 +990,9 @@ function executeQuantumApp(appId) {
         }
         
         // ✅ Verificar que la app tiene código
-        if (!app.python_code || !app.html_code || app.python_code.trim() === '' || app.html_code.trim() === '') {
+        const pythonCode = app.python_code || app.pythonCode || '';
+        const htmlCode = app.html_code || app.htmlCode || '';
+        if (!htmlCode.trim()) {
             showNotification('⚠️ This app has no code. Edit it in Quantum App Studio first.');
             return;
         }
@@ -987,7 +1007,7 @@ function executeQuantumApp(appId) {
         }
         titleSpan.textContent = `⚛️ ${app.title || app.name || 'Quantum App'}`;
         modal.classList.add('open');
-        executeWithStudio(app);
+        executeWithStudio({ ...app, python_code: pythonCode, html_code: htmlCode, server_url: app.server_url || app.serverUrl || '' });
     });
 }
 
@@ -995,13 +1015,17 @@ function executeQuantumApp(appId) {
 window.addEventListener('message', async function _execPyCallHandler(ev) {
     const d = ev.data;
     if (!d || d.type !== 'pyCall') return;
+    const iframe = document.getElementById('execIframe');
+    if (!iframe || ev.source !== iframe.contentWindow || ev.origin !== location.origin) return;
     const { id, func, args, serverUrl: appUrl, pythonCode } = d;
     const src = ev.source;
+    if (typeof id !== 'string' || id.length > 120 || typeof func !== 'string' ||
+        !/^[A-Za-z_][A-Za-z0-9_]*$/.test(func) || !Array.isArray(args) || args.length > 100) return;
 
     const tid = setTimeout(() => {
         _execPyCalls.delete(id);
-        try { src.postMessage({ type: 'pyResult', id, error: 'Timeout 35s' }, '*'); } catch(e) {}
-    }, 35000);
+        try { src.postMessage({ type: 'pyResult', id, error: 'Timeout 35s' }, location.origin); } catch(e) {}
+    }, 60000);
     _execPyCalls.set(id, { src, tid });
 
     const serverUrl = appUrl || compilerUrl || localStorage.getItem('qcol_colab_url') || '';
@@ -1016,10 +1040,10 @@ window.addEventListener('message', async function _execPyCallHandler(ev) {
         clearTimeout(tid); _execPyCalls.delete(id);
         let parsed = (output || '').trim();
         try { parsed = JSON.parse(parsed); } catch(e) {}
-        src.postMessage({ type: 'pyResult', id, result: parsed }, '*');
+        src.postMessage({ type: 'pyResult', id, result: parsed }, location.origin);
     } catch(err) {
         clearTimeout(tid); _execPyCalls.delete(id);
-        src.postMessage({ type: 'pyResult', id, error: err.message }, '*');
+        src.postMessage({ type: 'pyResult', id, error: err.message }, location.origin);
     }
 });
 
@@ -1046,15 +1070,24 @@ async function _runPythonRemote(code, serverUrl) {
 function _buildAppBlob(pythonCode, htmlCode, serverUrl) {
     const bridge = `<script>
 (function(){
-    window.__serverUrl  = ${JSON.stringify(serverUrl  || '')};
-    window.__pyCode     = ${JSON.stringify(pythonCode || '')};
+    window.__serverUrl = ${JSON.stringify(serverUrl || '')};
+    window.__pyCode = ${JSON.stringify(pythonCode || '')};
     window.pyCall = function(funcName) {
         const args = Array.prototype.slice.call(arguments, 1);
+        if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(String(funcName))) {
+            return Promise.reject(new Error('Invalid Python function name.'));
+        }
         return new Promise(function(resolve, reject) {
             var msgId = Date.now() + '-' + Math.random().toString(36).slice(2);
+            var timeout = setTimeout(function(){
+                window.removeEventListener('message', handler);
+                reject(new Error('Python request timed out.'));
+            }, 60000);
             function handler(ev) {
                 var d = ev.data;
+                if (ev.origin !== location.origin || ev.source !== window.parent) return;
                 if (d && d.type === 'pyResult' && d.id === msgId) {
+                    clearTimeout(timeout);
                     window.removeEventListener('message', handler);
                     if (d.error) reject(new Error(d.error));
                     else resolve(d.result);
@@ -1064,19 +1097,17 @@ function _buildAppBlob(pythonCode, htmlCode, serverUrl) {
             window.parent.postMessage({
                 type: 'pyCall', id: msgId, func: funcName, args: args,
                 serverUrl: window.__serverUrl, pythonCode: window.__pyCode
-            }, '*');
+            }, location.origin);
         });
     };
 })();
-<\/script>`;
-
-    let html = htmlCode || '<!DOCTYPE html><html><body><h2>⚛️ App without interface</h2></body></html>';
-    if (html.includes('</head>'))        html = html.replace('</head>', bridge + '</head>');
-    else if (html.includes('<body'))      html = html.replace('<body', bridge + '<body');
-    else if (html.includes('<html'))      html = html.replace('<html>', '<html>' + bridge);
-    else                                  html = bridge + html;
-
-    return URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+<\\/script>`;
+    let html = typeof htmlCode === 'string' ? htmlCode : '';
+    if (!html.trim()) html = '<!doctype html><html><head><meta charset="utf-8"></head><body><h2>App without interface</h2></body></html>';
+    if (/<head\\b[^>]*>/i.test(html)) html = html.replace(/<head\\b[^>]*>/i, m => m + bridge);
+    else if (/<html\\b[^>]*>/i.test(html)) html = html.replace(/<html\\b[^>]*>/i, m => m + '<head>' + bridge + '</head>');
+    else html = '<!doctype html><html><head>' + bridge + '</head><body>' + html + '</body></html>';
+    return html;
 }
 
 function executeWithStudio(app) {
@@ -1098,13 +1129,11 @@ function executeWithStudio(app) {
         return;
     }
 
-    if (window._execBlobUrl) { URL.revokeObjectURL(window._execBlobUrl); }
-
     try {
         const pythonCode = app.python_code || app.pythonCode || '';
         const htmlCode = app.html_code || app.htmlCode || '';
-        window._execBlobUrl = _buildAppBlob(pythonCode, htmlCode, serverUrl);
-        iframe.src = window._execBlobUrl;
+        iframe.removeAttribute('src');
+        iframe.srcdoc = _buildAppBlob(pythonCode, htmlCode, serverUrl);
         iframe.onload = function() { loadingDiv.style.display = 'none'; };
         setTimeout(function() { if (loadingDiv.style.display !== 'none') loadingDiv.style.display = 'none'; }, 5000);
     } catch(err) {
@@ -1117,8 +1146,7 @@ function closeExecModal() {
     const modal = document.getElementById('execAppModal');
     if (modal) modal.classList.remove('open');
     const iframe = document.getElementById('execIframe');
-    if (iframe && iframe.src) iframe.src = 'about:blank';
-    if (window._execBlobUrl) { URL.revokeObjectURL(window._execBlobUrl); window._execBlobUrl = null; }
+    if (iframe) { iframe.removeAttribute('srcdoc'); iframe.src = 'about:blank'; }
     currentExecutingApp = null;
     try { parent.postMessage({ type: 'OPENQ_SET_ROUTE', hash: 'quantum-puzzle', title: 'Quantum Puzzle' }, '*'); } catch (e) {}
 }
