@@ -331,6 +331,9 @@
     let parentOrigin = null;          // trusted origin when embedded
     let receivedUrl = false;
     let externalEditContext = null;
+    let pendingSaveInFlight = false;
+    let pendingSaveRequestId = null;
+    let pendingSaveDraft = null;
 
     // ═══════════════════════════════════════════════════════════
     // 🛡️ PROTECTION: Force English AI + Clean editor on project switch
@@ -421,7 +424,29 @@
         // --- From here the message comes from a trusted origin ---
         
         if (data.type === 'QCOL_STUDIO_ADMIN_SAVE_RESULT') {
-            notify(data.success ? 'Cloud record updated successfully.' : ('Cloud update failed: ' + (data.error || 'unknown error')));
+            if (pendingSaveInFlight && (!data.requestId || data.requestId === pendingSaveRequestId)) {
+                pendingSaveInFlight = false;
+                pendingSaveRequestId = null;
+                const saveButton = document.getElementById('save-project-editor');
+                if (saveButton) saveButton.disabled = false;
+                if (data.success) {
+                    const draft = pendingSaveDraft;
+                    const reviewIndex = pendingReviewApps.findIndex(app => String(app.id) === String(draft?.id));
+                    if (reviewIndex >= 0 && draft) {
+                        Object.assign(pendingReviewApps[reviewIndex], draft, { savedAt: Date.now() });
+                        savePendingReviewApps();
+                    }
+                    pendingSaveDraft = null;
+                    notify('Pending app updated in Supabase. Its status remains pending.');
+                    showScreen('repo');
+                    renderRepository();
+                } else {
+                    pendingSaveDraft = null;
+                    notify('Cloud save failed: ' + (data.error || 'unknown error') + '. Your editor content is still open; nothing was marked as saved.', 5000);
+                }
+            } else {
+                notify(data.success ? 'Cloud record updated successfully.' : ('Cloud update failed: ' + (data.error || 'unknown error')));
+            }
             return;
         }
         if (data.type === 'QCOL_COMPILER_URL' && data.url) {
@@ -1118,29 +1143,30 @@
     function saveCurrentEdit() {
         const nameVal = document.getElementById('project-name-input').value.trim();
         if (externalEditContext && externalEditContext.type === 'pending') {
+            if (pendingSaveInFlight) { notify('A cloud save is already in progress.'); return; }
             const pendingId = String(externalEditContext.id);
             const reviewIndex = pendingReviewApps.findIndex(app => String(app.id) === pendingId);
             if (reviewIndex < 0) { notify('Pending review copy not found. No cloud record was changed.'); return; }
             if (!nameVal) { notify('Enter a name'); return; }
             const reviewed = pendingReviewApps[reviewIndex];
-            Object.assign(reviewed, {
-                name: nameVal, pythonCode: document.getElementById('python-editor').value,
+            const draft = {
+                id: pendingId, name: nameVal, title: nameVal,
+                description: reviewed.description || '', tags: reviewed.tags || '',
+                duration: reviewed.duration || 8,
+                pythonCode: document.getElementById('python-editor').value,
                 htmlCode: document.getElementById('html-editor').value,
                 serverUrl: localStorage.getItem('qcol_colab_url') || reviewed.serverUrl || ''
-            });
-            savePendingReviewApps();
+            };
+            pendingSaveDraft = draft;
+            pendingSaveRequestId = generateId();
+            pendingSaveInFlight = true;
+            const saveButton = document.getElementById('save-project-editor');
+            if (saveButton) saveButton.disabled = true;
             sendToParent({
                 type: 'QCOL_STUDIO_ADMIN_SAVE', sourceType: 'pending', sourceAppId: pendingId,
-                appData: {
-                    id: pendingId, name: reviewed.name, title: reviewed.name,
-                    description: reviewed.description || '', tags: reviewed.tags || '',
-                    duration: reviewed.duration || 8, pythonCode: reviewed.pythonCode,
-                    htmlCode: reviewed.htmlCode, serverUrl: reviewed.serverUrl
-                }
+                requestId: pendingSaveRequestId, appData: draft
             });
-            notify('Review copy saved. Sending founder update to the pending database record…');
-            showScreen('repo');
-            renderRepository();
+            notify('Saving changes to the original Supabase pending record…');
             return;
         }
         const pyVal = document.getElementById('python-editor').value;
