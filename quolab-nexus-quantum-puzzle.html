@@ -1267,7 +1267,7 @@ window.addEventListener('message', async function(e) {
     
     if (data.type === 'QCOL_STUDIO_ADMIN_SAVE') {
         // Only accept administrative writes from the embedded Studio frame itself.
-        if (!studioIframe || e.source !== studioIframe.contentWindow || e.origin !== location.origin) return;
+        if (!studioIframe || e.source !== window.parent || e.origin !== location.origin || data.__nexusStudioRelay !== true) return;
         const requestId = typeof data.requestId === 'string' ? data.requestId : null;
         const sendSaveResult = (payload) => {
             try { studioIframe.contentWindow.postMessage({ type: 'QCOL_STUDIO_ADMIN_SAVE_RESULT', requestId, ...payload }, location.origin); } catch (error) {}
