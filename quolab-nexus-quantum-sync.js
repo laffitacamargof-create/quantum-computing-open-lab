@@ -40,7 +40,7 @@ class QuOLabNexusQuantumSync {
                 method: 'GET',
                 headers: {
                     'apikey': this.SUPABASE_ANON_KEY,
-                    'Authorization': `Bearer ${this.SUPABASE_ANON_KEY}`
+                    // Publishable keys belong in apikey only; they are not JWT bearer tokens.
                 }
             });
             
@@ -116,7 +116,7 @@ class QuOLabNexusQuantumSync {
             method: 'GET',
             headers: {
                 'apikey': this.SUPABASE_ANON_KEY,
-                'Authorization': `Bearer ${this.SUPABASE_ANON_KEY}`,
+                    // Publishable keys belong in apikey only; they are not JWT bearer tokens.
                 'Cache-Control': 'no-cache, no-store, must-revalidate',
                 'Pragma': 'no-cache'
             }
@@ -135,7 +135,7 @@ class QuOLabNexusQuantumSync {
             headers: {
                 'Content-Type': 'application/json',
                 'apikey': this.SUPABASE_ANON_KEY,
-                'Authorization': `Bearer ${this.SUPABASE_ANON_KEY}`
+                    // Publishable keys belong in apikey only; they are not JWT bearer tokens.
             },
             body: JSON.stringify({ action: name, params: body })
         });
@@ -156,7 +156,7 @@ class QuOLabNexusQuantumSync {
             headers: {
                 'Content-Type': 'application/json',
                 'apikey': this.SUPABASE_ANON_KEY,
-                'Authorization': `Bearer ${this.SUPABASE_ANON_KEY}`,
+                    // Publishable keys belong in apikey only; they are not JWT bearer tokens.
                 'Prefer': 'return=representation'
             },
             body: JSON.stringify(data)
@@ -175,7 +175,7 @@ class QuOLabNexusQuantumSync {
             headers: {
                 'Content-Type': 'application/json',
                 'apikey': this.SUPABASE_ANON_KEY,
-                'Authorization': `Bearer ${this.SUPABASE_ANON_KEY}`,
+                    // Publishable keys belong in apikey only; they are not JWT bearer tokens.
                 'Prefer': 'return=representation'
             },
             body: JSON.stringify(data)
@@ -195,7 +195,7 @@ class QuOLabNexusQuantumSync {
             method: 'DELETE',
             headers: {
                 'apikey': this.SUPABASE_ANON_KEY,
-                'Authorization': `Bearer ${this.SUPABASE_ANON_KEY}`,
+                    // Publishable keys belong in apikey only; they are not JWT bearer tokens.
                 'Prefer': 'return=representation'
             }
         });
