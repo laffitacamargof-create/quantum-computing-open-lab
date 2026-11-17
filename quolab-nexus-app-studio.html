@@ -346,10 +346,14 @@
 
     function notify(msg, dur=2000) {
         const n = document.getElementById('notif');
-        n.textContent = msg;
-        n.classList.add('show');
-        clearTimeout(n._t);
-        n._t = setTimeout(() => n.classList.remove('show'), dur);
+        if (n) {
+            n.textContent = msg;
+            n.classList.add('show');
+            clearTimeout(n._t);
+            n._t = setTimeout(() => { if (n.isConnected) n.classList.remove('show'); }, dur);
+        } else {
+            console.warn('[Quantum App Studio]', msg);
+        }
         if (isEmbedded && parentOrigin) sendToParent({ type: 'QCOL_STUDIO_NOTIFICATION', message: msg });
     }
 
@@ -860,21 +864,26 @@
         document.getElementById('runner-app-name').innerText = `⚛️ ${escapeHtml(proj.name)}`;
         const modeSpan = document.getElementById('runner-mode');
         const dot = document.getElementById('runner-dot');
-        
+        const runnerFrame = document.getElementById('app-iframe');
+        if (!runnerFrame) {
+            showScreen('repo');
+            notify('Runner interface is incomplete: app frame is missing.');
+            return;
+        }
+
         let serverToUse = proj.serverUrl || localStorage.getItem('qcol_colab_url') || '';
         
         const serverActive = serverToUse && await testBackendConnection(serverToUse);
         if (serverActive) {
-            modeSpan.innerHTML = '<span class="status-dot active"></span> Remote (server active)';
-            dot.className = 'status-dot active';
+            if (modeSpan) modeSpan.innerHTML = '<span class="status-dot active"></span> Remote (server active)';
+            if (dot) dot.className = 'status-dot active';
         } else {
-            modeSpan.innerHTML = '<span class="status-dot"></span> ⚠️ No server';
-            dot.className = 'status-dot';
+            if (modeSpan) modeSpan.innerHTML = '<span class="status-dot"></span> ⚠️ No server';
+            if (dot) dot.className = 'status-dot';
         }
         const { blobUrl, revoke } = await buildAppBlob(proj.pythonCode, proj.htmlCode, serverToUse);
-        const iframe = document.getElementById('app-iframe');
-        iframe.src = blobUrl;
-        iframe.onload = () => revoke();
+        runnerFrame.src = blobUrl;
+        runnerFrame.onload = () => revoke();
     }
 
     async function runPreview() {
