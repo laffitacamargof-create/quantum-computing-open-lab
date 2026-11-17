@@ -978,12 +978,17 @@ function openAppInStudio(app, sourceType) {
         attempts++;
         if (studioIframeReady && studioIframe && studioIframe.contentWindow) {
             clearInterval(timer);
-            // Send the selected app directly to the nested Studio iframe.
-            // Studio still reports its responses through the authenticated top-level relay.
-            studioIframe.contentWindow.postMessage(command, location.origin);
-        } else if (attempts >= 40) {
+            // Verify the target frame is still the currently mounted Studio instance.
+            try {
+                studioIframe.contentWindow.postMessage(command, location.origin);
+                showNotification('Opening selected pending app in Quantum App Studio…', 2500);
+            } catch (error) {
+                console.error('Could not transfer pending app to Studio:', error);
+                showNotification('Could not send the selected app to Studio: ' + error.message);
+            }
+        } else if (attempts >= 120) {
             clearInterval(timer);
-            showNotification('Quantum App Studio did not become ready. Try opening it again.');
+            showNotification('Quantum App Studio did not become ready after 18 seconds. The pending app remains in Supabase.');
         }
     }, 150);
 }
@@ -1245,7 +1250,7 @@ function openQuantumAppStudio() {
     let handshakeAttempts = 0;
     const handshakeTimer = setInterval(function() {
         const sf = document.getElementById('studioIframe');
-        if (studioIframeReady || handshakeAttempts >= 20) {
+        if (studioIframeReady || handshakeAttempts >= 60) {
             clearInterval(handshakeTimer);
             return;
         }
