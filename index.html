@@ -759,6 +759,7 @@ class QuOLabNexusConfigSyncReader {
     constructor(config) {
         this.SUPABASE_URL = config.supabaseUrl;
         this.SUPABASE_ANON_KEY = config.supabaseAnonKey;
+        try { localStorage.removeItem('openq_fp'); localStorage.removeItem('openq_fp_timestamp'); } catch (e) {}
         this.isReady = false;
         this.configCache = {};
         this._syncInProgress = false;
@@ -853,7 +854,6 @@ class QuOLabNexusConfigSyncReader {
                 this._applyConfigToLocal('system_config', 'openq_sys', configMap);
                 this._applyConfigToLocal('platform_config', 'openq_cfg', configMap);
                 this._applyConfigToLocal('monitor_config', 'openq_monitor_cfg', configMap);
-                this._applyConfigToLocal('founder_password', 'openq_fp', configMap);
                 this._applyConfigToLocal('users_config', 'openq_users', configMap);
                 
                 if (this.onConfigUpdate) {
@@ -873,10 +873,6 @@ class QuOLabNexusConfigSyncReader {
         let value = configMap[cloudKey];
         if (value !== undefined && value !== null) {
             try {
-                // 🔧 FORZAR founder_password como CADENA
-                if (cloudKey === 'founder_password') {
-                    value = String(value);
-                }
                 
                 const stringValue = typeof value === 'string' ? value : JSON.stringify(value);
                 localStorage.setItem(localKey, stringValue);
@@ -893,19 +889,6 @@ class QuOLabNexusConfigSyncReader {
     }
 
     getConfig(key) {
-        // 🔧 Si es founder_password, forzar como cadena
-        if (key === 'founder_password') {
-            const cached = this.configCache[key];
-            if (cached !== undefined) {
-                return String(cached);
-            }
-            const localValue = localStorage.getItem('openq_fp');
-            if (localValue !== null) {
-                try { return String(JSON.parse(localValue)); } catch(e) { return String(localValue); }
-            }
-            return null;
-        }
-        
         if (this.configCache[key] !== undefined) {
             return this.configCache[key];
         }
@@ -1121,7 +1104,7 @@ class QuOLabNexusConfigSyncReader {
 
   window.addEventListener('message', e => {
     const d = e.data; if (!d?.type) return;
-    if (e.origin !== location.origin && e.origin !== 'null') return;
+    if (e.origin !== location.origin) return;
     // Protocolo central QuOLab Nexus: acepta NEXUS_, OPENQ_ y QCOL_ durante la migración.
     if (window.QuOLabNexusCore) Object.assign(d, window.QuOLabNexusCore.normalizeIncoming(d));
     else if (typeof d.type === 'string' && /^(?:NEXUS|QCOL)_/.test(d.type)) d.type = 'OPENQ_' + d.type.replace(/^(?:NEXUS|QCOL)_/, '');
@@ -1900,43 +1883,45 @@ class QuOLabNexusConfigSyncReader {
     broadcast({ type:'OPENQ_USER_UPDATE', user:curUser });
   }
 
-  // ✅ doFounder CORREGIDO - SIEMPRE USA CADENA
-  function doFounder() {
-    const p = document.getElementById('f-pass').value;
-    let fp = '1027';
-
-    // Intentar obtener desde Config Sync Reader
-    if (window.configSync && window.configSync.isReady) {
-      const syncFp = window.configSync.getConfig('founder_password');
-      if (syncFp !== null && syncFp !== undefined) {
-        fp = String(syncFp);
-      } else {
-        fp = String(localStorage.getItem('openq_fp') || '1027');
-      }
-    } else {
-      fp = String(localStorage.getItem('openq_fp') || '1027');
-    }
-
-    // 🔧 Comparar como CADENAS
-    if (String(p) === String(fp)) {
-      curUser = {
-        name: 'Franci Laffita Camargo',
-        username: 'franci_laffita',
-        role: 'founder',
-        canUpload: true
-      };
+  // Founder login is verified by the server; never trust a browser-side password or role.
+  async function doFounder() {
+    const input = document.getElementById('f-pass');
+    const password = input ? input.value : '';
+    if (!password) return notify('Enter the founder credential');
+    const cfg = window.configSync;
+    if (!cfg || !cfg.SUPABASE_URL || !cfg.SUPABASE_ANON_KEY) return notify('Founder authentication service is unavailable');
+    const button = document.querySelector('#founder-modal button[type="submit"], #founder-modal .btn-submit');
+    if (button) button.disabled = true;
+    try {
+      const response = await fetch(cfg.SUPABASE_URL + '/functions/v1/quolab-nexus-admin', {
+        method: 'POST', headers: { apikey: cfg.SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'repo_founder_session', params: { p_key: password } }), cache: 'no-store'
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || typeof payload.data !== 'string' || payload.data.length < 32)
+        throw new Error(response.status === 429 ? 'Too many attempts. Wait and retry.' : 'Founder credential rejected');
+      sessionStorage.setItem('qnexus_founder_session', payload.data);
+      curUser = { name: 'Founder', username: 'founder', role: 'founder', canUpload: true };
       localStorage.setItem('openq_cur_user', JSON.stringify(curUser));
-      closeAuth();
-      updateUI();
-      renderMenu();
-      notify('👑 Founder access granted');
+      if (input) input.value = '';
+      closeAuth(); updateUI(); renderMenu();
+      notify('Founder session active (8 hours)');
       broadcast({ type: 'OPENQ_USER_UPDATE', user: curUser });
-    } else {
-      notify('Incorrect password');
-    }
+    } catch (error) {
+      if (input) input.value = '';
+      notify(error.message || 'Founder authentication failed');
+    } finally { if (button) button.disabled = false; }
   }
 
   function doLogout() {
+    const founderSession = sessionStorage.getItem('qnexus_founder_session');
+    if (founderSession && window.configSync) {
+      fetch(window.configSync.SUPABASE_URL + '/functions/v1/quolab-nexus-admin', {
+        method:'POST', headers:{ apikey:window.configSync.SUPABASE_ANON_KEY, 'Content-Type':'application/json' },
+        body:JSON.stringify({ action:'repo_founder_revoke', params:{ p_key:founderSession } }), keepalive:true
+      }).catch(() => {});
+    }
+    sessionStorage.removeItem('qnexus_founder_session');
     curUser = null;
     localStorage.removeItem('openq_cur_user');
     updateUI(); renderMenu(); nav('home');
@@ -2878,7 +2863,13 @@ CONTEXT (staged and size-limited): ${c}`;
     }
 
     const saved = localStorage.getItem('openq_cur_user');
-    if (saved) try { curUser = JSON.parse(saved); } catch(e) {}
+    if (saved) try {
+      curUser = JSON.parse(saved);
+      if (curUser?.role === 'founder' && !sessionStorage.getItem('qnexus_founder_session')) {
+        curUser = null;
+        localStorage.removeItem('openq_cur_user');
+      }
+    } catch(e) { curUser = null; }
 
     await dbInit().then(() => {
         renderMenu();
@@ -2904,10 +2895,7 @@ CONTEXT (staged and size-limited): ${c}`;
         if (key === 'ai_config' || key === 'deepseek_config') {
           setupAI();
         }
-        if (key === 'founder_password') {
-          console.log('🔑 Founder password actualizada en la nube');
-        }
-      };
+       };
       
       const checkConfigSyncReady = setInterval(() => {
         if (window.configSync && window.configSync.isReady) {

@@ -214,7 +214,7 @@ class QuOLabNexusQuantumSync {
 
     // Borrado administrativo centralizado en la Edge Function segura.
     async _adminDelete(tableKey, table, id) {
-        const founderKey = localStorage.getItem('qcol_repo_founder_key') || '';
+        const founderKey = sessionStorage.getItem('qnexus_founder_session') || '';
         if (!founderKey) throw new Error('Se requiere la llave de fundador');
         if (tableKey === 'pending') {
             await this._rpc('quantum_reject_app', { p_id: String(id), p_key: founderKey });
@@ -244,7 +244,7 @@ class QuOLabNexusQuantumSync {
 
     async syncPendingApps() {
         try {
-            const founderKey = localStorage.getItem('qcol_repo_founder_key') || '';
+            const founderKey = sessionStorage.getItem('qnexus_founder_session') || '';
             if (!founderKey) { this.pendingApps = []; if (this.onPendingUpdate) this.onPendingUpdate(this.pendingApps); return this.pendingApps; }
             const data = await this._rpc('quantum_list_pending', { p_key: founderKey });
             this.pendingApps = data || [];
@@ -324,7 +324,7 @@ class QuOLabNexusQuantumSync {
 
     async approveApp(appId) {
         try {
-            const founderKey = localStorage.getItem('qcol_repo_founder_key') || '';
+            const founderKey = sessionStorage.getItem('qnexus_founder_session') || '';
             if (!founderKey) throw new Error('Se requiere la llave de fundador');
             const publishedApp = await this._rpc('quantum_approve_app', { p_id: String(appId), p_key: founderKey });
             await this.syncAll(true);
@@ -335,7 +335,7 @@ class QuOLabNexusQuantumSync {
 
     async rejectApp(appId) {
         try {
-            const founderKey = localStorage.getItem('qcol_repo_founder_key') || '';
+            const founderKey = sessionStorage.getItem('qnexus_founder_session') || '';
             if (!founderKey) throw new Error('Se requiere la llave de fundador');
             await this._rpc('quantum_reject_app', { p_id: String(appId), p_key: founderKey });
             await this.syncPendingApps();
@@ -346,7 +346,7 @@ class QuOLabNexusQuantumSync {
 
     async deletePublishedApp(appId) {
         try {
-            const founderKey = localStorage.getItem('qcol_repo_founder_key') || '';
+            const founderKey = sessionStorage.getItem('qnexus_founder_session') || '';
             if (!founderKey) throw new Error('Se requiere la llave de fundador');
             await this._rpc('quantum_delete_published_app', { p_id: String(appId), p_key: founderKey });
             await this.syncPublishedApps();

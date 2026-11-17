@@ -370,8 +370,11 @@
     }
     if (operation === 'click') {
       const dangerous = /delete|remove|publish|approve|reject|purchase|payment|reset|clear|overwrite|disconnect|logout/i.test(label + ' ' + (el.id || ''));
-      if (dangerous && !global.confirm('QNexusAi requests a potentially sensitive action: ' + label + '. Continue?')) {
-        return { ok: false, message: 'Action cancelled by user.' };
+      if (dangerous) {
+        const founderSession = (() => { try { return global.sessionStorage.getItem('qnexus_founder_session'); } catch (_) { return null; } })();
+        if (!founderSession) return { ok: false, message: 'Blocked: destructive actions require an active server-verified founder session.' };
+        if (!global.confirm('QNexusAi requests a sensitive founder action: ' + label + '. Confirm this exact action?'))
+          return { ok: false, message: 'Action cancelled by user.' };
       }
       el.click();
       return { ok: true, message: 'Control activated.', label };
