@@ -981,7 +981,11 @@ function executeQuantumApp(appId) {
         try { parent.postMessage({ type: 'OPENQ_SET_ROUTE', hash: 'app/' + encodeURIComponent(app.id), title: app.title || app.name || 'Quantum App' }, '*'); } catch (e) {}
         const modal = document.getElementById('execAppModal');
         const titleSpan = document.getElementById('execAppTitle');
-        titleSpan.innerHTML = `⚛️ ${escapeHtml(app.title)}`;
+        if (!modal || !titleSpan) {
+            showNotification('Quantum Puzzle runner interface is incomplete.');
+            return;
+        }
+        titleSpan.textContent = `⚛️ ${app.title || app.name || 'Quantum App'}`;
         modal.classList.add('open');
         executeWithStudio(app);
     });
@@ -1078,6 +1082,10 @@ function _buildAppBlob(pythonCode, htmlCode, serverUrl) {
 function executeWithStudio(app) {
     const loadingDiv = document.getElementById('execLoading');
     const iframe     = document.getElementById('execIframe');
+    if (!loadingDiv || !iframe) {
+        showNotification('Quantum Puzzle runner is missing required elements.');
+        return;
+    }
 
     loadingDiv.style.display = 'flex';
 
@@ -1107,9 +1115,9 @@ function executeWithStudio(app) {
 
 function closeExecModal() {
     const modal = document.getElementById('execAppModal');
-    modal.classList.remove('open');
+    if (modal) modal.classList.remove('open');
     const iframe = document.getElementById('execIframe');
-    if (iframe.src) iframe.src = 'about:blank';
+    if (iframe && iframe.src) iframe.src = 'about:blank';
     if (window._execBlobUrl) { URL.revokeObjectURL(window._execBlobUrl); window._execBlobUrl = null; }
     currentExecutingApp = null;
     try { parent.postMessage({ type: 'OPENQ_SET_ROUTE', hash: 'quantum-puzzle', title: 'Quantum Puzzle' }, '*'); } catch (e) {}
@@ -1122,6 +1130,11 @@ const studioModal = document.getElementById('studioModalReal');
 const studioIframe = document.getElementById('studioIframe');
 
 function openQuantumAppStudio() {
+    if (!studioModal) {
+        console.error('Quantum Puzzle: studio modal element is missing.');
+        showNotification('Quantum App Studio cannot open: its panel is missing.');
+        return;
+    }
     studioModal.classList.add('open');
     setTimeout(function() {
         var sf = document.getElementById('studioIframe');
@@ -1138,7 +1151,9 @@ function openQuantumAppStudio() {
     }, 400);
 }
 
-function closeStudioModal() { studioModal.classList.remove('open'); }
+function closeStudioModal() {
+    if (studioModal) studioModal.classList.remove('open');
+}
 
 // ============================================================
 // 🔥 MANEJADOR DE MENSAJES DEL STUDIO
