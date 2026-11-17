@@ -443,7 +443,9 @@
         if (data.type === 'QCOL_REQUEST_STUDIO_CONNECTION') {
             isEmbedded = true;
             if (!parentOrigin) parentOrigin = event.origin;
-            sendToParent({ type: 'QCOL_STUDIO_OPENED', version: '2.0', status: 'ready' });
+            // The ready handshake must go to the immediate parent (Quantum Puzzle), not window.top (index.html).
+            // Puzzle waits for this exact iframe before sending the selected pending app.
+            try { window.parent.postMessage({ type: 'QCOL_STUDIO_OPENED', version: '2.1', status: 'ready' }, event.origin); } catch (error) { console.warn('[Quantum App Studio] Parent handshake failed:', error); }
             notify('Connected to Founder Panel (origin validated)', 1500);
             sendToParent({ type: 'QCOL_REQUEST_COMPILER_URL' });
             return;
@@ -1242,7 +1244,14 @@
     }
 
     function bindEvents() {
-        document.getElementById('new-project-btn').onclick = startNewProject;
+        const newProjectButton = document.getElementById('new-project-btn');
+        if (newProjectButton) {
+            newProjectButton.addEventListener('click', function(event) {
+                event.preventDefault();
+                try { startNewProject(); }
+                catch (error) { console.error('[Quantum App Studio] Could not open the new-app editor:', error); notify('Could not open the new application editor. Please retry.'); }
+            });
+        }
         document.getElementById('save-project-editor').onclick = saveCurrentEdit;
         document.getElementById('back-to-repo-editor').onclick = () => showScreen('repo');
         document.getElementById('back-to-repo-runner').onclick = () => showScreen('repo');
