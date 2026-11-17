@@ -1028,8 +1028,6 @@ async function openPendingAppInStudio(appId) {
         return;
     }
     pendingAppOpening = true;
-    const buttons = document.querySelectorAll('[data-pending-edit="' + String(appId).replace(/["\\]/g, '') + '"]');
-    buttons.forEach(button => { button.disabled = true; button.textContent = 'Opening…'; });
     try {
         // Always fetch the selected item from the founder-only Supabase pending queue.
         const apps = await window.quantumSync.syncPendingApps();
@@ -1041,7 +1039,6 @@ async function openPendingAppInStudio(appId) {
         showNotification(error.message || 'Could not open the pending app.');
     } finally {
         pendingAppOpening = false;
-        buttons.forEach(button => { button.disabled = false; button.textContent = 'EDITAR'; });
     }
 }
 window.openPendingAppInStudio = openPendingAppInStudio;
