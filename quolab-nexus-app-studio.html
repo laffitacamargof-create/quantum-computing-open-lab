@@ -544,13 +544,14 @@
             localStorage.setItem('quantum_apps_repo_v2', JSON.stringify(projects));
         } catch (error) {
             console.error('[Quantum App Studio] Could not persist projects:', error);
-            notify('Could not save locally. Existing saved data was not intentionally cleared.');
-            throw error;
+            notify('Browser storage is unavailable. Changes remain in this session but may not persist after closing.');
+            return false;
         }
         if (isEmbedded && currentEditId && parentOrigin) {
             const proj = projects.find(p => p.id === currentEditId);
             if (proj) notifyParentAboutChange('save', currentEditId, { name: proj.name, serverUrl: proj.serverUrl });
         }
+        return true;
     }
 
     function normalizeStoredProject(raw, index) {
@@ -1104,17 +1105,25 @@
         // test-server-btn hidden — URL arrives automatically from Founder Panel
     }
 
-    // Guard initialization so storage/UI errors are visible instead of leaving a blank panel.
+    // Bind controls first; a storage failure must not leave the editor inert.
+    bindEvents();
     try {
         loadProjects();
-        renderRepository();
-        bindEvents();
     } catch (initError) {
         console.error('[Quantum App Studio] Initialization failed:', initError);
         notify('Studio initialization failed: ' + (initError?.message || 'unknown error'), 6000);
         const grid = document.getElementById('projects-grid');
-        if (grid) grid.innerHTML = '<div style="padding:1rem;color:#ffd700">Studio could not initialize. Saved project data was not intentionally deleted. Check the error and reload this panel.</div>';
+        if (grid) grid.innerHTML = '<div style="padding:1rem;color:#ffd700">Studio could not read local projects. Existing saved data was not intentionally deleted.</div>';
     }
+    renderRepository();
+    window.addEventListener('error', event => {
+        console.error('[Quantum App Studio] Runtime error:', event.error || event.message);
+        notify('Studio runtime error: ' + (event.message || 'unknown error'), 6000);
+    });
+    window.addEventListener('unhandledrejection', event => {
+        console.error('[Quantum App Studio] Unhandled rejection:', event.reason);
+        notify('Studio operation failed: ' + (event.reason?.message || 'unknown error'), 6000);
+    });
     
     if (window.parent !== window) {
         setTimeout(() => {
