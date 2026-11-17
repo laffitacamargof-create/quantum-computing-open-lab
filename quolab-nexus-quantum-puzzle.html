@@ -998,10 +998,17 @@ window.editPublishedApp = editPublishedApp;
 
 async function openPendingAppInStudio(appId) {
     if (!canManageApps()) { showNotification('Founder access required'); return; }
-    if (window.quantumSync && window.quantumSync.isReady) await window.quantumSync.syncPendingApps();
-    const apps = await getPendingApps();
+    if (!hasFounderSession()) { showNotification('Founder session expired. Sign in again to download pending apps.'); return; }
+    if (!window.quantumSync || !window.quantumSync.isReady) {
+        showNotification('Supabase is not connected. The pending app was not downloaded.');
+        return;
+    }
+    // Always fetch the selected item from the founder-only Supabase pending queue.
+    // Do not fall back to a stale in-memory or browser copy for an administrative edit.
+    const apps = await window.quantumSync.syncPendingApps();
+    if (!Array.isArray(apps)) { showNotification('Could not load pending apps from Supabase.'); return; }
     const app = apps.find(item => String(item.id) === String(appId));
-    if (!app) { showNotification('Pending app not found'); return; }
+    if (!app) { showNotification('Pending app not found in Supabase. Refresh the pending list and try again.'); return; }
     openAppInStudio(app, 'pending');
 }
 window.openPendingAppInStudio = openPendingAppInStudio;
@@ -1259,15 +1266,21 @@ window.addEventListener('message', async function(e) {
     if (!data || typeof data !== 'object') return;
     
     if (data.type === 'QCOL_STUDIO_ADMIN_SAVE') {
+        // Only accept administrative writes from the embedded Studio frame itself.
+        if (!studioIframe || e.source !== window.parent || e.origin !== location.origin || data.__nexusStudioRelay !== true) return;
+        const requestId = typeof data.requestId === 'string' ? data.requestId : null;
+        const sendSaveResult = (payload) => {
+            try { studioIframe.contentWindow.postMessage({ type: 'QCOL_STUDIO_ADMIN_SAVE_RESULT', requestId, ...payload }, location.origin); } catch (error) {}
+        };
         if (!canManageApps()) {
-            try { studioIframe.contentWindow.postMessage({ type: 'QCOL_STUDIO_ADMIN_SAVE_RESULT', success: false, error: 'Founder access required' }, location.origin); } catch (e) {}
+            sendSaveResult({ success: false, error: 'Founder access required' });
             return;
         }
         const sourceType = data.sourceType === 'pending' ? 'pending' : 'published';
         const appId = String(data.sourceAppId || '');
         const appData = data.appData && typeof data.appData === 'object' ? data.appData : null;
         if (!appId || !appData || !window.quantumSync || !window.quantumSync.isReady) {
-            try { studioIframe.contentWindow.postMessage({ type: 'QCOL_STUDIO_ADMIN_SAVE_RESULT', success: false, error: 'Cloud sync unavailable or invalid app data' }, location.origin); } catch (e) {}
+            sendSaveResult({ success: false, error: 'Cloud sync unavailable or invalid app data' });
             return;
         }
         try {
@@ -1278,11 +1291,11 @@ window.addEventListener('message', async function(e) {
             await renderPendingList();
             renderTagFilters();
             await renderPublishedApps();
-            try { studioIframe.contentWindow.postMessage({ type: 'QCOL_STUDIO_ADMIN_SAVE_RESULT', success: true }, location.origin); } catch (e) {}
+            sendSaveResult({ success: true });
             showNotification(sourceType === 'pending' ? 'Pending app updated' : 'Published app updated');
         } catch (error) {
             console.error('Founder app update failed:', error);
-            try { studioIframe.contentWindow.postMessage({ type: 'QCOL_STUDIO_ADMIN_SAVE_RESULT', success: false, error: error.message }, location.origin); } catch (e) {}
+            sendSaveResult({ success: false, error: error.message });
             showNotification('Could not update app: ' + error.message);
         }
         return;
