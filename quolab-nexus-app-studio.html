@@ -82,6 +82,20 @@
         .btn-primary:hover {
             transform: scale(0.98);
         }
+        .pending-review-section {
+            margin: 0.8rem 1rem 0;
+            padding: 0.9rem;
+            border: 1px solid rgba(255,215,0,0.35);
+            border-radius: 12px;
+            background: rgba(255,215,0,0.045);
+            max-height: 34vh;
+            overflow-y: auto;
+            flex-shrink: 0;
+        }
+        .pending-review-title { color: var(--yw); font: 600 0.78rem 'JetBrains Mono', monospace; margin-bottom: 0.7rem; }
+        .pending-review-card { background: var(--bg3); border: 1px solid var(--bd2); border-radius: 9px; padding: 0.7rem; margin-bottom: 0.55rem; }
+        .pending-review-meta { color: var(--tx2); font-size: 0.62rem; margin-top: 0.25rem; }
+        .pending-review-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.55rem; }
         .projects-grid {
             flex: 1;
             overflow-y: auto;
@@ -247,6 +261,10 @@
         <div class="repo-title"></div>
         <button class="btn-primary" id="new-project-btn">+ New application</button>
     </div>
+    <section class="pending-review-section" id="pending-review-section">
+        <div class="pending-review-title">⬇ PENDING APPS · REVIEW WORKSPACE</div>
+        <div id="pending-review-grid"><div style="color:var(--tx2);font-size:0.65rem;">No pending apps downloaded yet. Select “NUEVA · STUDIO” in Quantum Puzzle.</div></div>
+    </section>
     <div class="projects-grid" id="projects-grid"></div>
 </div>
 
@@ -304,6 +322,9 @@
 <script>
     // ---------- REPOSITORY + EDITOR + REMOTE BACKEND ----------
     let projects = [];
+    // Pending review copies are kept separate from the user's private Studio projects.
+    let pendingReviewApps = [];
+    const PENDING_REVIEW_STORAGE_KEY = 'quolab_nexus_pending_review_apps_v1';
     let currentEditId = null;
     let remoteSessionStatus = false;
     let isEmbedded = false;
@@ -424,6 +445,27 @@
         if (data.type === 'QCOL_OPEN_APP_FROM_PUZZLE') {
             const { appId, appName, pythonCode, htmlCode, serverUrl, sourceType, description, tags, duration } = data;
             if (appId && appName) {
+                const externalType = sourceType === 'pending' ? 'pending' : 'published';
+                if (externalType === 'pending') {
+                    // Store a dedicated review copy; never mix it into the user's private project list.
+                    const reviewCopy = {
+                        id: String(appId), name: String(appName), pythonCode: pythonCode || '',
+                        htmlCode: htmlCode || '', serverUrl: serverUrl || '',
+                        description: description || '', tags: tags || '', duration: duration || 8,
+                        downloadedAt: Date.now(), source: 'supabase-pending'
+                    };
+                    const existing = pendingReviewApps.findIndex(app => String(app.id) === String(appId));
+                    if (existing >= 0) pendingReviewApps[existing] = reviewCopy;
+                    else pendingReviewApps.unshift(reviewCopy);
+                    savePendingReviewApps();
+                    showScreen('repo');
+                    renderRepository();
+                    notify('Pending app downloaded into the Studio review section');
+                    sendToParent({ type: 'QCOL_STUDIO_APP_LOADED', appId: String(appId), sourceType: externalType, section: 'pending-review' });
+                    return;
+                }
+
+                // Published-app founder editing keeps its existing workflow.
                 if (currentEditId) {
                     const prevIdx = projects.findIndex(p => p.id === currentEditId);
                     if (prevIdx !== -1) {
@@ -433,30 +475,27 @@
                         saveProjects();
                     }
                 }
-                const externalType = sourceType === 'pending' ? 'pending' : 'published';
-                const localId = 'nexus-' + externalType + '-' + String(appId);
+                const localId = 'nexus-published-' + String(appId);
                 let localProject = projects.find(p => p.id === localId);
                 if (!localProject) {
                     localProject = { id: localId, name: appName, pythonCode: '', htmlCode: '', serverUrl: '', createdAt: Date.now() };
                     projects.push(localProject);
                 }
-                localProject.name = appName;
-                localProject.pythonCode = pythonCode || '';
-                localProject.htmlCode = htmlCode || '';
-                localProject.serverUrl = serverUrl || '';
-                localProject.description = description || '';
-                localProject.tags = tags || '';
-                localProject.duration = duration || 8;
+                Object.assign(localProject, {
+                    name: appName, pythonCode: pythonCode || '', htmlCode: htmlCode || '',
+                    serverUrl: serverUrl || '', description: description || '',
+                    tags: tags || '', duration: duration || 8
+                });
                 currentEditId = localId;
-                externalEditContext = { type: externalType, id: String(appId) };
+                externalEditContext = { type: 'published', id: String(appId) };
                 document.getElementById('project-name-input').value = localProject.name;
                 document.getElementById('python-editor').value = localProject.pythonCode;
                 document.getElementById('html-editor').value = localProject.htmlCode;
                 if (localProject.serverUrl) setServerUrl(localProject.serverUrl);
                 saveProjects();
                 showScreen('editor');
-                notify(externalType === 'pending' ? 'Pending app opened in Studio' : 'Published app opened for founder editing');
-                sendToParent({ type: 'QCOL_STUDIO_APP_LOADED', appId: String(appId), sourceType: externalType });
+                notify('Published app opened for founder editing');
+                sendToParent({ type: 'QCOL_STUDIO_APP_LOADED', appId: String(appId), sourceType: 'published' });
             }
             return;
         }
@@ -528,6 +567,96 @@
     function notifyParentAboutChange(action, appId, appData = null) {
         if (!isEmbedded || !parentOrigin) return;
         sendToParent({ type: action === 'save' ? 'QCOL_APP_SAVED' : 'QCOL_APP_DELETED', appId, appData });
+    }
+
+    function loadPendingReviewApps() {
+        try {
+            const raw = localStorage.getItem(PENDING_REVIEW_STORAGE_KEY);
+            if (raw === null) { pendingReviewApps = []; return; }
+            const parsed = JSON.parse(raw);
+            if (!Array.isArray(parsed)) throw new Error('Pending review cache is not an array');
+            pendingReviewApps = parsed.filter(app => app && typeof app === 'object' && app.id != null).map(app => ({
+                ...app, id: String(app.id), name: String(app.name || app.title || 'Pending app'),
+                pythonCode: String(app.pythonCode || app.python_code || ''),
+                htmlCode: String(app.htmlCode || app.html_code || ''),
+                serverUrl: String(app.serverUrl || app.server_url || '')
+            }));
+        } catch (error) {
+            console.error('[Quantum App Studio] Pending review cache was not loaded; original data is preserved.', error);
+            pendingReviewApps = [];
+            notify('Pending review cache could not be read. Existing data was preserved.');
+        }
+    }
+
+    function savePendingReviewApps() {
+        try {
+            const previous = localStorage.getItem(PENDING_REVIEW_STORAGE_KEY);
+            if (previous) localStorage.setItem(PENDING_REVIEW_STORAGE_KEY + '_backup', previous);
+            localStorage.setItem(PENDING_REVIEW_STORAGE_KEY, JSON.stringify(pendingReviewApps));
+        } catch (error) {
+            console.error('[Quantum App Studio] Could not save pending review copies:', error);
+            notify('Could not save the review copy locally. The Supabase pending record was not changed.');
+        }
+    }
+
+    function renderPendingReviewSection() {
+        const section = document.getElementById('pending-review-section');
+        const container = document.getElementById('pending-review-grid');
+        if (!container) return;
+        let founderSessionAvailable = false;
+        try { founderSessionAvailable = !!sessionStorage.getItem('qnexus_founder_session'); } catch (error) {}
+        if (section) section.classList.toggle('hidden', !founderSessionAvailable);
+        if (!founderSessionAvailable) return;
+        if (!pendingReviewApps.length) {
+            container.innerHTML = '<div style="color:var(--tx2);font-size:0.65rem;">No pending apps downloaded yet. Select “NUEVA · STUDIO” in Quantum Puzzle.</div>';
+            return;
+        }
+        container.innerHTML = pendingReviewApps.map(app => {
+            const id = encodeURIComponent(String(app.id));
+            return '<article class="pending-review-card">' +
+                '<div class="project-name">📥 ' + escapeHtml(app.name) + '</div>' +
+                '<div class="pending-review-meta">Downloaded from Supabase pending queue · ' + new Date(app.downloadedAt || Date.now()).toLocaleString() + '</div>' +
+                '<div class="pending-review-actions">' +
+                '<button class="btn-secondary" data-review-edit="' + id + '">✏️ Edit in Studio</button>' +
+                '<button class="btn-secondary" data-review-run="' + id + '">▶ Run preview</button>' +
+                '</div></article>';
+        }).join('');
+        container.querySelectorAll('[data-review-edit]').forEach(button => button.addEventListener('click', () => editPendingReviewApp(decodeURIComponent(button.getAttribute('data-review-edit')))));
+        container.querySelectorAll('[data-review-run]').forEach(button => button.addEventListener('click', () => runPendingReviewApp(decodeURIComponent(button.getAttribute('data-review-run')))));
+    }
+
+    function editPendingReviewApp(id) {
+        const app = pendingReviewApps.find(item => String(item.id) === String(id));
+        if (!app) { notify('Pending review copy not found'); return; }
+        if (currentEditId && projects.some(project => String(project.id) === String(currentEditId))) {
+            const previous = projects.find(project => String(project.id) === String(currentEditId));
+            previous.pythonCode = document.getElementById('python-editor').value;
+            previous.htmlCode = document.getElementById('html-editor').value;
+            previous.name = document.getElementById('project-name-input').value.trim() || previous.name;
+            saveProjects();
+        }
+        currentEditId = 'nexus-pending-' + String(app.id);
+        externalEditContext = { type: 'pending', id: String(app.id) };
+        document.getElementById('project-name-input').value = app.name;
+        document.getElementById('python-editor').value = app.pythonCode || '';
+        document.getElementById('html-editor').value = app.htmlCode || '';
+        if (app.serverUrl) setServerUrl(app.serverUrl);
+        showScreen('editor');
+        notify('Editing a review copy. The pending database record changes only when you save as founder.');
+    }
+
+    async function runPendingReviewApp(id) {
+        const app = pendingReviewApps.find(item => String(item.id) === String(id));
+        if (!app) { notify('Pending review copy not found'); return; }
+        const iframe = document.getElementById('preview-iframe');
+        const modal = document.getElementById('preview-modal');
+        if (!iframe || !modal) { notify('Preview interface is unavailable'); return; }
+        try {
+            const { srcdoc } = await buildAppBlob(app.pythonCode || '', app.htmlCode || '', app.serverUrl || localStorage.getItem('qcol_colab_url') || '');
+            iframe.removeAttribute('src');
+            iframe.srcdoc = srcdoc;
+            modal.classList.add('open');
+        } catch (error) { notify('Could not preview pending app: ' + error.message); }
     }
 
     function saveProjects() {
@@ -625,6 +754,7 @@
     }
 
     function renderRepository() {
+        renderPendingReviewSection();
         const grid = document.getElementById('projects-grid');
         if (!grid) return;
         grid.innerHTML = '';
@@ -987,6 +1117,32 @@
     // ============================================================
     function saveCurrentEdit() {
         const nameVal = document.getElementById('project-name-input').value.trim();
+        if (externalEditContext && externalEditContext.type === 'pending') {
+            const pendingId = String(externalEditContext.id);
+            const reviewIndex = pendingReviewApps.findIndex(app => String(app.id) === pendingId);
+            if (reviewIndex < 0) { notify('Pending review copy not found. No cloud record was changed.'); return; }
+            if (!nameVal) { notify('Enter a name'); return; }
+            const reviewed = pendingReviewApps[reviewIndex];
+            Object.assign(reviewed, {
+                name: nameVal, pythonCode: document.getElementById('python-editor').value,
+                htmlCode: document.getElementById('html-editor').value,
+                serverUrl: localStorage.getItem('qcol_colab_url') || reviewed.serverUrl || ''
+            });
+            savePendingReviewApps();
+            sendToParent({
+                type: 'QCOL_STUDIO_ADMIN_SAVE', sourceType: 'pending', sourceAppId: pendingId,
+                appData: {
+                    id: pendingId, name: reviewed.name, title: reviewed.name,
+                    description: reviewed.description || '', tags: reviewed.tags || '',
+                    duration: reviewed.duration || 8, pythonCode: reviewed.pythonCode,
+                    htmlCode: reviewed.htmlCode, serverUrl: reviewed.serverUrl
+                }
+            });
+            notify('Review copy saved. Sending founder update to the pending database record…');
+            showScreen('repo');
+            renderRepository();
+            return;
+        }
         const pyVal = document.getElementById('python-editor').value;
         const htmlVal = document.getElementById('html-editor').value;
         const urlVal = localStorage.getItem('qcol_colab_url') || (projects.find(p => p.id === currentEditId)?.serverUrl || '');
@@ -1085,6 +1241,7 @@
 
     // Initialization
     loadProjects();
+    loadPendingReviewApps();
     renderRepository();
     bindEvents();
     

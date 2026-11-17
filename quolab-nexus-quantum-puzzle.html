@@ -671,7 +671,7 @@ body::before{
             <span>🌀 QUANTUM APP STUDIO · Quantum application editor</span>
             <button class="btn-cancel" onclick="closeStudioModal()" style="margin:0;">CLOSE</button>
         </div>
-        <iframe id="studioIframe" class="studio-iframe" src="quolab-nexus-app-studio.html?v=20261117-5" sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-modals allow-same-origin"></iframe>
+        <iframe id="studioIframe" class="studio-iframe" src="quolab-nexus-app-studio.html?v=20261117-pending-review-1" sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-modals allow-same-origin"></iframe>
     </div>
 </div>
 
@@ -998,6 +998,7 @@ window.editPublishedApp = editPublishedApp;
 
 async function openPendingAppInStudio(appId) {
     if (!canManageApps()) { showNotification('Founder access required'); return; }
+    if (window.quantumSync && window.quantumSync.isReady) await window.quantumSync.syncPendingApps();
     const apps = await getPendingApps();
     const app = apps.find(item => String(item.id) === String(appId));
     if (!app) { showNotification('Pending app not found'); return; }
