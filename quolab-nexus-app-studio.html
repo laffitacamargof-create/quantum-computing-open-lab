@@ -1246,11 +1246,19 @@
     function bindEvents() {
         const newProjectButton = document.getElementById('new-project-btn');
         if (newProjectButton) {
-            newProjectButton.addEventListener('click', function(event) {
-                event.preventDefault();
-                try { startNewProject(); }
-                catch (error) { console.error('[Quantum App Studio] Could not open the new-app editor:', error); notify('Could not open the new application editor. Please retry.'); }
-            });
+            // Assign the handler directly so the editor action cannot be lost
+            // behind duplicate/stale listeners after iframe restoration.
+            newProjectButton.onclick = function(event) {
+                if (event) event.preventDefault();
+                try {
+                    startNewProject();
+                    const editor = document.getElementById('editor-screen');
+                    if (!editor || editor.classList.contains('hidden')) throw new Error('Editor screen did not open');
+                } catch (error) {
+                    console.error('[Quantum App Studio] New application failed:', error);
+                    notify('New application could not open: ' + (error.message || 'initialization error'), 5000);
+                }
+            };
         }
         document.getElementById('save-project-editor').onclick = saveCurrentEdit;
         document.getElementById('back-to-repo-editor').onclick = () => showScreen('repo');
@@ -1268,7 +1276,10 @@
     
     if (window.parent !== window) {
         setTimeout(() => {
-            sendToParent({ type: 'QCOL_STUDIO_OPENED', version: '2.0', status: 'ready' });
+            // Announce readiness directly to the immediate parent (Puzzle iframe).
+            // The top-level index relay remains in place for admin save operations.
+            try { window.parent.postMessage({ type: 'QCOL_STUDIO_OPENED', version: '2.2', status: 'ready' }, window.location.origin); } catch (error) { console.warn('[Quantum App Studio] Initial ready signal failed:', error); }
+            sendToParent({ type: 'QCOL_STUDIO_OPENED', version: '2.2', status: 'ready' });
             notify('Connected to Founder Panel (origin validated)', 1500);
             sendToParent({ type: 'QCOL_REQUEST_COMPILER_URL' });
             const savedUrl = localStorage.getItem('qcol_colab_url');
@@ -1289,6 +1300,15 @@
         sendToParent({ type: 'QCOL_REQUEST_COMPILER_URL' });
     }, 3000);
     
+    window.addEventListener('error', function(event) {
+        console.error('[Quantum App Studio] Runtime error:', event.message, event.filename, event.lineno);
+        notify('Studio runtime error: ' + (event.message || 'unknown JavaScript error'), 7000);
+    });
+    window.addEventListener('unhandledrejection', function(event) {
+        const reason = event.reason && event.reason.message ? event.reason.message : String(event.reason || 'unknown error');
+        console.error('[Quantum App Studio] Unhandled promise rejection:', event.reason);
+        notify('Studio operation failed: ' + reason, 7000);
+    });
     notify("Quantum App Studio · Protected against over-reading · Origins validated", 4000);
 </script>
 </body>
