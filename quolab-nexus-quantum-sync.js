@@ -357,6 +357,22 @@ class QuOLabNexusQuantumSync {
         } catch (error) { console.error('Error rejecting:', error.message); throw error; }
     }
 
+    async updatePublishedApp(appId, appData) {
+        const founderKey = sessionStorage.getItem('qnexus_founder_session') || '';
+        if (!founderKey) throw new Error('Se requiere la llave de fundador');
+        const result = await this._rpc('quantum_update_published_app', { p_id: String(appId), p_app: appData, p_key: founderKey });
+        await this.syncPublishedApps();
+        return result;
+    }
+
+    async updatePendingApp(appId, appData) {
+        const founderKey = sessionStorage.getItem('qnexus_founder_session') || '';
+        if (!founderKey) throw new Error('Se requiere la llave de fundador');
+        const result = await this._rpc('quantum_update_pending_app', { p_id: String(appId), p_app: appData, p_key: founderKey });
+        await this.syncPendingApps();
+        return result;
+    }
+
     async deletePublishedApp(appId) {
         try {
             const founderKey = sessionStorage.getItem('qnexus_founder_session') || '';
