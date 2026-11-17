@@ -961,7 +961,6 @@ function openAppInStudio(app, sourceType) {
     if (!canManageApps()) { showNotification('Founder access required'); return; }
     if (!app) { showNotification('App not found'); return; }
     openQuantumAppStudio();
-    studioIframeReady = false;
     const command = {
         type: 'QCOL_OPEN_APP_FROM_PUZZLE',
         appId: String(app.id),
@@ -1241,21 +1240,28 @@ function openQuantumAppStudio() {
     }
     studioModal.classList.add('open');
     studioIframeReady = false;
-    setTimeout(function() {
-        var sf = document.getElementById('studioIframe');
-        if (sf && sf.contentWindow) {
-            // The Studio iframe is nested directly inside this Puzzle frame. Send the
-            // handshake to that exact frame instead of depending on an index relay.
+    // The nested Studio iframe can finish loading after the modal is opened.
+    // Retry the same idempotent handshake until Studio confirms readiness.
+    let handshakeAttempts = 0;
+    const handshakeTimer = setInterval(function() {
+        const sf = document.getElementById('studioIframe');
+        if (studioIframeReady || handshakeAttempts >= 20) {
+            clearInterval(handshakeTimer);
+            return;
+        }
+        handshakeAttempts++;
+        if (!sf || !sf.contentWindow) return;
+        try {
             sf.contentWindow.postMessage({ type: 'QCOL_REQUEST_STUDIO_CONNECTION' }, location.origin);
             if (window.quantumSync && window.quantumSync.isReady) {
                 window.quantumSync.connectStudio(sf);
                 const url = compilerUrl || localStorage.getItem('qcol_colab_url') || '';
-                if (url) {
-                            sf.contentWindow.postMessage({ type: 'QCOL_SET_COMPILER_URL', url: url }, location.origin);
-                }
+                if (url) sf.contentWindow.postMessage({ type: 'QCOL_SET_COMPILER_URL', url }, location.origin);
             }
+        } catch (error) {
+            console.warn('Quantum App Studio handshake retry failed:', error);
         }
-    }, 400);
+    }, 300);
 }
 
 function closeStudioModal() {
