@@ -998,6 +998,7 @@ window.editPublishedApp = editPublishedApp;
 
 async function openPendingAppInStudio(appId) {
     if (!canManageApps()) { showNotification('Founder access required'); return; }
+    if (window.quantumSync && window.quantumSync.isReady) await window.quantumSync.syncPendingApps();
     const apps = await getPendingApps();
     const app = apps.find(item => String(item.id) === String(appId));
     if (!app) { showNotification('Pending app not found'); return; }
