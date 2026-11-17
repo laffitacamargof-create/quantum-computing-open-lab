@@ -417,7 +417,7 @@
         }
         
         if (data.type === 'QCOL_OPEN_APP_FROM_PUZZLE') {
-            const { appId, appName, pythonCode, htmlCode, serverUrl } = data;
+            const { appId, appName, pythonCode, htmlCode, serverUrl, description, tags, duration } = data;
             if (appId && appName) {
                 const sourceType = ['pending', 'published'].includes(data.sourceType) ? data.sourceType : '';
                 const sourceId = String(data.sourceId || appId);
@@ -436,6 +436,9 @@
                     currentEditId = projectId;
                     existing.sourceType = sourceType;
                     existing.sourceId = sourceId;
+                    existing.description = description || existing.description || '';
+                    existing.tags = tags || existing.tags || '';
+                    existing.duration = duration || existing.duration || 8;
                     document.getElementById('project-name-input').value = existing.name;
                     document.getElementById('python-editor').value = existing.pythonCode || '';
                     document.getElementById('html-editor').value = existing.htmlCode || '';
@@ -443,6 +446,7 @@
                 } else {
                     const newProj = {
                         id: projectId, sourceType, sourceId, name: appName,
+                        description: description || '', tags: tags || '', duration: duration || 8,
                         pythonCode: pythonCode || '# Python Code\\n',
                         htmlCode: htmlCode || '<!DOCTYPE html>\\n<html>\\n<body>\\n<h1>App from Puzzle</h1>\\n</body>\\n</html>',
                         serverUrl: serverUrl || '', createdAt: Date.now()
