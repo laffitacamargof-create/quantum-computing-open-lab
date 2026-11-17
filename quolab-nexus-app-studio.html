@@ -314,35 +314,21 @@
     // 🛡️ PROTECTION: Force English AI + Clean editor on project switch
     // ═══════════════════════════════════════════════════════════
     (function initProtections() {
-        // 1. Force AI language to English
-        const storedAI = JSON.parse(localStorage.getItem('qcol_ai') || '{}');
-        if (!storedAI.lang || storedAI.lang === 'es') {
-            storedAI.lang = 'en';
-            localStorage.setItem('qcol_ai', JSON.stringify(storedAI));
-        }
-
-        // 2. Validate saved projects integrity on load
-        const stored = localStorage.getItem('quantum_apps_repo_v2');
-        if (stored) {
-            try {
-                const parsed = JSON.parse(stored);
-                // Remove any project that has contaminated content (matching another project's code)
-                const cleanProjects = parsed.filter((proj, idx, arr) => {
-                    return !arr.some((other, otherIdx) => 
-                        otherIdx !== idx && 
-                        other.pythonCode === proj.pythonCode && 
-                        other.htmlCode === proj.htmlCode &&
-                        other.pythonCode.length > 10 // only flag if there's actual content
-                    );
-                });
-                if (cleanProjects.length !== parsed.length) {
-                    localStorage.setItem('quantum_apps_repo_v2', JSON.stringify(cleanProjects));
-                    localStorage.setItem('quantum_apps_repo_v2_backup', stored); // keep backup
-                }
-            } catch(e) {}
-        }
+        // Never delete local apps merely because two projects contain identical code.
+        try {
+            const storedAI = JSON.parse(localStorage.getItem('qcol_ai') || '{}');
+            if (!storedAI.lang || storedAI.lang === 'es') {
+                storedAI.lang = 'en';
+                localStorage.setItem('qcol_ai', JSON.stringify(storedAI));
+            }
+        } catch (e) { console.warn('[Quantum App Studio] AI preferences could not be parsed.', e); }
+        try {
+            const stored = localStorage.getItem('quantum_apps_repo_v2');
+            if (stored && !localStorage.getItem('quantum_apps_repo_v2_backup')) {
+                localStorage.setItem('quantum_apps_repo_v2_backup', stored);
+            }
+        } catch (e) { console.error('[Quantum App Studio] Local storage unavailable.', e); }
     })();
-    // ═══════════════════════════════════════════════════════════
 
     function notify(msg, dur=2000) {
         const n = document.getElementById('notif');
@@ -560,15 +546,45 @@
         }
     }
 
+    function normalizeStoredProject(raw, index) {
+        const p = raw && typeof raw === 'object' ? raw : {};
+        return {
+            ...p,
+            id: String(p.id || p.appId || p.projectId || ('legacy-' + index + '-' + generateId())),
+            name: String(p.name || p.title || p.appName || ('Recovered app ' + (index + 1))),
+            pythonCode: String(p.pythonCode ?? p.python ?? p.pyCode ?? p.code ?? ''),
+            htmlCode: String(p.htmlCode ?? p.html ?? p.htmlContent ?? p.frontendCode ?? p.content ?? ''),
+            serverUrl: String(p.serverUrl || p.compilerUrl || ''),
+            createdAt: p.createdAt || p.timestamp || Date.now()
+        };
+    }
+
     function loadProjects() {
-        const stored = localStorage.getItem('quantum_apps_repo_v2');
-        if (stored) try { projects = JSON.parse(stored); } catch(e) { projects = []; }
-        if (!projects.length) {
+        let stored = null;
+        try { stored = localStorage.getItem('quantum_apps_repo_v2'); }
+        catch (e) { notify('Local project storage is blocked by the browser.'); console.error(e); return; }
+        if (stored !== null) {
+            try {
+                const parsed = JSON.parse(stored);
+                if (!Array.isArray(parsed)) throw new Error('Saved project data is not an array.');
+                projects = parsed.map(normalizeStoredProject);
+                if (JSON.stringify(parsed) !== JSON.stringify(projects)) {
+                    localStorage.setItem('quantum_apps_repo_v2_backup', stored);
+                    localStorage.setItem('quantum_apps_repo_v2', JSON.stringify(projects));
+                }
+            } catch (e) {
+                notify('Saved projects could not be read. Original data was preserved.');
+                console.error('[Quantum App Studio] Refusing to overwrite invalid saved data.', e);
+                projects = [];
+                return;
+            }
+        }
+        if (!projects.length && stored === null) {
             projects.push({
                 id: generateId(),
                 name: "Demo: Quantum greeting",
                 pythonCode: `def greet(name):\n    return f"Hello {name}! from Python on quantum server 🧪"\n\ndef add(a,b):\n    return a+b`,
-                htmlCode: `<!DOCTYPE html>\n<html>\n<head><meta charset="UTF-8"></head>\n<body style="background:#0a0e1a; color:white; font-family:monospace; padding:1rem;">\n<h2>Interactive Demo</h2>\n<input id="nameInput" placeholder="Your name" style="padding:0.3rem;">\n<button onclick="callGreet()">Greet</button>\n<p id="result"></p>\n<script>\nwindow.callGreet = async () => {\n    const name = document.getElementById('nameInput').value;\n    const res = await window.pyCall("greet", name);\n    document.getElementById('result').innerText = res;\n};\n<\/script>\n</body>\n</html>`,
+                htmlCode: `<!DOCTYPE html>\n<html>\n<head><meta charset="UTF-8"></head>\n<body style="background:#0a0e1a; color:white; font-family:monospace; padding:1rem;">\n<h2>Interactive Demo</h2>\n<input id="nameInput" placeholder="Your name" style="padding:0.3rem;">\n<button onclick="callGreet()">Greet</button>\n<p id="result"></p>\n<script>\nwindow.callGreet = async () => {\n    const name = document.getElementById('nameInput').value;\n    const res = await window.pyCall("greet", name);\n    document.getElementById('result').innerText = res;\n};\n<\\/script>\n</body>\n</html>`,
                 serverUrl: "",
                 createdAt: Date.now()
             });
@@ -813,37 +829,46 @@
     });
 
     async function buildAppBlob(pythonCode, htmlCode, serverUrl) {
-        const connectorUrl = new URL('quolab-nexus-tool-connector.js?v=1.3.0', location.href).href;
+        const connectorUrl = new URL('quolab-nexus-tool-connector.js?v=1.3.1', location.href).href;
         const bridge = `
-        <script>window.__QUOLAB_NEXUS_TOOL='quantum-app-studio';<\/script>
-        <script src="${connectorUrl}"><\/script>
+        <script>window.__QUOLAB_NEXUS_TOOL='quantum-app-studio';<\\/script>
+        <script src="${connectorUrl}"><\\/script>
         <script>
-        window.__serverUrl = ${JSON.stringify(serverUrl)};
-        window.__pyCode = ${JSON.stringify(pythonCode)};
+        window.__serverUrl = ${JSON.stringify(serverUrl || '')};
+        window.__pyCode = ${JSON.stringify(pythonCode || '')};
         window.pyCall = async (funcName, ...args) => {
+            if (!window.__serverUrl) throw new Error('Python backend is not configured. The HTML interface can still run locally; configure the Python server to execute Python functions.');
             return new Promise((resolve, reject) => {
                 const msgId = Date.now() + '-' + Math.random();
+                const timeout = setTimeout(() => {
+                    window.removeEventListener('message', handler);
+                    reject(new Error('Python backend request timed out.'));
+                }, 60000);
                 const handler = (event) => {
-                    if (event.data.type === 'pyResult' && event.data.id === msgId) {
-                        window.removeEventListener('message', handler);
-                        if (event.data.error) reject(new Error(event.data.error));
-                        else resolve(event.data.result);
-                    }
+                    if (!event.data || event.data.type !== 'pyResult' || event.data.id !== msgId) return;
+                    clearTimeout(timeout);
+                    window.removeEventListener('message', handler);
+                    if (event.data.error) reject(new Error(event.data.error));
+                    else resolve(event.data.result);
                 };
                 window.addEventListener('message', handler);
-                window.parent.postMessage({ type: 'pyCall', id: msgId, func: funcName, args: args, serverUrl: window.__serverUrl, pythonCode: window.__pyCode }, '*');
+                window.parent.postMessage({ type: 'pyCall', id: msgId, func: funcName, args: args, serverUrl: window.__serverUrl, pythonCode: window.__pyCode }, location.origin);
             });
         };
-        console.log("Bridge ready, server:", window.__serverUrl);
-        <\/script>
+        console.log('QuOLab local app bridge ready; Python server:', window.__serverUrl || 'not configured');
+        <\\/script>
         `;
-        let finalHtml = htmlCode;
-        if (finalHtml.includes('<head>')) finalHtml = finalHtml.replace('<head>', '<head>' + bridge);
-        else if (finalHtml.includes('<html>')) finalHtml = finalHtml.replace('<html>', '<html><head>' + bridge + '</head>');
-        else finalHtml = bridge + finalHtml;
-        const blob = new Blob([finalHtml], { type: 'text/html' });
-        const url = URL.createObjectURL(blob);
-        return { blobUrl: url, revoke: () => URL.revokeObjectURL(url) };
+        let finalHtml = typeof htmlCode === 'string' ? htmlCode : '';
+        if (!finalHtml.trim()) finalHtml = '<!doctype html><html><head><meta charset="utf-8"></head><body><p>This saved app has no HTML interface. Open Edit to restore its interface code.</p></body></html>';
+        if (/<head\b[^>]*>/i.test(finalHtml)) {
+            finalHtml = finalHtml.replace(/<head\b[^>]*>/i, match => match + bridge);
+        } else if (/<html\b[^>]*>/i.test(finalHtml)) {
+            finalHtml = finalHtml.replace(/<html\b[^>]*>/i, match => match + '<head>' + bridge + '</head>');
+        } else {
+            finalHtml = '<!doctype html><html><head>' + bridge + '</head><body>' + finalHtml + '</body></html>';
+        }
+        // srcdoc preserves relative ./css and ./js paths; blob: URLs do not.
+        return { srcdoc: finalHtml };
     }
 
     // Relay sanitized activity from the user app's live preview iframe to the App Studio connector.
@@ -861,7 +886,8 @@
         const proj = projects.find(p => p.id === id);
         if (!proj) return;
         showScreen('runner');
-        document.getElementById('runner-app-name').innerText = `⚛️ ${escapeHtml(proj.name)}`;
+        const runnerName = document.getElementById('runner-app-name');
+        if (runnerName) runnerName.textContent = '⚛️ ' + proj.name;
         const modeSpan = document.getElementById('runner-mode');
         const dot = document.getElementById('runner-dot');
         const runnerFrame = document.getElementById('app-iframe');
@@ -881,22 +907,24 @@
             if (modeSpan) modeSpan.innerHTML = '<span class="status-dot"></span> ⚠️ No server';
             if (dot) dot.className = 'status-dot';
         }
-        const { blobUrl, revoke } = await buildAppBlob(proj.pythonCode, proj.htmlCode, serverToUse);
-        runnerFrame.src = blobUrl;
-        runnerFrame.onload = () => revoke();
+        const { srcdoc } = await buildAppBlob(proj.pythonCode, proj.htmlCode, serverToUse);
+        runnerFrame.removeAttribute('src');
+        runnerFrame.srcdoc = srcdoc;
     }
 
     async function runPreview() {
         const serverUrl = localStorage.getItem('qcol_colab_url') || '';
-        const { blobUrl, revoke } = await buildAppBlob(
+        const { srcdoc } = await buildAppBlob(
             document.getElementById('python-editor').value,
             document.getElementById('html-editor').value,
             serverUrl
         );
         const iframe = document.getElementById('preview-iframe');
-        iframe.src = blobUrl;
-        iframe.onload = () => revoke();
-        document.getElementById('preview-modal').classList.add('open');
+        const modal = document.getElementById('preview-modal');
+        if (!iframe || !modal) { notify('Preview interface is incomplete.'); return; }
+        iframe.removeAttribute('src');
+        iframe.srcdoc = srcdoc;
+        modal.classList.add('open');
     }
 
     function closeModal() {
