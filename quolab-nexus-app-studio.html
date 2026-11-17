@@ -600,8 +600,13 @@
     }
 
     function renderPendingReviewSection() {
+        const section = document.getElementById('pending-review-section');
         const container = document.getElementById('pending-review-grid');
         if (!container) return;
+        let founderSessionAvailable = false;
+        try { founderSessionAvailable = !!sessionStorage.getItem('qnexus_founder_session'); } catch (error) {}
+        if (section) section.classList.toggle('hidden', !founderSessionAvailable);
+        if (!founderSessionAvailable) return;
         if (!pendingReviewApps.length) {
             container.innerHTML = '<div style="color:var(--tx2);font-size:0.65rem;">No pending apps downloaded yet. Select “NUEVA · STUDIO” in Quantum Puzzle.</div>';
             return;
