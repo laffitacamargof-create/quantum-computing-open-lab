@@ -1169,8 +1169,17 @@ window.addEventListener('message', async function _execPyCallHandler(ev) {
     if (!iframe || ev.source !== iframe.contentWindow || (ev.origin !== location.origin && ev.origin !== 'null')) return;
     const { id, func, args, serverUrl: appUrl, pythonCode } = d;
     const src = ev.source;
-    if (typeof id !== 'string' || id.length > 120 || typeof func !== 'string' ||
-        !/^[A-Za-z_][A-Za-z0-9_]*$/.test(func) || !Array.isArray(args) || args.length > 100) return;
+    // Match Studio's callable-name support: quantum apps may invoke object methods
+    // such as simulator.run(...) or backend.execute(...), not only bare functions.
+    // Never silently drop a call: return a pyResult error so the app cannot spin forever.
+    const validCall = typeof id === 'string' && id.length > 0 && id.length <= 120 &&
+        typeof func === 'string' &&
+        /^[A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*)*$/.test(func) &&
+        Array.isArray(args) && args.length <= 100;
+    if (!validCall) {
+        try { src.postMessage({ type: 'pyResult', id, error: 'Quantum Puzzle rechazó una llamada Python no válida. Comprueba el nombre de la función y sus argumentos.' }, '*'); } catch(e) {}
+        return;
+    }
 
     const tid = setTimeout(() => {
         _execPyCalls.delete(id);
