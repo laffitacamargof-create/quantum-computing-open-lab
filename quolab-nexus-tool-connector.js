@@ -139,10 +139,14 @@
       const method = String((init && init.method) || (input && input.method) || 'GET').toUpperCase();
       const headers = new Headers((init && init.headers) || (input && input.headers) || {});
       const requestedSlot = (init && init.nexusSlot) || headers.get('X-Nexus-Slot') || 'cpu';
+      const requestedConnector = (init && init.nexusConnector) || headers.get('X-Nexus-Connector') || '';
+      const requestedModule = (init && init.nexusModule) || global.__QUOLAB_NEXUS_MODULE || '';
       headers.delete('X-Nexus-Slot');
+      headers.delete('X-Nexus-Connector');
+      headers.delete('X-Nexus-Module');
       const cleanHeaders = {};
       headers.forEach((value, key) => { if (!/^(authorization|proxy-authorization|cookie|x-api-key)$/i.test(key)) cleanHeaders[key] = value; });
-      return { slot: requestedSlot, path: url.pathname + url.search, method, headers: cleanHeaders, body: init && init.body, timeout: init && init.timeout };
+      return { slot: requestedSlot, connector:requestedConnector, module:requestedModule, path: url.pathname + url.search, method, headers: cleanHeaders, body: init && init.body, timeout: init && init.timeout };
     } catch (_) { return null; }
   }
   function installNexusAPI() {
@@ -156,6 +160,7 @@
     const config = modules[filename];
     if (!config || !global.QuOLabNexusCore || !global.QuOLabNexusCore.api) return Promise.resolve(null);
     const api = global.QuOLabNexusCore.api;
+    global.__QUOLAB_NEXUS_MODULE = config.tool;
     global.QuOLabNexusAPI = api;
     return new Promise(resolve => global.setTimeout(async () => {
       config.slots.forEach(slot => api.register(slot, config.tool + ' · ' + slot.toUpperCase(), slot === 'cpu' ? 'engine' : ''));
