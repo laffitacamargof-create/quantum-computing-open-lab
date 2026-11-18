@@ -1116,7 +1116,8 @@ async function copyAppLink(appId){
 window.copyAppLink=copyAppLink;
 function executeQuantumApp(appId) {
     getPublishedApps().then(apps => {
-        const app = apps.find(a => a.id === appId);
+        if (!Array.isArray(apps)) throw new Error('La lista de Quantum Apps no tiene un formato válido.');
+        const app = apps.find(a => String(a.id) === String(appId));
         if(!app) { 
             showNotification('⚠️ App not found'); 
             return; 
@@ -1141,6 +1142,9 @@ function executeQuantumApp(appId) {
         titleSpan.textContent = `⚛️ ${app.title || app.name || 'Quantum App'}`;
         modal.classList.add('open');
         executeWithStudio({ ...app, python_code: pythonCode, html_code: htmlCode, server_url: app.server_url || app.serverUrl || '' });
+    }).catch(error => {
+        console.error('[Quantum Puzzle] Could not load app for execution:', error);
+        showNotification('No se pudo cargar la Quantum App: ' + String(error?.message || error).slice(0, 260), 6000);
     });
 }
 
@@ -1198,9 +1202,8 @@ async function _runPythonRemote(code, serverUrl) {
     const base = serverUrl.trim().replace(/\/+$/, '');
     let parsedUrl;
     try { parsedUrl = new URL(base); } catch (_) { throw new Error('La URL del servidor CPU no es válida.'); }
-    if (parsedUrl.protocol !== 'https:' && parsedUrl.hostname !== 'localhost' && parsedUrl.hostname !== '127.0.0.1') {
-        throw new Error('El servidor CPU debe usar HTTPS.');
-    }
+    // Match Quantum App Studio: accept the configured URL as-is. Browser mixed-content
+    // policy still applies when the app itself is hosted over HTTPS.
 
     // Keep the same request protocol as Quantum App Studio.
     const isHF = base.includes('hf.space') || base.includes('huggingface');
