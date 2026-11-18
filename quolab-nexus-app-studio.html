@@ -968,6 +968,28 @@
         return output;
     }
 
+    // Shared Python execution channel for Quantum Puzzle.
+    // Requests are accepted only from the immediate parent Puzzle iframe.
+    window.addEventListener('message', async (event) => {
+        const message = event.data;
+        if (!message || message.type !== 'QCOL_PYTHON_EXECUTE_REQUEST') return;
+        if (event.source !== window.parent || event.origin !== window.location.origin) return;
+        const requestId = typeof message.requestId === 'string' ? message.requestId : '';
+        const reply = (payload) => {
+            try { window.parent.postMessage({ type: 'QCOL_PYTHON_EXECUTE_RESULT', requestId, ...payload }, event.origin); } catch (_) {}
+        };
+        if (!requestId || requestId.length > 160 || typeof message.code !== 'string' || !message.code.trim()) {
+            reply({ success: false, error: 'Solicitud de ejecución Python inválida.' });
+            return;
+        }
+        try {
+            const output = await executePythonRemote(message.code, String(message.serverUrl || ''));
+            reply({ success: true, output });
+        } catch (error) {
+            reply({ success: false, error: String(error && error.message || error).slice(0, 1200) });
+        }
+    });
+
     // Handler for calls from iframes (pyCall) - same origin, no token needed
     window.addEventListener('message', async (event) => {
         // Only process pyCall if the origin is the same (blob:iframe origin is the same)
