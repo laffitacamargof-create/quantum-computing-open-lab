@@ -1165,7 +1165,7 @@ window.addEventListener('message', async function _execPyCallHandler(ev) {
 });
 
 async function _runPythonRemote(code, serverUrl) {
-    const base = (serverUrl || '').trim().replace(/\\/+$/, '');
+    const base = (serverUrl || '').trim().replace(/\/+$/, '');
     if (!base) throw new Error('No hay un servidor CPU configurado. Abre el Panel del Fundador y configura la URL del motor.');
 
     let parsedUrl;
@@ -1174,7 +1174,7 @@ async function _runPythonRemote(code, serverUrl) {
         throw new Error('El servidor CPU debe usar HTTPS para permitir la conexión segura desde Quantum Puzzle.');
     }
 
-    const isHF = /(^|\\.)hf\\.space$/i.test(parsedUrl.hostname) || parsedUrl.hostname.includes('huggingface');
+    const isHF = /(^|\.)hf\.space$/i.test(parsedUrl.hostname) || parsedUrl.hostname.includes('huggingface');
     const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
     const timeoutId = controller ? setTimeout(() => controller.abort(), 55000) : null;
     const fetchOptions = controller ? { signal: controller.signal } : {};
