@@ -1293,7 +1293,7 @@ async function _waitForQuantumServer(base, isHF) {
 
 async function _runPythonRemote(code, serverUrl) {
     // Mismo mecanismo directo de Quantum App Studio: enviar el código al
-    // endpoint de ejecución, después de confirmar disponibilidad mediante /health.
+    // endpoint de ejecución, sin bloquearlo con una consulta previa de salud.
     if (!serverUrl) throw new Error('No hay URL del servidor configurada.');
     const base = serverUrl.trim().replace(/\/+$/, '');
     let parsedUrl;
