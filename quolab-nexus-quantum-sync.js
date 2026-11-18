@@ -154,6 +154,9 @@ class QuOLabNexusQuantumSync {
     }
 
     async _rpc(name, body) {
+        // Listing pending apps is read-only and safe to retry after a transient abort.
+        // Mutating RPCs stay single-attempt to avoid duplicate writes.
+        const retrySafeRead = name === 'quantum_list_pending';
         const response = await this._fetchWithRetry(`${this.SUPABASE_URL}/functions/v1/quolab-nexus-admin`, {
             method: 'POST',
             headers: {
@@ -162,7 +165,7 @@ class QuOLabNexusQuantumSync {
                     // Publishable keys belong in apikey only; they are not JWT bearer tokens.
             },
             body: JSON.stringify({ action: name, params: body })
-        });
+        }, retrySafeRead ? 4 : 1);
         const payload = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(payload.error || `HTTP ${response.status}`);
         return payload.data;
