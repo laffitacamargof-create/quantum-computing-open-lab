@@ -1305,10 +1305,10 @@ async function _runPythonRemote(code, serverUrl) {
 
     const isHF = base.includes('hf.space') || base.includes('huggingface');
 
-    // Wait for the CPU sandbox to wake and explicitly report readiness before
-    // sending user code. HF legacy Spaces without /health retain /run/predict fallback.
-    await _waitForQuantumServer(base, isHF);
-
+    // Execute directly against the same endpoint used by Quantum App Studio.
+    // Do not gate POST /run/predict behind a separate /health probe: on Docker
+    // Spaces the health route can be served by a different startup/proxy path,
+    // while the execution route itself is the authoritative readiness check.
     const url = isHF ? base + '/run/predict' : base + '/run';
     const body = isHF
         ? JSON.stringify({ data: [code], fn_index: 0 })
