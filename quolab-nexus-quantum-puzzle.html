@@ -1235,9 +1235,10 @@ async function _waitForQuantumServer(base, isHF) {
     // The QuOLab execution backend must expose /health and report sandbox.ready=true.
     let lastStatus = 0;
     let lastDetail = '';
-    for (let attempt = 0; attempt < 8; attempt++) {
+    // Cold-starting Spaces and unstable links need a longer, bounded recovery window.
+    for (let attempt = 0; attempt < 15; attempt++) {
         const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
-        const timeoutId = controller ? setTimeout(() => controller.abort(), 5000) : null;
+        const timeoutId = controller ? setTimeout(() => controller.abort(), 12000) : null;
         try {
             const response = await fetch(base + '/health', {
                 method: 'GET',
@@ -1273,7 +1274,7 @@ async function _waitForQuantumServer(base, isHF) {
         } finally {
             if (timeoutId) clearTimeout(timeoutId);
         }
-        if (attempt < 7) await new Promise(resolve => setTimeout(resolve, 4000));
+        if (attempt < 14) await new Promise(resolve => setTimeout(resolve, 4000));
     }
     throw new Error('El motor cuántico no está listo después de esperar a que despierte. Estado HTTP: ' + (lastStatus || 'sin respuesta') + '. ' + lastDetail.slice(0, 300));
 }
