@@ -455,8 +455,14 @@
         
         if (data.type === 'QCOL_OPEN_APP_FROM_PUZZLE') {
             const { requestId, appId, appName, pythonCode, htmlCode, serverUrl, sourceType, description, tags, duration } = data;
-            if (appId && appName) {
-                const externalType = sourceType === 'pending' ? 'pending' : 'published';
+            // Studio's repository is private and local-only. The only remote record
+            // allowed into the editor is a pending app explicitly opened from Puzzle.
+            // Published/database apps must never be imported into the local project list.
+            if (sourceType !== 'pending') {
+                notify('Only pending apps can be opened from Quantum Puzzle. Published apps are not imported into Studio.');
+                return;
+            }
+            if (!appId || !appName) return;
                 if (externalType === 'pending') {
                     // Store a dedicated review copy; never mix it into the user's private project list.
                     const reviewCopy = {
@@ -483,44 +489,11 @@
                     sendToParent(loadedMessage);
                     return;
                 }
-
-                // Published-app founder editing keeps its existing workflow.
-                if (currentEditId) {
-                    const prevIdx = projects.findIndex(p => p.id === currentEditId);
-                    if (prevIdx !== -1) {
-                        projects[prevIdx].pythonCode = document.getElementById('python-editor').value;
-                        projects[prevIdx].htmlCode = document.getElementById('html-editor').value;
-                        projects[prevIdx].name = document.getElementById('project-name-input').value.trim() || projects[prevIdx].name;
-                        saveProjects();
-                    }
-                }
-                const localId = 'nexus-published-' + String(appId);
-                let localProject = projects.find(p => p.id === localId);
-                if (!localProject) {
-                    localProject = { id: localId, name: appName, pythonCode: '', htmlCode: '', serverUrl: '', createdAt: Date.now() };
-                    projects.push(localProject);
-                }
-                Object.assign(localProject, {
-                    name: appName, pythonCode: pythonCode || '', htmlCode: htmlCode || '',
-                    serverUrl: serverUrl || '', description: description || '',
-                    tags: tags || '', duration: duration || 8
-                });
-                currentEditId = localId;
-                externalEditContext = { type: 'published', id: String(appId) };
-                document.getElementById('project-name-input').value = localProject.name;
-                document.getElementById('python-editor').value = localProject.pythonCode;
-                document.getElementById('html-editor').value = localProject.htmlCode;
-                if (localProject.serverUrl) setServerUrl(localProject.serverUrl);
-                saveProjects();
-                showScreen('editor');
-                notify('Published app opened for founder editing');
-                sendToParent({ type: 'QCOL_STUDIO_APP_LOADED', appId: String(appId), sourceType: 'published' });
-            }
             return;
         }
 
         if (data.type === 'QCOL_GET_APPS') {
-            const apps = projects.map(p => ({ id: p.id, name: p.name, serverUrl: p.serverUrl, createdAt: p.createdAt }));
+            const apps = projects.filter(isLocalStudioProject).map(p => ({ id: p.id, name: p.name, serverUrl: p.serverUrl, createdAt: p.createdAt }));
             sendToParent({ type: 'QCOL_APPS_LIST', apps });
             return;
         }
@@ -695,6 +668,16 @@
         }
     }
 
+    function isLocalStudioProject(project) {
+        if (!project || typeof project !== 'object') return false;
+        const id = String(project.id || '');
+        // Earlier builds copied published Supabase records into the private repository
+        // using this reserved prefix. Hide those imports without touching Supabase.
+        if (id.startsWith('nexus-published-')) return false;
+        if (project.source === 'supabase-published' || project.sourceType === 'published') return false;
+        return true;
+    }
+
     function normalizeStoredProject(raw, index) {
         const p = raw && typeof raw === 'object' ? raw : {};
         return {
@@ -716,7 +699,7 @@
             try {
                 const parsed = JSON.parse(stored);
                 if (!Array.isArray(parsed)) throw new Error('Saved project data is not an array.');
-                projects = parsed.map(normalizeStoredProject);
+                projects = parsed.map(normalizeStoredProject).filter(isLocalStudioProject);
                 if (JSON.stringify(parsed) !== JSON.stringify(projects)) {
                     localStorage.setItem('quantum_apps_repo_v2_backup', stored);
                     localStorage.setItem('quantum_apps_repo_v2', JSON.stringify(projects));
@@ -729,7 +712,7 @@
                     const backup = localStorage.getItem('quantum_apps_repo_v2_backup');
                     const backupItems = backup ? JSON.parse(backup) : null;
                     if (Array.isArray(backupItems)) {
-                        projects = backupItems.map(normalizeStoredProject);
+                        projects = backupItems.map(normalizeStoredProject).filter(isLocalStudioProject);
                         localStorage.setItem('quantum_apps_repo_v2', JSON.stringify(projects));
                         notify('Recovered saved apps from the local backup.');
                         recovered = true;
