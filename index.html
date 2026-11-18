@@ -2913,7 +2913,7 @@ CONTEXT (staged and size-limited): ${c}`;
       proactiveAlertTimes.set(signature, now);
       if (proactiveAlertTimes.size > 30) proactiveAlertTimes.delete(proactiveAlertTimes.keys().next().value);
       const spanish = /^es(?:-|$)/i.test(navigator.language || '');
-      const configured = !!(aiCfg && (aiCfg.provider === 'deepseek' || (aiCfg.key && aiCfg.provider !== 'none')));
+      const configured = !!(aiCfg && (aiCfg.provider === 'gateway' || aiCfg.provider === 'deepseek' || (aiCfg.key && aiCfg.provider !== 'none')));
       const text = spanish
         ? 'He detectado un problema en **' + tool + '** (' + kind + '): `' + safeMessage + '`. ' + (configured ? 'Estoy analizando el error automáticamente.' : 'Configura un proveedor de IA para que pueda diagnosticarlo automáticamente.')
         : 'I detected a problem in **' + tool + '** (' + kind + '): `' + safeMessage + '`. ' + (configured ? 'I am analyzing the error automatically.' : 'Configure an AI provider so I can diagnose it automatically.');
