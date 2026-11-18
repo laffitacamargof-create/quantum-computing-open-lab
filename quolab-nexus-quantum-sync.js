@@ -87,15 +87,20 @@ class QuOLabNexusQuantumSync {
         }, 15000);
     }
 
-    async _fetchWithRetry(url, options = {}, attempts = ((options.method || 'GET').toUpperCase() === 'GET' ? 3 : 1)) {
+    async _fetchWithRetry(url, options = {}, attempts = ((options.method || 'GET').toUpperCase() === 'GET' ? 5 : 1)) {
         let lastError;
         for (let attempt = 0; attempt < attempts; attempt++) {
             try {
                 const response = await fetch(url, options);
                 if (response.status < 500 && response.status !== 408 && response.status !== 429) return response;
                 lastError = new Error('HTTP ' + response.status);
-            } catch (error) { lastError = error; }
-            if (attempt < attempts - 1) await new Promise(resolve => setTimeout(resolve, 800 * Math.pow(2, attempt)));
+            } catch (error) {
+                lastError = error instanceof Error ? error : new Error(String(error || 'Network unavailable'));
+            }
+            if (attempt < attempts - 1) {
+                // Progressive recovery for unstable/mobile connections without overlapping requests.
+                await new Promise(resolve => setTimeout(resolve, Math.min(1000 * Math.pow(2, attempt), 8000)));
+            }
         }
         throw lastError || new Error('Network unavailable');
     }
@@ -276,16 +281,25 @@ class QuOLabNexusQuantumSync {
             if (this.onPublishedUpdate) this.onPublishedUpdate(this.publishedApps);
             return this.publishedApps;
         } catch (error) {
-            console.error('Error syncing published:', error.message);
+            // A transient browser/network failure must never erase the last known
+            // published repository snapshot from memory or replace it with [].
+            const reason = error && error.message ? error.message : String(error || 'Network unavailable');
+            console.warn('Published apps sync temporarily unavailable; keeping last known data:', reason);
             try {
-                const cached = JSON.parse(localStorage.getItem('quolab_nexus_published_apps_cache') || '[]');
-                if (Array.isArray(cached)) {
-                    this.publishedApps = cached;
-                    if (this.onPublishedUpdate) this.onPublishedUpdate(this.publishedApps);
-                    return this.publishedApps;
+                const rawCache = localStorage.getItem('quolab_nexus_published_apps_cache');
+                if (rawCache) {
+                    const cached = JSON.parse(rawCache);
+                    if (Array.isArray(cached) && cached.length > 0) {
+                        this.publishedApps = cached;
+                    }
                 }
-            } catch (cacheError) {}
-            return [];
+            } catch (cacheError) {
+                console.warn('Published apps cache could not be read; keeping in-memory snapshot:', cacheError);
+            }
+            // Keep the UI populated with the last successful snapshot. The normal
+            // 15-second recovery poll and the browser "online" event retry Supabase.
+            if (this.onPublishedUpdate) this.onPublishedUpdate(this.publishedApps);
+            return this.publishedApps;
         }
     }
 
