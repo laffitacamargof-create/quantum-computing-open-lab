@@ -65,11 +65,14 @@ if "matplotlib" in requested:
  except Exception: pass
 for module,alias in (("numpy","np"),("numpy","numpy"),("math","math"),("math","pi"),("qiskit","qiskit"),
  ("cirq","cirq"),("pennylane","qml"),("qutip","qt"),("scipy","scipy"),("sympy","sympy"),
- ("matplotlib","matplotlib")):
+ ("qiskit_aer","qiskit_aer"),("matplotlib","matplotlib")):
  if module not in requested: continue
  try:
   obj=importlib.import_module(module)
   env[alias]=getattr(obj,"pi") if alias=="pi" else obj
+ except Exception: pass
+if "matplotlib" in requested:
+ try: env["plt"]=importlib.import_module("matplotlib.pyplot")
  except Exception: pass
 class CappedBuffer(io.StringIO):
  def write(self, value):
