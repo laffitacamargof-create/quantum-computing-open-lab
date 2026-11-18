@@ -28,6 +28,7 @@ class QuOLabNexusQuantumSync {
             console.warn('Ignoring invalid published-app cache:', cacheError);
         }
         this._syncInProgress = false;
+        this._initPromise = null;
         this._lastSync = 0;
         this._onlineHandler = () => { if (!this._syncInProgress) this.init(); };
         window.addEventListener('online', this._onlineHandler);
@@ -39,7 +40,13 @@ class QuOLabNexusQuantumSync {
         this.onSyncComplete = null;
     }
 
-    async init() {
+    init() {
+        if (this._initPromise) return this._initPromise;
+        this._initPromise = this._initialize().finally(() => { this._initPromise = null; });
+        return this._initPromise;
+    }
+
+    async _initialize() {
         try {
             console.log('🔌 Probando conexión a Supabase...');
             console.log('📌 URL:', this.SUPABASE_URL);
@@ -60,10 +67,10 @@ class QuOLabNexusQuantumSync {
             }
             
             console.log('✅ Conexión a Supabase establecida');
-            await this.syncAll();
-            
+            // REST transport is reachable; keep table/RPC failures recoverable.
             this.isInitialized = true;
             this.isReady = true;
+            await this.syncAll();
             console.log('✅ Quantum Sync Module initialized');
             
             this._startRetryPolling();
@@ -90,11 +97,15 @@ class QuOLabNexusQuantumSync {
     async _fetchWithRetry(url, options = {}, attempts = ((options.method || 'GET').toUpperCase() === 'GET' ? 5 : 1)) {
         let lastError;
         for (let attempt = 0; attempt < attempts; attempt++) {
+            const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+            const timeoutId = controller ? setTimeout(() => controller.abort(), 12000) : null;
             try {
-                const response = await fetch(url, options);
+                const response = await fetch(url, { ...options, ...(controller ? { signal: controller.signal } : {}) });
+                if (timeoutId) clearTimeout(timeoutId);
                 if (response.status < 500 && response.status !== 408 && response.status !== 429) return response;
                 lastError = new Error('HTTP ' + response.status);
             } catch (error) {
+                if (timeoutId) clearTimeout(timeoutId);
                 lastError = error instanceof Error ? error : new Error(String(error || 'Network unavailable'));
             }
             if (attempt < attempts - 1) {
@@ -268,7 +279,11 @@ class QuOLabNexusQuantumSync {
             this.pendingApps = data || [];
             if (this.onPendingUpdate) this.onPendingUpdate(this.pendingApps);
             return this.pendingApps;
-        } catch (error) { console.error('Error syncing pending:', error.message); return []; }
+        } catch (error) {
+            console.error('Error syncing pending:', error.message);
+            if (this.onPendingUpdate) this.onPendingUpdate(this.pendingApps);
+            return this.pendingApps;
+        }
     }
 
     async syncPublishedApps() {

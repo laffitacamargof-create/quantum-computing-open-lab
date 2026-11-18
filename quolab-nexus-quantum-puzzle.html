@@ -1128,7 +1128,7 @@ window.addEventListener('message', async function _execPyCallHandler(ev) {
 
     const tid = setTimeout(() => {
         _execPyCalls.delete(id);
-        try { src.postMessage({ type: 'pyResult', id, error: 'Timeout 35s' }, '*'); } catch(e) {}
+        try { src.postMessage({ type: 'pyResult', id, error: 'El servidor CPU tardó más de 60 segundos. Comprueba que el servidor siga activo y vuelve a intentar.' }, '*'); } catch(e) {}
     }, 60000);
     _execPyCalls.set(id, { src, tid });
 
@@ -1159,13 +1159,23 @@ async function _runPythonRemote(code, serverUrl) {
     const body  = isHF
         ? JSON.stringify({ data: [code], fn_index: 1 })
         : JSON.stringify({ code });
-    const res   = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body
-    });
-    if (!res.ok) throw new Error('HTTP ' + res.status + ' — ' + res.statusText);
-    const raw = await res.json();
+    const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const timeoutId = controller ? setTimeout(() => controller.abort(), 55000) : null;
+    let res;
+    try {
+        res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, ...(controller ? { signal: controller.signal } : {}) });
+    } catch (error) {
+        if (timeoutId) clearTimeout(timeoutId);
+        if (error && error.name === 'AbortError') throw new Error('El servidor CPU no respondió en 55 segundos. Comprueba que esté activo.');
+        throw new Error('No se pudo conectar con el servidor CPU: ' + (error?.message || error));
+    }
+    if (timeoutId) clearTimeout(timeoutId);
+    if (!res.ok) {
+        const detail = await res.text().catch(() => '');
+        throw new Error('Servidor CPU HTTP ' + res.status + ' — ' + (detail || res.statusText));
+    }
+    let raw;
+    try { raw = await res.json(); } catch (error) { throw new Error('El servidor CPU respondió con un formato no JSON.'); }
     const out = isHF ? (raw.data?.[0] ?? raw) : raw;
     if (out?.success === false) throw new Error(out.output || out.error || 'Server error');
     return out?.output ?? out?.result ?? String(out ?? '');
