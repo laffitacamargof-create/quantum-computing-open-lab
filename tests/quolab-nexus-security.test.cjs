@@ -30,8 +30,9 @@ assert.match(ai, /payload_too_large/);
 assert.match(sandbox, /shutil\.which\("bwrap"\)/);
 assert.match(sandbox, /--unshare-all/);
 assert.match(sandbox, /sandbox_runtime_status/);
-assert.match(sandbox, /--uid/);
-assert.match(sandbox, /--gid/);
+// Bubblewrap maps the invoking container user to namespace root by default.
+// Do not request an unmapped nobody UID/GID in restricted hosted containers.
+assert.doesNotMatch(sandbox, /"--uid"|"--gid"/);
 assert.ok(sandbox.includes("os.path.realpath(path)"));
 assert.ok(sandbox.includes('"--ro-bind",source,path'));
 assert.match(sandbox, /--unshare-all/);
