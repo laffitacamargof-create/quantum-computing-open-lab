@@ -1256,56 +1256,56 @@ async function _waitForQuantumServer(base, isHF) {
 }
 
 async function _runPythonRemote(code, serverUrl) {
+    // Mismo mecanismo directo de Quantum App Studio: enviar el código al
+    // endpoint de ejecución. No bloquear la ejecución con un preflight /health.
     if (!serverUrl) throw new Error('No hay URL del servidor configurada.');
-    const base = serverUrl.trim().replace(/\/+$/, '');
+    const base = serverUrl.trim().replace(/\\/+$/, '');
     let parsedUrl;
-    try { parsedUrl = new URL(base); } catch (_) { throw new Error('La URL del servidor CPU no es válida.'); }
+    try { parsedUrl = new URL(base); }
+    catch (_) { throw new Error('La URL del servidor CPU no es válida.'); }
+    if (parsedUrl.protocol !== 'https:' && parsedUrl.protocol !== 'http:') {
+        throw new Error('La URL del servidor CPU debe usar HTTP o HTTPS.');
+    }
 
-    // Esperar a que el endpoint /health confirme que el sandbox Python está listo.
-    // El backend devuelve 503 mientras bwrap/sandbox no pueda ejecutar de forma aislada.
-    // No enviar código a /run hasta que el motor esté preparado.
     const isHF = base.includes('hf.space') || base.includes('huggingface');
-    await _waitForQuantumServer(base, isHF);
-
-
     const url = isHF ? base + '/run/predict' : base + '/run';
     const body = isHF
         ? JSON.stringify({ data: [code], fn_index: 0 })
         : JSON.stringify({ code: code, lib: 'python' });
     const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
-    // Quantum libraries can take time to import on a cold CPU/Hugging Face worker.
-    // The iframe bridge and parent handler have a longer budget than this request.
     const timeoutId = controller ? setTimeout(() => controller.abort(), 120000) : null;
 
-    let res, raw;
+    let raw;
     try {
-        res = await fetch(url, {
+        const response = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
             body,
             ...(controller ? { signal: controller.signal } : {})
         });
-        if (!res.ok) {
-            const detail = await res.text().catch(() => '');
-            throw new Error('Servidor CPU HTTP ' + res.status + ' en ' + (isHF ? '/run/predict' : '/run') + ': ' + (detail || res.statusText).slice(0, 500));
+        if (!response.ok) {
+            const detail = await response.text().catch(() => '');
+            throw new Error('Servidor CPU HTTP ' + response.status + ': ' + (detail || response.statusText).slice(0, 500));
         }
-        try { raw = await res.json(); }
+        try { raw = await response.json(); }
         catch (_) { throw new Error('El servidor CPU respondió con un formato no JSON.'); }
     } catch (error) {
-        if (error && error.name === 'AbortError') throw new Error('El servidor CPU no respondió en 120 segundos.');
+        if (error && error.name === 'AbortError') {
+            throw new Error('El servidor CPU no respondió en 120 segundos.');
+        }
         if (/^Servidor CPU HTTP |^El servidor CPU respondió/.test(error.message || '')) throw error;
         throw new Error('No se pudo conectar con el servidor CPU (' + parsedUrl.hostname + '): ' + (error?.message || error));
     } finally {
         if (timeoutId) clearTimeout(timeoutId);
     }
-    const data = isHF ? (raw && Array.isArray(raw.data) ? raw.data[0] : raw) : raw;
+
+    const data = isHF && raw && Array.isArray(raw.data) ? raw.data[0] : raw;
     if (!data || typeof data !== 'object' || Array.isArray(data)) {
-        throw new Error('El servidor CPU devolvió una respuesta vacía o con formato inválido.');
+        throw new Error('El servidor CPU devolvió una respuesta no válida.');
     }
     if (data.success === false) throw new Error(data.output || data.error || 'El servidor rechazó la ejecución.');
-    if (!Object.prototype.hasOwnProperty.call(data, 'output') &&
-        !Object.prototype.hasOwnProperty.call(data, 'result')) {
-        throw new Error('La respuesta del servidor no contiene output ni result.');
+    if (!Object.prototype.hasOwnProperty.call(data, 'output') && !Object.prototype.hasOwnProperty.call(data, 'result')) {
+        throw new Error('El servidor CPU no devolvió ningún campo output o result.');
     }
     let output = data.output ?? data.result ?? '';
     if (typeof output !== 'string') output = JSON.stringify(output);
