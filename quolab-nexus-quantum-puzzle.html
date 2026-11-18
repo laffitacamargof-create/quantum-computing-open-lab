@@ -751,9 +751,9 @@ function resolvePuzzleServerUrl(appUrl) {
     ];
     for (const value of candidates) {
         if (typeof value !== 'string' || !value.trim()) continue;
-        let normalized = value.trim().replace(/\\/+$/, '');
+        let normalized = value.trim().replace(/\/+$/, '');
         // Accept either a Space base URL or a previously saved endpoint URL.
-        normalized = normalized.replace(/\\/(?:health(?:\\/predict)?|run(?:\\/predict)?)$/i, '');
+        normalized = normalized.replace(/\/(?:health(?:\/predict)?|run(?:\/predict)?)$/i, '');
         try {
             const parsed = new URL(normalized);
             if (parsed.protocol === 'https:' || parsed.protocol === 'http:') return normalized;
