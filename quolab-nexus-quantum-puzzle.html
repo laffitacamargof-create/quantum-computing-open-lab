@@ -1181,10 +1181,14 @@ window.addEventListener('message', async function _execPyCallHandler(ev) {
         return;
     }
 
+    // One request id has exactly one terminal result. A late HTTP response after
+    // timeout must not send a second pyResult to an iframe that already rejected it.
     const tid = setTimeout(() => {
+        const pending = _execPyCalls.get(id);
+        if (!pending) return;
         _execPyCalls.delete(id);
         try {
-            src.postMessage({ type: 'pyResult', id, error: 'La ejecución agotó el tiempo máximo (195 s). El servidor puede estar dormido o no disponible; revisa /health y vuelve a intentar.' }, '*');
+            pending.src.postMessage({ type: 'pyResult', id, error: 'La ejecución agotó el tiempo máximo (195 s). El servidor puede estar dormido o no disponible; revisa /health y vuelve a intentar.' }, '*');
         } catch (postError) {
             console.error('[Quantum Puzzle] Could not return pyResult timeout:', postError);
         }
@@ -1197,7 +1201,10 @@ window.addEventListener('message', async function _execPyCallHandler(ev) {
         // Keep the exact Python wrapper used by Quantum App Studio.
         const fullCode = `${pythonCode}\nimport json\n_result = ${func}(*${JSON.stringify(args)})\nprint(json.dumps(_result, ensure_ascii=False))`;
         const output = await _runPythonRemote(fullCode, serverUrl);
-        clearTimeout(tid); _execPyCalls.delete(id);
+        const pending = _execPyCalls.get(id);
+        if (!pending) return; // timed out already; ignore a late server response
+        clearTimeout(pending.tid);
+        _execPyCalls.delete(id);
         let result = (output || '').trim();
         if ((result.startsWith('"') && result.endsWith('"')) ||
             (result.startsWith('{') && result.endsWith('}')) ||
@@ -1210,7 +1217,10 @@ window.addEventListener('message', async function _execPyCallHandler(ev) {
             console.error('[Quantum Puzzle] Could not return pyResult success:', postError);
         }
     } catch(err) {
-        clearTimeout(tid); _execPyCalls.delete(id);
+        const pending = _execPyCalls.get(id);
+        if (!pending) return; // timeout already delivered the terminal error
+        clearTimeout(pending.tid);
+        _execPyCalls.delete(id);
         const message = String(err && err.message ? err.message : err || 'Error desconocido al ejecutar Python');
         try {
             src.postMessage({ type: 'pyResult', id, error: message }, '*');
