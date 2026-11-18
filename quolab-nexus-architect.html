@@ -319,6 +319,55 @@ body { background:var(--bg); color:var(--tx); font-family:var(--ex); }
   .btn-run { padding:.2rem .6rem; font-size:.55rem; }
   .bsm, .lib-btn, .mode-btn { padding:.15rem .35rem; font-size:.45rem; }
 }
+
+/* ── MOBILE LAYOUT (phones): one view at a time + bottom bar; desktop untouched ── */
+.mbar{display:none}
+@media(max-width:760px){
+  html,body{height:100%}
+  body{display:flex;flex-direction:column;height:100vh;height:100dvh}
+  .titlebar{height:26px;padding:0 .5rem}
+  .toolbar{height:auto;min-height:46px;flex-wrap:nowrap;overflow-x:auto;padding:.3rem .5rem;gap:.35rem;-webkit-overflow-scrolling:touch}
+  .toolbar>*{flex-shrink:0}
+  .toolbar .btn-run,.toolbar .bsm,.toolbar .lib-btn{min-height:38px;padding:.3rem .7rem;font-size:.58rem}
+  .toolbar .mode-btn{display:none}
+  .toolbar .sep{height:24px}
+  .body-layout{flex:1;height:auto;min-height:0;flex-direction:column}
+  .resize-handle-h,.resize-handle-v{display:none!important}
+  .center-area{flex:1;min-height:0;width:100%}
+  .circuit-section{flex:1;height:auto!important;min-height:0;border-bottom:0}
+  .circuit-body{padding:.4rem}
+  .q-label{width:34px}
+  .code-section{flex:1;min-height:0}
+  .code-ta,.syn-lay{font-size:.78rem}
+  .palette{order:3;width:100%;height:auto;flex-shrink:0;border-right:0;border-top:1px solid var(--bd)}
+  .palette-hdr{padding:.35rem .7rem;font-size:.5rem;color:var(--cy);letter-spacing:.04em}
+  .palette-body{display:flex;gap:.8rem;overflow-x:auto;overflow-y:hidden;padding:.45rem .6rem;-webkit-overflow-scrolling:touch}
+  .pal-sec{margin:0;flex-shrink:0}
+  .pal-sec-lbl{margin-bottom:.25rem}
+  .pal-grid{display:flex;gap:.35rem}
+  .pal-gate{width:54px;height:54px;aspect-ratio:auto;flex-shrink:0}
+  .pal-gate:hover{transform:none}
+  .pal-gate-sym{font-size:1rem}
+  .pal-gate.sel{outline:2px solid var(--cy);outline-offset:1px;box-shadow:0 0 14px var(--cy)}
+  .right-panel{width:100%!important;flex:1;min-height:0;border-left:0}
+  .rtabs{display:none}
+  .out-body{font-size:.78rem}
+  .out-bar .bsm,.out-bar .btn-run{min-height:38px}
+  .bloch-container{max-width:min(300px,80vw)}
+  .gb{padding:.5rem .8rem;font-size:.6rem}
+  .fi{padding:.55rem .6rem;font-size:.8rem}
+  .circ-item{padding:.6rem .7rem}
+  /* views */
+  body[data-mv="circ"] .right-panel,body[data-mv="code"] .right-panel{display:none!important}
+  body[data-mv="circ"] .code-section{display:none}
+  body[data-mv="code"] .palette{display:none!important}
+  body[data-mv="out"] .center-area,body[data-mv="bloch"] .center-area,body[data-mv="save"] .center-area,
+  body[data-mv="out"] .palette,body[data-mv="bloch"] .palette,body[data-mv="save"] .palette{display:none!important}
+  .mbar{display:flex;flex-shrink:0;background:#060912;border-top:1px solid var(--bd);padding-bottom:env(safe-area-inset-bottom)}
+  .mbar button{flex:1;min-height:52px;background:transparent;border:none;border-top:2px solid transparent;color:var(--mu);font-family:var(--orb);font-size:.46rem;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.2rem;cursor:pointer;touch-action:manipulation}
+  .mbar button span{font-size:1.05rem;line-height:1}
+  .mbar button.on{color:var(--cy);border-top-color:var(--cy);background:rgba(0,255,221,.06)}
+}
 </style>
 </head>
 <body>
@@ -426,6 +475,14 @@ body { background:var(--bg); color:var(--tx); font-family:var(--ex); }
     </div>
   </div>
 </div>
+
+<nav class="mbar" id="mbar" aria-label="Views">
+  <button type="button" data-mv="circ" class="on"><span>⚛</span>CIRCUIT</button>
+  <button type="button" data-mv="code"><span>{ }</span>CODE</button>
+  <button type="button" data-mv="out"><span>📤</span>OUTPUT</button>
+  <button type="button" data-mv="bloch"><span>🌐</span>BLOCH</button>
+  <button type="button" data-mv="save"><span>💾</span>SAVE</button>
+</nav>
 
 <script>
 // ═══════════════════════════════════════════════════════════
@@ -1059,6 +1116,55 @@ document.addEventListener('keydown', function (e) {
     setTimeout(() => { const f = document.querySelector('#circuit-canvas [tabindex="0"]'); if (f) f.focus(); }, 30);
   }
 }, true);
+
+
+// ═══ MOBILE: single-view layout + tap-to-place (touch has no reliable drag from the palette) ═══
+(function(){
+  const mq = window.matchMedia('(max-width:760px)');
+  const hdr = () => document.querySelector('.palette-hdr');
+  const HINT = '👆 Tap a gate, then tap a wire to place it';
+  function disarm(){
+    kbdGate = null; kbdQ = 0;
+    document.querySelectorAll('.pal-gate.sel').forEach(g => g.classList.remove('sel'));
+    kbdHighlight();
+    if (mq.matches && hdr()) hdr().textContent = HINT;
+  }
+  function arm(id, el){
+    kbdGate = id; kbdQ = -1;
+    document.querySelectorAll('.pal-gate.sel').forEach(g => g.classList.remove('sel'));
+    if (el) el.classList.add('sel');
+    kbdHighlight();
+    if (hdr()) hdr().textContent = id + ' selected — tap a wire (tap the gate again to cancel)';
+  }
+  window.setMView = function(v){
+    document.body.dataset.mv = v;
+    document.querySelectorAll('#mbar button').forEach(b => b.classList.toggle('on', b.dataset.mv === v));
+    if (v === 'circ' || v === 'code') setMode(v); else setTab(v);
+    if (v !== 'circ') disarm();
+    if (v === 'bloch') setTimeout(drawBloch, 60);
+  };
+  function applyMq(){
+    if (mq.matches){ setMView(document.body.dataset.mv || (curMode === 'code' ? 'code' : 'circ')); if (hdr()) hdr().textContent = HINT; }
+    else { delete document.body.dataset.mv; setMode(curMode); if (hdr()) hdr().textContent = '🔲 GATES'; kbdGate = null; document.querySelectorAll('.pal-gate.sel').forEach(g => g.classList.remove('sel')); }
+  }
+  document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('#mbar button').forEach(b => b.addEventListener('click', () => setMView(b.dataset.mv)));
+    document.getElementById('palette-body').addEventListener('click', e => {
+      if (!mq.matches) return;
+      const g = e.target.closest('.pal-gate'); if (!g) return;
+      if (kbdGate === g.dataset.gate) disarm(); else arm(g.dataset.gate, g);
+    });
+    document.getElementById('circuit-canvas').addEventListener('click', e => {
+      if (!mq.matches || kbdGate === null) return;
+      const w = e.target.closest('.q-wire'); if (!w) return;
+      const rows = Array.from(document.querySelectorAll('#circuit-canvas .q-row'));
+      const q = rows.indexOf(w.closest('.q-row'));
+      if (q >= 0) placeGate(kbdGate, q);
+    });
+    (mq.addEventListener ? mq.addEventListener('change', applyMq) : mq.addListener(applyMq));
+    setTimeout(applyMq, 0);
+  });
+})();
 
 function updateCircuitInfo() {
   const _mCount = circuit.gates.filter(g => g.id === 'M').length;

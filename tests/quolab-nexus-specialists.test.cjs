@@ -186,6 +186,6 @@ assert.ok(index.includes('#ai-panel-wrapper{display:none;'));
 assert.ok(index.includes('#ai-panel-wrapper.open{display:block;'));
 assert.ok(index.includes('.screen-hdr .ai-btn{display:none!important;}'));
 assert.ok(index.includes('verifiedCompletion=finished&&!blocked&&(!executionTask||evidence.some(Boolean))'));
-assert.ok(index.includes("completedPanel.classList.remove('open','ai-minimized')"));
+assert.ok(index.includes("aiMinimize(completedPanel)"), 'after a verified task the chat folds into the bubble instead of vanishing');
 assert.ok(index.includes('      QNexusAi\n'));
 assert.ok(!index.includes('persistent compact composer + expandable conversation drawer'));
