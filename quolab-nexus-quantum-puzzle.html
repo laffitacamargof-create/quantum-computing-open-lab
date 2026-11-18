@@ -1358,6 +1358,7 @@ function _buildAppBlob(pythonCode, htmlCode, serverUrl) {
     const bridge = `<script>
 (function(){
     window.__serverUrl = ${JSON.stringify(serverUrl || '')};
+    window.__parentOrigin = ${JSON.stringify(location.origin)};
     window.__pyCode = ${JSON.stringify(pythonCode || '')};
     window.pyCall = function(funcName) {
         const args = Array.prototype.slice.call(arguments, 1);
@@ -1372,7 +1373,7 @@ function _buildAppBlob(pythonCode, htmlCode, serverUrl) {
             }, 210000);
             function handler(ev) {
                 var d = ev.data;
-                if ((ev.origin !== location.origin && ev.origin !== 'null') || ev.source !== window.parent) return;
+                if (ev.source !== window.parent || (ev.origin !== window.__parentOrigin && ev.origin !== location.origin && ev.origin !== 'null')) return;
                 if (d && d.type === 'pyResult' && d.id === msgId) {
                     clearTimeout(timeout);
                     window.removeEventListener('message', handler);
