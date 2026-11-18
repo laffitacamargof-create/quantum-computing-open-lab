@@ -1253,22 +1253,10 @@ async function _runPythonRemote(code, serverUrl) {
     let parsedUrl;
     try { parsedUrl = new URL(base); } catch (_) { throw new Error('La URL del servidor CPU no es válida.'); }
 
-    // Igual que Studio: el health check solo intenta despertar/verificar el motor.
-    // Una respuesta 503/404 no debe bloquear /run si el endpoint de ejecución responde.
-    const healthController = typeof AbortController !== 'undefined' ? new AbortController() : null;
-    const healthTimeout = healthController ? setTimeout(() => healthController.abort(), 5000) : null;
-    try {
-        await fetch(base + '/health/predict', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ data: [''] }),
-            ...(healthController ? { signal: healthController.signal } : {})
-        });
-    } catch (healthError) {
-        console.warn('[Quantum Puzzle] Health preflight did not complete; matching Studio, continuing to /run:', healthError);
-    } finally {
-        if (healthTimeout) clearTimeout(healthTimeout);
-    }
+    // Esperar a que el endpoint /health confirme que el sandbox Python está listo.
+    // El backend devuelve 503 mientras bwrap/sandbox no pueda ejecutar de forma aislada.
+    // No enviar código a /run hasta que el motor esté preparado.
+    await _waitForQuantumServer(base);
 
     const isHF = base.includes('hf.space') || base.includes('huggingface');
     const url = isHF ? base + '/run/predict' : base + '/run';
