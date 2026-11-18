@@ -2,6 +2,7 @@
 <html lang="en" id="root">
 <head>
 <script src="quolab-nexus-core.js"></script>
+<script src="quolab-nexus-connectors-core.js"></script>
 <script defer src="quolab-nexus-agent.js?v=1.9.0"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -706,6 +707,7 @@ body::before{content:'';position:fixed;inset:0;
     </div>
   </div>
 
+<div class="screen" id="screen-nexus-connectors"><div class="screen-hdr"><button class="btn-back" onclick="QuOLabNexus.nav('home')">← MENU</button><div class="screen-title">NEXUS CONNECTORS</div><button class="hbtn ai-btn" onclick="QuOLabNexus.toggleAI()">QNexusAi</button></div><div class="module-iframe-wrap" id="nexus-connectors-wrap"><div id="nexus-connectors-ph"></div></div></div>
   <div class="screen" id="screen-account">
     <div class="screen-hdr">
       <button class="btn-back" onclick="QuOLabNexus.nav('home')">← MENU</button>
@@ -1033,6 +1035,7 @@ class QuOLabNexusConfigSyncReader {
     projects:       'quolab-nexus-projects.html',
     architect:      'quolab-nexus-architect.html',
     'architect-pro':'quolab-nexus-quantum-notebook.html',
+    'nexus-connectors':'quolab-nexus-connectors.html',
     account:        'quolab-nexus-account.html',
     founder:        'quolab-nexus-founder.html',
     help:           'quolab-nexus-help.html',
@@ -1763,6 +1766,7 @@ class QuOLabNexusConfigSyncReader {
       projects:       { icon:'📂', title:'PROJECTS',              desc:'Explore and run lab notebooks.' },
       architect:      { icon:'⚙️', title:'QUANTUM OPEN LAB',    desc:'Visual quantum circuit editor with real Python execution (Qiskit).' },
       'architect-pro':{ icon:'📓', title:'QUANTUM NOTEBOOK',       desc:'Create and edit complete quantum notebooks. Export to .ipynb. Only founders and administrators can publish to Projects.' },
+      'nexus-connectors':{ icon:'🔌', title:'NEXUS CONNECTORS', desc:'Connect AI providers, external hardware, cloud storage and optional local connectors.' },
       account:        { icon:'👤', title:'MY ACCOUNT',              desc:'Your profile and saved circuits.' },
       founder:        { icon:'👑', title:'FOUNDER PANEL',         desc:'Ecosystem configuration and management.' },
       help:           { icon:'❓', title:'HELP',                  desc:'Ecosystem usage guide.' },
@@ -1862,6 +1866,7 @@ class QuOLabNexusConfigSyncReader {
         desc:'Quolab ecosystem control panel. Users, compiler, AI and GitHub.',
         delay:.3, show: isF,
       },
+      { screen:'nexus-connectors', icon:'🔌', title:'NEXUS CONNECTORS', badge:'', badgeTxt:'', desc:'Manage external AI, CPU/QPU hardware, cloud storage APIs and optional local connectors with encrypted credentials and per-tool assignments.', delay:.38, show:true },
       {
         screen:'help',
         icon:`<svg width="22" height="22" viewBox="0 0 24 24" fill="none">
@@ -2168,7 +2173,7 @@ class QuOLabNexusConfigSyncReader {
 
 
   // ═══════════════ QNexusAi: central orchestration and verified tool execution ═══════════════
-  const AI_SCREENS = ['projects','architect','architect-pro','help','quantum-puzzle','quantum-app-studio'];   // founder/account nunca
+  const AI_SCREENS = ['projects','architect','architect-pro','nexus-connectors','help','quantum-puzzle','quantum-app-studio'];   // founder/account nunca
   const AI_NAV_SCREENS = AI_SCREENS.filter(screen => screen !== 'quantum-app-studio');
   const AI_TARGET  = { architect: 'architect', notebook: 'architect-pro' };
   function aiOptGet(k) { try { const v = localStorage.getItem('openq_ai_' + k); return k === 'ctx' ? v !== '0' : v === '1'; } catch (e) { return k === 'ctx'; } }
@@ -2219,6 +2224,7 @@ class QuOLabNexusConfigSyncReader {
       ['architect', /quantum open lab|circuit|circuito|qubit|qiskit|simulat|compil|bloch|ruido|noise/],
       ['quantum-puzzle', /quantum puzzle|puzzle|challenge|desaf[ií]o|published app|aplicaci[oó]n publicada/],
       ['quantum-app-studio', /app studio|studio|crear app|create app|editor de app|backend de app/],
+      ['nexus-connectors', /nexus connectors|connectors|conectores|api externa|conector local|conector de ia/],
       ['projects', /project|proyecto|recurso|publicar recurso/],
       ['help', /help|ayuda|documentaci[oó]n|c[oó]mo funciona|how does/]
     ];
@@ -2311,7 +2317,7 @@ class QuOLabNexusConfigSyncReader {
     }
     return `
 
-You are QNexusAi, the single autonomous superagent. All six modules are tools, not separate agents. You own planning, tool use, recovery and verification. The compact tool index lists every module and its capabilities. Exactly ONE complete operating manual is loaded for the tool being used in this turn in CONTEXT.selected_manuals. Never load or mix manuals from multiple tools in one model request. When a workflow moves to another tool, finish the current tool step, refresh live context, and use the next tool's manual on the next turn. The compact index of all tools remains available for routing, but is not a substitute for the active tool's manual.
+You are QNexusAi, the single autonomous superagent. All seven modules are tools, not separate agents. You own planning, tool use, recovery and verification. The compact tool index lists every module and its capabilities. Exactly ONE complete operating manual is loaded for the tool being used in this turn in CONTEXT.selected_manuals. Never load or mix manuals from multiple tools in one model request. When a workflow moves to another tool, finish the current tool step, refresh live context, and use the next tool's manual on the next turn. The compact index of all tools remains available for routing, but is not a substitute for the active tool's manual.
 
 You are an autonomous tool-using agent operating inside this browser application, not a text-only chatbot. Understand the user's intended outcome, inspect the active tool's state, choose the appropriate capabilities and execute the work. Each module exposes a live function catalog when its documented global functions are callable. Use tool_call only when the live function inventory marks a documented read/navigation helper as safe. All mutations, simulations, saves, publishing, deletion and permission-sensitive operations must use the module's supported action bridge or visible UI so its normal authorization and confirmation checks run. Never guess function signatures or IDs; inspect CONTEXT.live_state.functions first. Every input, including contenteditable and CodeMirror editors, click, request, response, storage change, output mutation, console error and runtime failure is captured as sanitized telemetry and included in recent_events for the next context refresh. Treat HTTP errors and failed responses as errors, not successful outputs. When the user asks you to create, write, program, edit or organize an artifact inside a tool, perform those changes in that tool and verify them there; do not substitute a chat explanation or a code suggestion for the requested in-tool result. Use the artifact type and native editor that the tool provides. Do not wait for the user to describe internal implementation steps. The tool manual defines what the tool can do and how its controls, functions, data and outputs work; reason from that model to compose new workflows rather than relying on memorized examples. Use visible UI and documented bridges, preserve permissions and data integrity, and verify the resulting state. For every task, maintain the full objective and an acceptance checklist across turns. Inspect live state before acting. Use only grounded IDs, cell indices and selectors. A safe documented function call has this exact shape: {"type":"tool_call","screen":"projects","functionName":"getItems","args":[]}; use only entries with callable=true and safe=true. Emit no more than 3 actions per model turn, each in its own openq-action code block. Execute them, inspect receipt and result, refresh context, then request the next small batch. Never stop at navigation or code insertion. A successful postMessage is not proof of receipt. The target must confirm OPENQ_AI_ACTION_RECEIVED and then OPENQ_AI_ACTION_ACK with result; after receipt, poll status without resending a non-idempotent action. Retry lost receipt with the same request ID only. Never duplicate an action whose receipt is confirmed.
 
@@ -2319,7 +2325,7 @@ Always end execution turns with TASK_STATUS: CONTINUE, COMPLETED or BLOCKED. COM
 
 Supported actions:
 - \`\`\`openq-action
-{"type":"nav","screen":"projects|architect|architect-pro|help|quantum-puzzle"}
+{"type":"nav","screen":"projects|architect|architect-pro|nexus-connectors|help|quantum-puzzle"}
 \`\`\`
 - \`\`\`openq-action
 {"type":"open_notebook|open_app","id":"ID_FROM_LIVE_CONTEXT"}
@@ -2343,9 +2349,9 @@ Supported actions:
 {"type":"noise","target":"architect|notebook","cellIndex":0,"engine":"both","shots":512,"noise":{"schema_version":"1.0","channels":[{"type":"depolarizing","p":0.01}]}}
 \`\`\`
 - \`\`\`openq-action
-{"type":"ui_action","screen":"projects|architect|architect-pro|help|quantum-puzzle|quantum-app-studio","operation":"click|fill|type|select|scroll|hover|key|drag","selector":"#grounded-control","value":"optional","key":"Enter","targetSelector":"#grounded-drop-target","deltaY":300}
+{"type":"ui_action","screen":"projects|architect|architect-pro|nexus-connectors|help|quantum-puzzle|quantum-app-studio","operation":"click|fill|type|select|scroll|hover|key|drag","selector":"#grounded-control","value":"optional","key":"Enter","targetSelector":"#grounded-drop-target","deltaY":300}
 \`\`\`
-Use module-specific manual instructions and live controls. Projects, Puzzle, nested App Studio and Help are operated through visible UI. Never call private functions or bypass permissions. Preserve unrelated notebook cells. Save, run, export and publish are separate operations.
+Use module-specific manual instructions and live controls. Projects, Puzzle, nested App Studio, Nexus Connectors and Help are operated through visible UI. Never call private functions or bypass permissions. Preserve unrelated notebook cells. Save, run, export and publish are separate operations.
 
 CONTEXT (staged and size-limited): ${c}`;
   }
