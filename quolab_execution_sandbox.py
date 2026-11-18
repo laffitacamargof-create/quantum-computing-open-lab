@@ -54,7 +54,7 @@ for node in ast.walk(tree):
 for alias,module in (("np","numpy"),("numpy","numpy"),("qiskit","qiskit"),("QuantumCircuit","qiskit"),
  ("QuantumRegister","qiskit"),("ClassicalRegister","qiskit"),("Statevector","qiskit"),
  ("DensityMatrix","qiskit"),("Operator","qiskit"),("SparsePauliOp","qiskit"),
- ("AerSimulator","qiskit_aer"),("cirq","cirq"),("qml","pennylane"),("qt","qutip"),
+ ("AerSimulator","qiskit"),("cirq","cirq"),("qml","pennylane"),("qt","qutip"),
  ("scipy","scipy"),("sympy","sympy"),("plt","matplotlib")):
  if alias in used_names: requested.add(module)
 if "pi" in used_names: requested.add("math")
