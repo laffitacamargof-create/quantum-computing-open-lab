@@ -27,12 +27,12 @@
     }
     return false;
   }
-  global.QuOLabNexusCore = Object.freeze({
+  global.QuOLabNexusCore = {
     protocol: 'QUOLAB_NEXUS_V1',
     canonicalType,
     legacyType,
     normalizeIncoming,
     envelope,
     sendToParent
-  });
+  };
 })(window);
