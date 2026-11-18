@@ -1183,8 +1183,12 @@ window.addEventListener('message', async function _execPyCallHandler(ev) {
 
     const tid = setTimeout(() => {
         _execPyCalls.delete(id);
-        try { src.postMessage({ type: 'pyResult', id, error: 'El motor cuántico no respondió tras el tiempo de espera. Comprueba el estado del servidor CPU y vuelve a intentar.' }, '*'); } catch(e) {}
-    }, 215000);
+        try {
+            src.postMessage({ type: 'pyResult', id, error: 'La ejecución agotó el tiempo máximo (195 s). El servidor puede estar dormido o no disponible; revisa /health y vuelve a intentar.' }, '*');
+        } catch (postError) {
+            console.error('[Quantum Puzzle] Could not return pyResult timeout:', postError);
+        }
+    }, 195000);
     _execPyCalls.set(id, { src, tid });
 
     const serverUrl = resolvePuzzleServerUrl(appUrl || '');
@@ -1200,10 +1204,19 @@ window.addEventListener('message', async function _execPyCallHandler(ev) {
             (result.startsWith('[') && result.endsWith(']'))) {
             try { result = JSON.parse(result); } catch(e) {}
         }
-        src.postMessage({ type: 'pyResult', id, result: result }, '*');
+        try {
+            src.postMessage({ type: 'pyResult', id, result: result }, '*');
+        } catch (postError) {
+            console.error('[Quantum Puzzle] Could not return pyResult success:', postError);
+        }
     } catch(err) {
         clearTimeout(tid); _execPyCalls.delete(id);
-        src.postMessage({ type: 'pyResult', id, error: err.message }, '*');
+        const message = String(err && err.message ? err.message : err || 'Error desconocido al ejecutar Python');
+        try {
+            src.postMessage({ type: 'pyResult', id, error: message }, '*');
+        } catch (postError) {
+            console.error('[Quantum Puzzle] Could not return pyResult error:', postError);
+        }
     }
 });
 
@@ -1268,6 +1281,11 @@ async function _runPythonRemote(code, serverUrl) {
     }
 
     const isHF = base.includes('hf.space') || base.includes('huggingface');
+
+    // Wait for the CPU sandbox to wake and explicitly report readiness before
+    // sending user code. HF legacy Spaces without /health retain /run/predict fallback.
+    await _waitForQuantumServer(base, isHF);
+
     const url = isHF ? base + '/run/predict' : base + '/run';
     const body = isHF
         ? JSON.stringify({ data: [code], fn_index: 0 })
