@@ -1236,7 +1236,8 @@ async function _waitForQuantumServer(base, isHF) {
     let lastStatus = 0;
     let lastDetail = '';
     // Cold-starting Spaces and unstable links need a longer, bounded recovery window.
-    for (let attempt = 0; attempt < 15; attempt++) {
+    const recoveryDeadline = Date.now() + 180000;
+    for (let attempt = 0; attempt < 45 && Date.now() < recoveryDeadline; attempt++) {
         const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
         const timeoutId = controller ? setTimeout(() => controller.abort(), 12000) : null;
         try {
@@ -1274,7 +1275,7 @@ async function _waitForQuantumServer(base, isHF) {
         } finally {
             if (timeoutId) clearTimeout(timeoutId);
         }
-        if (attempt < 14) await new Promise(resolve => setTimeout(resolve, 4000));
+        if (attempt < 44 && Date.now() < recoveryDeadline) await new Promise(resolve => setTimeout(resolve, 4000));
     }
     throw new Error('El motor cuántico no está listo después de esperar a que despierte. Estado HTTP: ' + (lastStatus || 'sin respuesta') + '. ' + lastDetail.slice(0, 300));
 }
