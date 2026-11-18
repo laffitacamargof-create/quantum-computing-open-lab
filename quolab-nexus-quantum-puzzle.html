@@ -1520,6 +1520,20 @@ window.addEventListener('message', (e) => {
     const envelope = e.data;
     const data = envelope && envelope.type === 'NEXUS_STUDIO_EVENT' ? envelope.message : envelope;
     if (!data || typeof data !== 'object') return;
+    // The embedded Studio sends requests to its immediate parent. Reply only to the
+    // registered Studio iframe so the CPU URL never depends on a top-window relay.
+    if (data.type === 'QCOL_REQUEST_COMPILER_URL') {
+        if (!studioIframe || e.source !== studioIframe.contentWindow || e.origin !== location.origin) return;
+        const url = resolvePuzzleServerUrl('');
+        if (url) {
+            try { studioIframe.contentWindow.postMessage({ type: 'QCOL_COMPILER_URL', url }, location.origin); } catch (error) {
+                console.warn('[Quantum Puzzle] Could not send CPU URL to Studio:', error);
+            }
+        } else {
+            showNotification('No está configurada la URL del servidor CPU.', 3500);
+        }
+        return;
+    }
     if (data.type === 'QCOL_COMPILER_URL' && data.url) { 
         compilerUrl = data.url; 
         showNotification('Quantum server configured', 1500); 
