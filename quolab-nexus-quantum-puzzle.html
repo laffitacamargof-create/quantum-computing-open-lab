@@ -1248,39 +1248,60 @@ async function _waitForQuantumServer(base) {
 }
 
 async function _runPythonRemote(code, serverUrl) {
-    // Mismo mecanismo directo que Quantum App Studio: una petición HTTP al
-    // endpoint de ejecución. No depende de un iframe de Studio ni de Supabase.
-    if (!serverUrl) throw new Error("No server URL");
-    const base = serverUrl.replace(/\/+$/, '');
-    const isHF = base.includes('hf.space') || base.includes('huggingface');
-    let url, body;
-    if (isHF) {
-        url = base + '/run/predict';
-        body = JSON.stringify({ data: [code], fn_index: 0 });
-    } else {
-        url = base + '/run';
-        body = JSON.stringify({ code: code, lib: 'python' });
+    if (!serverUrl) throw new Error('No hay URL del servidor configurada.');
+    const base = serverUrl.trim().replace(/\/+$/, '');
+    let parsedUrl;
+    try { parsedUrl = new URL(base); } catch (_) { throw new Error('La URL del servidor CPU no es válida.'); }
+
+    // Igual que Studio: el health check solo intenta despertar/verificar el motor.
+    // Una respuesta 503/404 no debe bloquear /run si el endpoint de ejecución responde.
+    const healthController = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const healthTimeout = healthController ? setTimeout(() => healthController.abort(), 5000) : null;
+    try {
+        await fetch(base + '/health/predict', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ data: [''] }),
+            ...(healthController ? { signal: healthController.signal } : {})
+        });
+    } catch (healthError) {
+        console.warn('[Quantum Puzzle] Health preflight did not complete; matching Studio, continuing to /run:', healthError);
+    } finally {
+        if (healthTimeout) clearTimeout(healthTimeout);
     }
+
+    const isHF = base.includes('hf.space') || base.includes('huggingface');
+    const url = isHF ? base + '/run/predict' : base + '/run';
+    const body = isHF
+        ? JSON.stringify({ data: [code], fn_index: 0 })
+        : JSON.stringify({ code: code, lib: 'python' });
+    const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const timeoutId = controller ? setTimeout(() => controller.abort(), 60000) : null;
+
     let res;
     try {
         res = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body
+            body,
+            ...(controller ? { signal: controller.signal } : {})
         });
     } catch (error) {
-        throw new Error('No se pudo conectar con el servidor CPU: ' + (error?.message || error));
+        if (timeoutId) clearTimeout(timeoutId);
+        if (error && error.name === 'AbortError') throw new Error('El servidor CPU no respondió en 60 segundos.');
+        throw new Error('No se pudo conectar con el servidor CPU (' + parsedUrl.hostname + '): ' + (error?.message || error));
     }
+    if (timeoutId) clearTimeout(timeoutId);
     if (!res.ok) {
         const detail = await res.text().catch(() => '');
-        throw new Error('Servidor CPU HTTP ' + res.status + ': ' + (detail || res.statusText).slice(0, 500));
+        throw new Error('Servidor CPU HTTP ' + res.status + ' en ' + (isHF ? '/run/predict' : '/run') + ': ' + (detail || res.statusText).slice(0, 500));
     }
+
     let raw;
-    try { raw = await res.json(); }
-    catch (_) { throw new Error('El servidor CPU respondió con un formato no JSON.'); }
+    try { raw = await res.json(); } catch (_) { throw new Error('El servidor CPU respondió con un formato no JSON.'); }
     const data = isHF ? (raw.data?.[0] || raw) : raw;
     if (data.success === false) throw new Error(data.output || data.error || 'El servidor rechazó la ejecución.');
-    let output = data.output || data.result || "";
+    let output = data.output || data.result || '';
     if (typeof decodeUnicode === 'function') output = decodeUnicode(output);
     return output;
 }
