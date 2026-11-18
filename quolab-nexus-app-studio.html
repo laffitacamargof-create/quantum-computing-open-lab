@@ -415,13 +415,20 @@
                 if (saveButton) saveButton.disabled = false;
                 if (data.success) {
                     const draft = pendingSaveDraft;
-                    const reviewIndex = pendingReviewApps.findIndex(app => String(app.id) === String(draft?.id));
-                    if (reviewIndex >= 0 && draft) {
-                        Object.assign(pendingReviewApps[reviewIndex], draft, { savedAt: Date.now() });
-                        savePendingReviewApps();
+                    if (draft && externalEditContext?.type === 'pending') {
+                        const reviewIndex = pendingReviewApps.findIndex(app => String(app.id) === String(draft.id));
+                        if (reviewIndex >= 0) {
+                            Object.assign(pendingReviewApps[reviewIndex], draft, { savedAt: Date.now() });
+                            savePendingReviewApps();
+                        }
                     }
+                    const savedType = externalEditContext?.type || 'external';
                     pendingSaveDraft = null;
-                    notify('Pending app updated in Supabase. Its status remains pending.');
+                    externalEditContext = null;
+                    currentEditId = null;
+                    notify(savedType === 'pending'
+                        ? 'Pending app updated in Supabase. Its status remains pending.'
+                        : 'Published database app updated. It remains outside your local Studio repository.');
                     showScreen('repo');
                     renderRepository();
                 } else {
@@ -484,37 +491,24 @@
                     return;
                 }
 
-                // Published-app founder editing keeps its existing workflow.
-                if (currentEditId) {
-                    const prevIdx = projects.findIndex(p => p.id === currentEditId);
-                    if (prevIdx !== -1) {
-                        projects[prevIdx].pythonCode = document.getElementById('python-editor').value;
-                        projects[prevIdx].htmlCode = document.getElementById('html-editor').value;
-                        projects[prevIdx].name = document.getElementById('project-name-input').value.trim() || projects[prevIdx].name;
-                        saveProjects();
-                    }
-                }
-                const localId = 'nexus-published-' + String(appId);
-                let localProject = projects.find(p => p.id === localId);
-                if (!localProject) {
-                    localProject = { id: localId, name: appName, pythonCode: '', htmlCode: '', serverUrl: '', createdAt: Date.now() };
-                    projects.push(localProject);
-                }
-                Object.assign(localProject, {
-                    name: appName, pythonCode: pythonCode || '', htmlCode: htmlCode || '',
-                    serverUrl: serverUrl || '', description: description || '',
-                    tags: tags || '', duration: duration || 8
-                });
-                currentEditId = localId;
-                externalEditContext = { type: 'published', id: String(appId) };
-                document.getElementById('project-name-input').value = localProject.name;
-                document.getElementById('python-editor').value = localProject.pythonCode;
-                document.getElementById('html-editor').value = localProject.htmlCode;
-                if (localProject.serverUrl) setServerUrl(localProject.serverUrl);
-                saveProjects();
+                // Open published database apps transiently in the editor. Do not add
+                // them to projects/localStorage or expose them in the normal repository.
+                currentEditId = 'nexus-published-' + String(appId);
+                externalEditContext = {
+                    type: 'published', id: String(appId),
+                    name: String(appName), description: description || '',
+                    tags: tags || '', duration: duration || 8,
+                    serverUrl: serverUrl || ''
+                };
+                document.getElementById('project-name-input').value = String(appName);
+                document.getElementById('python-editor').value = pythonCode || '';
+                document.getElementById('html-editor').value = htmlCode || '';
+                if (serverUrl) setServerUrl(serverUrl);
                 showScreen('editor');
-                notify('Published app opened for founder editing');
-                sendToParent({ type: 'QCOL_STUDIO_APP_LOADED', appId: String(appId), sourceType: 'published' });
+                notify('Published app opened temporarily; it is not added to your local repository.');
+                const loadedMessage = { type: 'QCOL_STUDIO_APP_LOADED', requestId: requestId || null, appId: String(appId), sourceType: 'published', section: 'editor' };
+                try { window.parent.postMessage(loadedMessage, parentOrigin || event.origin); } catch (error) {}
+                sendToParent(loadedMessage);
             }
             return;
         }
@@ -619,29 +613,12 @@
     }
 
     function renderPendingReviewSection() {
+        // Database-backed pending apps are edited only through the founder's EDIT
+        // action in Quantum Puzzle; they are not part of the normal Studio repository.
         const section = document.getElementById('pending-review-section');
         const container = document.getElementById('pending-review-grid');
-        if (!container) return;
-        let founderSessionAvailable = false;
-        try { founderSessionAvailable = !!sessionStorage.getItem('qnexus_founder_session'); } catch (error) {}
-        if (section) section.classList.toggle('hidden', !founderSessionAvailable);
-        if (!founderSessionAvailable) return;
-        if (!pendingReviewApps.length) {
-            container.innerHTML = "<div style=\"color:var(--tx2);font-size:0.65rem;\">No pending apps downloaded yet. As founder, select “EDITAR” in Quantum Puzzle's pending list.</div>";
-            return;
-        }
-        container.innerHTML = pendingReviewApps.map(app => {
-            const id = encodeURIComponent(String(app.id));
-            return '<article class="pending-review-card">' +
-                '<div class="project-name">📥 ' + escapeHtml(app.name) + '</div>' +
-                '<div class="pending-review-meta">Downloaded from Supabase pending queue · ' + new Date(app.downloadedAt || Date.now()).toLocaleString() + '</div>' +
-                '<div class="pending-review-actions">' +
-                '<button class="btn-secondary" data-review-edit="' + id + '">✏️ Edit in Studio</button>' +
-                '<button class="btn-secondary" data-review-run="' + id + '">▶ Run preview</button>' +
-                '</div></article>';
-        }).join('');
-        container.querySelectorAll('[data-review-edit]').forEach(button => button.addEventListener('click', () => editPendingReviewApp(decodeURIComponent(button.getAttribute('data-review-edit')))));
-        container.querySelectorAll('[data-review-run]').forEach(button => button.addEventListener('click', () => runPendingReviewApp(decodeURIComponent(button.getAttribute('data-review-run')))));
+        if (section) section.classList.add('hidden');
+        if (container) container.replaceChildren();
     }
 
     function editPendingReviewApp(id) {
@@ -716,7 +693,18 @@
             try {
                 const parsed = JSON.parse(stored);
                 if (!Array.isArray(parsed)) throw new Error('Saved project data is not an array.');
-                projects = parsed.map(normalizeStoredProject);
+                const normalized = parsed.map(normalizeStoredProject);
+                const localOnly = normalized.filter(project => !String(project.id).startsWith('nexus-published-'));
+                if (localOnly.length !== normalized.length) {
+                    // Preserve the pre-filter repository in the backup before excluding
+                    // synthetic database imports created by the previous Studio bridge.
+                    localStorage.setItem('quantum_apps_repo_v2_backup', stored);
+                    projects = localOnly;
+                    localStorage.setItem('quantum_apps_repo_v2', JSON.stringify(projects));
+                    notify('Studio repository cleaned: only locally saved projects are shown.');
+                } else {
+                    projects = normalized;
+                }
                 if (JSON.stringify(parsed) !== JSON.stringify(projects)) {
                     localStorage.setItem('quantum_apps_repo_v2_backup', stored);
                     localStorage.setItem('quantum_apps_repo_v2', JSON.stringify(projects));
@@ -1160,6 +1148,30 @@
                 requestId: pendingSaveRequestId, appData: draft
             });
             notify('Saving changes to the original Supabase pending record…');
+            return;
+        }
+        if (externalEditContext && externalEditContext.type === 'published') {
+            if (pendingSaveInFlight) { notify('A cloud save is already in progress.'); return; }
+            if (!nameVal) { notify('Enter a name'); return; }
+            const draft = {
+                id: String(externalEditContext.id), name: nameVal, title: nameVal,
+                description: externalEditContext.description || '',
+                tags: externalEditContext.tags || '', duration: externalEditContext.duration || 8,
+                pythonCode: document.getElementById('python-editor').value,
+                htmlCode: document.getElementById('html-editor').value,
+                serverUrl: localStorage.getItem('qcol_colab_url') || externalEditContext.serverUrl || ''
+            };
+            pendingSaveDraft = draft;
+            pendingSaveRequestId = generateId();
+            pendingSaveInFlight = true;
+            const saveButton = document.getElementById('save-project-editor');
+            if (saveButton) saveButton.disabled = true;
+            sendToParent({
+                type: 'QCOL_STUDIO_ADMIN_SAVE', sourceType: 'published',
+                sourceAppId: String(externalEditContext.id),
+                requestId: pendingSaveRequestId, appData: draft
+            });
+            notify('Saving published app directly to its database record…');
             return;
         }
         const pyVal = document.getElementById('python-editor').value;
