@@ -323,6 +323,70 @@ body::before{content:'';position:fixed;inset:0;
   *,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
 }
 
+
+/* ═══ QNexusAi chat window v2 — ChatGPT-style, floating, draggable ═══ */
+#ai-panel-wrapper{position:fixed;display:none;z-index:1001;left:auto;top:auto;right:16px;bottom:16px;width:min(420px,calc(100vw - 24px));height:min(640px,calc(100dvh - 96px));min-width:300px;min-height:280px;max-width:calc(100vw - 16px);max-height:calc(100dvh - 16px);resize:both;overflow:hidden;border-radius:20px;touch-action:auto;pointer-events:auto}
+#ai-panel-wrapper.open{display:block}
+#ai-panel-wrapper .ai-panel{height:100%!important;min-height:0!important;border-radius:20px;border:1px solid rgba(0,136,255,.35);background:linear-gradient(180deg,#081526,#050e1a);box-shadow:0 24px 70px rgba(0,0,0,.65);animation:none}
+#ai-panel-wrapper.ai-dragging{user-select:none}
+#ai-panel-wrapper.ai-dragging .ai-panel{box-shadow:0 30px 80px rgba(0,0,0,.75),0 0 0 1px rgba(0,200,255,.5)}
+#ai-panel-wrapper .ai-hdr{position:relative;padding:.75rem .8rem;background:transparent;border-bottom:1px solid rgba(255,255,255,.07);gap:.5rem}
+#ai-panel-wrapper .ai-hdr::before{content:'';display:none;position:absolute;top:5px;left:50%;width:38px;height:4px;margin-left:-19px;border-radius:4px;background:rgba(255,255,255,.2)}
+#ai-panel-wrapper .ai-window-controls{gap:.25rem}
+#ai-panel-wrapper .ai-window-controls button{width:34px;height:34px;border:none;border-radius:10px;background:rgba(255,255,255,.06);color:var(--tx);font-size:1rem}
+#ai-panel-wrapper .ai-window-controls button:hover{background:rgba(0,136,255,.28);color:#fff}
+#ai-panel-wrapper .ai-msgs{padding:1rem .9rem;gap:1.1rem;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+#ai-panel-wrapper .ai-msg{max-width:100%;padding:0;border:none;background:transparent;border-radius:0;font-size:.88rem;line-height:1.62;overflow-wrap:anywhere}
+#ai-panel-wrapper .ai-msg .ai-lbl{display:none}
+#ai-panel-wrapper .ai-msg.bot{align-self:stretch;position:relative;padding-left:2.2rem;color:var(--tx)}
+#ai-panel-wrapper .ai-msg.bot::before{content:'✦';position:absolute;left:0;top:.05rem;width:1.55rem;height:1.55rem;border-radius:50%;display:grid;place-items:center;font-size:.8rem;color:#00ffdd;background:linear-gradient(135deg,#0a3a78,#0a6ad0);border:1px solid rgba(0,255,221,.35)}
+#ai-panel-wrapper .ai-msg.usr{align-self:flex-end;max-width:86%;padding:.6rem .95rem;background:rgba(0,136,255,.24);border:1px solid rgba(0,136,255,.4);border-radius:18px 18px 4px 18px}
+#ai-panel-wrapper .ai-msg .markdown-body pre{max-width:100%;overflow-x:auto}
+#ai-panel-wrapper .ai-msg .markdown-body table{display:block;overflow-x:auto;max-width:100%}
+#ai-panel-wrapper .ai-loading{margin:0 .9rem .4rem 3.1rem;padding:.2rem 0;background:transparent;border:none}
+#ai-panel-wrapper .ai-input-row{margin:.35rem .7rem .2rem;padding:.3rem .3rem .3rem .75rem;border:1px solid rgba(0,136,255,.4);border-radius:26px;background:rgba(0,0,0,.35);align-items:flex-end;gap:.4rem;transition:border-color .15s}
+#ai-panel-wrapper .ai-input-row:focus-within{border-color:rgba(0,200,255,.75)}
+#ai-editor{flex:1;min-width:0;position:relative}
+#ai-editor.empty::before{content:attr(data-ph);position:absolute;left:.55rem;top:.42rem;color:var(--mu);font-size:.9rem;pointer-events:none;z-index:1}
+#ai-editor .cm-editor{background:transparent!important;border:none!important;max-height:132px}
+#ai-editor .cm-scroller{max-height:132px;overflow:auto;font-family:var(--exo)}
+#ai-editor .cm-gutters{display:none!important}
+#ai-editor .cm-activeLine,#ai-editor .cm-activeLineGutter{background:transparent!important}
+#ai-editor .cm-content{font-family:var(--exo);font-size:.9rem;padding:.4rem .5rem}
+#ai-panel-wrapper .ai-send{width:38px;height:38px;min-height:38px;padding:0;border-radius:50%;display:grid;place-items:center;font-size:1rem;align-self:flex-end;background:linear-gradient(135deg,#0070e0,#00c8ff);flex-shrink:0}
+#ai-panel-wrapper .ai-status-bar{padding:.25rem .95rem .55rem;background:transparent;border-top:none;font-size:.5rem}
+#ai-panel-wrapper .ai-status-bar #ai-stxt{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+#ai-panel-wrapper .ai-status-bar #ai-specialist-count{display:none}
+/* minimized = draggable round bubble */
+.ai-bubble{display:none;position:absolute;inset:0;border-radius:50%;place-items:center;background:linear-gradient(135deg,#0a3a78,#0088ff);border:1px solid rgba(0,255,221,.55);box-shadow:0 8px 24px rgba(0,0,0,.55),0 0 18px rgba(0,200,255,.35);cursor:grab;touch-action:none;user-select:none}
+.ai-bubble:focus-visible{outline:2px solid #00ffdd;outline-offset:2px}
+.ai-bubble.unread::after{content:'';position:absolute;top:2px;right:2px;width:13px;height:13px;border-radius:50%;background:var(--gr);border:2px solid #041020}
+#ai-panel-wrapper.ai-minimized{width:58px!important;height:58px!important;min-width:0!important;min-height:0!important;max-height:58px!important;resize:none;border-radius:50%;overflow:visible}
+#ai-panel-wrapper.ai-minimized .ai-panel{display:none}
+#ai-panel-wrapper.ai-minimized .ai-bubble{display:grid}
+/* fullscreen */
+#ai-panel-wrapper.ai-max{left:0!important;top:0!important;right:0!important;bottom:0!important;width:100%!important;height:100vh!important;height:100dvh!important;max-width:none!important;max-height:none!important;border-radius:0;resize:none}
+#ai-panel-wrapper.ai-max .ai-panel{border-radius:0;border:none;padding-top:env(safe-area-inset-top)}
+#ai-panel-wrapper.ai-max .ai-hdr{cursor:default}
+#ai-panel-wrapper.ai-max .ai-msgs{padding-inline:max(.9rem,calc((100% - 820px)/2))}
+#ai-panel-wrapper.ai-max .ai-input-row{width:min(calc(100% - 1.4rem),820px);margin-inline:auto}
+@media(pointer:coarse){#ai-panel-wrapper{resize:none}}
+@media(max-width:768px){
+  #ai-panel-wrapper{width:calc(100vw - 16px);max-width:none;min-width:0;height:min(74dvh,calc(100dvh - 80px));min-height:240px;left:auto;top:auto;right:8px;bottom:calc(8px + env(safe-area-inset-bottom));resize:none}
+  #ai-panel-wrapper .ai-hdr::before{display:block}
+  #ai-panel-wrapper .ai-hdr{padding-top:1rem}
+  #ai-panel-wrapper .ai-msg{font-size:.95rem}
+  #ai-editor .cm-content{font-size:16px}
+  #ai-panel-wrapper .ai-status-bar #ai-specialist-count{display:none}
+  #ai-panel-wrapper.ai-max .ai-msgs{padding-inline:.9rem}
+}
+
+@media(max-width:600px){
+  #share-fab{top:calc(62px + env(safe-area-inset-top));bottom:auto;right:8px;width:40px;height:40px;min-height:40px;padding:0;justify-content:center;gap:0;font-size:0;letter-spacing:0}
+  #share-fab span{display:none}
+  #share-fab::before{content:'🔗';font-size:1rem;letter-spacing:0}
+  #share-menu{top:calc(108px + env(safe-area-inset-top));bottom:auto;right:8px}
+}
 </style>
 </head>
 <body>
@@ -428,6 +492,9 @@ body::before{content:'';position:fixed;inset:0;
 </div>
 
 <div id="ai-panel-wrapper">
+  <div class="ai-bubble" id="ai-bubble" role="button" tabindex="0" aria-label="Abrir QNexusAi" title="QNexusAi">
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#00ffdd" stroke-width="1.5"/><path d="M8 12h8M12 8l4 4-4 4" stroke="#00ffdd" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="12" r="2.2" fill="#00ffdd" opacity=".5"/></svg>
+  </div>
   <div class="ai-panel">
     <div class="ai-hdr" id="ai-panel-drag-handle">
       <div class="ai-title">
@@ -441,6 +508,7 @@ body::before{content:'';position:fixed;inset:0;
         <span id="ai-prov-lbl" style="font-size:.46rem;color:var(--mu);margin-left:.3rem;"></span>
       </div>
       <div class="ai-window-controls">
+        <button type="button" id="ai-max-btn" title="Pantalla completa" aria-label="Pantalla completa" onclick="QuOLabNexus.toggleAIMax()">⤢</button>
         <button type="button" title="Plegar QNexusAi" aria-label="Plegar QNexusAi" onclick="QuOLabNexus.toggleAIMinimized()">−</button>
         <button type="button" title="Cerrar QNexusAi" aria-label="Cerrar QNexusAi" onclick="QuOLabNexus.toggleAI()">×</button>
       </div>
@@ -1986,66 +2054,116 @@ class QuOLabNexusConfigSyncReader {
     }
   }
 
+  // ═══ QNexusAi chat window: floating, draggable (mouse + touch), bubble when minimized, fullscreen toggle ═══
+  const AI_BUBBLE = 58, AI_POS_KEY = 'qnexus_ai_window';
+  function aiPanel() { return document.getElementById('ai-panel-wrapper'); }
+  function aiVV() { const v = window.visualViewport; return { w: v ? v.width : innerWidth, h: v ? v.height : innerHeight, x: v ? v.offsetLeft : 0, y: v ? v.offsetTop : 0 }; }
+  function aiSetPos(panel, left, top) { panel.style.left = left + 'px'; panel.style.top = top + 'px'; panel.style.right = 'auto'; panel.style.bottom = 'auto'; }
+  // Keep the window fully inside the visible area (also when the phone keyboard shrinks the viewport)
+  function aiClamp(panel) {
+    if (!panel || !panel.classList.contains('open') || panel.classList.contains('ai-max')) return;
+    const vv = aiVV(), m = 8;
+    panel.style.maxHeight = Math.max(120, vv.h - 2 * m) + 'px';
+    const r = panel.getBoundingClientRect();
+    aiSetPos(panel,
+      Math.max(vv.x + m, Math.min(r.left, vv.x + vv.w - r.width - m)),
+      Math.max(vv.y + m, Math.min(r.top, vv.y + vv.h - r.height - m)));
+  }
+  function aiMinimize(panel) {
+    panel = panel || aiPanel(); if (!panel || panel.classList.contains('ai-minimized')) return;
+    const r = panel.getBoundingClientRect();
+    panel.classList.remove('ai-max');
+    panel.classList.add('ai-minimized');
+    aiSetPos(panel, r.right - AI_BUBBLE, r.bottom - AI_BUBBLE);
+    aiClamp(panel);
+    const mb = document.getElementById('ai-max-btn'); if (mb) mb.textContent = '⤢';
+  }
+  function aiRestore(panel) {
+    panel = panel || aiPanel(); if (!panel || !panel.classList.contains('ai-minimized')) return;
+    const b = panel.getBoundingClientRect();
+    panel.classList.remove('ai-minimized');
+    const r = panel.getBoundingClientRect();
+    aiSetPos(panel, b.right - r.width, b.bottom - r.height);
+    aiClamp(panel);
+    const bb = document.getElementById('ai-bubble'); if (bb) bb.classList.remove('unread');
+    const msgs = document.getElementById('ai-messages'); if (msgs) msgs.scrollTop = msgs.scrollHeight;
+  }
   function toggleAI() {
-    const panel = document.getElementById('ai-panel-wrapper');
-    if (!panel) return;
+    const panel = aiPanel(); if (!panel) return;
+    if (panel.classList.contains('open') && panel.classList.contains('ai-minimized')) { aiRestore(panel); return; }
     panel.classList.toggle('open');
     if (panel.classList.contains('open')) {
       panel.classList.remove('ai-minimized');
       requestAnimationFrame(() => {
-        const rect = panel.getBoundingClientRect();
-        const left = Math.max(8, Math.min(rect.left, innerWidth - panel.offsetWidth - 8));
-        const top = Math.max(70, Math.min(rect.top, innerHeight - panel.offsetHeight - 8));
-        panel.style.left = left + 'px'; panel.style.top = top + 'px';
-        panel.style.right = 'auto'; panel.style.bottom = 'auto';
+        if (!panel.dataset.placed) {
+          panel.dataset.placed = '1';
+          try {
+            const saved = JSON.parse(localStorage.getItem(AI_POS_KEY) || '{}');
+            if (Number.isFinite(saved.left) && Number.isFinite(saved.top)) aiSetPos(panel, saved.left, saved.top);
+          } catch (_) {}
+        }
+        aiClamp(panel);
+        if (window.matchMedia('(pointer:fine)').matches && cmEditor) cmEditor.focus();
       });
     }
   }
   function toggleAIMinimized() {
-    const panel = document.getElementById('ai-panel-wrapper');
-    if (panel) panel.classList.toggle('ai-minimized');
+    const panel = aiPanel(); if (!panel) return;
+    if (panel.classList.contains('ai-minimized')) aiRestore(panel); else aiMinimize(panel);
+  }
+  function toggleAIMax() {
+    const panel = aiPanel(); if (!panel) return;
+    const on = panel.classList.toggle('ai-max');
+    const mb = document.getElementById('ai-max-btn'); if (mb) { mb.textContent = on ? '⤡' : '⤢'; mb.title = on ? 'Ventana flotante' : 'Pantalla completa'; }
+    if (!on) aiClamp(panel);
+    const msgs = document.getElementById('ai-messages'); if (msgs) msgs.scrollTop = msgs.scrollHeight;
+  }
+  function aiBindDrag(handle, panel, isBubble) {
+    let d = null;
+    handle.addEventListener('pointerdown', e => {
+      if (e.button > 0) return;
+      if (!isBubble && (e.target.closest('button') || panel.classList.contains('ai-max'))) return;
+      const r = panel.getBoundingClientRect();
+      d = { x: e.clientX, y: e.clientY, l: r.left, t: r.top, id: e.pointerId, moved: false };
+      try { handle.setPointerCapture(e.pointerId); } catch (_) {}
+    });
+    handle.addEventListener('pointermove', e => {
+      if (!d || e.pointerId !== d.id) return;
+      const dx = e.clientX - d.x, dy = e.clientY - d.y;
+      if (!d.moved && Math.hypot(dx, dy) < 6) return;
+      d.moved = true; panel.classList.add('ai-dragging');
+      const vv = aiVV(), w = panel.offsetWidth, h = panel.offsetHeight;
+      aiSetPos(panel,
+        Math.max(vv.x + 4, Math.min(d.l + dx, vv.x + vv.w - w - 4)),
+        Math.max(vv.y + 4, Math.min(d.t + dy, vv.y + vv.h - h - 4)));
+    });
+    const end = e => {
+      if (!d || e.pointerId !== d.id) return;
+      const moved = d.moved; d = null; panel.classList.remove('ai-dragging');
+      if (moved) {
+        if (!panel.classList.contains('ai-minimized')) {
+          const r = panel.getBoundingClientRect();
+          try { localStorage.setItem(AI_POS_KEY, JSON.stringify({ left: r.left, top: r.top })); } catch (_) {}
+        }
+      } else if (isBubble && e.type === 'pointerup') aiRestore(panel);
+    };
+    handle.addEventListener('pointerup', end);
+    handle.addEventListener('pointercancel', end);
   }
   function initAIPanelControls() {
-    const panel = document.getElementById('ai-panel-wrapper');
-    const handle = document.getElementById('ai-panel-drag-handle');
+    const panel = aiPanel(), handle = document.getElementById('ai-panel-drag-handle'), bubble = document.getElementById('ai-bubble');
     if (!panel || !handle || handle.dataset.dragBound) return;
     handle.dataset.dragBound = '1';
-    try {
-      const saved = JSON.parse(localStorage.getItem('qnexus_ai_window') || '{}');
-      if (Number.isFinite(saved.left) && Number.isFinite(saved.top)) {
-        panel.style.left = Math.max(8, Math.min(saved.left, innerWidth - panel.offsetWidth - 8)) + 'px';
-        panel.style.top = Math.max(70, Math.min(saved.top, innerHeight - panel.offsetHeight - 8)) + 'px';
-        panel.style.right = 'auto'; panel.style.bottom = 'auto';
-      }
-    } catch (_) {}
-    let drag = null;
-    handle.addEventListener('pointerdown', event => {
-      if (event.target.closest('button')) return;
-      const rect = panel.getBoundingClientRect();
-      drag = { x:event.clientX, y:event.clientY, left:rect.left, top:rect.top, id:event.pointerId };
-      try { handle.setPointerCapture(event.pointerId); } catch (_) {}
-      event.preventDefault();
-    });
-    handle.addEventListener('pointermove', event => {
-      if (!drag || event.pointerId !== drag.id) return;
-      const left = Math.max(8, Math.min(drag.left + event.clientX - drag.x, innerWidth - panel.offsetWidth - 8));
-      const top = Math.max(70, Math.min(drag.top + event.clientY - drag.y, innerHeight - panel.offsetHeight - 8));
-      panel.style.left = left + 'px'; panel.style.top = top + 'px';
-      panel.style.right = 'auto'; panel.style.bottom = 'auto';
-    });
-    const stop = event => {
-      if (!drag || (event && event.pointerId !== drag.id)) return;
-      drag = null;
-      const rect = panel.getBoundingClientRect();
-      try { localStorage.setItem('qnexus_ai_window', JSON.stringify({ left:rect.left, top:rect.top })); } catch (_) {}
-    };
-    handle.addEventListener('pointerup', stop);
-    handle.addEventListener('pointercancel', stop);
-    window.addEventListener('resize', () => {
-      const rect = panel.getBoundingClientRect();
-      if (rect.left + 40 > innerWidth) panel.style.left = Math.max(8, innerWidth - Math.min(panel.offsetWidth, innerWidth - 16) - 8) + 'px';
-      if (rect.top + 40 > innerHeight) panel.style.top = Math.max(70, innerHeight - Math.min(panel.offsetHeight, innerHeight - 80) - 8) + 'px';
-    });
+    aiBindDrag(handle, panel, false);
+    if (bubble) {
+      aiBindDrag(bubble, panel, true);
+      bubble.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); aiRestore(panel); } });
+    }
+    handle.addEventListener('dblclick', e => { if (!e.target.closest('button')) toggleAIMax(); });
+    const refit = () => aiClamp(panel);
+    window.addEventListener('resize', refit);
+    if (window.visualViewport) { window.visualViewport.addEventListener('resize', refit); window.visualViewport.addEventListener('scroll', refit); }
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && panel.classList.contains('ai-max')) toggleAIMax(); });
   }
 
   const DEMO = {
@@ -2520,7 +2638,7 @@ CONTEXT (staged and size-limited): ${c}`;
         notify('QNexusAi: '+finalText.replace(/\s+/g,' ').slice(0,170));reply=finalText;
         aiHistory.push({role:'user',content:msg},{role:'assistant',content:finalText});if(aiHistory.length>8)aiHistory=aiHistory.slice(-8);
         const verifiedCompletion=finished&&!blocked&&(!executionTask||evidence.some(Boolean));
-        if(verifiedCompletion){const completedPanel=document.getElementById('ai-panel-wrapper');if(completedPanel)completedPanel.classList.remove('open','ai-minimized');}
+        if(verifiedCompletion){const completedPanel=document.getElementById('ai-panel-wrapper');if(completedPanel&&completedPanel.classList.contains('open')&&!completedPanel.classList.contains('ai-minimized'))aiMinimize(completedPanel);}
       }catch(e){document.getElementById('ai-loading').classList.remove('show');console.error('QNexusAi error:',e);const err='QNexusAi could not complete the request: '+((e&&e.message)?e.message:String(e));addAIMsg(err,'bot');reply=err;}
     }else{await new Promise(resolve=>setTimeout(resolve,500));document.getElementById('ai-loading').classList.remove('show');const err='QNexusAi gateway is unavailable. Reconnect the AI service to execute tasks.';addAIMsg(err,'bot');reply=err;}
     if(curUser?.username){let data=dbLoad();if(!data)data={ai_history:{}};if(!data.ai_history)data.ai_history={};if(!data.ai_history[curUser.username])data.ai_history[curUser.username]=[];data.ai_history[curUser.username].push({q:msg,a:reply,ts:Date.now()});if(data.ai_history[curUser.username].length>200)data.ai_history[curUser.username]=data.ai_history[curUser.username].slice(-200);dbSave(data);}
@@ -2764,6 +2882,7 @@ CONTEXT (staged and size-limited): ${c}`;
     
     msgs.appendChild(d);
     msgs.scrollTop = msgs.scrollHeight;
+    if (role === 'bot') { const pw = document.getElementById('ai-panel-wrapper'), bb = document.getElementById('ai-bubble'); if (pw && bb && pw.classList.contains('ai-minimized')) bb.classList.add('unread'); }
   }
 
   async function checkEngine() {
@@ -2849,11 +2968,19 @@ CONTEXT (staged and size-limited): ${c}`;
     }
 
     const editorContainer = document.getElementById('ai-editor');
+    const aiEs = /^es(?:-|$)/i.test(navigator.language || '');
+    editorContainer.dataset.ph = aiEs ? 'Escribe a QNexusAi…' : 'Message QNexusAi…';
+    editorContainer.classList.add('empty');
     cmEditor = new EditorView({
       doc: '',
-      extensions: [basicSetup, markdown()],
+      extensions: [basicSetup, markdown(), EditorView.lineWrapping,
+        EditorView.updateListener.of(u => { if (u.docChanged) editorContainer.classList.toggle('empty', u.state.doc.length === 0); })],
       parent: editorContainer
     });
+    // Desktop: Enter sends, Shift+Enter = new line. Touch keyboards: Enter = new line, use the send button.
+    editorContainer.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && window.matchMedia('(pointer:fine)').matches) { e.preventDefault(); e.stopPropagation(); sendAI(); }
+    }, true);
 
     const msgs = ['STARTING...', 'LOADING MODULES...', 'READY'];
     let i = 0;
@@ -2926,7 +3053,7 @@ CONTEXT (staged and size-limited): ${c}`;
 
   return { 
     nav, toggleShare, share, shareScreen, addShortcut, aiOpt, openAuth, closeAuth, doLogin, doRegister, doFounder, doLogout,
-    toggleAI, toggleAIMinimized, sendAI, notify, init, getUser:()=>curUser,
+    toggleAI, toggleAIMinimized, toggleAIMax, sendAI, notify, init, getUser:()=>curUser,
     _refreshUI: refreshUIFromConfig,
     _broadcastConfig: broadcastConfigToModules
   };
