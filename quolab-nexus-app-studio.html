@@ -889,6 +889,8 @@
     function editProject(id) {
         const proj = projects.find(p => p.id === id);
         if (!proj) return;
+        // Switching to a locally saved project ends any transient database edit session.
+        externalEditContext = null;
 
         // ── Anti-contamination: auto-save previous ONLY if it exists in the array
         // and its editor content does not match another project (prevents propagation)
@@ -1254,6 +1256,7 @@
             }
         }
         currentEditId = null;
+        externalEditContext = null;
         document.getElementById('project-name-input').value = 'New quantum app';
         document.getElementById('python-editor').value = '# Remote Python code\ndef my_function(param):\n    return f"Result: {param}"';
         document.getElementById('html-editor').value = '<!DOCTYPE html>\n<html>\n<head><meta charset="UTF-8"></head>\n<body style="background:#0a0e1a;color:white;font-family:sans-serif;padding:1.5rem;">\n<h2>⚛️ My Quantum App</h2>\n<button onclick="call()">Execute</button>\n<p id="out"></p>\n<script>\nasync function call(){\n  const r = await window.pyCall("my_function","hello");\n  document.getElementById("out").innerText = r;\n}\n<\/script>\n</body>\n</html>';
