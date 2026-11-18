@@ -553,7 +553,7 @@ body::before{
      ============================================================ -->
 <script>
 // Cargar configuración y módulo de forma dinámica
-(async function initQuantumSync() {
+document.addEventListener('DOMContentLoaded', async function initQuantumSync() {
     try {
         const { QUOLAB_NEXUS_SUPABASE_CONFIG } = await import('./quolab-nexus-supabase-config.js');
         const { default: QuOLabNexusQuantumSync } = await import('./quolab-nexus-quantum-sync.js?v=20261118-puzzle-reconnect-1');
@@ -640,7 +640,7 @@ body::before{
         console.error('Detalles:', error.message);
         window.showNotification('❌ Error de conexión con Supabase. Modo offline.');
     }
-})();
+});
 </script>
 
 <div class="notif" id="notifMsg"></div>
