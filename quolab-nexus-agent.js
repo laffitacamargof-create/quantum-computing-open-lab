@@ -54,6 +54,16 @@
       how_to: 'Treat this as the nested frame quantum-puzzle -> #studioIframe. Check the live frame before each action. Test/preview before saving when appropriate. A preview is not a saved project; a saved project is not necessarily published. Return to Puzzle to launch or publish via its own flow. Server URLs and code are ordinary project inputs, but never expose API secrets.',
       limits: 'Nested frame must be open and same-origin for direct UI control. Remote Python execution requires a configured backend. Save, launch, publication and delete are distinct states.'
     },
+    'nexus-connectors': {
+      name: 'Nexus Connectors',
+      purpose: 'User-owned connector repository for AI APIs, remote CPU/QPU hardware, cloud storage and optional local capabilities.',
+      workflow: 'Inspect connector cards and Tool Assignments. Create or edit AI/external/local connectors; validate local Python permissions; save secrets only through the encrypted Vault; configure once/always/off; assign providers independently by module and capability; pair the local bridge before installing local connectors; share local connectors for founder approval.',
+      capabilities: ['create-ai-connector','create-external-api-connector','create-local-connector','encrypted-secret-vault','usage-policy-once-always-off','per-tool-provider-assignments','multi-hardware-assignment','local-bridge-pairing','share-local-connector','founder-approval-queue','install-approved-community-connector'],
+      controls: 'Use visible controls #bAdd, #g-ai, #g-ext, #g-loc, #g-com, #g-asg, #bBridge and #bPending. Creation dialog tabs are #p-ai, #p-ext and #p-loc. Local code validation is shown in #detect and #vmsg.',
+      functions: 'No public direct mutation API is exposed to the agent. Operate the visible UI and verify the saved card, assignment, bridge state or approval state.',
+      how_to: 'Never read, echo or log secrets. API keys are encrypted by the Vault before storage. There are no bundled local or official connectors; the community catalogue starts empty. Local connector installation requires an explicit paired bridge. Sharing submits code for founder approval; only founder/admin authorization can publish it.',
+      limits: 'The external AI direct-call versus gateway/proxy policy remains pending explicit founder confirmation. Until approved, keep the founder AI gateway as the active default. External CPU/QPU/storage adapters must be selected per module; do not claim a hardware/storage request was routed until its tool reports a successful result.'
+    },
     help: {
       name: 'Help',
       purpose: 'User-facing help and guidance for the QuOLab Nexus ecosystem.',
@@ -71,6 +81,7 @@
     'architect-pro': Object.freeze(['renderCells']),
     'quantum-puzzle': Object.freeze(['getPublishedApps']),
     'quantum-app-studio': Object.freeze(['renderRepository']),
+    'nexus-connectors': Object.freeze([]),
     help: Object.freeze(['getHelpContent'])
   });
   const FUNCTION_PURPOSES = Object.freeze({
