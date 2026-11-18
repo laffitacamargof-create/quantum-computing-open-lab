@@ -462,7 +462,7 @@
 
   const Assignments = {
     all() { try { return JSON.parse(localStorage.getItem(LS_ASSIGNMENTS) || '{}') || {}; } catch (_) { return {}; } },
-    get(moduleId, kind) { const a = this.all(); const v = a[moduleId] && a[moduleId][kind]; return v == null ? (kind === 'cpu' || kind === 'qpu' || kind === 'storage' ? [] : 'founder') : v; },
+    get(moduleId, kind) { const a = this.all(); const v = a[moduleId] && a[moduleId][kind]; return v == null ? 'founder' : v; },
     set(moduleId, kind, value) { const a = this.all(); a[moduleId] = Object.assign({}, a[moduleId] || {}, { [kind]: value }); localStorage.setItem(LS_ASSIGNMENTS, JSON.stringify(a)); emitChange(false); return value; },
     resolve(moduleId, kind) { const value = this.get(moduleId, kind); if (value === 'founder') return null; if (Array.isArray(value)) return value.map(id => Store.get(id)).filter(Boolean); return Store.get(value) || null; }
   };
