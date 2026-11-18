@@ -4,7 +4,7 @@ from functools import lru_cache
 
 MAX_CODE_BYTES=20000
 MAX_OUTPUT_BYTES=16000
-ALLOWED_IMPORTS=frozenset({"qiskit","qiskit_aer","numpy","scipy","sympy","cirq","pennylane","qutip","math","cmath","statistics","itertools","functools","collections","decimal","fractions","random","json"})
+ALLOWED_IMPORTS=frozenset({"qiskit","qiskit_aer","numpy","scipy","sympy","cirq","pennylane","qutip","math","cmath","statistics","itertools","functools","collections","decimal","fractions","random","json","time","re","typing","dataclasses","matplotlib"})
 FORBIDDEN_NAMES=frozenset({"__import__","eval","exec","compile","open","input","globals","locals","vars","getattr","setattr","delattr","breakpoint","help","memoryview","type","object","super","classmethod","staticmethod","property"})
 
 def is_safe(code):
@@ -27,7 +27,7 @@ def is_safe(code):
     return True,"OK"
 
 _WORKER = r'''
-import builtins, contextlib, importlib, io, json, sys, time
+import ast, builtins, contextlib, importlib, io, json, os, sys, time
 sys.dont_write_bytecode=True
 payload=json.loads(sys.stdin.read())
 allowed=set(payload["allowed"])
@@ -43,11 +43,36 @@ safe={name:getattr(builtins,name) for name in (
  "IndexError","KeyError","TypeError","ValueError","ZeroDivisionError")}
 safe["__import__"]=safe_import
 env={"__builtins__":safe}
+tree=ast.parse(payload["code"],mode="exec")
+used_names={node.id for node in ast.walk(tree) if isinstance(node,ast.Name)}
+requested=set()
+for node in ast.walk(tree):
+ if isinstance(node,ast.Import):
+  requested.update(alias.name.split(".",1)[0] for alias in node.names)
+ elif isinstance(node,ast.ImportFrom) and node.module:
+  requested.add(node.module.split(".",1)[0])
+for alias,module in (("np","numpy"),("numpy","numpy"),("qiskit","qiskit"),("QuantumCircuit","qiskit"),
+ ("QuantumRegister","qiskit"),("ClassicalRegister","qiskit"),("Statevector","qiskit"),
+ ("DensityMatrix","qiskit"),("Operator","qiskit"),("SparsePauliOp","qiskit"),
+ ("AerSimulator","qiskit"),("cirq","cirq"),("qml","pennylane"),("qt","qutip"),
+ ("scipy","scipy"),("sympy","sympy"),("plt","matplotlib")):
+ if alias in used_names: requested.add(module)
+if "pi" in used_names: requested.add("math")
+if "matplotlib" in requested:
+ try:
+  mpl=importlib.import_module("matplotlib")
+  mpl.use("Agg")
+ except Exception: pass
 for module,alias in (("numpy","np"),("numpy","numpy"),("math","math"),("math","pi"),("qiskit","qiskit"),
- ("cirq","cirq"),("pennylane","qml"),("qutip","qt"),("scipy","scipy"),("sympy","sympy")):
+ ("cirq","cirq"),("pennylane","qml"),("qutip","qt"),("scipy","scipy"),("sympy","sympy"),
+ ("qiskit_aer","qiskit_aer"),("matplotlib","matplotlib")):
+ if module not in requested: continue
  try:
   obj=importlib.import_module(module)
   env[alias]=getattr(obj,"pi") if alias=="pi" else obj
+ except Exception: pass
+if "matplotlib" in requested:
+ try: env["plt"]=importlib.import_module("matplotlib.pyplot")
  except Exception: pass
 class CappedBuffer(io.StringIO):
  def write(self, value):
