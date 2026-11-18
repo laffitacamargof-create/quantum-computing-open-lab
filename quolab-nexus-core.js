@@ -26,6 +26,53 @@
       return legacy;
     } catch (_) { return ''; }
   }
+  let apiRequestSeq = 0;
+  function requestParent(type, responseType, payload, timeout) {
+    return new Promise((resolve, reject) => {
+      if (!global.parent || global.parent === global) return reject(new Error('Nexus API broker is not available outside the ecosystem shell'));
+      const id = 'nexus-' + Date.now().toString(36) + '-' + (++apiRequestSeq).toString(36);
+      const limit = Math.max(1000, Math.min(Number(timeout) || 30000, 120000));
+      const handler = event => {
+        if (event.source !== global.parent || event.origin !== global.location.origin) return;
+        const data = normalizeIncoming(event.data || {});
+        if (data.type !== responseType || data.id !== id) return;
+        global.removeEventListener('message', handler);
+        global.clearTimeout(timer);
+        if (!data.ok) reject(new Error(data.error || 'Nexus API request failed'));
+        else resolve(data);
+      };
+      const timer = global.setTimeout(() => {
+        global.removeEventListener('message', handler);
+        reject(new Error('Nexus API broker timed out'));
+      }, limit);
+      global.addEventListener('message', handler);
+      if (!sendToParent(type, Object.assign({}, payload || {}, { id }))) {
+        global.removeEventListener('message', handler);
+        global.clearTimeout(timer);
+        reject(new Error('Could not reach the Nexus API broker'));
+      }
+    });
+  }
+  const api = {
+    register(slot, label, founder) {
+      return sendToParent('NEXUS_API_REGISTER', { slot, label, founder });
+    },
+    getRoutes() {
+      return requestParent('NEXUS_GET_API_ROUTES', 'NEXUS_API_ROUTES', {}, 10000);
+    },
+    request(slot, options) {
+      if (!['cpu','qpu','storage'].includes(String(slot))) return Promise.reject(new Error('Unsupported Nexus API slot'));
+      return requestParent('NEXUS_API_REQUEST', 'NEXUS_API_RESULT', Object.assign({}, options || {}, { slot }), options && options.timeout);
+    },
+    chat(messages, options) {
+      return requestParent('NEXUS_AI_CHAT', 'NEXUS_AI_RESULT', Object.assign({}, options || {}, { messages }), options && options.timeout);
+    },
+    storage: {
+      save(options) { return api.request('storage', Object.assign({ method:'PUT' }, options || {})); },
+      load(options) { return api.request('storage', Object.assign({ method:'GET' }, options || {})); },
+      list(options) { return api.request('storage', Object.assign({ method:'GET' }, options || {})); }
+    }
+  };
   function envelope(type, payload) {
     return Object.assign({}, payload || {}, { type: canonicalType(type), protocol: 'QUOLAB_NEXUS_V1' });
   }
@@ -42,6 +89,7 @@
     legacyType,
     normalizeIncoming,
     getFounderKey,
+    api,
     envelope,
     sendToParent
   };
