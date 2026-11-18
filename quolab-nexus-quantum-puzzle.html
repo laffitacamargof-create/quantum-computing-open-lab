@@ -1278,7 +1278,7 @@ async function _waitForQuantumServer(base, isHF) {
     throw new Error('El motor cuántico no está listo después de esperar a que despierte. Estado HTTP: ' + (lastStatus || 'sin respuesta') + '. ' + lastDetail.slice(0, 300));
 }
 
-async function _runPythonRemote(code, serverUrl) {
+async async function _runPythonRemote(code, serverUrl) {
     // Mismo mecanismo directo de Quantum App Studio: enviar el código al
     // endpoint de ejecución, después de confirmar disponibilidad mediante /health.
     if (!serverUrl) throw new Error('No hay URL del servidor configurada.');
