@@ -1183,6 +1183,7 @@ class QuOLabNexusConfigSyncReader {
   const AI_FALLBACK_KEY = 'nexus_ai_fallback_approved';
   const TOOL_OF = { architect:'open_lab', 'architect-pro':'notebook', 'quantum-puzzle':'apps', 'quantum-app-studio':'app_studio', 'nexus-connectors':'chat' };
   const apiSlots = Object.create(null);
+  [['architect',['cpu','qpu','storage']],['architect-pro',['cpu','storage']],['quantum-puzzle',['cpu','qpu']],['quantum-app-studio',['cpu','qpu','storage']]].forEach(item => item[1].forEach(kind => { apiSlots[item[0]+'.'+kind] = { label:item[0]+' · '+kind.toUpperCase(), founder:kind==='cpu'?'engine':'' }; }));
   const aiSource = () => { try { return localStorage.getItem(AI_SRC_KEY) || 'founder'; } catch (_) { return 'founder'; } };
   const aiDirectApproved = () => { try { return localStorage.getItem(AI_DIRECT_KEY) === 'yes'; } catch (_) { return false; } };
   const aiFallbackApproved = () => { try { return localStorage.getItem(AI_FALLBACK_KEY) === 'yes'; } catch (_) { return false; } };
@@ -1289,7 +1290,8 @@ class QuOLabNexusConfigSyncReader {
       try {
         const messages = Array.isArray(data.messages) ? data.messages.slice(0,40) : [];
         if (!messages.length || !messages.every(m => m && ['system','user','assistant'].includes(m.role) && typeof m.content === 'string' && m.content.length < 60000)) throw new Error('Invalid AI messages');
-        const tool = TOOL_OF[mod] || 'chat';
+        const apiMod = TOOL_OF[data.module] ? data.module : mod;
+        const tool = TOOL_OF[apiMod] || 'chat';
         const text = await aiComplete(messages, { tool, tokens:data.max_tokens, temp:data.temperature });
         const result = text == null ? await callAI(messages[messages.length-1].content, null, { historyLimit:0, systemSuffix:messages[0] && messages[0].role === 'system' ? messages[0].content : '' }) : text;
         reply({ type:'OPENQ_AI_RESULT', id:data.id, ok:true, text:result, source:aiNexusRec() ? 'nexus' : 'founder' });
@@ -1297,12 +1299,13 @@ class QuOLabNexusConfigSyncReader {
       return;
     }
     if (data.type === 'OPENQ_API_REQUEST') {
-      const slot = String(data.slot || '').toLowerCase(), key = mod + '.' + slot, method = String(data.method || 'GET').toUpperCase();
+      const apiMod = TOOL_OF[data.module] ? data.module : mod;
+      const slot = String(data.slot || '').toLowerCase(), key = apiMod + '.' + slot, method = String(data.method || 'GET').toUpperCase();
       try {
         if (!apiSlots[key]) throw new Error('Unknown API slot "' + slot + '"');
-        const rec = assignedConnector(mod, slot, data.connector);
+        const rec = assignedConnector(apiMod, slot, data.connector);
         if (rec) {
-          const result = await NXC().ext.request({ tool:TOOL_OF[mod] || 'chat', connector:rec.id, method, path:data.path || '', headers:data.headers, body:data.body, timeout:data.timeout });
+          const result = await NXC().ext.request({ tool:TOOL_OF[apiMod] || 'chat', connector:rec.id, method, path:data.path || '', headers:data.headers, body:data.body, timeout:data.timeout });
           reply({ type:'OPENQ_API_RESULT', id:data.id, ok:true, status:result.status, headers:result.headers, text:result.text, source:'nexus', connector:rec.id });
         } else {
           const base = founderBase(key); if (!base) throw new Error('Founder default is not configured for ' + slot);
