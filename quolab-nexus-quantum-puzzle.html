@@ -737,18 +737,29 @@ let compilerUrl = '';
 
 // Resolve the same CPU backend configuration used by the embedded App Studio.
 // Keep legacy and current storage keys compatible during the branding migration.
+// Canonical QuOLab Nexus execution Space. Published apps created before the
+// server_url field existed can still execute through the ecosystem's configured motor.
+const DEFAULT_QUANTUM_SERVER_URL = 'https://francilaffita1027-qcol-motor.hf.space';
+
 function resolvePuzzleServerUrl(appUrl) {
     const candidates = [
         appUrl,
         compilerUrl,
+        (() => { try { return localStorage.getItem('qcol_colab_url'); } catch (e) { return ''; } })(),
         (() => { try { return localStorage.getItem('openq_colab_url'); } catch (e) { return ''; } })(),
-        (() => { try { return localStorage.getItem('qcol_colab_url'); } catch (e) { return ''; } })()
+        DEFAULT_QUANTUM_SERVER_URL
     ];
-    const url = candidates.find(value => typeof value === 'string' && value.trim());
-    if (!url) return '';
-    let normalized = url.trim();
-    while (normalized.endsWith('/')) normalized = normalized.slice(0, -1);
-    return normalized;
+    for (const value of candidates) {
+        if (typeof value !== 'string' || !value.trim()) continue;
+        let normalized = value.trim().replace(/\\/+$/, '');
+        // Accept either a Space base URL or a previously saved endpoint URL.
+        normalized = normalized.replace(/\\/(?:health(?:\\/predict)?|run(?:\\/predict)?)$/i, '');
+        try {
+            const parsed = new URL(normalized);
+            if (parsed.protocol === 'https:' || parsed.protocol === 'http:') return normalized;
+        } catch (_) { /* Try the next configured source. */ }
+    }
+    return '';
 }
 
 function acceptPuzzleCompilerUrl(value) {
@@ -1197,7 +1208,7 @@ window.addEventListener('message', async function _execPyCallHandler(ev) {
 
     const serverUrl = resolvePuzzleServerUrl(appUrl || '');
     try {
-        if (!serverUrl) throw new Error('No server URL. Configure it in the Founder Panel.');
+        if (!serverUrl) throw new Error('No se encontró un servidor CPU válido. Comprueba la configuración del motor QuOLab Nexus.');
         // Keep the exact Python wrapper used by Quantum App Studio.
         const fullCode = `${pythonCode}\nimport json\n_result = ${func}(*${JSON.stringify(args)})\nprint(json.dumps(_result, ensure_ascii=False))`;
         const output = await _runPythonRemote(fullCode, serverUrl);
@@ -1638,10 +1649,14 @@ window.addEventListener('message', (e) => {
         }
         return;
     }
-    if (data.type === 'QCOL_COMPILER_URL' && data.url) { 
-        compilerUrl = data.url; 
-        showNotification('Quantum server configured', 1500); 
-        return; 
+    if (data.type === 'QCOL_COMPILER_URL' && data.url) {
+        if (acceptPuzzleCompilerUrl(data.url)) {
+            showNotification('Quantum server configured', 1500);
+        } else {
+            console.warn('[Quantum Puzzle] Ignored invalid compiler URL:', data.url);
+            showNotification('La URL del servidor CPU recibida no es válida.', 3500);
+        }
+        return;
     }
     if (data.type === 'QCOL_STUDIO_OPENED') {
         if (!studioIframe || e.source !== studioIframe.contentWindow || e.origin !== location.origin) return;
