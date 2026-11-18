@@ -1207,9 +1207,9 @@ window.addEventListener('message', async function _execPyCallHandler(ev) {
     }
 });
 
-async function _waitForQuantumServer(base) {
-    // Hugging Face Spaces can return 503 while the container wakes up.
-    // Poll the engine health endpoint before submitting user code.
+async function _waitForQuantumServer(base, isHF) {
+    // Confirm that the configured execution service is actually healthy.
+    // The QuOLab Flask backend must expose /health and report sandbox.ready=true.
     let lastStatus = 0;
     let lastDetail = '';
     for (let attempt = 0; attempt < 8; attempt++) {
@@ -1222,17 +1222,26 @@ async function _waitForQuantumServer(base) {
                 ...(controller ? { signal: controller.signal } : {})
             });
             lastStatus = response.status;
-            if (response.status === 404 || response.status === 405) return;
             const rawText = await response.text().catch(() => '');
             lastDetail = rawText.slice(0, 700);
+
+            // Legacy Hugging Face Spaces may not expose /health. Keep their
+            // Gradio /run/predict protocol, but never bypass health on our CPU API.
+            if (isHF && (response.status === 404 || response.status === 405)) return;
+
             if (response.ok) {
-                let health = null;
-                try { health = JSON.parse(rawText); } catch (_) {}
-                if (health && health.sandbox && health.sandbox.ready === false) {
-                    lastDetail = health.sandbox.reason || lastDetail || 'sandbox_not_ready';
-                } else {
-                    return;
+                let health;
+                try { health = JSON.parse(rawText); }
+                catch (_) { throw new Error('El endpoint /health no devolvió JSON válido.'); }
+
+                if (isHF && !health.sandbox) return;
+                if (!health || !health.sandbox || typeof health.sandbox.ready !== 'boolean') {
+                    throw new Error('Respuesta /health inválida: falta sandbox.ready.');
                 }
+                if (health.sandbox.ready) return;
+                lastDetail = health.sandbox.reason || lastDetail || 'sandbox_not_ready';
+            } else if ([404, 405].includes(response.status)) {
+                throw new Error('El servidor CPU no ofrece el endpoint /health. Comprueba la URL configurada.');
             } else if (![502, 503, 504].includes(response.status)) {
                 throw new Error('El servidor CPU respondió HTTP ' + response.status + ' al comprobar /health: ' + (lastDetail || response.statusText));
             }
@@ -1256,7 +1265,8 @@ async function _runPythonRemote(code, serverUrl) {
     // Esperar a que el endpoint /health confirme que el sandbox Python está listo.
     // El backend devuelve 503 mientras bwrap/sandbox no pueda ejecutar de forma aislada.
     // No enviar código a /run hasta que el motor esté preparado.
-    await _waitForQuantumServer(base);
+    const isHF = base.includes('hf.space') || base.includes('huggingface');
+    await _waitForQuantumServer(base, isHF);
 
     const isHF = base.includes('hf.space') || base.includes('huggingface');
     const url = isHF ? base + '/run/predict' : base + '/run';
