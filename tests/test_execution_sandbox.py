@@ -20,6 +20,19 @@ class SandboxSecurityTests(unittest.TestCase):
 
     def test_allows_scientific_imports(self):
         self.assertTrue(is_safe("import math\nimport numpy as np\nfrom qiskit import QuantumCircuit")[0])
+    def test_allows_runtime_and_plotting_imports(self):
+        code = (
+            "import time\\nimport re\\nimport typing\\n"
+            "from dataclasses import dataclass\\n"
+            "import matplotlib\\nmatplotlib.use('Agg')"
+        )
+        self.assertTrue(is_safe(code)[0], "Common runtime and Agg plotting imports must pass validation.")
+
+    def test_rejects_unapproved_imports_after_allowlist_expansion(self):
+        for code in ["import os", "import subprocess", "import socket"]:
+            with self.subTest(code=code):
+                self.assertFalse(is_safe(code)[0])
+
     def test_allows_json_wrapper_used_by_quantum_app_bridges(self):
         # Puzzle and App Studio append this exact serialization wrapper to every pyCall.
         code = (
