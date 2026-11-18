@@ -154,15 +154,24 @@ class QuOLabNexusQuantumSync {
     }
 
     async _rpc(name, body) {
-        const response = await this._fetchWithRetry(`${this.SUPABASE_URL}/functions/v1/quolab-nexus-admin`, {
+        const request = {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'apikey': this.SUPABASE_ANON_KEY,
-                    // Publishable keys belong in apikey only; they are not JWT bearer tokens.
+                // Publishable keys belong in apikey only; they are not JWT bearer tokens.
             },
             body: JSON.stringify({ action: name, params: body })
-        });
+        };
+        // quantum_list_pending is a read-only RPC. It is safe to retry when a
+        // transient connection aborts; do not retry mutations such as approve,
+        // reject, delete, publish, or update because their outcome may be unknown.
+        const safeRead = name === 'quantum_list_pending';
+        const response = await this._fetchWithRetry(
+            `${this.SUPABASE_URL}/functions/v1/quolab-nexus-admin`,
+            request,
+            safeRead ? 3 : 1
+        );
         const payload = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(payload.error || `HTTP ${response.status}`);
         return payload.data;
