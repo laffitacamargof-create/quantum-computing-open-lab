@@ -1282,9 +1282,9 @@ class QuOLabNexusConfigSyncReader {
       const founder = data.founder === 'engine' || /^https:\/\//i.test(data.founder || '') ? data.founder : '';
       apiSlots[mod + '.' + kind] = { label:String(data.label || (mod + ' · ' + kind.toUpperCase())).slice(0,80), founder };
       renderSources();
-      reply({ type:'OPENQ_API_ROUTES', routes:routesFor(mod) }); return;
+      reply({ type:'OPENQ_API_ROUTES', id:data.id, routes:routesFor(mod) }); return;
     }
-    if (data.type === 'OPENQ_GET_API_ROUTES') { reply({ type:'OPENQ_API_ROUTES', routes:routesFor(mod) }); return; }
+    if (data.type === 'OPENQ_GET_API_ROUTES') { reply({ type:'OPENQ_API_ROUTES', id:data.id, ok:true, routes:routesFor(mod) }); return; }
     if (data.type === 'OPENQ_AI_CHAT') {
       try {
         const messages = Array.isArray(data.messages) ? data.messages.slice(0,40) : [];
