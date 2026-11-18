@@ -1267,7 +1267,7 @@ async function _runPythonRemote(code, serverUrl) {
     const isHF = base.includes('hf.space') || base.includes('huggingface');
     await _waitForQuantumServer(base, isHF);
 
-    const isHF = base.includes('hf.space') || base.includes('huggingface');
+
     const url = isHF ? base + '/run/predict' : base + '/run';
     const body = isHF
         ? JSON.stringify({ data: [code], fn_index: 0 })
