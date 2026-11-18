@@ -846,7 +846,7 @@ function setTagFilter(tag) {
 // ============================================================
 // 🔥 RENDER PUBLISHED APPS CON CACHÉ
 // ============================================================
-async async function renderPublishedApps() {
+async function renderPublishedApps() {
     const apps = await getPublishedApps();
     const searchTerm = document.getElementById('searchInput')?.value.toLowerCase() || "";
     
@@ -1312,12 +1312,15 @@ function closeStudioModal() {
 // 🔥 MANEJADOR DE MENSAJES DEL STUDIO
 // ============================================================
 window.addEventListener('message', async function(e) {
-    const data = e.data;
+    // Quantum App Studio wraps all parent messages in NEXUS_STUDIO_EVENT.
+    // Unwrap that envelope while retaining compatibility with direct legacy messages.
+    const envelope = e.data;
+    const data = envelope && envelope.type === 'NEXUS_STUDIO_EVENT' ? envelope.message : envelope;
     if (!data || typeof data !== 'object') return;
     
     if (data.type === 'QCOL_STUDIO_ADMIN_SAVE') {
-        // Only accept administrative writes from the embedded Studio frame itself.
-        if (!studioIframe || e.source !== window.parent || e.origin !== location.origin || data.__nexusStudioRelay !== true) return;
+        // Only accept administrative writes from the trusted embedded Studio iframe.
+        if (!studioIframe || e.source !== studioIframe.contentWindow || e.origin !== location.origin) return;
         const requestId = typeof data.requestId === 'string' ? data.requestId : null;
         const sendSaveResult = (payload) => {
             try { studioIframe.contentWindow.postMessage({ type: 'QCOL_STUDIO_ADMIN_SAVE_RESULT', requestId, ...payload }, location.origin); } catch (error) {}
@@ -1425,7 +1428,8 @@ window.addEventListener('message', async function(e) {
 // OTROS MANEJADORES DE MENSAJES
 // ============================================================
 window.addEventListener('message', (e) => {
-    const data = e.data;
+    const envelope = e.data;
+    const data = envelope && envelope.type === 'NEXUS_STUDIO_EVENT' ? envelope.message : envelope;
     if (!data || typeof data !== 'object') return;
     if (data.type === 'QCOL_COMPILER_URL' && data.url) { 
         compilerUrl = data.url; 
