@@ -15,7 +15,16 @@
   }
   function normalizeIncoming(message) {
     if (!message || typeof message !== 'object') return message;
-    return Object.assign({}, message, { type: legacyType(message.type) });
+    return Object.assign({}, message, { type: canonicalType(message.type) });
+  }
+  function getFounderKey() {
+    try {
+      const current = global.localStorage.getItem('nexus_founder_key');
+      if (current) return current;
+      const legacy = global.localStorage.getItem('openq_repo_founder_key') || global.localStorage.getItem('qcol_repo_founder_key') || '';
+      if (legacy) { global.localStorage.setItem('nexus_founder_key', legacy); global.localStorage.removeItem('openq_repo_founder_key'); global.localStorage.removeItem('qcol_repo_founder_key'); }
+      return legacy;
+    } catch (_) { return ''; }
   }
   function envelope(type, payload) {
     return Object.assign({}, payload || {}, { type: canonicalType(type), protocol: 'QUOLAB_NEXUS_V1' });
@@ -32,6 +41,7 @@
     canonicalType,
     legacyType,
     normalizeIncoming,
+    getFounderKey,
     envelope,
     sendToParent
   };
