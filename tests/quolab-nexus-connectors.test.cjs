@@ -11,7 +11,7 @@ const puzzle = read('quolab-nexus-quantum-puzzle.html');
 const studio = read('quolab-nexus-app-studio.html');
 const workflow = read('.github/workflows/validate-nexus-agent.yml');
 
-assert.match(ui, /NEXUS CONNECTORS/);
+assert.match(ui, /Nexus Connectors/);
 assert.match(ui, /TOOL ASSIGNMENTS/);
 assert.match(ui, /ext-via/);
 assert.match(ui, /SHARE/);
@@ -19,7 +19,7 @@ assert.match(ui, /PENDING/);
 assert.doesNotMatch(ui, /Main assistant|Fast backup|Quantum hardware A|Example device reader|sk-example/i);
 assert.match(core, /AES-GCM/);
 assert.match(core, /indexedDB/);
-assert.match(core, /extractable:\s*false/);
+assert.match(core, /generateKey\(\{ name: 'AES-GCM', length: 256 \}, false/);
 assert.match(core, /BroadcastChannel/);
 assert.match(core, /nexus_connectors_v1/);
 assert.match(core, /Bridge\.proxy/);
