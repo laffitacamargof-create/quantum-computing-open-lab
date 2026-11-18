@@ -745,12 +745,17 @@ function resolvePuzzleServerUrl(appUrl) {
         (() => { try { return localStorage.getItem('qcol_colab_url'); } catch (e) { return ''; } })()
     ];
     const url = candidates.find(value => typeof value === 'string' && value.trim());
-    return url ? url.trim().replace(/\\/+$/, '') : '';
+    if (!url) return '';
+    let normalized = url.trim();
+    while (normalized.endsWith('/')) normalized = normalized.slice(0, -1);
+    return normalized;
 }
 
 function acceptPuzzleCompilerUrl(value) {
     if (typeof value !== 'string' || !value.trim()) return false;
-    compilerUrl = value.trim().replace(/\\/+$/, '');
+    let normalized = value.trim();
+    while (normalized.endsWith('/')) normalized = normalized.slice(0, -1);
+    compilerUrl = normalized;
     try {
         localStorage.setItem('qcol_colab_url', compilerUrl);
         localStorage.setItem('openq_colab_url', compilerUrl);
