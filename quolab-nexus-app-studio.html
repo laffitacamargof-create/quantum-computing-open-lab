@@ -353,8 +353,10 @@
     function generateId() { return Date.now() + '-' + Math.random().toString(36).substring(2, 10); }
     function escapeHtml(str) { return String(str).replace(/[&<>]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;'})[m]); }
     function sendToParent(msg) {
-        if (window.top && window.top !== window) {
-            try { window.top.postMessage({ type: 'NEXUS_STUDIO_EVENT', message: msg }, window.location.origin); } catch(e) {}
+        // Send to the immediate parent: when Studio is opened inside Quantum Puzzle,
+        // the Puzzle module must receive and validate the event before any top-level relay.
+        if (window.parent && window.parent !== window) {
+            try { window.parent.postMessage({ type: 'NEXUS_STUDIO_EVENT', message: msg }, window.location.origin); } catch(e) {}
         }
     }
 
