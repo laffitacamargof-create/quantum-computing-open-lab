@@ -1259,7 +1259,7 @@ async function _runPythonRemote(code, serverUrl) {
     // Mismo mecanismo directo de Quantum App Studio: enviar el código al
     // endpoint de ejecución. No bloquear la ejecución con un preflight /health.
     if (!serverUrl) throw new Error('No hay URL del servidor configurada.');
-    const base = serverUrl.trim().replace(/\\/+$/, '');
+    const base = serverUrl.trim().replace(/\/+$/, '');
     let parsedUrl;
     try { parsedUrl = new URL(base); }
     catch (_) { throw new Error('La URL del servidor CPU no es válida.'); }
