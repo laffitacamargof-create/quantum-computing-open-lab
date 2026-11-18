@@ -112,7 +112,7 @@ def _limits():
 def sandbox_runtime_status():
     bwrap=shutil.which("bwrap")
     if not bwrap: return {"ready":False,"binary_present":False,"reason":"bwrap_missing"}
-    args=[bwrap,"--unshare-all","--die-with-parent","--new-session","--uid","65534","--gid","65534"]
+    # Keep bubblewrap default namespace identity: the invoking container user is mapped\n    # to namespace root. Forcing UID/GID 65534 requires subordinate ID mappings\n    # that are not configured in many hosted containers (including HF Spaces).\n    args=[bwrap,"--unshare-all","--die-with-parent","--new-session"]
     for path in ("/usr","/lib","/lib64","/bin","/sbin"):
         source=os.path.realpath(path)
         if os.path.isdir(source): args.extend(["--ro-bind",source,path])
@@ -136,7 +136,7 @@ def execute_isolated(code):
         return {"success":False,"output":"Ejecución bloqueada: el servidor no puede crear el sandbox aislado. No se ejecutó código fuera del aislamiento.","bloch":None,"time":0}
     with tempfile.TemporaryDirectory(prefix="quolab-run-") as work:
         os.chmod(work,0o777)
-        args=[bwrap,"--unshare-all","--die-with-parent","--new-session","--uid","65534","--gid","65534"]
+        # Keep bubblewrap default namespace identity: the invoking container user is mapped\n    # to namespace root. Forcing UID/GID 65534 requires subordinate ID mappings\n    # that are not configured in many hosted containers (including HF Spaces).\n    args=[bwrap,"--unshare-all","--die-with-parent","--new-session"]
         mounted=set()
         for path in ("/usr","/lib","/lib64","/bin","/sbin"):
             # Resolve merged-/usr symlinks in the host namespace, then mount the
