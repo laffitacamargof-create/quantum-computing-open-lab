@@ -948,24 +948,47 @@
 
     async function executePythonRemote(code, serverUrl) {
         if (!serverUrl) throw new Error("No server URL");
-        const base = serverUrl.replace(/\/+$/, '');
+        const base = serverUrl.trim().replace(/\/+$/, '');
+        let parsed;
+        try { parsed = new URL(base); } catch (_) { throw new Error("Invalid Python server URL"); }
+        if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') throw new Error("Python server URL must use HTTP or HTTPS");
         const isHF = base.includes('hf.space') || base.includes('huggingface');
-        let url, body;
-        if (isHF) {
-            url = base + '/run/predict';
-            body = JSON.stringify({ data: [code], fn_index: 0 });
-        } else {
-            url = base + '/run';
-            body = JSON.stringify({ code: code, lib: 'python' });
+        const url = isHF ? base + '/run/predict' : base + '/run';
+        const body = isHF
+            ? JSON.stringify({ data: [code], fn_index: 0 })
+            : JSON.stringify({ code: code, lib: 'python' });
+        const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+        const timeoutId = controller ? setTimeout(() => controller.abort(), 120000) : null;
+        let raw;
+        try {
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                body,
+                ...(controller ? { signal: controller.signal } : {})
+            });
+            if (!res.ok) {
+                const detail = await res.text().catch(() => '');
+                throw new Error('Python server HTTP ' + res.status + ': ' + detail.slice(0, 500));
+            }
+            try { raw = await res.json(); }
+            catch (_) { throw new Error('Python server returned invalid JSON.'); }
+        } catch (error) {
+            if (error && error.name === 'AbortError') throw new Error('Python server timed out after 120 seconds.');
+            if (/^Python server HTTP |^Python server returned invalid JSON/.test(error.message || '')) throw error;
+            throw new Error('Could not connect to Python server (' + parsed.hostname + '): ' + (error?.message || error));
+        } finally {
+            if (timeoutId) clearTimeout(timeoutId);
         }
-        const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const raw = await res.json();
-        const data = isHF ? (raw.data?.[0] || raw) : raw;
-        if (data.success === false) throw new Error(data.output || data.error);
-        let output = data.output || data.result || "";
-        output = decodeUnicode(output);
-        return output;
+        const data = isHF && raw && Array.isArray(raw.data) ? raw.data[0] : raw;
+        if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('Python server returned an invalid response.');
+        if (data.success === false) throw new Error(data.output || data.error || 'Python execution failed.');
+        if (!Object.prototype.hasOwnProperty.call(data, 'output') && !Object.prototype.hasOwnProperty.call(data, 'result')) {
+            throw new Error('Python server response has no output or result field.');
+        }
+        let output = data.output ?? data.result ?? '';
+        if (typeof output !== 'string') output = JSON.stringify(output);
+        return decodeUnicode(output);
     }
 
     // Handler for calls from iframes (pyCall) - same origin, no token needed
@@ -980,8 +1003,11 @@
             
             const { id, func, args, serverUrl, pythonCode } = event.data;
             try {
+                if (typeof id !== 'string' || !id || id.length > 120) throw new Error('Invalid Python request id.');
+                if (typeof func !== 'string' || !/^[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*$/.test(func)) throw new Error('Invalid Python function name.');
+                if (!Array.isArray(args) || args.length > 100) throw new Error('Invalid Python function arguments.');
                 if (!serverUrl) throw new Error("Missing server URL");
-                const fullCode = `${pythonCode}\nimport json\n_result = ${func}(*${JSON.stringify(args)})\nprint(json.dumps(_result, ensure_ascii=False))`;
+                const fullCode = `${pythonCode || ''}\nimport json\n_result = ${func}(*${JSON.stringify(args)})\nprint(json.dumps(_result, ensure_ascii=False))`;
                 const output = await executePythonRemote(fullCode, serverUrl);
                 let result = output.trim();
                 if ((result.startsWith('"') && result.endsWith('"')) || 
@@ -1007,11 +1033,11 @@
         window.pyCall = async (funcName, ...args) => {
             if (!window.__serverUrl) throw new Error('Python backend is not configured. The HTML interface can still run locally; configure the Python server to execute Python functions.');
             return new Promise((resolve, reject) => {
-                const msgId = Date.now() + '-' + Math.random();
+                const msgId = Date.now() + '-' + Math.random().toString(36).slice(2, 10);
                 const timeout = setTimeout(() => {
                     window.removeEventListener('message', handler);
-                    reject(new Error('Python backend request timed out.'));
-                }, 60000);
+                    reject(new Error('Python backend request timed out after 210 seconds.'));
+                }, 210000);
                 const handler = (event) => {
                     if (!event.data || event.data.type !== 'pyResult' || event.data.id !== msgId) return;
                     clearTimeout(timeout);

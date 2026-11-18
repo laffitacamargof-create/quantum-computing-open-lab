@@ -1184,7 +1184,7 @@ window.addEventListener('message', async function _execPyCallHandler(ev) {
     const tid = setTimeout(() => {
         _execPyCalls.delete(id);
         try { src.postMessage({ type: 'pyResult', id, error: 'El motor cuántico no respondió tras el tiempo de espera. Comprueba el estado del servidor CPU y vuelve a intentar.' }, '*'); } catch(e) {}
-    }, 135000);
+    }, 215000);
     _execPyCalls.set(id, { src, tid });
 
     const serverUrl = resolvePuzzleServerUrl(appUrl || '');
@@ -1273,32 +1273,42 @@ async function _runPythonRemote(code, serverUrl) {
         ? JSON.stringify({ data: [code], fn_index: 0 })
         : JSON.stringify({ code: code, lib: 'python' });
     const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
-    const timeoutId = controller ? setTimeout(() => controller.abort(), 60000) : null;
+    // Quantum libraries can take time to import on a cold CPU/Hugging Face worker.
+    // The iframe bridge and parent handler have a longer budget than this request.
+    const timeoutId = controller ? setTimeout(() => controller.abort(), 120000) : null;
 
-    let res;
+    let res, raw;
     try {
         res = await fetch(url, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
             body,
             ...(controller ? { signal: controller.signal } : {})
         });
+        if (!res.ok) {
+            const detail = await res.text().catch(() => '');
+            throw new Error('Servidor CPU HTTP ' + res.status + ' en ' + (isHF ? '/run/predict' : '/run') + ': ' + (detail || res.statusText).slice(0, 500));
+        }
+        try { raw = await res.json(); }
+        catch (_) { throw new Error('El servidor CPU respondió con un formato no JSON.'); }
     } catch (error) {
-        if (timeoutId) clearTimeout(timeoutId);
-        if (error && error.name === 'AbortError') throw new Error('El servidor CPU no respondió en 60 segundos.');
+        if (error && error.name === 'AbortError') throw new Error('El servidor CPU no respondió en 120 segundos.');
+        if (/^Servidor CPU HTTP |^El servidor CPU respondió/.test(error.message || '')) throw error;
         throw new Error('No se pudo conectar con el servidor CPU (' + parsedUrl.hostname + '): ' + (error?.message || error));
+    } finally {
+        if (timeoutId) clearTimeout(timeoutId);
     }
-    if (timeoutId) clearTimeout(timeoutId);
-    if (!res.ok) {
-        const detail = await res.text().catch(() => '');
-        throw new Error('Servidor CPU HTTP ' + res.status + ' en ' + (isHF ? '/run/predict' : '/run') + ': ' + (detail || res.statusText).slice(0, 500));
+    const data = isHF ? (raw && Array.isArray(raw.data) ? raw.data[0] : raw) : raw;
+    if (!data || typeof data !== 'object' || Array.isArray(data)) {
+        throw new Error('El servidor CPU devolvió una respuesta vacía o con formato inválido.');
     }
-
-    let raw;
-    try { raw = await res.json(); } catch (_) { throw new Error('El servidor CPU respondió con un formato no JSON.'); }
-    const data = isHF ? (raw.data?.[0] || raw) : raw;
     if (data.success === false) throw new Error(data.output || data.error || 'El servidor rechazó la ejecución.');
-    let output = data.output || data.result || '';
+    if (!Object.prototype.hasOwnProperty.call(data, 'output') &&
+        !Object.prototype.hasOwnProperty.call(data, 'result')) {
+        throw new Error('La respuesta del servidor no contiene output ni result.');
+    }
+    let output = data.output ?? data.result ?? '';
+    if (typeof output !== 'string') output = JSON.stringify(output);
     if (typeof decodeUnicode === 'function') output = decodeUnicode(output);
     return output;
 }
@@ -1318,7 +1328,7 @@ function _buildAppBlob(pythonCode, htmlCode, serverUrl) {
             var timeout = setTimeout(function(){
                 window.removeEventListener('message', handler);
                 reject(new Error('Python request timed out.'));
-            }, 130000);
+            }, 210000);
             function handler(ev) {
                 var d = ev.data;
                 if ((ev.origin !== location.origin && ev.origin !== 'null') || ev.source !== window.parent) return;
