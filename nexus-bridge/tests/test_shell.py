@@ -28,7 +28,7 @@ class NexusShellRoutingTests(unittest.TestCase):
     def test_direct_ai_requires_explicit_approval(self): self.assertIn("nexus_ai_direct_approved", self.index)
     def test_founder_fallback_requires_explicit_approval(self): self.assertIn("nexus_ai_fallback_approved", self.index)
     def test_external_ai_uses_connector_broker(self): self.assertIn("NXC().ai.chat", self.index)
-    def test_ai_fallback_is_visible(self): self.assertIn("falling back to the founder gateway", self.index)
+    def test_ai_fallback_is_visible(self): self.assertIn("using the founder gateway as approved fallback", self.index)
     def test_module_api_registration_is_handled(self): self.assertIn("OPENQ_API_REGISTER", self.index)
     def test_module_api_request_is_handled(self): self.assertIn("OPENQ_API_REQUEST", self.index)
     def test_ai_chat_messages_are_handled(self): self.assertIn("OPENQ_AI_CHAT", self.index)
