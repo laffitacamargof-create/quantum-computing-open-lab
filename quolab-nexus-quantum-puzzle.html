@@ -1181,16 +1181,17 @@ window.addEventListener('message', async function _execPyCallHandler(ev) {
     const serverUrl = resolvePuzzleServerUrl(appUrl || '');
     try {
         if (!serverUrl) throw new Error('No server URL. Configure it in the Founder Panel.');
-        const callCode = (pythonCode ? pythonCode + '\n\n' : '') +
-            'import json as _json\n' +
-            '_args = _json.loads(' + JSON.stringify(JSON.stringify(args)) + ')\n' +
-            '_result = ' + func + '(*_args)\n' +
-            'print(_json.dumps(_result, ensure_ascii=False, default=str))';
-        const output = await _runPythonRemote(callCode, serverUrl);
+        // Keep the exact Python wrapper used by Quantum App Studio.
+        const fullCode = `${pythonCode}\nimport json\n_result = ${func}(*${JSON.stringify(args)})\nprint(json.dumps(_result, ensure_ascii=False))`;
+        const output = await _runPythonRemote(fullCode, serverUrl);
         clearTimeout(tid); _execPyCalls.delete(id);
-        let parsed = (output || '').trim();
-        try { parsed = JSON.parse(parsed); } catch(e) {}
-        src.postMessage({ type: 'pyResult', id, result: parsed }, '*');
+        let result = (output || '').trim();
+        if ((result.startsWith('"') && result.endsWith('"')) ||
+            (result.startsWith('{') && result.endsWith('}')) ||
+            (result.startsWith('[') && result.endsWith(']'))) {
+            try { result = JSON.parse(result); } catch(e) {}
+        }
+        src.postMessage({ type: 'pyResult', id, result: result }, '*');
     } catch(err) {
         clearTimeout(tid); _execPyCalls.delete(id);
         src.postMessage({ type: 'pyResult', id, error: err.message }, '*');
@@ -1239,23 +1240,34 @@ async function _waitForQuantumServer(base) {
 
 async function _runPythonRemote(code, serverUrl) {
     if (!serverUrl) throw new Error('No hay URL del servidor configurada.');
-    const base = serverUrl.trim().replace(/\/+$/, '');
+    const base = serverUrl.trim().replace(/\\/+$/, '');
     let parsedUrl;
     try { parsedUrl = new URL(base); } catch (_) { throw new Error('La URL del servidor CPU no es válida.'); }
-    // Match Quantum App Studio: accept the configured URL as-is. Browser mixed-content
-    // policy still applies when the app itself is hosted over HTTPS.
 
-    // Wait for the shared Python engine to wake up before submitting code.
-    await _waitForQuantumServer(base);
+    // Igual que Studio: el health check solo intenta despertar/verificar el motor.
+    // Una respuesta 503/404 no debe bloquear /run si el endpoint de ejecución responde.
+    const healthController = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const healthTimeout = healthController ? setTimeout(() => healthController.abort(), 5000) : null;
+    try {
+        await fetch(base + '/health/predict', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ data: [''] }),
+            ...(healthController ? { signal: healthController.signal } : {})
+        });
+    } catch (healthError) {
+        console.warn('[Quantum Puzzle] Health preflight did not complete; matching Studio, continuing to /run:', healthError);
+    } finally {
+        if (healthTimeout) clearTimeout(healthTimeout);
+    }
 
-    // Keep the same request protocol as Quantum App Studio.
     const isHF = base.includes('hf.space') || base.includes('huggingface');
-    const url = base + (isHF ? '/run/predict' : '/run');
+    const url = isHF ? base + '/run/predict' : base + '/run';
     const body = isHF
         ? JSON.stringify({ data: [code], fn_index: 0 })
         : JSON.stringify({ code: code, lib: 'python' });
     const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
-    const timeoutId = controller ? setTimeout(() => controller.abort(), 55000) : null;
+    const timeoutId = controller ? setTimeout(() => controller.abort(), 60000) : null;
 
     let res;
     try {
@@ -1267,7 +1279,7 @@ async function _runPythonRemote(code, serverUrl) {
         });
     } catch (error) {
         if (timeoutId) clearTimeout(timeoutId);
-        if (error && error.name === 'AbortError') throw new Error('El servidor CPU no respondió en 55 segundos.');
+        if (error && error.name === 'AbortError') throw new Error('El servidor CPU no respondió en 60 segundos.');
         throw new Error('No se pudo conectar con el servidor CPU (' + parsedUrl.hostname + '): ' + (error?.message || error));
     }
     if (timeoutId) clearTimeout(timeoutId);
