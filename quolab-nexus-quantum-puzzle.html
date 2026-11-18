@@ -1211,7 +1211,7 @@ window.addEventListener('message', async function _execPyCallHandler(ev) {
         if (!serverUrl) throw new Error('No se encontró un servidor CPU válido. Comprueba la configuración del motor QuOLab Nexus.');
         // Keep the exact Python wrapper used by Quantum App Studio.
         const fullCode = `${pythonCode}\nimport json\n_result = ${func}(*${JSON.stringify(args)})\nprint(json.dumps(_result, ensure_ascii=False))`;
-        const output = await _runPythonRemote(fullCode, serverUrl);
+        const output = await _enqueuePyExecution(() => _runPythonRemoteWithRetry(fullCode, serverUrl));
         const pending = _execPyCalls.get(id);
         if (!pending) return; // timed out already; ignore a late server response
         clearTimeout(pending.tid);
@@ -1289,6 +1289,29 @@ async function _waitForQuantumServer(base, isHF) {
         if (attempt < 44 && Date.now() < recoveryDeadline) await new Promise(resolve => setTimeout(resolve, 4000));
     }
     throw new Error('El motor cuántico no está listo después de esperar a que despierte. Estado HTTP: ' + (lastStatus || 'sin respuesta') + '. ' + lastDetail.slice(0, 300));
+}
+
+async function _runPythonRemoteWithRetry(code, serverUrl) {
+    const maxRetries = 4;
+    for (let attempt = 0; ; attempt++) {
+        try {
+            return await _runPythonRemote(code, serverUrl);
+        } catch (error) {
+            const message = String(error && error.message ? error.message : error);
+            if (/HTTP 429\\b/.test(message) && attempt < maxRetries) {
+                const delay = Math.min(4000, 500 * Math.pow(2, attempt));
+                await new Promise(resolve => setTimeout(resolve, delay));
+                continue;
+            }
+            if (/HTTP 503\\b|Failed to fetch|NetworkError|Load failed/i.test(message)) {
+                throw new Error('El servidor CPU está despertando, reintenta en 30-60 s');
+            }
+            if (/HTTP 429\\b/.test(message)) {
+                throw new Error('El servidor CPU sigue ocupado después de varios reintentos. Inténtalo de nuevo en unos segundos.');
+            }
+            throw error;
+        }
+    }
 }
 
 async function _runPythonRemote(code, serverUrl) {
@@ -1471,6 +1494,27 @@ function closeExecModal() {
 }
 
 const _execPyCalls = new Map();
+const _pyExecutionQueue = [];
+let _pyActiveExecutions = 0;
+const _MAX_PY_EXECUTIONS = 2;
+
+function _enqueuePyExecution(run) {
+    return new Promise((resolve, reject) => {
+        _pyExecutionQueue.push({ run, resolve, reject });
+        _drainPyExecutionQueue();
+    });
+}
+
+function _drainPyExecutionQueue() {
+    while (_pyActiveExecutions < _MAX_PY_EXECUTIONS && _pyExecutionQueue.length) {
+        const job = _pyExecutionQueue.shift();
+        _pyActiveExecutions++;
+        Promise.resolve().then(job.run).then(job.resolve, job.reject).finally(() => {
+            _pyActiveExecutions--;
+            _drainPyExecutionQueue();
+        });
+    }
+}
 
 // ========== COMMUNICATION WITH QUANTUM APP STUDIO ==========
 const studioModal = document.getElementById('studioModalReal');
