@@ -7,6 +7,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>QuOLab Nexus — Quantum Computing Open Lab</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=JetBrains+Mono:wght@400;500&family=Exo+2:wght@300;400;500;600&display=swap" rel="stylesheet">
+<!-- KaTeX: renders LaTeX equations in the QNexusAi chat -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" integrity="sha384-nB0miv6/jRmo5UMMR1wu3Gz6NLsoTkbqJghGIsx//Rlm+ZU03BU6SQNC66uf4l5+" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" integrity="sha384-7zkQWkzuo3B5mTepMUcHkMB5jZaolc2xDwL6VFqjFALcbeS9Ggm/Yr2r3Dy4lfFg" crossorigin="anonymous"></script>
 <!-- CodeMirror 6 + marked -->
 <script type="importmap">
   {
@@ -387,6 +390,12 @@ body::before{content:'';position:fixed;inset:0;
   #share-fab::before{content:'🔗';font-size:1rem;letter-spacing:0}
   #share-menu{top:calc(108px + env(safe-area-inset-top));bottom:auto;right:8px}
 }
+
+/* LaTeX in chat */
+#ai-panel-wrapper .katex{font-size:1.06em;color:var(--tx)}
+#ai-panel-wrapper .katex-display{margin:.7rem 0;padding:.5rem .4rem;overflow-x:auto;overflow-y:hidden;background:rgba(0,136,255,.07);border:1px solid rgba(0,136,255,.18);border-radius:10px;text-align:center}
+#ai-panel-wrapper .katex-display>.katex{white-space:nowrap}
+#ai-panel-wrapper .math-fallback{white-space:pre-wrap}
 </style>
 </head>
 <body>
@@ -2802,7 +2811,7 @@ CONTEXT (staged and size-limited): ${c}`;
   async function callAI(msg, ctx, options = {}) {
     const temp   = aiCfg.temp   || 0.7;
     const tokens = Math.min(Math.max(aiCfg.tokens || 700, 500), 1800);
-    const langNote = ' Always reply in the same language as the latest user message. Detect Spanish, English, or any other language automatically; preserve technical names and code identifiers.';
+    const langNote = ' Always reply in the same language as the latest user message. Detect Spanish, English, or any other language automatically; preserve technical names and code identifiers. MATH: write every equation and mathematical term in LaTeX so the chat can render it: inline as $...$ and display equations as $$...$$ on their own lines (never plain [ ... ] brackets, never ASCII art). Example: $$i\\hbar\\frac{d}{dt}|\\psi(t)\\rangle=\\hat{H}|\\psi(t)\\rangle$$. Put code in fenced code blocks, not in math.';
     const sys = (aiCfg.prompt || 'You are QNexusAi, the QuOLab Nexus superagent. Respond technically and concisely.') + langNote + (ctx ? aiSystemExtra(ctx, msg) : '') + (options.systemSuffix || '');
     const historyLimit = Number.isInteger(options.historyLimit) ? Math.max(0,Math.min(options.historyLimit,2)) : 1;
     const msgs = [
@@ -2881,6 +2890,26 @@ CONTEXT (staged and size-limited): ${c}`;
     return d.choices[0].message.content;
   }
 
+  // Markdown + LaTeX: math is pulled out before marked (it would mangle _ * \\), then rendered with KaTeX.
+  function renderChatMarkdown(text) {
+    text = String(text == null ? '' : text);
+    const codes = [], maths = [];
+    let t = text.replace(/```[\s\S]*?```|`[^`\n]*`/g, m => 'zzcodezz' + (codes.push(m) - 1) + 'zz');
+    t = t.replace(/\$\$([\s\S]+?)\$\$|\\\[([\s\S]+?)\\\]|\\\(([\s\S]+?)\\\)|(?<![\\$\w])\$(?![\s$])([^$\n]+?)(?<![\s\\])\$(?![\w$])/g,
+      (m, a, b, c, d) => 'zzmathzz' + (maths.push({ tex: String(a ?? b ?? c ?? d).trim(), display: a !== undefined || b !== undefined }) - 1) + 'zz');
+    t = t.replace(/zzcodezz(\d+)zz/g, (m, i) => codes[+i]);
+    let html = marked.parse(t);
+    html = html.replace(/zzmathzz(\d+)zz/g, (m, i) => {
+      const mt = maths[+i];
+      if (window.katex) {
+        try { return window.katex.renderToString(mt.tex, { displayMode: mt.display, throwOnError: false, strict: 'ignore', trust: false, output: 'htmlAndMathml' }); } catch (e) {}
+      }
+      const esc = mt.tex.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      return mt.display ? '<pre class="math-fallback">' + esc + '</pre>' : '<code class="math-fallback">' + esc + '</code>';
+    });
+    return html;
+  }
+
   function addAIMsg(text, role) {
     const msgs = document.getElementById('ai-messages');
     const d = document.createElement('div');
@@ -2893,7 +2922,8 @@ CONTEXT (staged and size-limited): ${c}`;
     
     const contentDiv = document.createElement('div');
     contentDiv.className = 'markdown-body';
-    contentDiv.innerHTML = marked.parse(text);
+    contentDiv.innerHTML = renderChatMarkdown(text);
+    if (!window.katex && /\$|\\\(|\\\[/.test(text)) window.addEventListener('load', () => { contentDiv.innerHTML = renderChatMarkdown(text); }, { once: true });
     d.appendChild(contentDiv);
     
     msgs.appendChild(d);
