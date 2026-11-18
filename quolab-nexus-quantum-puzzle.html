@@ -846,7 +846,7 @@ function setTagFilter(tag) {
 // ============================================================
 // 🔥 RENDER PUBLISHED APPS CON CACHÉ
 // ============================================================
-async function renderPublishedApps() {
+async async function renderPublishedApps() {
     const apps = await getPublishedApps();
     const searchTerm = document.getElementById('searchInput')?.value.toLowerCase() || "";
     
