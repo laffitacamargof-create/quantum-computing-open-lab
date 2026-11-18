@@ -1193,7 +1193,17 @@ class QuOLabNexusConfigSyncReader {
     const r = NXC().Store.get(src.slice(6));
     return r && r.kind === 'ai' ? r : null;
   }
-  function moduleOf(win) { return Object.keys(iframes).find(k => iframes[k] && iframes[k].contentWindow === win) || null; }
+  function moduleOf(win) {
+    for (const key of Object.keys(iframes)) {
+      const rootFrame = iframes[key]; if (!rootFrame || !rootFrame.contentWindow) continue;
+      let current = win, depth = 0;
+      while (current && depth++ < 8) {
+        if (current === rootFrame.contentWindow) return key;
+        try { if (current === current.parent) break; current = current.parent; } catch (_) { break; }
+      }
+    }
+    return null;
+  }
   function founderBase(key) {
     const slot = apiSlots[key] || {};
     if (slot.founder === 'engine') {
@@ -1277,15 +1287,16 @@ class QuOLabNexusConfigSyncReader {
     const mod = moduleOf(event.source); if (!mod) return;
     const reply = payload => { try { event.source.postMessage(payload, location.origin); } catch (_) {} };
     if (data.type === 'OPENQ_API_REGISTER') {
+      const apiMod = TOOL_OF[data.module] ? data.module : mod;
       const slot = String(data.slot || '').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 32);
       if (!['cpu','qpu','storage','engine','quantum'].includes(slot)) return;
       const kind = slot === 'engine' ? 'cpu' : slot === 'quantum' ? 'qpu' : slot;
       const founder = data.founder === 'engine' || /^https:\/\//i.test(data.founder || '') ? data.founder : '';
-      apiSlots[mod + '.' + kind] = { label:String(data.label || (mod + ' · ' + kind.toUpperCase())).slice(0,80), founder };
+      apiSlots[apiMod + '.' + kind] = { label:String(data.label || (apiMod + ' · ' + kind.toUpperCase())).slice(0,80), founder };
       renderSources();
-      reply({ type:'OPENQ_API_ROUTES', id:data.id, routes:routesFor(mod) }); return;
+      reply({ type:'OPENQ_API_ROUTES', id:data.id, routes:routesFor(apiMod) }); return;
     }
-    if (data.type === 'OPENQ_GET_API_ROUTES') { reply({ type:'OPENQ_API_ROUTES', id:data.id, ok:true, routes:routesFor(mod) }); return; }
+    if (data.type === 'OPENQ_GET_API_ROUTES') { const apiMod = TOOL_OF[data.module] ? data.module : mod; reply({ type:'OPENQ_API_ROUTES', id:data.id, ok:true, routes:routesFor(apiMod) }); return; }
     if (data.type === 'OPENQ_AI_CHAT') {
       try {
         const messages = Array.isArray(data.messages) ? data.messages.slice(0,40) : [];
