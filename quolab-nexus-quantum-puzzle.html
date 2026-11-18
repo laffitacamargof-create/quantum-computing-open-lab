@@ -1174,8 +1174,8 @@ window.addEventListener('message', async function _execPyCallHandler(ev) {
 
     const tid = setTimeout(() => {
         _execPyCalls.delete(id);
-        try { src.postMessage({ type: 'pyResult', id, error: 'El servidor CPU tardó más de 60 segundos. Comprueba que el servidor siga activo y vuelve a intentar.' }, '*'); } catch(e) {}
-    }, 60000);
+        try { src.postMessage({ type: 'pyResult', id, error: 'El motor cuántico no respondió tras el tiempo de espera. Comprueba el estado del servidor CPU y vuelve a intentar.' }, '*'); } catch(e) {}
+    }, 135000);
     _execPyCalls.set(id, { src, tid });
 
     const serverUrl = resolvePuzzleServerUrl(appUrl || '');
@@ -1197,6 +1197,46 @@ window.addEventListener('message', async function _execPyCallHandler(ev) {
     }
 });
 
+async function _waitForQuantumServer(base) {
+    // Hugging Face Spaces can return 503 while the container wakes up.
+    // Poll the engine health endpoint before submitting user code.
+    let lastStatus = 0;
+    let lastDetail = '';
+    for (let attempt = 0; attempt < 8; attempt++) {
+        const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+        const timeoutId = controller ? setTimeout(() => controller.abort(), 5000) : null;
+        try {
+            const response = await fetch(base + '/health', {
+                method: 'GET',
+                headers: { 'Accept': 'application/json' },
+                ...(controller ? { signal: controller.signal } : {})
+            });
+            lastStatus = response.status;
+            if (response.status === 404 || response.status === 405) return;
+            const rawText = await response.text().catch(() => '');
+            lastDetail = rawText.slice(0, 700);
+            if (response.ok) {
+                let health = null;
+                try { health = JSON.parse(rawText); } catch (_) {}
+                if (health && health.sandbox && health.sandbox.ready === false) {
+                    lastDetail = health.sandbox.reason || lastDetail || 'sandbox_not_ready';
+                } else {
+                    return;
+                }
+            } else if (![502, 503, 504].includes(response.status)) {
+                throw new Error('El servidor CPU respondió HTTP ' + response.status + ' al comprobar /health: ' + (lastDetail || response.statusText));
+            }
+        } catch (error) {
+            if (error && error.name !== 'AbortError' && !/Failed to fetch|NetworkError|Load failed/i.test(error.message || '')) throw error;
+            lastDetail = error && error.name === 'AbortError' ? 'Tiempo de espera al despertar el servidor.' : (error.message || 'Error de conexión');
+        } finally {
+            if (timeoutId) clearTimeout(timeoutId);
+        }
+        if (attempt < 7) await new Promise(resolve => setTimeout(resolve, 4000));
+    }
+    throw new Error('El motor cuántico no está listo después de esperar a que despierte. Estado HTTP: ' + (lastStatus || 'sin respuesta') + '. ' + lastDetail.slice(0, 300));
+}
+
 async function _runPythonRemote(code, serverUrl) {
     if (!serverUrl) throw new Error('No hay URL del servidor configurada.');
     const base = serverUrl.trim().replace(/\/+$/, '');
@@ -1204,6 +1244,9 @@ async function _runPythonRemote(code, serverUrl) {
     try { parsedUrl = new URL(base); } catch (_) { throw new Error('La URL del servidor CPU no es válida.'); }
     // Match Quantum App Studio: accept the configured URL as-is. Browser mixed-content
     // policy still applies when the app itself is hosted over HTTPS.
+
+    // Wait for the shared Python engine to wake up before submitting code.
+    await _waitForQuantumServer(base);
 
     // Keep the same request protocol as Quantum App Studio.
     const isHF = base.includes('hf.space') || base.includes('huggingface');
@@ -1257,7 +1300,7 @@ function _buildAppBlob(pythonCode, htmlCode, serverUrl) {
             var timeout = setTimeout(function(){
                 window.removeEventListener('message', handler);
                 reject(new Error('Python request timed out.'));
-            }, 60000);
+            }, 130000);
             function handler(ev) {
                 var d = ev.data;
                 if ((ev.origin !== location.origin && ev.origin !== 'null') || ev.source !== window.parent) return;
