@@ -1174,7 +1174,7 @@ window.addEventListener('message', async function _execPyCallHandler(ev) {
     // Never silently drop a call: return a pyResult error so the app cannot spin forever.
     const validCall = typeof id === 'string' && id.length > 0 && id.length <= 120 &&
         typeof func === 'string' &&
-        /^[A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*)*$/.test(func) &&
+        /^[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*$/.test(func) &&
         Array.isArray(args) && args.length <= 100;
     if (!validCall) {
         try { src.postMessage({ type: 'pyResult', id, error: 'Quantum Puzzle rechazó una llamada Python no válida. Comprueba el nombre de la función y sus argumentos.' }, '*'); } catch(e) {}
