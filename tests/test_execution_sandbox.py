@@ -23,9 +23,9 @@ class SandboxSecurityTests(unittest.TestCase):
     def test_allows_json_wrapper_used_by_quantum_app_bridges(self):
         # Puzzle and App Studio append this exact serialization wrapper to every pyCall.
         code = (
-            "def calculate():\\n    return {'answer': 42}\\n"
-            "import json\\n"
-            "_result = calculate(*[])\\n"
+            "def calculate():\n    return {'answer': 42}\n"
+            "import json\n"
+            "_result = calculate(*[])\n"
             "print(json.dumps(_result, ensure_ascii=False))"
         )
         self.assertTrue(is_safe(code)[0], "The generated pyCall wrapper must pass sandbox validation.")
