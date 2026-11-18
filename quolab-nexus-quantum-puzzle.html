@@ -1232,7 +1232,7 @@ window.addEventListener('message', async function _execPyCallHandler(ev) {
 
 async function _waitForQuantumServer(base, isHF) {
     // Confirm that the configured execution service is actually healthy.
-    // The QuOLab Flask backend must expose /health and report sandbox.ready=true.
+    // The QuOLab execution backend must expose /health and report sandbox.ready=true.
     let lastStatus = 0;
     let lastDetail = '';
     for (let attempt = 0; attempt < 8; attempt++) {
@@ -1280,7 +1280,7 @@ async function _waitForQuantumServer(base, isHF) {
 
 async function _runPythonRemote(code, serverUrl) {
     // Mismo mecanismo directo de Quantum App Studio: enviar el código al
-    // endpoint de ejecución. No bloquear la ejecución con un preflight /health.
+    // endpoint de ejecución, después de confirmar disponibilidad mediante /health.
     if (!serverUrl) throw new Error('No hay URL del servidor configurada.');
     const base = serverUrl.trim().replace(/\/+$/, '');
     let parsedUrl;
