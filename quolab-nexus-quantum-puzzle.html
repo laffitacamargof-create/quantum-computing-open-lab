@@ -1192,7 +1192,7 @@ window.addEventListener('message', async function _execPyCallHandler(ev) {
         if (!serverUrl) throw new Error('No server URL. Configure it in the Founder Panel.');
         // Keep the exact Python wrapper used by Quantum App Studio.
         const fullCode = `${pythonCode}\nimport json\n_result = ${func}(*${JSON.stringify(args)})\nprint(json.dumps(_result, ensure_ascii=False))`;
-        const output = await _executePythonViaStudio(fullCode, serverUrl);
+        const output = await _runPythonRemote(fullCode, serverUrl);
         clearTimeout(tid); _execPyCalls.delete(id);
         let result = (output || '').trim();
         if ((result.startsWith('"') && result.endsWith('"')) ||
@@ -1422,46 +1422,6 @@ function closeExecModal() {
 }
 
 const _execPyCalls = new Map();
-const _studioPythonRequests = new Map();
-
-// Route Puzzle Python calls through the exact executor used by Quantum App Studio.
-async function _executePythonViaStudio(code, serverUrl) {
-    const frame = document.getElementById('studioIframe');
-    if (!frame || !frame.contentWindow) throw new Error('Quantum App Studio no está disponible para ejecutar Python.');
-    // The Studio iframe is loaded with the Puzzle page. Wait for its listener
-    // to exist so the first request is never lost during startup.
-    let ready = false;
-    for (let attempt = 0; attempt < 120; attempt++) {
-        try {
-            ready = !!(frame.contentWindow && frame.contentDocument &&
-                frame.contentDocument.readyState === 'complete' &&
-                typeof frame.contentWindow.postMessage === 'function');
-        } catch (_) { ready = false; }
-        if (ready) break;
-        await new Promise(resolve => setTimeout(resolve, 100));
-    }
-    if (!ready) throw new Error('Quantum App Studio no terminó de iniciar su motor de ejecución.');
-    return new Promise((resolve, reject) => {
-        const requestId = 'puzzle-python-' + Date.now() + '-' + Math.random().toString(36).slice(2);
-        const timer = setTimeout(() => {
-            _studioPythonRequests.delete(requestId);
-            reject(new Error('Quantum App Studio no respondió a la solicitud Python.'));
-        }, 65000);
-        _studioPythonRequests.set(requestId, { resolve, reject, timer });
-        try {
-            frame.contentWindow.postMessage({
-                type: 'QCOL_PYTHON_EXECUTE_REQUEST',
-                requestId,
-                code,
-                serverUrl
-            }, location.origin);
-        } catch (error) {
-            clearTimeout(timer);
-            _studioPythonRequests.delete(requestId);
-            reject(new Error('No se pudo enviar la ejecución a Quantum App Studio: ' + (error.message || error)));
-        }
-    });
-}
 
 // ========== COMMUNICATION WITH QUANTUM APP STUDIO ==========
 const studioModal = document.getElementById('studioModalReal');
@@ -1513,17 +1473,6 @@ window.addEventListener('message', async function(e) {
     const envelope = e.data;
     const data = envelope && envelope.type === 'NEXUS_STUDIO_EVENT' ? envelope.message : envelope;
     if (!data || typeof data !== 'object') return;
-
-    if (data.type === 'QCOL_PYTHON_EXECUTE_RESULT') {
-        if (!studioIframe || e.source !== studioIframe.contentWindow || e.origin !== location.origin) return;
-        const pending = _studioPythonRequests.get(data.requestId);
-        if (!pending) return;
-        clearTimeout(pending.timer);
-        _studioPythonRequests.delete(data.requestId);
-        if (data.success) pending.resolve(typeof data.output === 'string' ? data.output : String(data.output ?? ''));
-        else pending.reject(new Error(data.error || 'Quantum App Studio no pudo ejecutar el código Python.'));
-        return;
-    }
     
     if (data.type === 'QCOL_STUDIO_ADMIN_SAVE') {
         // Only accept administrative writes from the trusted embedded Studio iframe.
