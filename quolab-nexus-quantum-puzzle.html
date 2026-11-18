@@ -1096,7 +1096,7 @@ async function previewPendingApp(appId) {
     const frame = document.getElementById('previewIframe');
     const modal = document.getElementById('previewAppModal');
     if (!frame || !modal) { showNotification('Preview panel unavailable'); return; }
-    frame.srcdoc = _buildAppBlob(app.python_code || app.pythonCode || '', app.html_code || app.htmlCode || '', app.server_url || app.serverUrl || compilerUrl || '');
+    frame.srcdoc = _buildAppBlob(app.python_code || app.pythonCode || '', app.html_code || app.htmlCode || '', app.server_url || app.serverUrl || compilerUrl || '', { slot:app.nexusSlot || app.nexus_slot || 'cpu', connector:app.nexusConnectorId || app.nexus_connector_id || '', module:app.nexusModule || app.nexus_module || 'quantum-puzzle' });
     modal.classList.add('open');
 }
 window.previewPendingApp = previewPendingApp;
