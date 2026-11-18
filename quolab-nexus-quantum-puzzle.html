@@ -1115,6 +1115,19 @@ function executeQuantumApp(appId) {
     });
 }
 
+// Surface runtime errors from the embedded app while leaving its HTML visible.
+window.addEventListener('message', function _execRuntimeErrorHandler(ev) {
+    const d = ev.data;
+    const iframe = document.getElementById('execIframe');
+    if (!d || d.type !== 'QNEXUS_APP_RUNTIME_ERROR' || !iframe ||
+        ev.source !== iframe.contentWindow ||
+        (ev.origin !== location.origin && ev.origin !== 'null')) return;
+    const loadingDiv = document.getElementById('execLoading');
+    if (loadingDiv) loadingDiv.style.display = 'none';
+    console.error('[Quantum App runtime]', d.message);
+    showNotification('Error al iniciar Quantum App: ' + String(d.message || 'JavaScript error').slice(0, 220));
+});
+
 // Listen for pyCall from execIframe and execute them remotely
 window.addEventListener('message', async function _execPyCallHandler(ev) {
     const d = ev.data;
@@ -1214,6 +1227,17 @@ function _buildAppBlob(pythonCode, htmlCode, serverUrl) {
             }, '*');
         });
     };
+    // Report application startup failures to Quantum Puzzle without blocking HTML rendering.
+    function reportRuntimeError(message) {
+        try { window.parent.postMessage({ type: 'QNEXUS_APP_RUNTIME_ERROR', message: String(message || 'Unknown application error').slice(0, 1200) }, '*'); } catch (e) {}
+    }
+    window.addEventListener('error', function(ev) {
+        reportRuntimeError((ev.message || 'JavaScript error') + (ev.filename ? ' (' + ev.filename + ':' + (ev.lineno || 0) + ')' : ''));
+    });
+    window.addEventListener('unhandledrejection', function(ev) {
+        var reason = ev.reason;
+        reportRuntimeError('Unhandled promise rejection: ' + (reason && reason.message ? reason.message : String(reason || 'Unknown rejection')));
+    });
 })();
 <\/script>`;
     let html = typeof htmlCode === 'string' ? htmlCode : '';
@@ -1246,13 +1270,33 @@ function executeWithStudio(app) {
     try {
         const pythonCode = app.python_code || app.pythonCode || '';
         const htmlCode = app.html_code || app.htmlCode || '';
+        let settled = false;
+        let startupTimer = null;
+        const finishLoading = function() {
+            if (settled) return;
+            settled = true;
+            if (startupTimer) clearTimeout(startupTimer);
+            loadingDiv.style.display = 'none';
+        };
+
+        // Register handlers BEFORE assigning srcdoc so fast loads cannot be missed.
+        iframe.onload = finishLoading;
+        iframe.onerror = function() {
+            finishLoading();
+            showNotification('No se pudo cargar la interfaz de esta Quantum App. Revisa su HTML.');
+        };
         iframe.removeAttribute('src');
         iframe.srcdoc = _buildAppBlob(pythonCode, htmlCode, serverUrl);
-        iframe.onload = function() { loadingDiv.style.display = 'none'; };
-        setTimeout(function() { if (loadingDiv.style.display !== 'none') loadingDiv.style.display = 'none'; }, 5000);
+
+        // A missing load event must produce a visible diagnostic, never an endless spinner.
+        startupTimer = setTimeout(function() {
+            if (settled) return;
+            finishLoading();
+            showNotification('La Quantum App no terminó de iniciar. Comprueba los errores de JavaScript o vuelve a intentarlo.');
+        }, 12000);
     } catch(err) {
         loadingDiv.style.display = 'none';
-        showNotification('Error building app: ' + err.message);
+        showNotification('Error building app: ' + (err && err.message ? err.message : String(err)));
     }
 }
 
