@@ -8,7 +8,6 @@
     'quolab-nexus-projects.html': 'projects',
     'quolab-nexus-architect.html': 'architect',
     'quolab-nexus-quantum-notebook.html': 'architect-pro',
-    'quolab-nexus-library.html': 'library',
     'quolab-nexus-help.html': 'help',
     'quolab-nexus-quantum-puzzle.html': 'quantum-puzzle',
     'quolab-nexus-app-studio.html': 'quantum-app-studio'
