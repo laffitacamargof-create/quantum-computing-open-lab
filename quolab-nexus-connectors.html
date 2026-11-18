@@ -189,6 +189,7 @@ link.onclick = () =&gt;
  </div>
 </div>
 
+<script src="quolab-nexus-core.js"></script>
 <script src="quolab-nexus-connectors-core.js"></script>
 <script>
 (function(){
@@ -199,7 +200,7 @@ const names={open_lab:'Quantum Open Lab',notebook:'Quantum Notebook',apps:'Quant
 let user=null,bridge={state:'offline'},published=[],pending=[],dbState='checking',editing=null,timer=null;
 function toast(msg,bad){const t=$('toast');t.textContent=msg;t.style.display='block';t.style.borderColor=bad?'var(--rd)':'var(--cy)';clearTimeout(timer);timer=setTimeout(()=>t.style.display='none',bad?6000:3200);}
 function fail(e){toast(e.message||String(e),true);}
-function founderKey(){try{return localStorage.getItem('nexus_founder_key')||localStorage.getItem('openq_repo_founder_key')||localStorage.getItem('qcol_repo_founder_key')||'';}catch(_){return '';}}
+function founderKey(){return window.QuOLabNexusCore.getFounderKey();}
 function author(){return user&&(user.name||user.username||user.id)||'anonymous';}
 function host(u){try{return new URL(u).host;}catch(_){return u||'';}}
 function chosen(p){return Array.from(document.querySelectorAll('#'+p+' [data-tools] .tl.on')).map(x=>x.dataset.tool);}
@@ -260,7 +261,7 @@ $('pyCode').addEventListener('input',analyze);$('bBridge').onclick=openBridge;$(
 $('pendingX').onclick=()=>$('pendingOv').classList.remove('show');$('pendingOv').onclick=e=>{if(e.target===$('pendingOv'))$('pendingOv').classList.remove('show');};
 $('bridgeX').onclick=$('brClose').onclick=()=>$('bridgeOv').classList.remove('show');$('brGo').onclick=async()=>{NC.Bridge.setCfg({url:$('brUrl').value.trim(),token:$('brTok').value.trim()});await refreshBridge();toast('Bridge state: '+bridge.state);};
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeDialog();$('pendingOv').classList.remove('show');$('bridgeOv').classList.remove('show');}});
-window.addEventListener('message',e=>{if(e.source!==parent||e.origin!==location.origin)return;const d=e.data||{};if(['OPENQ_USER','OPENQ_USER_UPDATE','NEXUS_USER','NEXUS_USER_UPDATE'].includes(d.type)){user=d.user||null;pendingCount();}});
+window.addEventListener('message',e=>{if(e.source!==parent||e.origin!==location.origin)return;const d=window.QuOLabNexusCore.normalizeIncoming(e.data||{});if(['NEXUS_USER','NEXUS_USER_UPDATE'].includes(d.type)){user=d.user||null;pendingCount();}});
 analyze();render();refreshBridge();loadCommunity();setInterval(()=>{if(navigator.onLine)refreshBridge();},15000);
 })();
 </script>>
