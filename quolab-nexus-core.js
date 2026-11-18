@@ -38,7 +38,7 @@
         if (data.type !== responseType || data.id !== id) return;
         global.removeEventListener('message', handler);
         global.clearTimeout(timer);
-        if (!data.ok) reject(new Error(data.error || 'Nexus API request failed'));
+        if (data.ok === false) reject(new Error(data.error || 'Nexus API request failed'));
         else resolve(data);
       };
       const timer = global.setTimeout(() => {
