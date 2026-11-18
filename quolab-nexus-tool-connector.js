@@ -156,9 +156,12 @@
     const config = modules[filename];
     if (!config || !global.QuOLabNexusCore || !global.QuOLabNexusCore.api) return Promise.resolve(null);
     const api = global.QuOLabNexusCore.api;
-    config.slots.forEach(slot => api.register(slot, config.tool + ' · ' + slot.toUpperCase(), slot === 'cpu' ? 'engine' : ''));
     global.QuOLabNexusAPI = api;
-    return api.getRoutes().catch(() => null).then(() => api);
+    return new Promise(resolve => global.setTimeout(async () => {
+      config.slots.forEach(slot => api.register(slot, config.tool + ' · ' + slot.toUpperCase(), slot === 'cpu' ? 'engine' : ''));
+      try { await api.getRoutes(); } catch (_) {}
+      resolve(api);
+    }, 450));
   }
   global.QuOLabNexusReady = installNexusAPI();
 
