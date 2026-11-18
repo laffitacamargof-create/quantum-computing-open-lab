@@ -1277,27 +1277,27 @@ async function _runPythonRemote(code, serverUrl) {
     // The iframe bridge and parent handler have a longer budget than this request.
     const timeoutId = controller ? setTimeout(() => controller.abort(), 120000) : null;
 
-    let res;
+    let res, raw;
     try {
         res = await fetch(url, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
             body,
             ...(controller ? { signal: controller.signal } : {})
         });
+        if (!res.ok) {
+            const detail = await res.text().catch(() => '');
+            throw new Error('Servidor CPU HTTP ' + res.status + ' en ' + (isHF ? '/run/predict' : '/run') + ': ' + (detail || res.statusText).slice(0, 500));
+        }
+        try { raw = await res.json(); }
+        catch (_) { throw new Error('El servidor CPU respondió con un formato no JSON.'); }
     } catch (error) {
-        if (timeoutId) clearTimeout(timeoutId);
-        if (error && error.name === 'AbortError') throw new Error('El servidor CPU no respondió en 60 segundos.');
+        if (error && error.name === 'AbortError') throw new Error('El servidor CPU no respondió en 120 segundos.');
+        if (/^Servidor CPU HTTP |^El servidor CPU respondió/.test(error.message || '')) throw error;
         throw new Error('No se pudo conectar con el servidor CPU (' + parsedUrl.hostname + '): ' + (error?.message || error));
+    } finally {
+        if (timeoutId) clearTimeout(timeoutId);
     }
-    if (timeoutId) clearTimeout(timeoutId);
-    if (!res.ok) {
-        const detail = await res.text().catch(() => '');
-        throw new Error('Servidor CPU HTTP ' + res.status + ' en ' + (isHF ? '/run/predict' : '/run') + ': ' + (detail || res.statusText).slice(0, 500));
-    }
-
-    let raw;
-    try { raw = await res.json(); } catch (_) { throw new Error('El servidor CPU respondió con un formato no JSON.'); }
     const data = isHF ? (raw && Array.isArray(raw.data) ? raw.data[0] : raw) : raw;
     if (!data || typeof data !== 'object' || Array.isArray(data)) {
         throw new Error('El servidor CPU devolvió una respuesta vacía o con formato inválido.');
