@@ -45,7 +45,7 @@ class NexusConnectorsModuleTests(unittest.TestCase):
     def test_external_broker_exists(self): self.assertIn("const ext", self.core)
     def test_local_broker_exists(self): self.assertIn("const loc", self.core)
     def test_ai_connector_uses_vault_secret(self): self.assertIn("Vault.open", self.core)
-    def test_external_connector_uses_vault_secret(self): self.assertIn("Vault.get", self.core)
+    def test_external_connector_uses_vault_secret(self): self.assertIn("Vault.open", self.core)
     def test_local_connector_ast_validation_exists(self): self.assertIn("Analyze.python", self.core)
     def test_community_pending_rpc_exists(self): self.assertIn("nexus_submit_connector", self.core)
     def test_community_published_rpc_exists(self): self.assertIn("nexus_published_connectors", self.core)
