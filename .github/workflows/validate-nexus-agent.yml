@@ -5,11 +5,18 @@ on:
     branches:
       - feature/quolab-nexus-five-specialists
       - feature/quolab-nexus-real-specialist-dispatch
+      - feature/nexus-connectors-remove-library
   pull_request:
     paths:
       - "index.html"
       - "quolab-nexus-agent.js"
       - "quolab-nexus-tool-connector.js"
+      - "quolab-nexus-core.js"
+      - "quolab-nexus-connectors-core.js"
+      - "quolab-nexus-connectors.html"
+      - "quolab-nexus-connectors.sql"
+      - "nexus-bridge/**"
+      - "tests/quolab-nexus-connectors.test.cjs"
       - "quolab-nexus-*.html"
       - "tests/quolab-nexus-specialists.test.cjs"
       - "tests/quolab-nexus-security.test.cjs"
@@ -38,6 +45,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+      - name: Run Nexus bridge, module and shell security tests
+        run: python -m unittest discover -s nexus-bridge/tests -p 'test_*.py' -v
+      - name: Verify Nexus connectors integration checks
+        run: node tests/quolab-nexus-connectors.test.cjs
+      - name: Check Nexus connectors core syntax
+        run: node --check quolab-nexus-connectors-core.js
       - name: Verify Python sandbox escape attempts are rejected
         run: python tests/test_execution_sandbox.py
       - name: Compile Python entrypoints
@@ -73,7 +86,7 @@ jobs:
               "quolab-nexus-quantum-notebook.html",
               "quolab-nexus-quantum-puzzle.html",
               "quolab-nexus-app-studio.html",
-              "quolab-nexus-library.html",
+              "quolab-nexus-connectors.html",
               "quolab-nexus-help.html",
           ]
           count = 0
