@@ -924,26 +924,55 @@
     async function updateServerStatusText(url) {
         const statusSpan = document.getElementById('server-status');
         if (!url) { statusSpan.innerHTML = '⚠️ No URL'; remoteSessionStatus = false; return; }
-        statusSpan.innerHTML = '⏳ testing...';
+        statusSpan.innerHTML = '⏳ waking server...';
         const ok = await testBackendConnection(url);
-        if (ok) { statusSpan.innerHTML = '✅ server active'; remoteSessionStatus = true; }
-        else { statusSpan.innerHTML = '❌ no response'; remoteSessionStatus = false; }
+        if (ok) { statusSpan.innerHTML = '✅ server ready'; remoteSessionStatus = true; }
+        else { statusSpan.innerHTML = '❌ server unavailable'; remoteSessionStatus = false; }
     }
 
+    // Hugging Face Spaces can take several minutes to wake. A timeout on one
+    // health probe is transient, not proof that the server is offline.
     async function testBackendConnection(baseUrl) {
-        try {
-            const cleanUrl = baseUrl.replace(/\/+$/, '');
-            const controller = new AbortController();
-            const timeout = setTimeout(() => controller.abort(), 5000);
-            const res = await fetch(cleanUrl + '/health/predict', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ data: [''] }),
-                signal: controller.signal
-            });
-            clearTimeout(timeout);
-            return res.ok;
-        } catch(e) { return false; }
+        const cleanUrl = String(baseUrl || '').trim().replace(/\/+$/, '');
+        if (!cleanUrl) return false;
+        for (let attempt = 0; attempt < 15; attempt++) {
+            const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+            const timeout = controller ? setTimeout(() => controller.abort(), 12000) : null;
+            try {
+                let res = await fetch(cleanUrl + '/health', {
+                    method: 'GET',
+                    headers: { 'Accept': 'application/json' },
+                    ...(controller ? { signal: controller.signal } : {})
+                });
+                let raw = await res.text().catch(() => '');
+                let payload = null;
+                try { payload = JSON.parse(raw); } catch (_) {}
+
+                // Older Spaces may expose only the Gradio-compatible health route.
+                if (res.status === 404 || res.status === 405) {
+                    res = await fetch(cleanUrl + '/health/predict', {
+                        method: 'GET',
+                        headers: { 'Accept': 'application/json' },
+                        ...(controller ? { signal: controller.signal } : {})
+                    });
+                    raw = await res.text().catch(() => '');
+                    try { payload = JSON.parse(raw); } catch (_) { payload = null; }
+                }
+
+                const health = payload && Array.isArray(payload.data) ? payload.data[0] : payload;
+                if (res.ok && health && health.sandbox && health.sandbox.ready === true) return true;
+                // A reachable 200 response without sandbox metadata is accepted for legacy backends.
+                if (res.ok && (!health || !health.sandbox || typeof health.sandbox.ready !== 'boolean')) return true;
+                // HTTP 503 with a valid not-ready health payload means the Space is waking.
+                if (![404, 405, 429, 502, 503, 504].includes(res.status) && !res.ok) return false;
+            } catch (error) {
+                // Abort/network errors are retried; do not collapse them into "offline" immediately.
+            } finally {
+                if (timeout) clearTimeout(timeout);
+            }
+            if (attempt < 14) await new Promise(resolve => setTimeout(resolve, 4000));
+        }
+        return false;
     }
 
     async function executePythonRemote(code, serverUrl) {
