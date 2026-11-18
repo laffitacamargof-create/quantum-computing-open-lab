@@ -1240,7 +1240,7 @@ async function _waitForQuantumServer(base) {
 
 async function _runPythonRemote(code, serverUrl) {
     if (!serverUrl) throw new Error('No hay URL del servidor configurada.');
-    const base = serverUrl.trim().replace(/\\/+$/, '');
+    const base = serverUrl.trim().replace(/\/+$/, '');
     let parsedUrl;
     try { parsedUrl = new URL(base); } catch (_) { throw new Error('La URL del servidor CPU no es válida.'); }
 
