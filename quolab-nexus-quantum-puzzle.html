@@ -734,6 +734,35 @@ let pendingAppOpening = false;
 const studioOpenRequests = new Map();
 let pendingPreviewApp = null;
 let compilerUrl = '';
+
+// Resolve the same CPU backend configuration used by the embedded App Studio.
+// Keep legacy and current storage keys compatible during the branding migration.
+function resolvePuzzleServerUrl(appUrl) {
+    const candidates = [
+        appUrl,
+        compilerUrl,
+        (() => { try { return localStorage.getItem('openq_colab_url'); } catch (e) { return ''; } })(),
+        (() => { try { return localStorage.getItem('qcol_colab_url'); } catch (e) { return ''; } })()
+    ];
+    const url = candidates.find(value => typeof value === 'string' && value.trim());
+    if (!url) return '';
+    let normalized = url.trim();
+    while (normalized.endsWith('/')) normalized = normalized.slice(0, -1);
+    return normalized;
+}
+
+function acceptPuzzleCompilerUrl(value) {
+    if (typeof value !== 'string' || !value.trim()) return false;
+    let normalized = value.trim();
+    while (normalized.endsWith('/')) normalized = normalized.slice(0, -1);
+    compilerUrl = normalized;
+    try {
+        localStorage.setItem('qcol_colab_url', compilerUrl);
+        localStorage.setItem('openq_colab_url', compilerUrl);
+    } catch (e) { console.warn('[Quantum Puzzle] Could not persist CPU server URL:', e); }
+    return true;
+}
+
 let currentExecutingApp = null;
 let pendingCompileRequest = null;
 
@@ -1145,7 +1174,7 @@ window.addEventListener('message', async function _execPyCallHandler(ev) {
     }, 60000);
     _execPyCalls.set(id, { src, tid });
 
-    const serverUrl = appUrl || compilerUrl || localStorage.getItem('qcol_colab_url') || '';
+    const serverUrl = resolvePuzzleServerUrl(appUrl || '');
     try {
         if (!serverUrl) throw new Error('No server URL. Configure it in the Founder Panel.');
         const callCode = (pythonCode ? pythonCode + '\n\n' : '') +
@@ -1274,7 +1303,7 @@ function executeWithStudio(app) {
 
     loadingDiv.style.display = 'flex';
 
-    const serverUrl = app.server_url || app.serverUrl || compilerUrl || localStorage.getItem('qcol_colab_url') || '';
+    const serverUrl = resolvePuzzleServerUrl(app.server_url || app.serverUrl || '');
 
     // ✅ Verificación mejorada
     if (!app.python_code && !app.html_code && !app.pythonCode && !app.htmlCode) {
@@ -1664,10 +1693,19 @@ window.addEventListener('message', function _openqCompat(ev) {
     const d = ev.data;
     if (!d || typeof d.type !== 'string') return;
     if (d.type === 'OPENQ_USER_UPDATE' || d.type === 'OPENQ_USER') d.type = 'QCOL_USER_UPDATE';
-    else if (d.type === 'OPENQ_COMPILER_URL') d.type = 'QCOL_COMPILER_URL';
-    else if (d.type === 'OPENQ_CONFIG' && d.user !== undefined) {
-        // la configuración también trae al usuario
-        window.postMessage({ type: 'QCOL_USER_UPDATE', user: d.user }, '*');
+    else if (d.type === 'OPENQ_COMPILER_URL') {
+        const url = d.url || d.compilerUrl || d.serverUrl || d.colabUrl;
+        if (acceptPuzzleCompilerUrl(url)) d.type = 'QCOL_COMPILER_URL';
+    } else if (d.type === 'OPENQ_CONFIG') {
+        // The core config carries both session data and, on supported builds, the CPU URL.
+        const config = d.config && typeof d.config === 'object' ? d.config : d;
+        const url = config.compilerUrl || config.serverUrl || config.colabUrl || config.cpuServerUrl;
+        if (acceptPuzzleCompilerUrl(url)) {
+            window.postMessage({ type: 'QCOL_COMPILER_URL', url: compilerUrl }, '*');
+        }
+        if (d.user !== undefined || config.user !== undefined) {
+            window.postMessage({ type: 'QCOL_USER_UPDATE', user: d.user !== undefined ? d.user : config.user }, '*');
+        }
     }
 }, true);
 // pedir al núcleo el usuario actual al arrancar (y reintentar por si el padre aún no está listo)
@@ -1680,7 +1718,7 @@ window.addEventListener('message', function _openqCompat(ev) {
     ask();
 })();
 // URL del compilador: el núcleo la guarda como openq_colab_url
-try { const u = localStorage.getItem('openq_colab_url'); if (u && !localStorage.getItem('qcol_colab_url')) localStorage.setItem('qcol_colab_url', u); } catch (e) {}
+try { const u = localStorage.getItem('openq_colab_url') || localStorage.getItem('qcol_colab_url'); if (u) acceptPuzzleCompilerUrl(u); } catch (e) {}
 
 // ===== DEEP LINK: #app/ID -> abre la Quantum App publicada ya ejecutándose =====
 window.addEventListener('message', function _openqDeepLinkApp(ev) {
