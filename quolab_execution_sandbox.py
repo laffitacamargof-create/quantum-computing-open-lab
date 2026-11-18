@@ -4,7 +4,7 @@ from functools import lru_cache
 
 MAX_CODE_BYTES=20000
 MAX_OUTPUT_BYTES=16000
-ALLOWED_IMPORTS=frozenset({"qiskit","qiskit_aer","numpy","scipy","sympy","cirq","pennylane","qutip","math","cmath","statistics","itertools","functools","collections","decimal","fractions","random"})
+ALLOWED_IMPORTS=frozenset({"qiskit","qiskit_aer","numpy","scipy","sympy","cirq","pennylane","qutip","math","cmath","statistics","itertools","functools","collections","decimal","fractions","random","json"})
 FORBIDDEN_NAMES=frozenset({"__import__","eval","exec","compile","open","input","globals","locals","vars","getattr","setattr","delattr","breakpoint","help","memoryview","type","object","super","classmethod","staticmethod","property"})
 
 def is_safe(code):

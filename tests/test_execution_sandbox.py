@@ -20,6 +20,15 @@ class SandboxSecurityTests(unittest.TestCase):
 
     def test_allows_scientific_imports(self):
         self.assertTrue(is_safe("import math\nimport numpy as np\nfrom qiskit import QuantumCircuit")[0])
+    def test_allows_json_wrapper_used_by_quantum_app_bridges(self):
+        # Puzzle and App Studio append this exact serialization wrapper to every pyCall.
+        code = (
+            "def calculate():\n    return {'answer': 42}\n"
+            "import json\n"
+            "_result = calculate(*[])\n"
+            "print(json.dumps(_result, ensure_ascii=False))"
+        )
+        self.assertTrue(is_safe(code)[0], "The generated pyCall wrapper must pass sandbox validation.")
     def test_rejects_ctypes_and_file_escape_surfaces(self):
         for code in ["import numpy.ctypeslib", "np.ctypeslib.as_ctypes(x)", "np.load('/etc/passwd')"]:
             with self.subTest(code=code):
