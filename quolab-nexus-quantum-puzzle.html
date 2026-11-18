@@ -556,7 +556,7 @@ body::before{
 document.addEventListener('DOMContentLoaded', async function initQuantumSync() {
     try {
         const { QUOLAB_NEXUS_SUPABASE_CONFIG } = await import('./quolab-nexus-supabase-config.js');
-        const { default: QuOLabNexusQuantumSync } = await import('./quolab-nexus-quantum-sync.js?v=20261118-puzzle-reconnect-1');
+        const { default: QuOLabNexusQuantumSync } = await import('./quolab-nexus-quantum-sync.js?v=20261118-pending-retry-2');
         
         console.log('📦 Módulos importados correctamente');
         console.log('📌 Supabase endpoint:', QUOLAB_NEXUS_SUPABASE_CONFIG.supabaseUrl);
