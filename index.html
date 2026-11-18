@@ -1245,9 +1245,9 @@ class QuOLabNexusConfigSyncReader {
     const sel = document.getElementById('src-ai');
     if (sel) sel.onchange = () => setAISource(sel.value);
     const direct = document.getElementById('src-ai-direct');
-    if (direct) direct.onchange = () => { try { localStorage.setItem(AI_DIRECT_KEY, direct.checked ? 'yes' : 'no'); } catch (_) {} };
+    if (direct) direct.onchange = () => { try { localStorage.setItem(AI_DIRECT_KEY, direct.checked ? 'yes' : 'no'); } catch (_) {} setupAI(); };
     const fallback = document.getElementById('src-ai-fallback');
-    if (fallback) fallback.onchange = () => { try { localStorage.setItem(AI_FALLBACK_KEY, fallback.checked ? 'yes' : 'no'); } catch (_) {} };
+    if (fallback) fallback.onchange = () => { try { localStorage.setItem(AI_FALLBACK_KEY, fallback.checked ? 'yes' : 'no'); } catch (_) {} setupAI(); };
   }
   function escSource(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
   function setAISource(value) {
@@ -2180,7 +2180,7 @@ class QuOLabNexusConfigSyncReader {
   function isAIAvailable() {
     // The multi-provider gateway keeps provider keys server-side in Supabase;
     // an empty browser-side key is expected and must not trigger demo mode.
-    return aiCfg.provider === 'gateway' || aiCfg.provider === 'deepseek' || (!!aiCfg.key && aiCfg.provider !== 'none');
+    return !!aiNexusRec() || aiCfg.provider === 'gateway' || aiCfg.provider === 'deepseek' || (!!aiCfg.key && aiCfg.provider !== 'none');
   }
 
   function setupAI() {
@@ -2189,12 +2189,21 @@ class QuOLabNexusConfigSyncReader {
     const txt = document.getElementById('ai-stxt');
     const lbl = document.getElementById('ai-prov-lbl');
     if (isAIAvailable()) {
-      if (dot) dot.className = 'ai-status-dot ok';
-      if (txt) txt.textContent = aiCfg.provider === 'gateway'
-        ? 'QNexusAi · multi-provider gateway · 7 tools'
-        : aiCfg.provider === 'deepseek'
-          ? 'QNexusAi · DeepSeek · 7 tools'
-          : 'QNexusAi active · 7 tools';
+      const nexusRec = aiNexusRec();
+      if (nexusRec && !aiDirectApproved()) {
+        if (dot) dot.className = 'ai-status-dot warn';
+        if (txt) txt.textContent = 'Nexus AI · ' + nexusRec.name + ' · direct-call approval required';
+      } else if (nexusRec) {
+        if (dot) dot.className = 'ai-status-dot ok';
+        if (txt) txt.textContent = 'QNexusAi · Nexus connector · ' + nexusRec.name;
+      } else {
+        if (dot) dot.className = 'ai-status-dot ok';
+        if (txt) txt.textContent = aiCfg.provider === 'gateway'
+          ? 'QNexusAi · founder multi-provider gateway'
+          : aiCfg.provider === 'deepseek'
+            ? 'QNexusAi · founder DeepSeek'
+            : 'QNexusAi · founder provider active';
+      }
       if (lbl) lbl.textContent = '';
     } else {
       if (dot) dot.className = 'ai-status-dot';
