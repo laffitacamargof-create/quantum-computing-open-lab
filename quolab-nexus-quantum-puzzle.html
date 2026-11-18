@@ -1313,7 +1313,7 @@ function _buildAppBlob(pythonCode, htmlCode, serverUrl) {
     window.__pyCode = ${JSON.stringify(pythonCode || '')};
     window.pyCall = function(funcName) {
         const args = Array.prototype.slice.call(arguments, 1);
-        if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(String(funcName))) {
+        if (!/^[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*$/.test(String(funcName))) {
             return Promise.reject(new Error('Invalid Python function name.'));
         }
         return new Promise(function(resolve, reject) {
