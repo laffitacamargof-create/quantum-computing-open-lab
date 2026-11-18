@@ -6,7 +6,6 @@ class QuOLabNexusConfigSync {
     constructor(config) {
         this.SUPABASE_URL = config.supabaseUrl;
         this.SUPABASE_ANON_KEY = config.supabaseAnonKey;
-        this.SUPABASE_SERVICE_KEY = config.supabaseServiceKey;
         
         this.isReady = false;
         this.currentUser = null;
