@@ -945,6 +945,12 @@ class QuOLabNexusConfigSyncReader {
                 const stringValue = typeof value === 'string' ? value : JSON.stringify(value);
                 localStorage.setItem(localKey, stringValue);
                 localStorage.setItem(localKey + '_timestamp', new Date().toISOString());
+                // Keep the current QuOLab key in sync too: Studio reads qcol_colab_url,
+                // while older modules still read openq_colab_url.
+                if (cloudKey === 'colab_url') {
+                    localStorage.setItem('qcol_colab_url', stringValue);
+                    localStorage.setItem('qcol_colab_url_timestamp', new Date().toISOString());
+                }
                 console.log(`📥 Config ${cloudKey} → ${localKey}: aplicada desde la nube`);
                 
                 if (this.onConfigUpdate) {
@@ -1378,11 +1384,21 @@ class QuOLabNexusConfigSyncReader {
 
   function sendCfg(src) {
     try {
+      const compilerUrl = String(
+        (window.configSync && window.configSync.getConfig('colab_url')) ||
+        localStorage.getItem('qcol_colab_url') ||
+        localStorage.getItem('openq_colab_url') ||
+        ''
+      ).trim();
       src.postMessage({
         type: 'OPENQ_CONFIG',
         user: curUser,
         version: VERSION,
-        engineReady: !!localStorage.getItem('openq_colab_url'),
+        engineReady: !!compilerUrl,
+        compilerUrl,
+        serverUrl: compilerUrl,
+        colabUrl: compilerUrl,
+        cpuServerUrl: compilerUrl,
         ghUser: (JSON.parse(localStorage.getItem('openq_gh')||'{}').user)||'laffitacamargof-create',
         ghRepo: (JSON.parse(localStorage.getItem('openq_gh')||'{}').repo)||'quantum-computing-open-lab',
       }, '*');
@@ -3030,6 +3046,20 @@ CONTEXT (staged and size-limited): ${c}`;
       window.configSync.onConfigUpdate = (key, value) => {
         console.log(`📥 Index recibió actualización: ${key}`, value);
         if (key === 'colab_url') {
+          const compilerUrl = String(value || '').trim();
+          if (compilerUrl) {
+            // Mirror the database value into both storage namespaces used by the tools.
+            localStorage.setItem('openq_colab_url', compilerUrl);
+            localStorage.setItem('qcol_colab_url', compilerUrl);
+            broadcast({
+              type: 'OPENQ_CONFIG',
+              user: curUser,
+              compilerUrl,
+              serverUrl: compilerUrl,
+              colabUrl: compilerUrl,
+              cpuServerUrl: compilerUrl
+            });
+          }
           checkEngine();
         }
         if (key === 'ai_config' || key === 'deepseek_config') {
