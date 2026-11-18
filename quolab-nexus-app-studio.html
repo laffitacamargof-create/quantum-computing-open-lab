@@ -1133,7 +1133,7 @@
                     else resolve(event.data.result);
                 };
                 window.addEventListener('message', handler);
-                window.parent.postMessage({ type: 'pyCall', id: msgId, func: funcName, args: args, serverUrl: window.__serverUrl, pythonCode: window.__pyCode }, '*');
+                window.parent.postMessage({ type: 'pyCall', id: msgId, func: funcName, args: args, serverUrl: window.__serverUrl, pythonCode: window.__pyCode, nexusSlot:window.__nexusSlot, nexusConnector:window.__nexusConnector, nexusModule:window.__nexusModule }, '*');
             });
         };
         console.log('QuOLab local app bridge ready; Python server:', window.__serverUrl || 'not configured');
@@ -1252,7 +1252,8 @@
                 duration: reviewed.duration || 8,
                 pythonCode: document.getElementById('python-editor').value,
                 htmlCode: document.getElementById('html-editor').value,
-                serverUrl: localStorage.getItem('qcol_colab_url') || reviewed.serverUrl || ''
+                serverUrl: localStorage.getItem('qcol_colab_url') || reviewed.serverUrl || '',
+                nexusModule:selectedNexusRoute().module, nexusSlot:selectedNexusRoute().slot, nexusConnectorId:selectedNexusRoute().connector
             };
             pendingSaveDraft = draft;
             pendingSaveRequestId = generateId();
@@ -1276,6 +1277,7 @@
                 pythonCode: document.getElementById('python-editor').value,
                 htmlCode: document.getElementById('html-editor').value,
                 serverUrl: localStorage.getItem('qcol_colab_url') || externalEditContext.serverUrl || '',
+                nexusModule:selectedNexusRoute().module, nexusSlot:selectedNexusRoute().slot, nexusConnectorId:selectedNexusRoute().connector,
                 nexusModule:selectedNexusRoute().module, nexusSlot:selectedNexusRoute().slot, nexusConnectorId:selectedNexusRoute().connector
             };
             pendingSaveDraft = draft;
