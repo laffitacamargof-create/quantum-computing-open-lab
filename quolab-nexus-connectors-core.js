@@ -271,13 +271,28 @@
       if (!model) throw NexusError('config', 'The AI connector needs a model name');
       const key = await Vault.open(rec.secrets && rec.secrets.apiKey);
       let r;
+      const body = JSON.stringify({ model, messages: o.messages, max_tokens: o.max_tokens || 1200, temperature: o.temperature == null ? 0.7 : o.temperature });
       try {
         r = await fetch(url, {
           method: 'POST', headers: { 'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ model, messages: o.messages, max_tokens: o.max_tokens || 1200, temperature: o.temperature == null ? 0.7 : o.temperature }),
-          signal: AbortSignal.timeout(o.timeout || 30000),
+          body, signal: AbortSignal.timeout(o.timeout || 30000),
         });
-      } catch (e) { throw NexusError('network', 'Could not reach ' + new URL(url).host + ' (' + (e.name === 'TimeoutError' ? 'timeout' : 'blocked or offline') + ')'); }
+      } catch (e) {
+        if (e.name !== 'TimeoutError') {
+          try {
+            const proxied = await Bridge.proxy({ url, method:'POST', headers:{'Authorization':'Bearer '+key,'Content-Type':'application/json'}, body, timeout:o.timeout ? Math.round(o.timeout/1000) : 30 });
+            if (proxied.status >= 200 && proxied.status < 300) {
+              const payload = JSON.parse(proxied.body || '{}');
+              const answer = payload.choices && payload.choices[0] && payload.choices[0].message && payload.choices[0].message.content;
+              if (typeof answer === 'string') return answer;
+            }
+            throw NexusError('network', 'Local bridge proxy returned HTTP ' + proxied.status);
+          } catch (proxyError) {
+            throw NexusError('network', 'Could not reach ' + new URL(url).host + ' directly or through the paired local bridge (' + (proxyError.message || proxyError) + ')');
+          }
+        }
+        throw NexusError('network', 'Could not reach ' + new URL(url).host + ' (timeout)');
+      }
       let d = {}; try { d = await r.json(); } catch (e) {}
       if (!r.ok) throw NexusError('api', (d.error && (d.error.message || d.error)) || ('API HTTP ' + r.status), { status: r.status });
       const c = d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content;
