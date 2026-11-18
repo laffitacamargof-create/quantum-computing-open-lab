@@ -1165,73 +1165,51 @@ window.addEventListener('message', async function _execPyCallHandler(ev) {
 });
 
 async function _runPythonRemote(code, serverUrl) {
-    const base = (serverUrl || '').trim().replace(/\/+$/, '');
-    if (!base) throw new Error('No hay un servidor CPU configurado. Abre el Panel del Fundador y configura la URL del motor.');
-
+    if (!serverUrl) throw new Error('No hay URL del servidor configurada.');
+    const base = serverUrl.trim().replace(/\\/+$/, '');
     let parsedUrl;
-    try { parsedUrl = new URL(base); } catch (_) { throw new Error('La URL del servidor CPU no es válida. Debe comenzar por https://'); }
+    try { parsedUrl = new URL(base); } catch (_) { throw new Error('La URL del servidor CPU no es válida.'); }
     if (parsedUrl.protocol !== 'https:' && parsedUrl.hostname !== 'localhost' && parsedUrl.hostname !== '127.0.0.1') {
-        throw new Error('El servidor CPU debe usar HTTPS para permitir la conexión segura desde Quantum Puzzle.');
+        throw new Error('El servidor CPU debe usar HTTPS.');
     }
 
-    const isHF = /(^|\.)hf\.space$/i.test(parsedUrl.hostname) || parsedUrl.hostname.includes('huggingface');
+    // Match Quantum App Studio's proven request protocol exactly:
+    // Hugging Face -> POST /run/predict with fn_index 0.
+    // Other servers -> POST /run with { code, lib: 'python' }.
+    const isHF = base.includes('hf.space') || base.includes('huggingface');
+    const url = base + (isHF ? '/run/predict' : '/run');
+    const body = isHF
+        ? JSON.stringify({ data: [code], fn_index: 0 })
+        : JSON.stringify({ code: code, lib: 'python' });
     const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
     const timeoutId = controller ? setTimeout(() => controller.abort(), 55000) : null;
-    const fetchOptions = controller ? { signal: controller.signal } : {};
-
-    // The configured QCOL Motor Space is a Flask API exposing /health and /run.
-    // Only use Gradio's /run/predict protocol when /health is absent (404).
-    let endpoint = base + '/run';
-    let body = JSON.stringify({ code });
-    if (isHF) {
-        let health;
-        try {
-            health = await fetch(base + '/health', { method: 'GET', ...fetchOptions });
-        } catch (error) {
-            if (timeoutId) clearTimeout(timeoutId);
-            if (error && error.name === 'AbortError') throw new Error('El servidor CPU no respondió al comprobar /health (55 s).');
-            throw new Error('No se puede alcanzar el servidor CPU en ' + parsedUrl.hostname + '. Comprueba que el Space esté activo y que permita CORS desde QuOLab Nexus. Detalle: ' + (error?.message || error));
-        }
-        if (health.status === 404) {
-            endpoint = base + '/run/predict';
-            body = JSON.stringify({ data: [code], fn_index: 1 });
-        } else if (!health.ok) {
-            if (timeoutId) clearTimeout(timeoutId);
-            const detail = await health.text().catch(() => '');
-            throw new Error('El servidor CPU respondió HTTP ' + health.status + ' en /health. ' + detail.slice(0, 240));
-        } else {
-            const status = await health.json().catch(() => ({}));
-            if (status.status && !['ok', 'online', 'healthy'].includes(String(status.status).toLowerCase())) {
-                if (timeoutId) clearTimeout(timeoutId);
-                throw new Error('El motor CPU está accesible, pero no está listo: ' + String(status.status));
-            }
-        }
-    }
 
     let res;
     try {
-        res = await fetch(endpoint, {
+        res = await fetch(url, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            headers: { 'Content-Type': 'application/json' },
             body,
-            ...fetchOptions
+            ...(controller ? { signal: controller.signal } : {})
         });
     } catch (error) {
         if (timeoutId) clearTimeout(timeoutId);
-        if (error && error.name === 'AbortError') throw new Error('El servidor CPU no respondió en 55 segundos. Comprueba que el motor siga activo.');
-        throw new Error('Falló la conexión con ' + parsedUrl.hostname + endpoint.slice(base.length) + '. Puede estar apagado o rechazar CORS. Detalle: ' + (error?.message || error));
+        if (error && error.name === 'AbortError') throw new Error('El servidor CPU no respondió en 55 segundos.');
+        throw new Error('No se pudo conectar con el servidor CPU (' + parsedUrl.hostname + '): ' + (error?.message || error));
     }
     if (timeoutId) clearTimeout(timeoutId);
     if (!res.ok) {
         const detail = await res.text().catch(() => '');
-        throw new Error('Servidor CPU HTTP ' + res.status + ' en ' + endpoint.slice(base.length) + ' — ' + (detail || res.statusText).slice(0, 500));
+        throw new Error('Servidor CPU HTTP ' + res.status + ' en ' + (isHF ? '/run/predict' : '/run') + ': ' + (detail || res.statusText).slice(0, 500));
     }
 
     let raw;
-    try { raw = await res.json(); } catch (_) { throw new Error('El servidor CPU respondió con un formato no JSON en ' + endpoint.slice(base.length) + '.'); }
-    const out = isHF && endpoint.endsWith('/run/predict') ? (raw.data?.[0] ?? raw) : raw;
-    if (out?.success === false) throw new Error(out.output || out.error || 'El servidor rechazó la ejecución.');
-    return out?.output ?? out?.result ?? String(out ?? '');
+    try { raw = await res.json(); } catch (_) { throw new Error('El servidor CPU respondió con un formato no JSON.'); }
+    const data = isHF ? (raw.data?.[0] || raw) : raw;
+    if (data.success === false) throw new Error(data.output || data.error || 'El servidor rechazó la ejecución.');
+    let output = data.output || data.result || '';
+    if (typeof decodeUnicode === 'function') output = decodeUnicode(output);
+    return output;
 }
 
 function _buildAppBlob(pythonCode, htmlCode, serverUrl) {
