@@ -959,26 +959,27 @@
             : JSON.stringify({ code: code, lib: 'python' });
         const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
         const timeoutId = controller ? setTimeout(() => controller.abort(), 120000) : null;
-        let res;
+        let raw;
         try {
-            res = await fetch(url, {
+            const res = await fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
                 body,
                 ...(controller ? { signal: controller.signal } : {})
             });
+            if (!res.ok) {
+                const detail = await res.text().catch(() => '');
+                throw new Error('Python server HTTP ' + res.status + ': ' + detail.slice(0, 500));
+            }
+            try { raw = await res.json(); }
+            catch (_) { throw new Error('Python server returned invalid JSON.'); }
         } catch (error) {
             if (error && error.name === 'AbortError') throw new Error('Python server timed out after 120 seconds.');
+            if (/^Python server HTTP |^Python server returned invalid JSON/.test(error.message || '')) throw error;
             throw new Error('Could not connect to Python server (' + parsed.hostname + '): ' + (error?.message || error));
         } finally {
             if (timeoutId) clearTimeout(timeoutId);
         }
-        if (!res.ok) {
-            const detail = await res.text().catch(() => '');
-            throw new Error('Python server HTTP ' + res.status + ': ' + detail.slice(0, 500));
-        }
-        let raw;
-        try { raw = await res.json(); } catch (_) { throw new Error('Python server returned invalid JSON.'); }
         const data = isHF && raw && Array.isArray(raw.data) ? raw.data[0] : raw;
         if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('Python server returned an invalid response.');
         if (data.success === false) throw new Error(data.output || data.error || 'Python execution failed.');
