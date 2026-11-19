@@ -1330,18 +1330,14 @@ class QuOLabNexusConfigSyncReader {
       const slot = String(data.slot || '').toLowerCase(), key = apiMod + '.' + slot, method = String(data.method || 'GET').toUpperCase();
       try {
         if (!apiSlots[key]) throw new Error('Unknown API slot "' + slot + '"');
-        const rec = assignedConnector(apiMod, slot, data.connector);
-        if (rec) {
-          const result = await NXC().ext.request({ tool:TOOL_OF[apiMod] || 'chat', connector:rec.id, method, path:data.path || '', headers:data.headers, body:data.body, timeout:data.timeout });
-          reply({ type:'OPENQ_API_RESULT', id:data.id, ok:true, status:result.status, headers:result.headers, text:result.text, source:'nexus', connector:rec.id });
-        } else {
-          const base = founderBase(key); if (!base) throw new Error('Founder default is not configured for ' + slot);
-          const b = new URL(base), u = new URL(String(data.path || ''), b.href.endsWith('/') ? b.href : b.href + '/');
-          if (u.origin !== b.origin) throw new Error('Request path leaves the configured API origin');
-          const response = await fetch(u.href, { method, headers:data.headers || {}, body:data.body && typeof data.body === 'object' ? JSON.stringify(data.body) : data.body || undefined, signal:AbortSignal.timeout(data.timeout || 30000) });
-          const headers = {}; response.headers.forEach((v,k) => headers[k] = v);
-          reply({ type:'OPENQ_API_RESULT', id:data.id, ok:true, status:response.status, headers, text:await response.text(), source:'founder' });
-        }
+        const nx = NXC();
+        if (!nx || typeof nx.requestAssigned !== 'function') throw new Error('Nexus Connectors broker is unavailable');
+        const result = await nx.requestAssigned({
+          moduleId:apiMod, kind:slot, tool:TOOL_OF[apiMod] || 'chat',
+          connector:data.connector, fallbackBase:founderBase(key), method,
+          path:data.path || '', headers:data.headers, body:data.body, timeout:data.timeout
+        });
+        reply({ type:'OPENQ_API_RESULT', id:data.id, ok:true, status:result.status, headers:result.headers, text:result.text, source:result.source, connector:result.connector });
       } catch (error) { reply({ type:'OPENQ_API_RESULT', id:data.id, ok:false, error:String(error.message || error) }); }
     }
   }
