@@ -2165,10 +2165,7 @@ class QuOLabNexusConfigSyncReader {
     const lbl = document.getElementById('ai-prov-lbl');
     if (isAIAvailable()) {
       const nexusRec = aiNexusRec();
-      if (nexusRec && !aiDirectApproved()) {
-        if (dot) dot.className = 'ai-status-dot warn';
-        if (txt) txt.textContent = 'Nexus AI · ' + nexusRec.name + ' · direct-call approval required';
-      } else if (nexusRec) {
+      if (nexusRec) {
         if (dot) dot.className = 'ai-status-dot ok';
         if (txt) txt.textContent = 'QNexusAi · Nexus connector · ' + nexusRec.name;
       } else {
