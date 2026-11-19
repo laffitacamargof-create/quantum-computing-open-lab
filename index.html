@@ -1319,28 +1319,38 @@ class QuOLabNexusConfigSyncReader {
         if (!messages.length || !messages.every(m => m && ['system','user','assistant'].includes(m.role) && typeof m.content === 'string' && m.content.length < 60000)) throw new Error('Invalid AI messages');
         const apiMod = mod;
         const tool = TOOL_OF[apiMod] || 'chat';
+        const nx = NXC();
+        const assignedAI = nx && nx.Assignments ? nx.Assignments.get(apiMod, 'ai') : 'founder';
+        if (assignedAI && assignedAI !== 'founder') {
+          if (!nx.ai || typeof nx.ai.chat !== 'function') throw new Error('Nexus Connectors AI transport is unavailable');
+          const routed = await nx.ai.chat({ tool, connector:assignedAI, messages, max_tokens:data.max_tokens, temperature:data.temperature, timeout:data.timeout });
+          reply({ type:'OPENQ_AI_RESULT', id:data.id, ok:true, text:routed.text, source:'nexus', connector:routed.connector });
+          return;
+        }
         const text = await aiComplete(messages, { tool, tokens:data.max_tokens, temp:data.temperature });
         const result = text == null ? await callAI(messages[messages.length-1].content, null, { historyLimit:0, systemSuffix:messages[0] && messages[0].role === 'system' ? messages[0].content : '' }) : text;
-        reply({ type:'OPENQ_AI_RESULT', id:data.id, ok:true, text:result, source:aiNexusRec() ? 'nexus' : 'founder' });
+        reply({ type:'OPENQ_AI_RESULT', id:data.id, ok:true, text:result, source:'founder' });
       } catch (error) { reply({ type:'OPENQ_AI_RESULT', id:data.id, ok:false, error:String(error.message || error) }); }
       return;
     }
     if (data.type === 'OPENQ_API_REQUEST') {
       const apiMod = mod;
       const slot = String(data.slot || '').toLowerCase(), key = apiMod + '.' + slot, method = String(data.method || 'GET').toUpperCase();
+      const nx = NXC();
       try {
         if (!apiSlots[key]) throw new Error('Unknown API slot "' + slot + '"');
+        if (!nx || !nx.ext || typeof nx.ext.requestDefault !== 'function') throw new Error('Nexus Connectors transport is not initialized');
         const rec = assignedConnector(apiMod, slot, data.connector);
+        if (data.connector && !rec) throw new Error('The requested connector is not assigned to ' + apiMod + ' · ' + slot);
+        let result;
         if (rec) {
-          const result = await NXC().ext.request({ tool:TOOL_OF[apiMod] || 'chat', connector:rec.id, method, path:data.path || '', headers:data.headers, body:data.body, timeout:data.timeout });
+          result = await nx.ext.request({ tool:TOOL_OF[apiMod] || 'chat', connector:rec.id, method, path:data.path || '', headers:data.headers, body:data.body, timeout:data.timeout });
           reply({ type:'OPENQ_API_RESULT', id:data.id, ok:true, status:result.status, headers:result.headers, text:result.text, source:'nexus', connector:rec.id });
         } else {
-          const base = founderBase(key); if (!base) throw new Error('Founder default is not configured for ' + slot);
-          const b = new URL(base), u = new URL(String(data.path || ''), b.href.endsWith('/') ? b.href : b.href + '/');
-          if (u.origin !== b.origin) throw new Error('Request path leaves the configured API origin');
-          const response = await fetch(u.href, { method, headers:data.headers || {}, body:data.body && typeof data.body === 'object' ? JSON.stringify(data.body) : data.body || undefined, signal:AbortSignal.timeout(data.timeout || 30000) });
-          const headers = {}; response.headers.forEach((v,k) => headers[k] = v);
-          reply({ type:'OPENQ_API_RESULT', id:data.id, ok:true, status:response.status, headers, text:await response.text(), source:'founder' });
+          const base = data.baseUrl || founderBase(key);
+          if (!base) throw new Error('Founder default is not configured for ' + slot);
+          result = await nx.ext.requestDefault({ baseUrl:base, method, path:data.path || '', headers:data.headers, body:data.body, timeout:data.timeout });
+          reply({ type:'OPENQ_API_RESULT', id:data.id, ok:true, status:result.status, headers:result.headers, text:result.text, source:'nexus-founder-default' });
         }
       } catch (error) { reply({ type:'OPENQ_API_RESULT', id:data.id, ok:false, error:String(error.message || error) }); }
     }
