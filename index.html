@@ -1327,7 +1327,10 @@ class QuOLabNexusConfigSyncReader {
     }
     if (data.type === 'OPENQ_API_REQUEST') {
       const apiMod = mod;
-      const slot = String(data.slot || '').toLowerCase(), key = apiMod + '.' + slot, method = String(data.method || 'GET').toUpperCase();
+      const slotInput = String(data.slot || '').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 32);
+      // Normalize legacy aliases exactly as OPENQ_API_REGISTER does.
+      const slot = slotInput === 'engine' ? 'cpu' : slotInput === 'quantum' ? 'qpu' : slotInput;
+      const key = apiMod + '.' + slot, method = String(data.method || 'GET').toUpperCase();
       try {
         if (!apiSlots[key]) throw new Error('Unknown API slot "' + slot + '"');
         const nx = NXC();
