@@ -12,6 +12,18 @@ const studio = read('quolab-nexus-app-studio.html');
 const workflow = read('.github/workflows/validate-nexus-agent.yml');
 
 assert.match(ui, /Nexus Connectors/);
+assert.match(ui, /id="bAddAI"/);
+assert.match(ui, /id="bAddExt"/);
+assert.match(ui, /id="bAddLoc"/);
+assert.match(ui, /API.*EXTERNAL API.*No interface or local code/s);
+const aiPane = (ui.match(/<div class="pane show" id="p-ai">([\\s\\S]*?)<\\/div>\\s*<div class="pane" id="p-ext">/) || [,''])[1];
+const extPane = (ui.match(/<div class="pane" id="p-ext">([\\s\\S]*?)<\\/div>\\s*<div class="pane" id="p-loc">/) || [,''])[1];
+assert.ok(aiPane && extPane, 'AI and external API forms must be independent panes');
+assert.doesNotMatch(aiPane + extPane, /loc-ui|loc-web|pyCode|INTERFACE|LOCAL LOGIC/i);
+assert.match(ui, /function startCreate\\(kind\\)/);
+assert.match(ui, /startCreate\\('ext'\\)/);
+assert.match(ui, /startCreate\\('ai'\\)/);
+assert.match(ui, /NC\\.Make\\.loc/);
 assert.match(ui, /TOOL ASSIGNMENTS/);
 assert.match(ui, /ext-via/);
 assert.match(ui, /SHARE/);
