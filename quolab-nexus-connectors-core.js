@@ -257,6 +257,45 @@
       Policy.consume(rec);
       return { text, connector: rec.id, name: rec.name };
     },
+    async requestDefault(o) {
+      // Built-in Founder default still uses the Nexus Connectors transport.
+      // The shell may select this only when no per-tool external connector is assigned.
+      o = o || {};
+      const method = String(o.method || 'GET').toUpperCase();
+      let base;
+      try { base = new URL(String(o.baseUrl || '')); }
+      catch (_) { throw NexusError('config', 'The Founder default server URL is invalid'); }
+      const localHttp = base.protocol === 'http:' && /^(localhost|127\\.0\\.0\\.1|\\[::1\\])$/i.test(base.hostname);
+      if (base.protocol !== 'https:' && !localHttp) throw NexusError('config', 'Founder default services must use HTTPS (HTTP is allowed only for localhost)');
+      if (base.username || base.password) throw NexusError('config', 'Credentials must be stored in a Nexus connector, not inside the server URL');
+      const url = new URL(String(o.path || ''), base.href.endsWith('/') ? base.href : base.href + '/');
+      if (url.origin !== base.origin) throw NexusError('scope', 'Founder default requests cannot leave the configured server origin');
+      const headers = Object.assign({}, o.headers || {});
+      let body = o.body;
+      if (body && typeof body === 'object') { body = JSON.stringify(body); if (!headers['Content-Type'] && !headers['content-type']) headers['Content-Type'] = 'application/json'; }
+      const timeout = Math.max(1000, Math.min(Number(o.timeout) || 30000, 180000));
+      const doBridge = async () => {
+        const j = await Bridge.proxy({ url:url.href, method, headers, body:body || null, timeout:Math.ceil(timeout / 1000) });
+        const text = j.body || '';
+        return { status:j.status, ok:j.status >= 200 && j.status < 300, headers:j.headers || {}, text,
+          json() { try { return JSON.parse(text); } catch (_) { return null; } } };
+      };
+      if (o.via === 'bridge') return doBridge();
+      try {
+        const r = await fetch(url.href, { method, headers, body:body || undefined, signal:AbortSignal.timeout(timeout) });
+        const text = await r.text(), hs = {};
+        r.headers.forEach((v,k) => hs[k] = v);
+        return { status:r.status, ok:r.ok, headers:hs, text,
+          json() { try { return JSON.parse(text); } catch (_) { return null; } } };
+      } catch (e) {
+        // Only retry safe reads through the bridge. Never replay an execution POST
+        // after an ambiguous browser/network failure: the remote job may have started.
+        if ((method === 'GET' || method === 'HEAD') && e.name !== 'TimeoutError') {
+          try { return await doBridge(); } catch (_) {}
+        }
+        throw NexusError('network', 'The Nexus Connectors transport could not reach ' + url.host + ': ' + (e.message || e));
+      }
+    },
     async test(id) { // does not consume "once"
       const rec = Store.get(id); if (!rec) throw NexusError('missing', 'Connector not found');
       const t0 = performance.now();
