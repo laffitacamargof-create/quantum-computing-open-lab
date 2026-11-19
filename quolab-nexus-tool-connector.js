@@ -130,24 +130,31 @@
   function engineRequestInfo(rawUrl, init, input) {
     try {
       const url = new URL(typeof rawUrl === 'string' ? rawUrl : (rawUrl && rawUrl.url) || '', global.location.href);
-      if (!/\/(?:run|health)(?:\/|$)/i.test(url.pathname)) return null;
+      const isEngineRoute = /\\/(?:run|health)(?:\\/|$)/i.test(url.pathname);
+      const isSupabaseRoute = /\\.supabase\\.co$/i.test(url.hostname);
+      if (!isEngineRoute && !isSupabaseRoute) return null;
       const method = String((init && init.method) || (input && input.method) || 'GET').toUpperCase();
       const headers = new Headers((init && init.headers) || (input && input.headers) || {});
-      const requestedSlot = (init && init.nexusSlot) || headers.get('X-Nexus-Slot') || 'cpu';
+      const requestedSlot = (init && init.nexusSlot) || headers.get('X-Nexus-Slot') || (isSupabaseRoute ? 'storage' : 'cpu');
       const requestedConnector = (init && init.nexusConnector) || headers.get('X-Nexus-Connector') || '';
       const requestedModule = (init && init.nexusModule) || headers.get('X-Nexus-Module') || global.__QUOLAB_NEXUS_MODULE || '';
       const saved = ['nexus_colab_url','qcol_colab_url','openq_colab_url'].map(k => {
         try { return global.localStorage.getItem(k); } catch (_) { return ''; }
       }).filter(Boolean);
       const known = saved.some(value => { try { return new URL(value).origin === url.origin; } catch (_) { return false; } });
-      // Explicit module metadata marks a configured per-tool backend, even when it is not the default HF Space.
+      // Supabase is the ecosystem's storage/database transport. Route it through the
+      // per-tool STORAGE assignment; engine URLs use CPU/QPU assignments as before.
       const explicitRoute = !!(requestedModule || requestedConnector || (init && init.nexusSlot) || headers.has('X-Nexus-Slot'));
-      if (!known && !/\.hf\.space$/i.test(url.hostname) && !explicitRoute) return null;
+      if (!isSupabaseRoute && !known && !/\\.hf\\.space$/i.test(url.hostname) && !explicitRoute) return null;
       headers.delete('X-Nexus-Slot');
       headers.delete('X-Nexus-Connector');
       headers.delete('X-Nexus-Module');
       const cleanHeaders = {};
-      headers.forEach((value, key) => { if (!/^(authorization|proxy-authorization|cookie|x-api-key)$/i.test(key)) cleanHeaders[key] = value; });
+      headers.forEach((value, key) => {
+        // Storage requests need their Supabase apikey/JWT to reach the configured
+        // storage connector. These headers are never included in telemetry.
+        if (isSupabaseRoute || !/^(authorization|proxy-authorization|cookie|x-api-key)$/i.test(key)) cleanHeaders[key] = value;
+      });
       return { slot: requestedSlot, connector:requestedConnector, module:requestedModule, baseUrl:url.origin, path: url.pathname + url.search, method, headers: cleanHeaders, body: init && init.body, timeout: init && init.timeout };
     } catch (_) { return null; }
   }
@@ -156,7 +163,7 @@
     const modules = {
       'quolab-nexus-architect.html': { slots:['cpu','qpu','storage'], tool:'architect' },
       'quolab-nexus-quantum-notebook.html': { slots:['cpu','storage'], tool:'architect-pro' },
-      'quolab-nexus-quantum-puzzle.html': { slots:['cpu','qpu'], tool:'quantum-puzzle' },
+      'quolab-nexus-quantum-puzzle.html': { slots:['cpu','qpu','storage'], tool:'quantum-puzzle' },
       'quolab-nexus-app-studio.html': { slots:['cpu','qpu','storage'], tool:'quantum-app-studio' }
     };
     const config = modules[filename];
