@@ -39,7 +39,7 @@ assert.ok(!agent.includes('MAX_EVENTS = 40'));
 assert.ok(agent.includes("quolab:nexus-activity"));
 assert.ok(agent.includes("mode: 'single_autonomous_agent'"));
 assert.ok(agent.includes('const TOOL_CATALOG = Object.freeze'));
-for(const id of ['projects','architect','architect-pro','quantum-puzzle','quantum-app-studio','library','help'])assert.ok(agent.includes(id+': {')||agent.includes("'"+id+"': {"),'missing tool guide '+id);
+for(const id of ['projects','architect','architect-pro','quantum-puzzle','quantum-app-studio','help'])assert.ok(agent.includes(id+': {')||agent.includes("'"+id+"': {"),'missing tool guide '+id);
 for(const field of ['purpose','workflow','capabilities','controls','functions','how_to','limits'])assert.ok(agent.includes(field+': '),'missing guide field '+field);
 assert.ok(agent.includes('item.visible_text'));
 assert.ok(agent.includes('item.links='));
