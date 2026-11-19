@@ -131,22 +131,24 @@
     try {
       const url = new URL(typeof rawUrl === 'string' ? rawUrl : (rawUrl && rawUrl.url) || '', global.location.href);
       if (!/\/(?:run|health)(?:\/|$)/i.test(url.pathname)) return null;
-      const saved = ['nexus_colab_url','qcol_colab_url','openq_colab_url'].map(k => {
-        try { return global.localStorage.getItem(k); } catch (_) { return ''; }
-      }).filter(Boolean);
-      const known = saved.some(value => { try { return new URL(value).origin === url.origin; } catch (_) { return false; } });
-      if (!known && !/\.hf\.space$/i.test(url.hostname)) return null;
       const method = String((init && init.method) || (input && input.method) || 'GET').toUpperCase();
       const headers = new Headers((init && init.headers) || (input && input.headers) || {});
       const requestedSlot = (init && init.nexusSlot) || headers.get('X-Nexus-Slot') || 'cpu';
       const requestedConnector = (init && init.nexusConnector) || headers.get('X-Nexus-Connector') || '';
-      const requestedModule = (init && init.nexusModule) || global.__QUOLAB_NEXUS_MODULE || '';
+      const requestedModule = (init && init.nexusModule) || headers.get('X-Nexus-Module') || global.__QUOLAB_NEXUS_MODULE || '';
+      const saved = ['nexus_colab_url','qcol_colab_url','openq_colab_url'].map(k => {
+        try { return global.localStorage.getItem(k); } catch (_) { return ''; }
+      }).filter(Boolean);
+      const known = saved.some(value => { try { return new URL(value).origin === url.origin; } catch (_) { return false; } });
+      // Explicit module metadata marks a configured per-tool backend, even when it is not the default HF Space.
+      const explicitRoute = !!(requestedModule || requestedConnector || (init && init.nexusSlot) || headers.has('X-Nexus-Slot'));
+      if (!known && !/\.hf\.space$/i.test(url.hostname) && !explicitRoute) return null;
       headers.delete('X-Nexus-Slot');
       headers.delete('X-Nexus-Connector');
       headers.delete('X-Nexus-Module');
       const cleanHeaders = {};
       headers.forEach((value, key) => { if (!/^(authorization|proxy-authorization|cookie|x-api-key)$/i.test(key)) cleanHeaders[key] = value; });
-      return { slot: requestedSlot, connector:requestedConnector, module:requestedModule, path: url.pathname + url.search, method, headers: cleanHeaders, body: init && init.body, timeout: init && init.timeout };
+      return { slot: requestedSlot, connector:requestedConnector, module:requestedModule, baseUrl:url.origin, path: url.pathname + url.search, method, headers: cleanHeaders, body: init && init.body, timeout: init && init.timeout };
     } catch (_) { return null; }
   }
   function installNexusAPI() {
