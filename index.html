@@ -1211,23 +1211,30 @@ class QuOLabNexusConfigSyncReader {
     }
     return /^https:\/\//i.test(slot.founder || '') ? slot.founder : '';
   }
+  function connectorCategory(kind) {
+    return kind === 'cpu' ? 'classical' : kind === 'qpu' ? 'quantum' : kind === 'storage' ? 'storage' : null;
+  }
   function assignedConnector(mod, kind, requested) {
     const nx = NXC(); if (!nx) return null;
-    let value = nx.Assignments.get(mod, kind);
+    const value = nx.Assignments.get(mod, kind);
     const ids = Array.isArray(value) ? value : (value && value !== 'founder' ? [value] : []);
-    const id = requested && ids.includes(requested) ? requested : ids[0];
-    if (!id) return null;
-    const rec = nx.Store.get(id);
-    if (!rec || rec.kind !== 'ext') return null;
-    const expected = kind === 'cpu' ? 'classical' : kind === 'qpu' ? 'quantum' : kind === 'storage' ? 'storage' : null;
-    return !expected || rec.ext.category === expected ? rec : null;
+    const ordered = requested && ids.includes(requested)
+      ? [requested].concat(ids.filter(id => id !== requested)) : ids;
+    const expected = connectorCategory(kind);
+    for (const id of ordered) {
+      const rec = nx.Store.get(id);
+      if (rec && rec.kind === 'ext' && (!expected || (rec.ext && rec.ext.category === expected))) return rec;
+    }
+    return null;
   }
   function routesFor(mod) {
     const out = {}, nx = NXC();
     ['cpu','qpu','storage'].forEach(kind => {
       const value = nx ? nx.Assignments.get(mod, kind) : 'founder';
       const ids = Array.isArray(value) ? value : (value && value !== 'founder' ? [value] : []);
-      const records = nx ? ids.map(id => nx.Store.get(id)).filter(Boolean) : [];
+      const expected = connectorCategory(kind);
+      const records = nx ? ids.map(id => nx.Store.get(id)).filter(r =>
+        r && r.kind === 'ext' && (!expected || (r.ext && r.ext.category === expected))) : [];
       out[kind] = { source: records.length ? 'nexus' : 'founder', name: records.map(r => r.name).join(', ') || 'Founder default',
         options: records.map(r => ({ id:r.id, name:r.name, category:r.ext.category })) };
     });
