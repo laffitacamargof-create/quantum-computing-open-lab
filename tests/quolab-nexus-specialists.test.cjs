@@ -48,7 +48,7 @@ assert.ok(agent.includes('data-qnexus-agent-target'));
 assert.ok(agent.includes("screen==='quantum-app-studio'"));
 assert.ok(agent.includes('Open Quantum App Studio from Quantum Puzzle before operating this nested editor.'));
 assert.ok(index.includes('quolab-nexus-agent.js?v=1.9.0'));
-assert.ok(index.includes('7 tools'));
+assert.ok(index.includes('One agent · all tools'));
 assert.ok(connector.includes("const VERSION = '1.9.0'"));
 assert.ok(connector.includes('SAFE_RESPONSE_PATHS'));
 assert.ok(connector.includes("getItem('openq_ai_ctx') !== '0'"));
