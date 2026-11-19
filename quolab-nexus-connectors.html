@@ -76,6 +76,15 @@ main{position:relative;z-index:1;max-width:1180px;margin:0 auto;padding:1.4rem 1
 .wh{display:flex;align-items:center;gap:.7rem;padding:.8rem 1.1rem;border-bottom:1px solid var(--b)}
 .wh h3{font-family:var(--orb);font-size:.7rem;letter-spacing:.16em}
 .x{background:none;border:0;color:var(--mu);font-size:1.3rem;cursor:pointer}
+.create-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.7rem;margin-top:1.4rem}
+.create-action{min-height:92px;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:.35rem;text-align:left;padding:1rem;border:1px solid var(--b2);border-radius:9px;background:var(--s);color:var(--tx);cursor:pointer}
+.create-action strong{font-family:var(--orb);font-size:.62rem;letter-spacing:.08em}
+.create-action small{font-size:.68rem;color:var(--mu);line-height:1.4}
+.create-action.ai-action{border-top:3px solid var(--pu)}
+.create-action.ext-action{border-top:3px solid var(--gd)}
+.create-action.loc-action{border-top:3px solid var(--cy)}
+.create-action:hover{background:var(--s2);border-color:var(--bl2)}
+@media(max-width:620px){.create-actions{grid-template-columns:1fr}.create-action{min-height:68px}}
 .tabs{display:grid;grid-template-columns:repeat(3,1fr);border-bottom:1px solid var(--b)}
 .tab{background:none;border:0;border-bottom:2px solid transparent;color:var(--mu);font-family:var(--orb);font-size:.58rem;letter-spacing:.08em;padding:.8rem .3rem;cursor:pointer}
 .tab.on[data-t=ai]{color:var(--pu);border-color:var(--pu);background:rgba(189,147,249,.06)}
@@ -135,8 +144,10 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--bl2)}
   <p class="intro" style="margin-top:-.3rem">Choose which of your connectors each tool uses. Leave a field on <b>Founder default</b> and the ecosystem's own service is used. Nothing forces the same service on every tool.</p>
   <div class="asg-grid" id="g-asg"></div>
 
-  <div class="grid" style="margin-top:1.4rem">
-    <button class="card add" id="bAdd" aria-label="Create connector"><div class="addwrap"><div class="plus">+</div><small>CREATE CONNECTOR</small></div></button>
+  <div class="create-actions" aria-label="Create a connector type">
+    <button class="create-action ai-action" id="bAddAI" type="button"><strong>◉ CREATE AI API</strong><small>Provider, model and API key. No interface or local code.</small></button>
+    <button class="create-action ext-action" id="bAddExt" type="button"><strong>▣ CREATE EXTERNAL API</strong><small>Service URL, authentication and tool assignment. No interface or local code.</small></button>
+    <button class="create-action loc-action" id="bAddLoc" type="button"><strong>⬢ CREATE LOCAL CONNECTOR</strong><small>Custom interface, web logic and local Python package.</small></button>
   </div>
 </main>
 
@@ -252,7 +263,8 @@ document.addEventListener('click',async e=>{
  const b=e.target.closest('[data-a]');if(!b)return;const card=b.closest('[data-id]'),id=b.dataset.id||(card&&card.dataset.id)||(b.closest('[data-community]')&&b.closest('[data-community]').dataset.community);
  try{if(b.dataset.a==='test'){const r=S.get(id);const x=r.kind==='ai'?await NC.ai.test(id):await NC.ext.test(id);toast('Connection responded in '+x.ms+' ms');}else if(b.dataset.a==='edit')edit(S.get(id));else if(b.dataset.a==='del'){if(confirm('Delete connector from this device?')){const r=S.get(id);if(r.kind==='loc'&&r.loc.installed)await NC.Installer.uninstall(id);S.remove(id);render();}}else if(b.dataset.a==='install'){if(bridge.state!=='ok'){openBridge();throw Error('Start and pair the local bridge first');}await NC.Installer.install(id);render();}else if(b.dataset.a==='uninstall'){await NC.Installer.uninstall(id);render();}else if(b.dataset.a==='share')await share(id);else if(b.dataset.a==='install-community')await installCommunity(id);else if(b.dataset.a==='open')toast('Installed connector is available to assigned tools.');}catch(err){fail(err);}
 });
-$('bAdd').onclick=()=>{editing=null;resetForm();openDialog('ai');};$('bX').onclick=$('bC').onclick=closeDialog;$('bS').onclick=async()=>{try{await save();}catch(e){fail(e);}};
+function startCreate(kind){editing=null;resetForm();openDialog(kind);}
+$('bAddAI').onclick=()=>startCreate('ai');$('bAddExt').onclick=()=>startCreate('ext');$('bAddLoc').onclick=()=>startCreate('loc');$('bX').onclick=$('bC').onclick=closeDialog;$('bS').onclick=async()=>{try{await save();}catch(e){fail(e);}};
 $('ov').onclick=e=>{if(e.target===$('ov'))closeDialog();};document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>openDialog(t.dataset.t));
 document.querySelectorAll('.stab').forEach(t=>t.onclick=()=>{document.querySelectorAll('.stab').forEach(x=>x.classList.toggle('on',x===t));document.querySelectorAll('.spane').forEach(x=>x.classList.toggle('show',x.id==='s-'+t.dataset.s));});
 $('pyCode').addEventListener('input',analyze);$('bBridge').onclick=openBridge;$('bPending').onclick=async()=>{try{await showPending();}catch(e){fail(e);}};
