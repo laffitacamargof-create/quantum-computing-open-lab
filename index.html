@@ -1284,10 +1284,19 @@ class QuOLabNexusConfigSyncReader {
     return null;
   }
   async function handleModuleMsg(event, data) {
-    const mod = moduleOf(event.source); if (!mod) return;
+    const rootMod = moduleOf(event.source); if (!rootMod) return;
+    // A nested App Studio iframe is physically inside Quantum Puzzle. Trust its
+    // declared identity only when the message really comes from that exact iframe.
+    let mod = rootMod;
+    if (data.module && TOOL_OF[data.module] && data.module !== rootMod) {
+      const puzzle = iframes['quantum-puzzle'];
+      const studio = puzzle && puzzle.contentDocument && puzzle.contentDocument.getElementById('studioIframe');
+      if (data.module !== 'quantum-app-studio' || rootMod !== 'quantum-puzzle' || !studio || event.source !== studio.contentWindow) return;
+      mod = data.module;
+    }
     const reply = payload => { try { event.source.postMessage(payload, location.origin); } catch (_) {} };
     if (data.type === 'OPENQ_API_REGISTER') {
-      const apiMod = TOOL_OF[data.module] ? data.module : mod;
+      const apiMod = mod;
       const slot = String(data.slot || '').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 32);
       if (!['cpu','qpu','storage','engine','quantum'].includes(slot)) return;
       const kind = slot === 'engine' ? 'cpu' : slot === 'quantum' ? 'qpu' : slot;
@@ -1296,12 +1305,12 @@ class QuOLabNexusConfigSyncReader {
       renderSources();
       reply({ type:'OPENQ_API_ROUTES', id:data.id, routes:routesFor(apiMod) }); return;
     }
-    if (data.type === 'OPENQ_GET_API_ROUTES') { const apiMod = TOOL_OF[data.module] ? data.module : mod; reply({ type:'OPENQ_API_ROUTES', id:data.id, ok:true, routes:routesFor(apiMod) }); return; }
+    if (data.type === 'OPENQ_GET_API_ROUTES') { const apiMod = mod; reply({ type:'OPENQ_API_ROUTES', id:data.id, ok:true, routes:routesFor(apiMod) }); return; }
     if (data.type === 'OPENQ_AI_CHAT') {
       try {
         const messages = Array.isArray(data.messages) ? data.messages.slice(0,40) : [];
         if (!messages.length || !messages.every(m => m && ['system','user','assistant'].includes(m.role) && typeof m.content === 'string' && m.content.length < 60000)) throw new Error('Invalid AI messages');
-        const apiMod = TOOL_OF[data.module] ? data.module : mod;
+        const apiMod = mod;
         const tool = TOOL_OF[apiMod] || 'chat';
         const text = await aiComplete(messages, { tool, tokens:data.max_tokens, temp:data.temperature });
         const result = text == null ? await callAI(messages[messages.length-1].content, null, { historyLimit:0, systemSuffix:messages[0] && messages[0].role === 'system' ? messages[0].content : '' }) : text;
@@ -1310,7 +1319,7 @@ class QuOLabNexusConfigSyncReader {
       return;
     }
     if (data.type === 'OPENQ_API_REQUEST') {
-      const apiMod = TOOL_OF[data.module] ? data.module : mod;
+      const apiMod = mod;
       const slot = String(data.slot || '').toLowerCase(), key = apiMod + '.' + slot, method = String(data.method || 'GET').toUpperCase();
       try {
         if (!apiSlots[key]) throw new Error('Unknown API slot "' + slot + '"');
@@ -1338,6 +1347,13 @@ class QuOLabNexusConfigSyncReader {
     if (window.QuOLabNexusCore) {
       Object.assign(d, window.QuOLabNexusCore.normalizeIncoming(d));
       d.type = window.QuOLabNexusCore.legacyType(d.type);
+    }
+
+    // API/AI broker: these messages must be dispatched explicitly. Without this
+    // bridge, tool requests wait for their timeout even when the HF Space is healthy.
+    if (['OPENQ_API_REGISTER','OPENQ_GET_API_ROUTES','OPENQ_API_REQUEST','OPENQ_AI_CHAT'].includes(d.type)) {
+      void handleModuleMsg(e, d);
+      return;
     }
 
     // Enrutador central: las órdenes y respuestas de App Studio atraviesan index.html.
