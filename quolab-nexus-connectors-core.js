@@ -265,7 +265,7 @@
       let base;
       try { base = new URL(String(o.baseUrl || '')); }
       catch (_) { throw NexusError('config', 'The Founder default server URL is invalid'); }
-      const localHttp = base.protocol === 'http:' && /^(localhost|127\\.0\\.0\\.1|\\[::1\\])$/i.test(base.hostname);
+      const localHttp = base.protocol === 'http:' && /^(localhost|127\.0\.0\.1|\[::1\])$/i.test(base.hostname);
       if (base.protocol !== 'https:' && !localHttp) throw NexusError('config', 'Founder default services must use HTTPS (HTTP is allowed only for localhost)');
       if (base.username || base.password) throw NexusError('config', 'Credentials must be stored in a Nexus connector, not inside the server URL');
       const url = new URL(String(o.path || ''), base.href.endsWith('/') ? base.href : base.href + '/');
