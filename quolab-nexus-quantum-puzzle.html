@@ -1,7 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<script defer src="quolab-nexus-tool-connector.js?v=1.3.0"></script>
+<script src="quolab-nexus-core.js"></script>
+<script src="quolab-nexus-connectors-core.js"></script>
+<script src="quolab-nexus-tool-connector.js?v=1.3.0"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 <title>QuOLab Nexus — Quantum Puzzle</title>
@@ -1016,6 +1018,9 @@ function openAppInStudio(app, sourceType) {
         pythonCode: app.python_code || app.pythonCode || '',
         htmlCode: app.html_code || app.htmlCode || '',
         serverUrl: app.server_url || app.serverUrl || '',
+        nexusSlot: app.nexusSlot || app.nexus_slot || 'cpu',
+        nexusConnectorId: app.nexusConnectorId || app.nexus_connector_id || '',
+        nexusModule: app.nexusModule || app.nexus_module || 'quantum-app-studio',
         description: app.description || app.desc || '',
         tags: app.tags || '',
         duration: app.duration || 8,
@@ -1091,7 +1096,7 @@ async function previewPendingApp(appId) {
     const frame = document.getElementById('previewIframe');
     const modal = document.getElementById('previewAppModal');
     if (!frame || !modal) { showNotification('Preview panel unavailable'); return; }
-    frame.srcdoc = _buildAppBlob(app.python_code || app.pythonCode || '', app.html_code || app.htmlCode || '', app.server_url || app.serverUrl || compilerUrl || '');
+    frame.srcdoc = _buildAppBlob(app.python_code || app.pythonCode || '', app.html_code || app.htmlCode || '', app.server_url || app.serverUrl || compilerUrl || '', { slot:app.nexusSlot || app.nexus_slot || 'cpu', connector:app.nexusConnectorId || app.nexus_connector_id || '', module:app.nexusModule || app.nexus_module || 'quantum-puzzle' });
     modal.classList.add('open');
 }
 window.previewPendingApp = previewPendingApp;
@@ -1178,7 +1183,7 @@ window.addEventListener('message', async function _execPyCallHandler(ev) {
     if (!d || d.type !== 'pyCall') return;
     const iframe = document.getElementById('execIframe');
     if (!iframe || ev.source !== iframe.contentWindow || (ev.origin !== location.origin && ev.origin !== 'null')) return;
-    const { id, func, args, serverUrl: appUrl, pythonCode } = d;
+    const { id, func, args, serverUrl: appUrl, pythonCode, nexusSlot, nexusConnector, nexusModule } = d;
     const src = ev.source;
     // Match Studio's callable-name support: quantum apps may invoke object methods
     // such as simulator.run(...) or backend.execute(...), not only bare functions.
@@ -1211,7 +1216,7 @@ window.addEventListener('message', async function _execPyCallHandler(ev) {
         if (!serverUrl) throw new Error('No se encontró un servidor CPU válido. Comprueba la configuración del motor QuOLab Nexus.');
         // Keep the exact Python wrapper used by Quantum App Studio.
         const fullCode = `${pythonCode}\nimport json\n_result = ${func}(*${JSON.stringify(args)})\nprint(json.dumps(_result, ensure_ascii=False))`;
-        const output = await _runPythonRemote(fullCode, serverUrl);
+        const output = await _runPythonRemote(fullCode, serverUrl, { slot:nexusSlot, connector:nexusConnector, module:nexusModule });
         const pending = _execPyCalls.get(id);
         if (!pending) return; // timed out already; ignore a late server response
         clearTimeout(pending.tid);
@@ -1291,7 +1296,7 @@ async function _waitForQuantumServer(base, isHF) {
     throw new Error('El motor cuántico no está listo después de esperar a que despierte. Estado HTTP: ' + (lastStatus || 'sin respuesta') + '. ' + lastDetail.slice(0, 300));
 }
 
-async function _runPythonRemote(code, serverUrl) {
+async function _runPythonRemote(code, serverUrl, nexusRoute) {
     // Mismo mecanismo directo de Quantum App Studio: enviar el código al
     // endpoint de ejecución, sin bloquearlo con una consulta previa de salud.
     if (!serverUrl) throw new Error('No hay URL del servidor configurada.');
@@ -1322,6 +1327,9 @@ async function _runPythonRemote(code, serverUrl) {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
             body,
+            nexusSlot: nexusRoute && nexusRoute.slot || 'cpu',
+            nexusConnector: nexusRoute && nexusRoute.connector || '',
+            nexusModule: nexusRoute && nexusRoute.module || 'quantum-puzzle',
             ...(controller ? { signal: controller.signal } : {})
         });
         if (!response.ok) {
@@ -1354,10 +1362,13 @@ async function _runPythonRemote(code, serverUrl) {
     return output;
 }
 
-function _buildAppBlob(pythonCode, htmlCode, serverUrl) {
+function _buildAppBlob(pythonCode, htmlCode, serverUrl, nexusRoute) {
     const bridge = `<script>
 (function(){
     window.__serverUrl = ${JSON.stringify(serverUrl || '')};
+    window.__nexusSlot = ${JSON.stringify(nexusRoute && nexusRoute.slot || 'cpu')};
+    window.__nexusConnector = ${JSON.stringify(nexusRoute && nexusRoute.connector || '')};
+    window.__nexusModule = ${JSON.stringify(nexusRoute && nexusRoute.module || 'quantum-puzzle')};
     window.__parentOrigin = ${JSON.stringify(location.origin)};
     window.__pyCode = ${JSON.stringify(pythonCode || '')};
     window.pyCall = function(funcName) {
@@ -1384,7 +1395,8 @@ function _buildAppBlob(pythonCode, htmlCode, serverUrl) {
             window.addEventListener('message', handler);
             window.parent.postMessage({
                 type: 'pyCall', id: msgId, func: funcName, args: args,
-                serverUrl: window.__serverUrl, pythonCode: window.__pyCode
+                serverUrl: window.__serverUrl, pythonCode: window.__pyCode,
+                nexusSlot: window.__nexusSlot, nexusConnector: window.__nexusConnector, nexusModule: window.__nexusModule
             }, '*');
         });
     };
@@ -1420,6 +1432,7 @@ function executeWithStudio(app) {
     loadingDiv.style.display = 'flex';
 
     const serverUrl = resolvePuzzleServerUrl(app.server_url || app.serverUrl || '');
+    const nexusRoute = { slot:app.nexusSlot || app.nexus_slot || 'cpu', connector:app.nexusConnectorId || app.nexus_connector_id || '', module:app.nexusModule || app.nexus_module || 'quantum-puzzle' };
 
     // ✅ Verificación mejorada
     if (!app.python_code && !app.html_code && !app.pythonCode && !app.htmlCode) {
@@ -1447,7 +1460,7 @@ function executeWithStudio(app) {
             showNotification('No se pudo cargar la interfaz de esta Quantum App. Revisa su HTML.');
         };
         iframe.removeAttribute('src');
-        iframe.srcdoc = _buildAppBlob(pythonCode, htmlCode, serverUrl);
+        iframe.srcdoc = _buildAppBlob(pythonCode, htmlCode, serverUrl, nexusRoute);
 
         // A missing load event must produce a visible diagnostic, never an endless spinner.
         startupTimer = setTimeout(function() {

@@ -8,7 +8,7 @@
     'quolab-nexus-projects.html': 'projects',
     'quolab-nexus-architect.html': 'architect',
     'quolab-nexus-quantum-notebook.html': 'architect-pro',
-    'quolab-nexus-library.html': 'library',
+    'quolab-nexus-connectors.html': 'nexus-connectors',
     'quolab-nexus-help.html': 'help',
     'quolab-nexus-quantum-puzzle.html': 'quantum-puzzle',
     'quolab-nexus-app-studio.html': 'quantum-app-studio'
@@ -127,6 +127,49 @@
     send('click', { tag: el.tagName.toLowerCase(), id: el.id || '', text: String(el.innerText || el.value || el.getAttribute('aria-label') || '').slice(0, 120) });
   }, true);
 
+  function engineRequestInfo(rawUrl, init, input) {
+    try {
+      const url = new URL(typeof rawUrl === 'string' ? rawUrl : (rawUrl && rawUrl.url) || '', global.location.href);
+      if (!/\/(?:run|health)(?:\/|$)/i.test(url.pathname)) return null;
+      const saved = ['nexus_colab_url','qcol_colab_url','openq_colab_url'].map(k => {
+        try { return global.localStorage.getItem(k); } catch (_) { return ''; }
+      }).filter(Boolean);
+      const known = saved.some(value => { try { return new URL(value).origin === url.origin; } catch (_) { return false; } });
+      if (!known && !/\.hf\.space$/i.test(url.hostname)) return null;
+      const method = String((init && init.method) || (input && input.method) || 'GET').toUpperCase();
+      const headers = new Headers((init && init.headers) || (input && input.headers) || {});
+      const requestedSlot = (init && init.nexusSlot) || headers.get('X-Nexus-Slot') || 'cpu';
+      const requestedConnector = (init && init.nexusConnector) || headers.get('X-Nexus-Connector') || '';
+      const requestedModule = (init && init.nexusModule) || global.__QUOLAB_NEXUS_MODULE || '';
+      headers.delete('X-Nexus-Slot');
+      headers.delete('X-Nexus-Connector');
+      headers.delete('X-Nexus-Module');
+      const cleanHeaders = {};
+      headers.forEach((value, key) => { if (!/^(authorization|proxy-authorization|cookie|x-api-key)$/i.test(key)) cleanHeaders[key] = value; });
+      return { slot: requestedSlot, connector:requestedConnector, module:requestedModule, path: url.pathname + url.search, method, headers: cleanHeaders, body: init && init.body, timeout: init && init.timeout };
+    } catch (_) { return null; }
+  }
+  function installNexusAPI() {
+    const filename = global.location.pathname.split('/').pop();
+    const modules = {
+      'quolab-nexus-architect.html': { slots:['cpu','qpu','storage'], tool:'architect' },
+      'quolab-nexus-quantum-notebook.html': { slots:['cpu','storage'], tool:'architect-pro' },
+      'quolab-nexus-quantum-puzzle.html': { slots:['cpu','qpu'], tool:'quantum-puzzle' },
+      'quolab-nexus-app-studio.html': { slots:['cpu','qpu','storage'], tool:'quantum-app-studio' }
+    };
+    const config = modules[filename];
+    if (!config || !global.QuOLabNexusCore || !global.QuOLabNexusCore.api) return Promise.resolve(null);
+    const api = global.QuOLabNexusCore.api;
+    global.__QUOLAB_NEXUS_MODULE = config.tool;
+    global.QuOLabNexusAPI = api;
+    return new Promise(resolve => global.setTimeout(async () => {
+      config.slots.forEach(slot => api.register(slot, config.tool + ' · ' + slot.toUpperCase(), slot === 'cpu' ? 'engine' : ''));
+      try { await api.getRoutes(); } catch (_) {}
+      resolve(api);
+    }, 450));
+  }
+  global.QuOLabNexusReady = installNexusAPI();
+
   if (typeof global.fetch === 'function') {
     const originalFetch = global.fetch.bind(global);
     global.fetch = function (input, init) {
@@ -135,6 +178,17 @@
       const body = init && init.body;
       if (!contextEnabled()) return originalFetch(input, init);
       send('request', { method, url: safeUrl(url), body: '[OMITTED]', bodyLength: typeof body === 'string' ? body.length : body ? -1 : 0 });
+      const routed = engineRequestInfo(url, init, input);
+      if (routed && global.QuOLabNexusReady) {
+        return global.QuOLabNexusReady.then(api => {
+          if (!api) throw new Error('Nexus API broker is unavailable for this module');
+          return api.request(routed.slot, routed);
+        }).then(result => {
+          const response = new Response(result.text || '', { status: result.status || 200, headers: result.headers || {} });
+          send('response', { method, url: safeUrl(url), status: response.status, ok: response.ok, body: responseBodyAllowed(url) ? sanitize(result.text || '', '', 0) : '[NOT_ALLOWLISTED]' });
+          return response;
+        }).catch(error => { send('network_error', { method, url: safeUrl(url), message: error.message || 'Nexus route failed' }); throw error; });
+      }
       return originalFetch(input, init).then(response => {
         if(!response.ok)send('http_error',{method,url:safeUrl(url),status:response.status,statusText:String(response.statusText||'').slice(0,120)});
         try {

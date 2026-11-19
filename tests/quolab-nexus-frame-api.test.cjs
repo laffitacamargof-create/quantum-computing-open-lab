@@ -14,7 +14,7 @@ vm.runInNewContext(extractDeclaration('const SAFE_FUNCTIONS = Object.freeze(','\
 const start=source.indexOf('function describeFrame('),end=source.indexOf('\n  function snapshot(',start);
 assert.ok(start>=0&&end>start,'describeFrame source must exist');
 const describeFrame=source.slice(start,end);
-const screens=['projects','architect','architect-pro','quantum-puzzle','quantum-app-studio','library','help'];
+const screens=['projects','architect','architect-pro','quantum-puzzle','quantum-app-studio','help'];
 for(const screen of screens){
  const spec=catalogContext.catalog[screen],fnName=safeContext.safe[screen][0];
  assert.ok(spec&&fnName,'documented safe helper must exist for '+screen);
@@ -35,4 +35,4 @@ for(const screen of screens){
  assert.ok(selected,'tool_call must find a callable safe helper for '+screen);
  assert.equal(frameWindow[selected.name](),'called:'+screen);
 }
-console.log('PASS: all seven tool frames expose a callable safe function and visible text.');
+console.log('PASS: all six active tool frames expose a callable safe function and visible text.');
