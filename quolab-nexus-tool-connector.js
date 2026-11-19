@@ -176,8 +176,9 @@
       const url = typeof input === 'string' ? input : (input && input.url) || '';
       const method = String((init && init.method) || (input && input.method) || 'GET').toUpperCase();
       const body = init && init.body;
-      if (!contextEnabled()) return originalFetch(input, init);
-      send('request', { method, url: safeUrl(url), body: '[OMITTED]', bodyLength: typeof body === 'string' ? body.length : body ? -1 : 0 });
+      const telemetryEnabled = contextEnabled();
+      if (telemetryEnabled) send('request', { method, url: safeUrl(url), body: '[OMITTED]', bodyLength: typeof body === 'string' ? body.length : body ? -1 : 0 });
+      // Routing is transport control, not telemetry: disabling AI context must not bypass Nexus.
       const routed = engineRequestInfo(url, init, input);
       if (routed && global.QuOLabNexusReady) {
         return global.QuOLabNexusReady.then(api => {
@@ -190,11 +191,11 @@
         }).catch(error => { send('network_error', { method, url: safeUrl(url), message: error.message || 'Nexus route failed' }); throw error; });
       }
       return originalFetch(input, init).then(response => {
-        if(!response.ok)send('http_error',{method,url:safeUrl(url),status:response.status,statusText:String(response.statusText||'').slice(0,120)});
+        if (telemetryEnabled && !response.ok) send('http_error',{method,url:safeUrl(url),status:response.status,statusText:String(response.statusText||'').slice(0,120)});
         try {
           const copy = response.clone();
           copy.text().then(text => {
-            if (contextEnabled()) {
+            if (telemetryEnabled && contextEnabled()) {
               if (responseBodyAllowed(url)) {
                 let payload = text;
                 try { payload = JSON.parse(text); } catch (_) {}
