@@ -26,6 +26,8 @@ assert.match(ui, /startCreate\('ai'\)/);
 assert.match(ui, /NC\.Make\.loc/);
 assert.doesNotMatch(ui, /TOOL ASSIGNMENTS|renderAssignments|data-assign|data-multi/);
 assert.match(ui, /function toolPicker\(r\)/);
+assert.match(ui, /function normalizeExclusiveState\(\)/);
+assert.match(ui, /normalizeExclusiveState\(\);analyze\(\);render\(\)/);
 assert.match(ui, /data-card-tool/);
 assert.match(ui, /tool!==\x27apps\x27/);
 assert.match(ui, /r.tools&&r.tools.length\?\[\x27once\x27,\x27always\x27\]/);
