@@ -53,15 +53,56 @@ require('../../quolab-nexus-connectors-core.js');
   NC.Store.remove(cpu2.id);
   assert.equal(NC.Assignments.get('quantum-puzzle','cpu').includes(cpu2.id), false);
 
+  const routeCpu = await make('Route CPU','classical');
+  NC.Assignments.set('architect','cpu','founder');
+  NC.Assignments.bind(routeCpu.id,'open_lab','cpu');
+  let fetchedUrl = '';
+  global.fetch = async url => { fetchedUrl=String(url); return new Response('ok',{status:200}); };
+  await NC.ext.request({tool:'open_lab',connector:routeCpu.id,kind:'cpu',path:'/admin'});
+  assert.equal(fetchedUrl,'https://api.example.test/v1/admin');
+  await assert.rejects(
+    NC.ext.request({tool:'open_lab',connector:routeCpu.id,path:'/run'}),
+    e => e.code === 'assignment-required'
+  );
+  const unassignedCpu = await make('Unassigned CPU','classical');
+  await assert.rejects(
+    NC.requestAssigned({moduleId:'architect',kind:'cpu',tool:'open_lab',connector:unassignedCpu.id,path:'/run'}),
+    e => e.code === 'not-assigned'
+  );
+  NC.Store.remove(unassignedCpu.id);
+  NC.Store.remove(routeCpu.id);
+
+  const privateUrl = await make('Private URL','classical');
+  NC.Store.patch(privateUrl.id,r=>{r.ext.baseUrl='https://127.0.0.1/v1';});
+  NC.Assignments.bind(privateUrl.id,'open_lab','cpu');
+  await assert.rejects(
+    NC.ext.request({tool:'open_lab',connector:privateUrl.id,kind:'cpu',path:'/run'}),
+    e => e.code === 'scope'
+  );
+  NC.Store.remove(privateUrl.id);
+
+  const credentialUrl = await make('Credential URL','classical');
+  NC.Store.patch(credentialUrl.id,r=>{r.ext.baseUrl='https://user:pw@api.example.test/v1';});
+  NC.Assignments.bind(credentialUrl.id,'open_lab','cpu');
+  await assert.rejects(
+    NC.ext.request({tool:'open_lab',connector:credentialUrl.id,kind:'cpu',path:'/run'}),
+    e => e.code === 'scope'
+  );
+  NC.Store.remove(credentialUrl.id);
+
   const ai = await NC.Make.ai({name:'AI once',provider:'other',usage:'once'});
   assert.equal(ai.usage,'always');
   assert.equal(typeof NC.Vault.open,'undefined');
   assert.equal(typeof NC.ext._headers,'undefined');
   assert.equal(typeof NC.ext._url,'undefined');
 
+  const offCpu = await make('Disabled CPU','classical');
+  NC.Assignments.bind(offCpu.id,'open_lab','cpu');
+  NC.Store.patch(offCpu.id,r=>{r.usage='off';});
   let routeError;
   try { await NC.requestAssigned({moduleId:'architect',kind:'cpu',tool:'open_lab',path:'/run'}); }
   catch (e) { routeError=e.code; }
   assert.equal(routeError,'assigned-unavailable');
+  NC.Store.remove(offCpu.id);
   console.log('Nexus Connectors slot and API boundary checks passed');
 })().catch(err => { console.error(err); process.exitCode=1; });

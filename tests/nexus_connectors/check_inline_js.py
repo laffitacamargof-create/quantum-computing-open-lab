@@ -36,6 +36,15 @@ class ScriptCollector(html.parser.HTMLParser):
             self.current = None
 
 
+ui_source = (ROOT / "quolab-nexus-connectors.html").read_text(encoding="utf-8")
+for marker in (
+    "function syncExtToolChoices()",
+    "previousAssignments=NC.Assignments.all()",
+    "ts=k==='ai'?['chat']:Array.from(document.querySelectorAll('#ext-tools input:checked'))",
+):
+    if marker not in ui_source:
+        raise AssertionError("Connector UI regression guard missing: " + marker)
+
 for html in FILES:
     parser = ScriptCollector()
     parser.feed(html.read_text(encoding="utf-8"))

@@ -27,7 +27,7 @@ class NexusShellRoutingTests(unittest.TestCase):
     def test_card_activation_authorizes_ai_connector(self): self.assertNotIn("nexus_ai_direct_approved", self.index)
     def test_founder_fallback_requires_explicit_approval(self): self.assertIn("nexus_ai_fallback_approved", self.index)
     def test_external_ai_uses_connector_broker(self): self.assertIn("NXC().ai.chat", self.index)
-    def test_ai_fallback_is_visible(self): self.assertIn("using the founder gateway as approved fallback", self.index)
+    def test_ai_fallback_is_visible(self): self.assertIn("using the approved Founder gateway fallback", self.index)
     def test_module_api_registration_is_handled(self): self.assertIn("OPENQ_API_REGISTER", self.index)
     def test_module_api_request_is_handled(self): self.assertIn("OPENQ_API_REQUEST", self.index)
     def test_ai_chat_messages_are_handled(self): self.assertIn("OPENQ_AI_CHAT", self.index)
@@ -35,7 +35,7 @@ class NexusShellRoutingTests(unittest.TestCase):
     def test_per_tool_assignments_use_connector_store(self): self.assertIn("Assignments.get", self.index)
     def test_cpu_qpu_storage_routes_are_pre_registered(self): self.assertIn("['quantum-app-studio',['cpu','qpu','storage']]", self.index)
     def test_puzzle_passes_app_route(self): self.assertIn("nexusConnector: window.__nexusConnector", self.puzzle)
-    def test_studio_has_per_app_route_selector(self): self.assertIn('id="nexus-hardware-select"', self.studio)
+    def test_studio_passes_per_app_route(self): self.assertIn("function nexusRouteFrom(app)", self.studio); self.assertIn("function selectedNexusRoute()", self.studio)
     def test_studio_persists_connector_id(self): self.assertIn("nexusConnectorId", self.studio)
     def test_workflow_no_longer_checks_library_page(self): self.assertNotIn("quolab-nexus-library.html", self.workflow)
 
