@@ -455,6 +455,9 @@ class Worker:
         meta = self.br.meta(self.cid) or {}
         env["NEXUS_COMMUNITY_CONNECTOR"] = "1" if meta.get("origin") == "community" else "0"
         env["NEXUS_CONNECTOR_DATA"] = os.path.realpath(data)
+        if meta.get("origin") == "community":
+            env["HOME"] = os.path.realpath(data)
+            env["TMPDIR"] = os.path.realpath(data)
         runner_path = os.path.join(self.br.home, "runner.py")
         runner_fd = None
         command = [py, "-u", runner_path, os.path.join(d, "connector.py")]
