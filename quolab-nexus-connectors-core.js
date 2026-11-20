@@ -594,7 +594,7 @@
       if (max === 1 && !ids.includes(connectorId)) {
         const replaced = ids.slice();
         this.set(moduleId, kind, connectorId);
-        replaced.forEach(oldId => Store.patch(oldId, old => { old.tools = (old.tools || []).filter(t => t !== tool); if (!old.tools.length) old.usage = 'off'; }));
+        replaced.forEach(oldId => Store.patch(oldId, old => { old.tools = (old.tools || []).filter(t => t !== tool); }));
       } else {
         if (!ids.includes(connectorId) && ids.length >= max) throw NexusError('slot-full', tool + ' only allows ' + max + ' ' + kind.toUpperCase() + ' connector(s).');
         if (!ids.includes(connectorId)) ids.push(connectorId);
@@ -610,7 +610,7 @@
       const current = this.get(moduleId, kind), ids = current === 'founder' ? [] : (Array.isArray(current) ? current : [current]);
       const next = ids.filter(id => id !== connectorId);
       this.set(moduleId, kind, next.length ? (SLOT_RULES[tool][kind] === 1 ? next[0] : next) : 'founder');
-      Store.patch(connectorId, r => { r.tools = (r.tools || []).filter(t => t !== tool); if (!r.tools.length) r.usage = 'off'; });
+      Store.patch(connectorId, r => { r.tools = (r.tools || []).filter(t => t !== tool); });
       return true;
     },
     remove(connectorId) {
@@ -632,7 +632,7 @@
           const kept = ids.slice(0, rule[kind]);
           const dropped = ids.slice(rule[kind]);
           slots[kind] = kept.length ? (rule[kind] === 1 ? kept[0] : kept) : 'founder';
-          dropped.forEach(id => Store.patch(id, rec => { rec.tools = (rec.tools || []).filter(t => t !== tool); if (!rec.tools.length) rec.usage = 'off'; }));
+          dropped.forEach(id => Store.patch(id, rec => { rec.tools = (rec.tools || []).filter(t => t !== tool); }));
         });
         assignments[moduleId] = slots;
       });
