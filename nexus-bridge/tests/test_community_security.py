@@ -76,6 +76,7 @@ spec = importlib.util.spec_from_file_location("bridge", sys.argv[1])
 m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
 data = Path(sys.argv[2]); outside = Path(sys.argv[3])
 os.chdir(data)
+outside_fd = os.open(str(outside), os.O_RDONLY)
 m._community_audit(str(Path(sys.argv[1])))
 blocked_read = False
 try:
@@ -88,7 +89,10 @@ except PermissionError:
     pass
 else:
     raise SystemExit("rename escape was not blocked")
-if not blocked_read or outside.read_text(encoding="utf-8") != "outside" or not (data / "source.txt").exists():
+os.lseek(outside_fd, 0, os.SEEK_SET)
+outside_contents = os.read(outside_fd, 100).decode("utf-8")
+os.close(outside_fd)
+if not blocked_read or outside_contents != "outside" or not outside.exists() or not (data / "source.txt").exists():
     raise SystemExit("filesystem audit did not enforce the private data boundary")
 print("ok")
 '''
