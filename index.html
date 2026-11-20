@@ -3073,7 +3073,7 @@ CONTEXT (staged and size-limited): ${c}`;
 
   async function callAI(msg, ctx, options = {}) {
     const temp = Number.isFinite(options.temp) ? options.temp : (aiCfg.temp || 0.7);
-    const tokens = Math.min(Math.max(aiCfg.tokens || (options.execution ? 1500 : 900), 500), 1800);
+    const tokens = Math.min(Math.max(options.execution ? Math.max(aiCfg.tokens || 1500, 1500) : (aiCfg.tokens || 900), 500), 1800);
     const langNote = ' Always reply in the same language as the latest user message. Detect Spanish, English, or any other language automatically; preserve technical names and code identifiers. MATH: write every equation and mathematical term in LaTeX so the chat can render it: inline as $...$ and display equations as $$...$$ on their own lines (never plain [ ... ] brackets, never ASCII art). Example: $$i\\hbar\\frac{d}{dt}|\\psi(t)\\rangle=\\hat{H}|\\psi(t)\\rangle$$. Put code in fenced code blocks, not in math.';
     const sys = (aiCfg.prompt || 'You are QNexusAi, the QuOLab Nexus superagent. Respond technically and concisely.') + langNote + (ctx ? aiSystemExtra(ctx, msg, options.turn || 0) : '') + (options.systemSuffix || '');
     const historyLimit = Number.isInteger(options.historyLimit) ? Math.max(0,Math.min(options.historyLimit,2)) : 1;
