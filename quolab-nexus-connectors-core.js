@@ -186,6 +186,7 @@
   };
 
   /* ───────────────────────── Policy ───────────────────────── */
+  const onceLocks = new Set();
   const Policy = {
     allowed(rec, tool) {
       if (!rec) return false;
@@ -200,7 +201,9 @@
           String(a.createdAt || '').localeCompare(String(b.createdAt || '')));
     },
     pick(kind, tool, id) { return this.list(kind, tool, id)[0] || null; },
-    consume(rec) { if (rec && rec.usage === 'once') Store.patch(rec.id, r => { r.usage = 'off'; r.usedAt = now(); }); },
+    reserve(rec) { if (!rec || rec.usage !== 'once') return true; if (onceLocks.has(rec.id)) return false; onceLocks.add(rec.id); return true; },
+    release(rec) { if (rec) onceLocks.delete(rec.id); },
+    consume(rec) { if (rec && rec.usage === 'once') { onceLocks.delete(rec.id); Store.patch(rec.id, r => { r.usage = 'off'; r.usedAt = now(); }); } },
   };
 
   /* ───────────────────────── Bridge client ───────────────────────── */
@@ -261,24 +264,26 @@
     async chat(o) {
       const connectors = Policy.list('ai', o.tool || 'chat', o.connector);
       if (!connectors.length) throw NexusError('no-connector', 'No AI connector is enabled for ' + (TOOLS[o.tool] || o.tool));
-      const failures = [], controllers = connectors.map(() => new AbortController());
+      const failures = [], reserved = connectors.filter(rec => Policy.reserve(rec));
+      if (!reserved.length) throw NexusError('once-busy', 'The one-use AI connector is already handling another request.');
+      const active = reserved, controllers = active.map(() => new AbortController());
       // AI requests are intentionally fanned out: every enabled provider gets the
-      // same prompt, and the first valid answer wins. Losing browser requests are
-      // aborted as soon as possible; providers may still bill a request already received.
-      const attempts = connectors.map((rec, index) => this._call(rec, Object.assign({}, o, { signal:controllers[index].signal }))
+      // same prompt, and the first valid answer wins.
+      const attempts = active.map((rec, index) => this._call(rec, Object.assign({}, o, { signal:controllers[index].signal }))
         .then(text => {
           Policy.consume(rec);
           return { text, rec };
         })
         .catch(error => {
+          Policy.release(rec);
           failures.push({ id:rec.id, name:rec.name, provider:rec.ai.provider, error:String(error && error.message || error) });
           throw error;
         }));
       try {
         const winner = await Promise.any(attempts);
-        controllers.forEach((controller, index) => { if (connectors[index].id !== winner.rec.id) controller.abort(); });
+        controllers.forEach((controller, index) => { if (active[index].id !== winner.rec.id) { controller.abort(); Policy.release(active[index]); } });
         return { text:winner.text, connector:winner.rec.id, name:winner.rec.name, provider:winner.rec.ai.provider,
-          model:winner.rec.ai.model || '', parallel:true, providers:connectors.map(r => r.name), failed:failures };
+          model:winner.rec.ai.model || '', parallel:true, providers:active.map(r => r.name), failed:failures };
       } catch (_) {
         const summary = failures.map(x => x.name + ' (' + x.provider + '): ' + x.error).join(' | ');
         throw NexusError('all-connectors-failed', 'All enabled AI connectors failed. ' + summary, { attempted:failures });
@@ -366,9 +371,12 @@
       const rec = Policy.pick('ext', o.tool, o.connector);
       if (rec && (!rec.ext || rec.ext.category !== expected)) throw NexusError('route', 'Connector category does not match the requested ' + o.kind + ' slot.');
       if (!rec) throw NexusError('no-connector', 'No external connector is enabled for ' + (TOOLS[o.tool] || o.tool));
-      const out = await this._do(rec, o);
-      if (out && out.ok) Policy.consume(rec);
-      return out;
+      if (!Policy.reserve(rec)) throw NexusError('once-busy', 'This one-use connector is already handling another request.');
+      try {
+        const out = await this._do(rec, o);
+        if (out && out.ok) Policy.consume(rec); else Policy.release(rec);
+        return out;
+      } catch (error) { Policy.release(rec); throw error; }
     },
     async _do(rec, o) {
       const method = (o.method || 'GET').toUpperCase(), url = this._url(rec, o.path);
