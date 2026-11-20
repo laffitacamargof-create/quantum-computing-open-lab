@@ -20,6 +20,7 @@ class CommunityASTSecurityTests(unittest.TestCase):
             "import socket\nfrom nexus import connector\n@connector.tool('apps', allow=['net.http'])\ndef run(ctx):\n    return 1\n",
             "from nexus import connector\n@connector.tool('apps', allow=['net.http'])\ndef run(ctx):\n    return ().__class__.__bases__\n",
             "from nexus import connector\n@connector.tool('apps', allow=['net.http'])\ndef run(ctx):\n    return 'x'.format()\n",
+            "from nexus import connector\n@connector.tool('apps', allow=['net.http'])\ndef run(ctx):\n    return 'x'.format_map({})\n",
             "from nexus import connector\n@connector.tool('apps', allow=['net.http'])\ndef run(ctx):\n    return getattr(ctx, 'fs')\n",
         ]
         for source in cases:
@@ -39,6 +40,22 @@ class CommunityASTSecurityTests(unittest.TestCase):
         result = nexus_bridge.analyze(source, "community")
         self.assertEqual([], result["errors"])
         self.assertIn("notebook", result["tools"])
+
+
+    def test_local_origin_allowlist_is_narrow(self):
+        self.assertTrue(nexus_bridge.LOCAL_ORIGIN.match("http://localhost:8765"))
+        self.assertFalse(nexus_bridge.LOCAL_ORIGIN.match("http://localhost:9999"))
+        self.assertFalse(nexus_bridge.LOCAL_ORIGIN.match("http://127.0.0.1:8799"))
+
+    def test_dns_errors_are_reported_as_gateway_errors(self):
+        original = nexus_bridge.socket.getaddrinfo
+        try:
+            nexus_bridge.socket.getaddrinfo = lambda *a, **k: (_ for _ in ()).throw(nexus_bridge.socket.gaierror("no host"))
+            with self.assertRaises(nexus_bridge.BridgeError) as caught:
+                nexus_bridge._resolve_public("invalid.example", 443)
+            self.assertEqual(502, caught.exception.status)
+        finally:
+            nexus_bridge.socket.getaddrinfo = original
 
     def test_community_cannot_request_process_permission(self):
         source = (
