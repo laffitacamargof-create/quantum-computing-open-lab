@@ -34,14 +34,15 @@ OP_PERM = {
     "fs.list": "file.read", "fs.read": "file.read", "fs.write": "file.write", "fs.delete": "file.write",
     "http.request": "net.http", "proc.run": "proc.run", "emit": None, "log": None,
 }
-COMMUNITY_REQUIRES = {"numpy", "scipy"}
-SAFE_IMPORTS = {"nexus", "numpy", "scipy", "math", "cmath", "json", "re", "time", "asyncio", "typing", "dataclasses", "collections",
+COMMUNITY_REQUIRES = set()
+SAFE_IMPORTS = {"nexus", "math", "cmath", "json", "re", "time", "typing", "dataclasses", "collections",
                 "itertools", "functools", "statistics", "random", "base64", "hashlib", "datetime", "struct", "enum", "decimal", "fractions", "string", "textwrap"}
 FORBIDDEN_CALLS = {"eval", "exec", "compile", "__import__", "open", "globals", "locals", "vars", "getattr", "setattr", "delattr", "input", "breakpoint", "memoryview"}
 ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 REQ_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._\-\[\],<>=!~ ]{0,80}$")
 MAX_CODE = 60000
-LOCAL_ORIGIN = re.compile(r"^http://(localhost|127\.0\.0\.1)(:\d+)?$")
+LOCAL_ORIGIN = re.compile(r"^http://(localhost|127\\.0\\.0\\.1)(:(\\d+))?$")
+LOCAL_PORTS = {3000, 4173, 5173, 5500, 5501, 8000, 8080, 8765, 8888}
 
 
 class BridgeError(Exception):
@@ -112,7 +113,8 @@ def analyze(code, mode):
                 f = node.func
                 if isinstance(f, ast.Name) and f.id in FORBIDDEN_CALLS: res["errors"].append("Line %d: %s() is not allowed in community connectors" % (node.lineno, f.id))
             elif isinstance(node, ast.Attribute):
-                if node.attr.startswith("__") and node.attr.endswith("__"): res["errors"].append("Line %d: access to %s is not allowed in community connectors" % (node.lineno, node.attr))
+                if (node.attr.startswith("__") and node.attr.endswith("__")) or node.attr in {"sys","os","subprocess","socket","modules","loader","builtins","open","system","popen","connect","load","save","savetxt","loadtxt","genfromtxt","fromfile","memmap","ctypeslib","f2py","format"}:
+                    res["errors"].append("Line %d: access to %s is not allowed in community connectors" % (node.lineno, node.attr))
             elif isinstance(node, ast.Name):
                 if node.id in ("__builtins__", "__loader__", "__spec__"): res["errors"].append("Line %d: %s is not allowed in community connectors" % (node.lineno, node.id))
     res["errors"] = list(dict.fromkeys(res["errors"]))
@@ -127,7 +129,10 @@ def _public(ip):
 
 
 def _resolve_public(host, port):
-    ips = [i[4][0] for i in socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)]
+    try:
+        ips = [i[4][0] for i in socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)]
+    except socket.gaierror:
+        raise BridgeError("The service hostname could not be resolved", "dns", 502)
     if not ips or not all(_public(ip) for ip in ips):
         raise BridgeError("Blocked: that address points to this computer or a private network", "denied", 403)
     return ips[0]
@@ -486,7 +491,10 @@ class Bridge:
     def cdir(self, cid): return os.path.join(self.home, "connectors", cid)
     def ddir(self, cid): return os.path.join(self.home, "data", cid)
 
-    def origin_ok(self, o): return o in self.origins or bool(LOCAL_ORIGIN.match(o))
+    def origin_ok(self, o):
+        if o in self.origins: return True
+        m = LOCAL_ORIGIN.match(o or "")
+        return bool(m and int(m.group(3) or 80) in LOCAL_PORTS)
 
     def meta(self, cid):
         try:
@@ -694,6 +702,11 @@ def make_handler(br, port):
                     raw = self.rfile.read(n) if n else b""
                     body = json.loads(raw.decode("utf-8")) if raw else {}
                     if not isinstance(body, dict): raise BridgeError("JSON object expected")
+                if path == "/analyze" and method == "POST":
+                    code = body.get("code", "")
+                    if not isinstance(code, str): raise BridgeError("Python code must be text", "bad-args")
+                    result = analyze(code, "community")
+                    return self._send(200, {"ok": not result["errors"], "tools": result["tools"], "actions": result["actions"], "requires": result["requires"], "errors": result["errors"], "validator": "python-ast"}, o)
                 if path == "/info" and method == "GET":
                     ok, why = br.ble.available()
                     return self._send(200, {"version": VERSION, "platform": platform.system() + " " + platform.release(), "python": platform.python_version(),
