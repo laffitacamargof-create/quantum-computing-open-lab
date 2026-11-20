@@ -1198,6 +1198,31 @@ class QuOLabNexusConfigSyncReader {
     }
     return null;
   }
+  function founderRouteFor(mod, kind) {
+    const slot = apiSlots[mod + '.' + kind];
+    if (!slot || !slot.founder) return null;
+    if (slot.founder === 'engine') {
+      let base = '';
+      try { base = localStorage.getItem('qcol_colab_url') || ''; } catch (_) {}
+      return base && /^https:\/\//i.test(base) ? { type:'engine', base:base.replace(/\/$/, ''), name:'Founder · Quantum Engine' } : null;
+    }
+    if (/^https:\/\//i.test(slot.founder)) return { type:'url', base:slot.founder.replace(/\/$/, ''), name:'Founder · Configured API' };
+    return null;
+  }
+  function hasNexusRoute(mod, kind, requested) {
+    const nx = NXC(), tool = TOOL_OF[mod] || 'chat', expected = connectorCategory(kind);
+    if (!nx || !nx.Store || !nx.Assignments || !nx.Policy) return false;
+    const value = nx.Assignments.get(mod, kind);
+    const ids = Array.isArray(value) ? value : (value && value !== 'founder' ? [value] : []);
+    const ordered = requested && ids.includes(requested) ? [requested].concat(ids.filter(id => id !== requested)) : ids;
+    const compatible = id => {
+      const rec = nx.Store.get(id);
+      return rec && rec.kind === 'ext' && nx.Policy.allowed(rec, tool) && rec.ext && rec.ext.category === expected;
+    };
+    if (ordered.some(compatible)) return true;
+    const automatic = nx.Policy.pick('ext', tool, requested);
+    return !!(automatic && automatic.ext && automatic.ext.category === expected);
+  }
   function routesFor(mod) {
     const out = {}, nx = NXC();
     ['cpu','qpu','storage'].forEach(kind => {
@@ -1208,10 +1233,39 @@ class QuOLabNexusConfigSyncReader {
         r && r.kind === 'ext' && (!expected || (r.ext && r.ext.category === expected))) : [];
       const automatic = nx ? nx.Policy.pick('ext', TOOL_OF[mod] || 'chat') : null;
       const selected = records[0] || (automatic && automatic.ext && automatic.ext.category === expected ? automatic : null);
-      out[kind] = { source: selected ? 'nexus' : 'unconfigured', name: selected ? selected.name : 'No external connector assigned',
-        options: records.map(r => ({ id:r.id, name:r.name, category:r.ext.category })) };
+      const founder = founderRouteFor(mod, kind);
+      const route = selected ? 'nexus' : (founder ? 'founder' : 'unconfigured');
+      out[kind] = { source:route, name:selected ? selected.name : (founder ? founder.name : 'No connector or Founder service configured'),
+        options:records.map(r => ({ id:r.id, name:r.name, category:r.ext.category })) };
     });
     return out;
+  }
+  async function requestFounderFallback(mod, kind, data, method) {
+    const route = founderRouteFor(mod, kind);
+    if (!route) throw new Error('No compatible Nexus connector is assigned and Founder has no configured service for ' + kind + '. Configure it in the Founder module or assign a connector in Nexus Connectors.');
+    const rawPath = String(data.path || (route.type === 'engine' ? '/run' : ''));
+    if (!rawPath || rawPath.length > 500 || /[\r\n]/.test(rawPath)) throw new Error('Founder API path is missing or invalid.');
+    const url = new URL(rawPath, route.base + '/');
+    if (url.origin !== new URL(route.base).origin) throw new Error('Founder fallback cannot call a different host.');
+    const headers = { 'Accept':'application/json' };
+    if (data.headers && typeof data.headers === 'object') {
+      Object.entries(data.headers).forEach(([key,value]) => {
+        if (/^(accept|content-type|x-requested-with)$/i.test(key) && typeof value === 'string' && value.length < 200) headers[key] = value;
+      });
+    }
+    let body;
+    if (!['GET','HEAD'].includes(method)) {
+      body = typeof data.body === 'string' ? data.body : (data.body == null ? undefined : JSON.stringify(data.body));
+      if (body && !headers['Content-Type'] && !headers['content-type']) headers['Content-Type'] = 'application/json';
+    }
+    const controller = new AbortController();
+    const timeout = Math.max(1000, Math.min(Number(data.timeout) || 45000, 120000));
+    const timer = setTimeout(() => controller.abort(), timeout);
+    try {
+      const response = await fetch(url.href, { method, headers, body, signal:controller.signal, credentials:'omit', redirect:'error' });
+      const text = await response.text();
+      return { status:response.status, headers:Object.fromEntries(response.headers.entries()), text, source:'founder', connector:null };
+    } finally { clearTimeout(timer); }
   }
   async function aiComplete(messages, options) {
     const o = options || {}, rec = aiNexusRec(o.tool || 'chat');
@@ -1269,13 +1323,18 @@ class QuOLabNexusConfigSyncReader {
       const key = apiMod + '.' + slot, method = String(data.method || 'GET').toUpperCase();
       try {
         if (!apiSlots[key]) throw new Error('Unknown API slot "' + slot + '"');
+        let result;
         const nx = NXC();
-        if (!nx || typeof nx.requestAssigned !== 'function') throw new Error('Nexus Connectors broker is unavailable');
-        const result = await nx.requestAssigned({
-          moduleId:apiMod, kind:slot, tool:TOOL_OF[apiMod] || 'chat',
-          connector:data.connector, method,
-          path:data.path || '', headers:data.headers, body:data.body, timeout:data.timeout
-        });
+        if (hasNexusRoute(apiMod, slot, data.connector)) {
+          if (!nx || typeof nx.requestAssigned !== 'function') throw new Error('Nexus Connectors broker is unavailable');
+          result = await nx.requestAssigned({
+            moduleId:apiMod, kind:slot, tool:TOOL_OF[apiMod] || 'chat',
+            connector:data.connector, method,
+            path:data.path || '', headers:data.headers, body:data.body, timeout:data.timeout
+          });
+        } else {
+          result = await requestFounderFallback(apiMod, slot, data, method);
+        }
         reply({ type:'OPENQ_API_RESULT', id:data.id, ok:true, status:result.status, headers:result.headers, text:result.text, source:result.source, connector:result.connector });
       } catch (error) { reply({ type:'OPENQ_API_RESULT', id:data.id, ok:false, error:String(error.message || error) }); }
     }
