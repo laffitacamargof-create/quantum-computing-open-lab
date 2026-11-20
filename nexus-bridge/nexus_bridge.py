@@ -399,10 +399,11 @@ def _inside(path, root):
 def _community_audit(connector_path):
     data_root = os.path.realpath(os.getcwd())
     connector_root = os.path.realpath(os.path.dirname(connector_path))
-    python_root = os.path.realpath(sys.prefix)
+    python_roots = tuple(os.path.realpath(p) for p in {sys.prefix, sys.base_prefix, sys.exec_prefix, sys.base_exec_prefix} if p)
     blocked_events = {
-        "subprocess.Popen", "os.system", "os.exec", "os.spawn", "os.fork",
-        "socket.connect", "socket.bind", "socket.getaddrinfo", "socket.gethostbyname",
+        "subprocess.Popen", "os.system", "os.exec", "os.spawn", "os.fork", "os.posix_spawn", "os.posix_spawnp",
+        "os.chdir", "os.fchdir", "os.chroot", "os.setsid", "os.setpgid", "os.setuid", "os.setgid", "os.setgroups", "os.kill",
+        "os.putenv", "os.unsetenv", "os.startfile", "socket.__new__", "socket.connect", "socket.bind", "socket.getaddrinfo", "socket.gethostbyname",
         "ctypes.dlopen", "ctypes.dlsym", "pty.spawn"
     }
     write_events = {"os.remove", "os.rename", "os.mkdir", "os.rmdir", "os.chmod",
@@ -419,7 +420,7 @@ def _community_audit(connector_path):
                 if writing:
                     if not _inside(path, data_root):
                         raise PermissionError("Community connector may write only inside its private data directory")
-                elif not (_inside(path, data_root) or _inside(path, connector_root) or _inside(path, python_root)):
+                elif not (_inside(path, data_root) or _inside(path, connector_root) or any(_inside(path, root) for root in python_roots)):
                     raise PermissionError("Community connector may read only its code, Python runtime and private data directory")
         if event in write_events and args:
             if not _inside(args[0], data_root):
