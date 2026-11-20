@@ -149,6 +149,7 @@
       const names = Object.keys(res.tools), owner = {};
       if (!names.length) res.errors.push('Declare at least one @connector.tool(...)');
       names.forEach(n => {
+        if (n === 'chat') res.errors.push('The QNexusAi agent can only use AI API connectors; local connectors cannot declare chat');
         if (!TOOLS[n]) res.errors.push('Unknown tool "' + n + '" (valid: ' + Object.keys(TOOLS).join(', ') + ')');
         if (!res.tools[n].length) res.errors.push('Tool "' + n + '" declares no permissions');
         res.tools[n].forEach(p => {
@@ -186,6 +187,8 @@
     allowed(rec, tool) {
       if (!rec) return false;
       if (rec.usage === 'off') return false;
+      if (rec.kind === 'ai') return tool === 'chat';
+      if (tool === 'chat') return false;
       return (rec.tools || []).includes(tool);
     },
     pick(kind, tool, id) {
@@ -357,6 +360,7 @@
     async call(o) {
       const rec = Store.get(o.connector) || Store.all().find(r => r.kind === 'loc' && (r.id === o.connector || r.loc.catalogId === o.connector || r.name.toLowerCase() === String(o.connector).toLowerCase()));
       if (!rec || rec.kind !== 'loc') throw NexusError('no-connector', 'Local connector not found');
+      if (o.tool === 'chat' || (rec.tools || []).includes('chat')) throw NexusError('denied', 'QNexusAi can only connect to AI API connectors');
       if (!rec.loc.installed) throw NexusError('not-installed', '"' + rec.name + '" is not installed on this computer');
       if (!(rec.loc.perms && rec.loc.perms[o.tool])) throw NexusError('denied', '"' + rec.name + '" does not serve ' + (TOOLS[o.tool] || o.tool));
       const j = await Bridge.callRaw(rec.id, o.tool, o.action, o.args);
@@ -454,13 +458,13 @@
   /* ───────────────────────── record builders ───────────────────────── */
   const Make = {
     async ai(f) {
-      const rec = { id: f.id || uid(), kind: 'ai', name: f.name, usage: f.usage || 'always', tools: f.tools || [], createdAt: f.createdAt,
+      const rec = { id: f.id || uid(), kind: 'ai', name: f.name, usage: f.usage || 'always', tools: ['chat'], createdAt: f.createdAt,
         ai: { provider: f.provider, model: f.model || '', baseUrl: f.baseUrl || '' }, secrets: f.secrets || {} };
       if (f.apiKey) rec.secrets.apiKey = await Vault.seal(f.apiKey);
       return rec;
     },
     async ext(f) {
-      const rec = { id: f.id || uid(), kind: 'ext', name: f.name, usage: f.usage || 'always', tools: f.tools || [], createdAt: f.createdAt,
+      const rec = { id: f.id || uid(), kind: 'ext', name: f.name, usage: f.usage || 'always', tools: (f.tools || []).filter(tool => tool !== 'chat'), createdAt: f.createdAt,
         ext: { category: f.category, baseUrl: f.baseUrl, auth: f.auth, headerName: f.headerName || '', via: f.via || 'auto' }, secrets: f.secrets || {} };
       if (f.secret) rec.secrets.secret = await Vault.seal(f.secret);
       if (f.user) rec.secrets.user = await Vault.seal(f.user);
