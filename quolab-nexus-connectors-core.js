@@ -584,7 +584,7 @@
         const v = a[mod][kind], ids = Array.isArray(v) ? v.filter(id => id !== connectorId) : v === connectorId ? [] : null;
         if (ids) a[mod][kind] = ids.length ? ids : 'founder';
       }));
-      localStorage.setItem(LS_ASSIGNMENTS, JSON.stringify(a));
+      localStorage.setItem(LS_ASSIGNMENTS, JSON.stringify(a)); emitChange(false);
     },
     resolve(moduleId, kind) { const value = this.get(moduleId, kind); if (value === 'founder') return null; return (Array.isArray(value) ? value : [value]).map(id => Store.get(id)).filter(Boolean); }
   };
