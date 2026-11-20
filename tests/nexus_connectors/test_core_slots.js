@@ -27,6 +27,7 @@ require('../../quolab-nexus-connectors-core.js');
   NC.Assignments.bind(cpu2.id,'open_lab','cpu');
   assert.equal(NC.Assignments.get('architect','cpu'), cpu2.id);
   assert.equal(NC.Store.get(cpu1.id).tools.includes('open_lab'), false);
+  assert.equal(NC.Store.get(cpu1.id).usage, 'always', 'replacing a slot must not disable the displaced connector');
   NC.Assignments.bind(cpu1.id,'notebook','cpu');
   NC.Assignments.bind(cpu1.id,'apps','cpu');
   NC.Assignments.bind(cpu2.id,'apps','cpu');
