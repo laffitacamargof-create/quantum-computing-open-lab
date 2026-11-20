@@ -6,6 +6,7 @@
 <script defer src="quolab-nexus-agent.js?v=1.9.0"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script defer src="quolab-nexus-i18n.js?v=1.0.0"></script>
 <title>QuOLab Nexus — Quantum Computing Open Lab</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=JetBrains+Mono:wght@400;500&family=Exo+2:wght@300;400;500;600&display=swap" rel="stylesheet">
 <!-- KaTeX: renders LaTeX equations in the QNexusAi chat -->
@@ -73,6 +74,10 @@ body::before{content:'';position:fixed;inset:0;
 .logo-col{font-family:var(--orb);font-size:1.05rem;font-weight:900;color:var(--bl2);}
 
 .hdr-right{display:flex;align-items:center;gap:.55rem;margin-left:auto;}
+.language-picker{display:flex;align-items:center;gap:.35rem;padding:.18rem .45rem;border:1px solid var(--b2);border-radius:6px;background:rgba(7,18,32,.9);color:var(--mu);font-family:var(--orb);font-size:.48rem;white-space:nowrap;}
+.language-picker select{max-width:112px;background:transparent;border:0;outline:0;color:var(--bl2);font:inherit;cursor:pointer;}
+.language-picker option{background:#071220;color:#ddeeff;}
+@media(max-width:600px){.language-picker{padding:.15rem .25rem;font-size:.42rem;}.language-picker select{max-width:82px;}}
 .hbtn{padding:.32rem .75rem;background:transparent;border:1px solid var(--b2);
   border-radius:5px;color:var(--mu);font-family:var(--orb);font-size:.54rem;
   cursor:pointer;transition:all .2s;white-space:nowrap;}
@@ -486,6 +491,7 @@ body::before{content:'';position:fixed;inset:0;
     </div>
   </div>
   <div class="hdr-right">
+    <label class="language-picker" title="Choose ecosystem language"><span>LANGUAGE</span><select data-quolab-language aria-label="Ecosystem language"><option value="en">English</option><option value="es">Español</option><option value="fr">Français</option><option value="de">Deutsch</option></select></label>
     <div id="hdr-engine-badge" style="display:none;padding:.22rem .55rem;background:rgba(0,255,136,.08);border:1px solid rgba(0,255,136,.3);border-radius:4px;font-family:var(--orb);font-size:.46rem;color:var(--gr);">● COMPILER</div>
     <button class="hbtn ai-btn" onclick="QuOLabNexus.toggleAI()">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" style="vertical-align:middle;">
@@ -1256,7 +1262,8 @@ class QuOLabNexusConfigSyncReader {
     if (!route) throw new Error('No compatible API route is available for ' + kind + '. Connect an API in Nexus Connectors or configure the Founder service.');
     if (!['GET','HEAD','POST','PUT','PATCH','DELETE'].includes(method)) throw new Error('HTTP method is not allowed for Founder fallback.');
     const rawPath = String(data.path || (route.type === 'engine' ? '/run' : ''));
-    if (!rawPath || rawPath.length > 500 || /[\r\n]/.test(rawPath)) throw new Error('Founder API path is missing or invalid.');
+    if (!rawPath || rawPath.length > 500 || /[\r
+]/.test(rawPath)) throw new Error('Founder API path is missing or invalid.');
     const url = new URL(rawPath, route.base + '/');
     if (url.origin !== new URL(route.base).origin) throw new Error('Founder fallback cannot call a different host.');
     const headers = { 'Accept':'application/json' };
@@ -2420,15 +2427,36 @@ class QuOLabNexusConfigSyncReader {
   }
 
   const DEMO = {
-    qiskit:'from qiskit import QuantumCircuit\nqc = QuantumCircuit(2)\nqc.h(0)\nqc.cx(0,1)\nprint(qc.draw())',
-    qubit:'A qubit: α|0⟩+β|1⟩ where |α|²+|β|²=1\nBloch: North=|0⟩, South=|1⟩, Equator=superposition',
+    qiskit:'from qiskit import QuantumCircuit
+qc = QuantumCircuit(2)
+qc.h(0)
+qc.cx(0,1)
+print(qc.draw())',
+    qubit:'A qubit: α|0⟩+β|1⟩ where |α|²+|β|²=1
+Bloch: North=|0⟩, South=|1⟩, Equator=superposition',
     grover:'Grover O(√N): H on all → Oracle → Amplification → Measure',
-    bell:'|Φ⁺⟩=(|00⟩+|11⟩)/√2\nqc.h(0)\nqc.cx(0,1)',
-    latex:'$$\\hat{H}|\\psi\\rangle=E|\\psi\\rangle$$\n$$|\\Phi^+\\rangle=\\frac{1}{\\sqrt{2}}(|00\\rangle+|11\\rangle)$$',
-    cirq:'import cirq\nq=cirq.LineQubit.range(2)\nc=cirq.Circuit(cirq.H(q[0]),cirq.CNOT(q[0],q[1]))',
-    pennylane:'import pennylane as qml\ndev=qml.device("default.qubit",wires=2)\n@qml.qnode(dev)\ndef circ():\n    qml.Hadamard(wires=0)\n    qml.CNOT(wires=[0,1])\n    return qml.probs()',
-    entanglement:'Quantum entanglement:\nqc.h(0); qc.cx(0,1)\n→ Bell state: measuring one determines the other',
-    bloch:'Bloch sphere:\nH: |0⟩→equator\nX: flips north↔south\nZ: rotates phase φ',
+    bell:'|Φ⁺⟩=(|00⟩+|11⟩)/√2
+qc.h(0)
+qc.cx(0,1)',
+    latex:'$$\\hat{H}|\\psi\\rangle=E|\\psi\\rangle$$
+$$|\\Phi^+\\rangle=\\frac{1}{\\sqrt{2}}(|00\\rangle+|11\\rangle)$$',
+    cirq:'import cirq
+q=cirq.LineQubit.range(2)
+c=cirq.Circuit(cirq.H(q[0]),cirq.CNOT(q[0],q[1]))',
+    pennylane:'import pennylane as qml
+dev=qml.device("default.qubit",wires=2)
+@qml.qnode(dev)
+def circ():
+    qml.Hadamard(wires=0)
+    qml.CNOT(wires=[0,1])
+    return qml.probs()',
+    entanglement:'Quantum entanglement:
+qc.h(0); qc.cx(0,1)
+→ Bell state: measuring one determines the other',
+    bloch:'Bloch sphere:
+H: |0⟩→equator
+X: flips north↔south
+Z: rotates phase φ',
   };
 
 
@@ -2615,7 +2643,8 @@ Supported actions:
 {"type":"set_code","target":"architect|notebook","cellIndex":0,"code":"..."}
 \`\`\`
 - \`\`\`openq-action
-{"type":"set_markdown","target":"notebook","cellIndex":0,"markdown":"# Heading\\nContent"}
+{"type":"set_markdown","target":"notebook","cellIndex":0,"markdown":"# Heading\
+Content"}
 \`\`\`
 - \`\`\`openq-action
 {"type":"run","target":"architect|notebook","cellIndex":0}
@@ -2675,7 +2704,8 @@ CONTEXT (staged and size-limited): ${c}`;
       case 'open_app': return '🧩 Open Quantum App';
       case 'add_cell': return '＋ Create ' + a.cellType + ' notebook cell';
       case 'open_circuit_editor': return '⚛ Open visual circuit editor for notebook cell ' + a.cellIndex;
-      case 'set_code': return '✍ Write code in ' + (a.target === 'architect' ? 'Architect' : 'notebook cell ' + a.cellIndex) + ' (' + a.code.split('\\n').length + ' lines)';
+      case 'set_code': return '✍ Write code in ' + (a.target === 'architect' ? 'Architect' : 'notebook cell ' + a.cellIndex) + ' (' + a.code.split('\
+').length + ' lines)';
       case 'noise': return '🔊 Simulate with noise (' + (a.target === 'architect' ? 'Architect' : 'cell ' + a.cellIndex) + (a.engine ? ', ' + a.engine : '') + ')';
       case 'ui_action': return '🖱 ' + a.operation + ' control in ' + a.screen + ' (' + a.selector + ')';
       case 'tool_call': return 'ƒ ' + a.functionName + '() in ' + a.screen;
@@ -2877,7 +2907,8 @@ CONTEXT (staged and size-limited): ${c}`;
     return { ok: results.length === actions.length && results.every(item => item.ok), results };
   }
 
-  function taskStatus(report){const t=String(report||'');return{status:((t.match(/TASK_STATUS\s*:\s*(COMPLETED|CONTINUE|BLOCKED)/i)||[])[1]||'').toUpperCase(),evidence:((t.match(/TASK_EVIDENCE\s*:\s*([^\r\n]+)/i)||[])[1]||'').trim()};}
+  function taskStatus(report){const t=String(report||'');return{status:((t.match(/TASK_STATUS\s*:\s*(COMPLETED|CONTINUE|BLOCKED)/i)||[])[1]||'').toUpperCase(),evidence:((t.match(/TASK_EVIDENCE\s*:\s*([^\r
+]+)/i)||[])[1]||'').trim()};}
   function isExecutionRequest(msg){const t=String(msg||'');if(/^\s*(open|abre|abrir|muestra|show|navigate|ir a|go to|haz|hacer|realiza|realizar|termina|terminar|completa|completar|finish|complete)\b/i.test(t))return true;return /\b(create|build|program|write|edit|fix|correct|run|execute|save|delete|publish|implement|deploy|configure|add|remove|construye|construir|crear|crea|programa|programar|escribe|escribir|edita|editar|corrige|corregir|arregla|arreglar|ejecuta|ejecutar|guarda|guardar|implementa|implementar|configura|configurar|añade|añadir|anade|anadir|elimina|eliminar|modifica|modificar|diseña|diseñar|disena|disenar|simula|simular)\b/i.test(t);}
   function hasFreshOutput(ctx,execution){
     if((execution?.results||[]).some(x=>x.ok&&String(x.output||'').trim()))return true;
@@ -2902,14 +2933,19 @@ CONTEXT (staged and size-limited): ${c}`;
         for(let turn=0;turn<maxTurns;turn++){
           const before=JSON.stringify(ctx||{});
           const prompt=[
-            'USER REQUEST (preserve the full scope):\n'+msg,
-            turn?'CONTINUATION AND CHECKLIST:\n'+previous:'',
+            'USER REQUEST (preserve the full scope):
+'+msg,
+            turn?'CONTINUATION AND CHECKLIST:
+'+previous:'',
             turn?'LAST ACTION RESULTS: '+JSON.stringify(lastExecution.results||[]):'',
             
             executionTask?'Continue the same task. Maintain an explicit checklist of every requested acceptance criterion. Inspect, act, verify, correct and continue. Move between modules yourself. No agents or handoffs exist. Do not repeat successful actions.':'Answer directly; do not emit actions unless the user explicitly requests an operation.',
             'If needed, emit up to 4 valid actions (including tool_call for a documented callable module function), each inside its own fenced code block labeled openq-action. Use TASK_STATUS: CONTINUE until all criteria are verified. COMPLETED requires TASK_EVIDENCE grounded in fresh context. Use BLOCKED only for a concrete blocker. Questions are completed directly.'
-          ].filter(Boolean).join('\n\n');
-          const raw=await callAI(prompt,ctx,{historyLimit:0,turn,execution:executionTask,temp:executionTask?0.2:undefined,systemSuffix:'\nTASK TURN: retain the original objective and checklist; work only on the next small batch. Never resend an action whose receipt is confirmed.'});
+          ].filter(Boolean).join('
+
+');
+          const raw=await callAI(prompt,ctx,{historyLimit:0,turn,execution:executionTask,temp:executionTask?0.2:undefined,systemSuffix:'
+TASK TURN: retain the original objective and checklist; work only on the next small batch. Never resend an action whose receipt is confirmed.'});
           window.QuOLabNexusAgent?.acknowledgeEventDelta(ctx?.event_delta?.to_sequence);
            const parsed=extractActions(raw);finalText=parsed.text||raw;const status=taskStatus(finalText);
           finalText=finalText.replace(/^TASK_STATUS\\s*:\\s*(?:COMPLETED|CONTINUE|BLOCKED)\\s*$/gim,'').replace(/^TASK_EVIDENCE\\s*:\\s*.*$/gim,'').trim();
@@ -2921,8 +2957,12 @@ CONTEXT (staged and size-limited): ${c}`;
             const changed=before!==JSON.stringify(ctx||{}),ack=lastExecution.ok&&lastExecution.results.length===parsed.actions.length;
             const needsOutput=/\b(run|execute|simulate|simulation|ejecutar|ejecuta|simular|simula|simulaci[oó]n)\b/i.test(msg),outputOK=!needsOutput||hasFreshOutput(ctx,lastExecution);
             if(ack&&changed)evidence.push(...lastExecution.results.filter(x=>x.ok).map(x=>x.message));
-            previous=finalText+'\nState changed: '+changed+'; actions acknowledged: '+ack+'; output verified: '+outputOK+'\nFresh tool context was reloaded; inspect the current system CONTEXT before the next action.';
-            if(!lastExecution.ok){const uncertain=lastExecution.results.some(x=>x.received&&!x.acknowledged);if(uncertain){blocked=true;previous+='\nThe tool acknowledged receipt but did not return an execution result. Do not resend this potentially non-idempotent command; keep the task blocked until its outcome can be inspected.';break;}previous+='\nAction failure: diagnose and correct before continuing.';continue;}
+            previous=finalText+'
+State changed: '+changed+'; actions acknowledged: '+ack+'; output verified: '+outputOK+'
+Fresh tool context was reloaded; inspect the current system CONTEXT before the next action.';
+            if(!lastExecution.ok){const uncertain=lastExecution.results.some(x=>x.received&&!x.acknowledged);if(uncertain){blocked=true;previous+='
+The tool acknowledged receipt but did not return an execution result. Do not resend this potentially non-idempotent command; keep the task blocked until its outcome can be inspected.';break;}previous+='
+Action failure: diagnose and correct before continuing.';continue;}
             if(status.status==='BLOCKED'){blocked=true;break;}
             if(status.status==='COMPLETED'&&status.evidence&&ack&&changed&&outputOK){finished=true;evidence.push(status.evidence);break;}
             continue;
@@ -2930,15 +2970,28 @@ CONTEXT (staged and size-limited): ${c}`;
           if(!executionTask){finished=true;break;}
           if(status.status==='BLOCKED'){blocked=true;break;}
           noActionTurns++;
-          if(parsed.rejected?.length) previous=finalText+'\\nRejected actions: '+JSON.stringify(parsed.rejected)+'\\nCorrect the JSON and required fields; do not repeat invalid actions.';
-          if(noActionTurns>=2){blocked=true;previous+='\\nTwo consecutive turns produced no executable actions. Stop and report the concrete blocker.';break;}
+          if(parsed.rejected?.length) previous=finalText+'\
+Rejected actions: '+JSON.stringify(parsed.rejected)+'\
+Correct the JSON and required fields; do not repeat invalid actions.';
+          if(noActionTurns>=2){blocked=true;previous+='\
+Two consecutive turns produced no executable actions. Stop and report the concrete blocker.';break;}
           const outputOK=hasFreshOutput(ctx,lastExecution),needsOutput=/\b(run|execute|simulate|simulation|ejecutar|ejecuta|simular|simula|simulaci[oó]n)\b/i.test(msg);
           if(status.status==='COMPLETED'&&status.evidence&&(!needsOutput||outputOK)){finished=true;evidence.push(status.evidence);break;}
-          previous=finalText+'\nNo actions this turn. Re-evaluate the unfinished acceptance criteria and provide next actions or a concrete blocker.';
+          previous=finalText+'
+No actions this turn. Re-evaluate the unfinished acceptance criteria and provide next actions or a concrete blocker.';
         }
-        if(executionTask&&!finished&&!blocked)finalText+='\n\nTASK_STATUS: CONTINUE\nNo marco la tarea como completada: quedan criterios sin verificar o se alcanzó el límite de iteraciones de esta sesión.';
-        else if(blocked)finalText+='\n\nTASK_STATUS: BLOCKED\nQNexusAi encontró un bloqueo concreto y no afirmará que terminó.';
-        else if(finished&&executionTask)finalText+='\n\nTASK_STATUS: COMPLETED\nTASK_EVIDENCE: '+evidence.filter(Boolean).join('; ').slice(0,900);
+        if(executionTask&&!finished&&!blocked)finalText+='
+
+TASK_STATUS: CONTINUE
+No marco la tarea como completada: quedan criterios sin verificar o se alcanzó el límite de iteraciones de esta sesión.';
+        else if(blocked)finalText+='
+
+TASK_STATUS: BLOCKED
+QNexusAi encontró un bloqueo concreto y no afirmará que terminó.';
+        else if(finished&&executionTask)finalText+='
+
+TASK_STATUS: COMPLETED
+TASK_EVIDENCE: '+evidence.filter(Boolean).join('; ').slice(0,900);
         document.getElementById('ai-loading').classList.remove('show');addAIMsg(finalText,'bot');
         notify('QNexusAi: '+finalText.replace(/\s+/g,' ').slice(0,170));reply=finalText;
         aiHistory.push({role:'user',content:msg},{role:'assistant',content:finalText});if(aiHistory.length>8)aiHistory=aiHistory.slice(-8);
@@ -3000,7 +3053,11 @@ CONTEXT (staged and size-limited): ${c}`;
   // and the 100 KB HTTP body limit before sending. Preserve prompt beginnings and
   // endings so core instructions and the latest task survive context reduction.
   function fitGatewayMessages(input) {
-    const marker='\\n\\n[QNexusAi: middle context omitted to fit gateway limits]\\n\\n';
+    const marker='\
+\
+[QNexusAi: middle context omitted to fit gateway limits]\
+\
+';
     const trim=(value,limit,headRatio=0.72)=>{
       const text=String(value||'');
       if(text.length<=limit)return text;
@@ -3140,7 +3197,9 @@ CONTEXT (staged and size-limited): ${c}`;
       } catch (e) { /* cae al método antiguo */ }
       const model = aiCfg.model || 'mistralai/Mistral-7B-Instruct-v0.3';
       const url = `https://api-inference.huggingface.co/models/${model}`;
-      const prompt = msgs.map(m => `${m.role}: ${m.content}`).join('\n') + '\nassistant:';
+      const prompt = msgs.map(m => `${m.role}: ${m.content}`).join('
+') + '
+assistant:';
       const res = await fetch(url, {
         method:'POST',
         headers:{'Authorization':'Bearer '+aiCfg.key,'Content-Type':'application/json'},
@@ -3179,8 +3238,10 @@ CONTEXT (staged and size-limited): ${c}`;
   function renderChatMarkdown(text) {
     text = String(text == null ? '' : text);
     const codes = [], maths = [];
-    let t = text.replace(/```[\s\S]*?```|`[^`\n]*`/g, m => 'zzcodezz' + (codes.push(m) - 1) + 'zz');
-    t = t.replace(/\$\$([\s\S]+?)\$\$|\\\[([\s\S]+?)\\\]|\\\(([\s\S]+?)\\\)|(?<![\\$\w])\$(?![\s$])([^$\n]+?)(?<![\s\\])\$(?![\w$])/g,
+    let t = text.replace(/```[\s\S]*?```|`[^`
+]*`/g, m => 'zzcodezz' + (codes.push(m) - 1) + 'zz');
+    t = t.replace(/\$\$([\s\S]+?)\$\$|\\\[([\s\S]+?)\\\]|\\\(([\s\S]+?)\\\)|(?<![\\$\w])\$(?![\s$])([^$
+]+?)(?<![\s\\])\$(?![\w$])/g,
       (m, a, b, c, d) => 'zzmathzz' + (maths.push({ tex: String(a ?? b ?? c ?? d).trim(), display: a !== undefined || b !== undefined }) - 1) + 'zz');
     t = t.replace(/zzcodezz(\d+)zz/g, (m, i) => codes[+i]);
     let html = marked.parse(t);
@@ -3262,7 +3323,9 @@ CONTEXT (staged and size-limited): ${c}`;
         const diagnostic = await callAI(
           'Automatic tool incident. Tool: ' + tool + '. Event: ' + kind + '. Error: ' + message + '. Diagnose the likely cause using only the supplied context. Give the user practical next steps. Do not execute anything, do not emit openq-action blocks, and do not claim the problem is fixed.',
           ctx,
-          { systemSuffix: '\n\nPROACTIVE INCIDENT MODE: This analysis was triggered by a tool error, not a new user command. Diagnose only. Do not propose or execute UI actions or tool_call actions, do not modify code, and reply in the same language as the latest user conversation.' }
+          { systemSuffix: '
+
+PROACTIVE INCIDENT MODE: This analysis was triggered by a tool error, not a new user command. Diagnose only. Do not propose or execute UI actions or tool_call actions, do not modify code, and reply in the same language as the latest user conversation.' }
         );
         addAIMsg(diagnostic, 'bot');
         

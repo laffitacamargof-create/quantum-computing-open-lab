@@ -2,6 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
+<script defer src="quolab-nexus-i18n.js?v=1.0.0"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>QuOLab Nexus — Panel Fundador</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=JetBrains+Mono:wght@400;500&family=Exo+2:wght@300;400;500&display=swap" rel="stylesheet">
@@ -782,7 +783,8 @@ function addSysLog(msg, type='info') {
   const log = document.getElementById('sys-log');
   if (!log) return;
   const t = new Date().toLocaleTimeString();
-  log.innerHTML += `\n<span class="log-${type}">[${t}] ${msg}</span>`;
+  log.innerHTML += `
+<span class="log-${type}">[${t}] ${msg}</span>`;
   log.scrollTop = log.scrollHeight;
 }
 
@@ -790,7 +792,8 @@ function addColabLog(msg) {
   const log = document.getElementById('colab-log');
   if (!log) return;
   const t = new Date().toLocaleTimeString();
-  log.innerHTML += (log.innerHTML ? '\n' : '') + `[${t}] ${msg}`;
+  log.innerHTML += (log.innerHTML ? '
+' : '') + `[${t}] ${msg}`;
   log.scrollTop = log.scrollHeight;
 }
 
@@ -916,7 +919,8 @@ function loadMistralSettings() {
 
 async function saveMistralSettings() {
   let rawKey = document.getElementById('mistral-key').value;
-  let cleanKey = rawKey.replace(/[\s"'\n\r\t]/g, '').trim();
+  let cleanKey = rawKey.replace(/[\s"'
+\r\t]/g, '').trim();
   document.getElementById('mistral-key').value = cleanKey;
   const enabled = document.getElementById('mistral-toggle').checked;
   const model = document.getElementById('mistral-model').value;
@@ -949,7 +953,8 @@ async function saveMistralSettings() {
 async function testMistralConnection() {
   let apiKey = localStorage.getItem('qcol_mistral_key');
   if (!apiKey) { notify('❌ No hay API key configurada'); return; }
-  apiKey = apiKey.replace(/[\s"'\n\r\t]/g, '').trim();
+  apiKey = apiKey.replace(/[\s"'
+\r\t]/g, '').trim();
   const url = 'https://api.deepseek.com/v1/chat/completions';
   const model = 'deepseek-chat';
   notify(`🔄 Probando conexión con DeepSeek...`);
@@ -1324,12 +1329,15 @@ function loadUserStats(){
 function loadHistorial(){
   const data = getMonitorData(); let runs = data.runs||[]; const filterUser = document.getElementById('mon-filter-user')?.value.trim().toLowerCase(); const filterLib = document.getElementById('mon-filter-lib')?.value;
   if(filterUser) runs = runs.filter(r=>r.user.toLowerCase().includes(filterUser)); if(filterLib) runs = runs.filter(r=>r.lib===filterLib); const log = document.getElementById('mon-historial'); if(!log) return; if(runs.length===0){ log.innerHTML='Sin resultados.'; return; }
-  log.innerHTML = runs.slice(-100).reverse().map(r=>{ const d=new Date(r.ts).toLocaleString(); const ok=r.success?'<span style="color:var(--gr);">✅</span>':'<span style="color:var(--rd);">❌</span>'; return `[${d}] ${ok} <span style="color:var(--bl2);">${r.user}</span> · ${r.lib} · ${r.qubits}q · ${r.time}s`; }).join('\n');
+  log.innerHTML = runs.slice(-100).reverse().map(r=>{ const d=new Date(r.ts).toLocaleString(); const ok=r.success?'<span style="color:var(--gr);">✅</span>':'<span style="color:var(--rd);">❌</span>'; return `[${d}] ${ok} <span style="color:var(--bl2);">${r.user}</span> · ${r.lib} · ${r.qubits}q · ${r.time}s`; }).join('
+');
 }
 
 function exportMonitorData(){
   const data = getMonitorData(); const runs = data.runs||[]; if(runs.length===0){ notify('Sin datos para exportar'); return; }
-  const header='Fecha,Usuario,Librería,Qubits,Tiempo(s),Éxito\n'; const rows=runs.map(r=>`${new Date(r.ts).toLocaleString()},${r.user},${r.lib},${r.qubits},${r.time},${r.success}`).join('\n');
+  const header='Fecha,Usuario,Librería,Qubits,Tiempo(s),Éxito
+'; const rows=runs.map(r=>`${new Date(r.ts).toLocaleString()},${r.user},${r.lib},${r.qubits},${r.time},${r.success}`).join('
+');
   const blob=new Blob([header+rows],{type:'text/csv'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='qcol_monitor_'+new Date().toISOString().split('T')[0]+'.csv'; a.click(); notify('📥 CSV exportado');
 }
 
@@ -1340,7 +1348,8 @@ async function syncMonitorToGitHub(){
 }
 
 async function loadMonitorFromGitHub(){
-  const gh=getGH(); if(!gh.user||!gh.repo) return; try{ const res=await fetch(`https://api.github.com/repos/${gh.user}/${gh.repo}/contents/data/monitor.json`,{headers:{'Accept':'application/vnd.github.v3+json'}}); if(res.ok){ const d=await res.json(); const payload=JSON.parse(atob(d.content.replace(/\n/g,''))); if(payload.data) localStorage.setItem('qcol_monitor_data',JSON.stringify(payload.data)); if(payload.config) localStorage.setItem('qcol_monitor_cfg',JSON.stringify(payload.config)); loadMonitorConfig(); refreshMonitor(); addSysLog('Monitor cargado desde GitHub','ok'); } }catch(e){}
+  const gh=getGH(); if(!gh.user||!gh.repo) return; try{ const res=await fetch(`https://api.github.com/repos/${gh.user}/${gh.repo}/contents/data/monitor.json`,{headers:{'Accept':'application/vnd.github.v3+json'}}); if(res.ok){ const d=await res.json(); const payload=JSON.parse(atob(d.content.replace(/
+/g,''))); if(payload.data) localStorage.setItem('qcol_monitor_data',JSON.stringify(payload.data)); if(payload.config) localStorage.setItem('qcol_monitor_cfg',JSON.stringify(payload.config)); loadMonitorConfig(); refreshMonitor(); addSysLog('Monitor cargado desde GitHub','ok'); } }catch(e){}
 }
 
 function clearMonitorData(){
@@ -1500,7 +1509,10 @@ window.addEventListener('message', async (event) => {
     try {
         if (!serverUrl) throw new Error("No se ha configurado la URL del servidor cuántico. Ve a la pestaña 🤗 Compilador HuggingFace y guarda la URL.");
         const functionDef = pythonCode || "";
-        const callCode = `${functionDef}\nimport json\n_result = ${func}(*${JSON.stringify(args)})\nprint(json.dumps(_result, ensure_ascii=False))`;
+        const callCode = `${functionDef}
+import json
+_result = ${func}(*${JSON.stringify(args)})
+print(json.dumps(_result, ensure_ascii=False))`;
         const output = await executePythonRemoteFull(callCode, serverUrl);
         clearTimeout(timeoutId);
         let parsed = output.trim();
@@ -1556,7 +1568,14 @@ async function sendChatMessage() {
     try {
         let response;
         if (hasValidConfig) response = await callAIChat(message, aiConfig);
-        else response = "⚠️ **Modo demostración activo**\n\nPara usar la IA completa, configura tu API key en la pestaña **🤖 IA**.\n\nPuedes obtener una clave gratuita en:\n- [Mistral AI](https://console.mistral.ai) (recomendado)\n- [Groq](https://console.groq.com)\n- [Hugging Face](https://huggingface.co/settings/tokens)";
+        else response = "⚠️ **Modo demostración activo**
+
+Para usar la IA completa, configura tu API key en la pestaña **🤖 IA**.
+
+Puedes obtener una clave gratuita en:
+- [Mistral AI](https://console.mistral.ai) (recomendado)
+- [Groq](https://console.groq.com)
+- [Hugging Face](https://huggingface.co/settings/tokens)";
         if (loadingDiv) loadingDiv.style.display = 'none';
         addChatMessage(response, 'assistant');
     } catch (error) {
@@ -1576,7 +1595,9 @@ async function callAIChat(message, aiConfig) {
     if (aiConfig.provider === 'huggingface') {
         const model = aiConfig.model || 'mistralai/Mistral-7B-Instruct-v0.3';
         const url = `https://api-inference.huggingface.co/models/${model}`;
-        const prompt = msgs.map(m => `${m.role}: ${m.content}`).join('\n') + '\nassistant:';
+        const prompt = msgs.map(m => `${m.role}: ${m.content}`).join('
+') + '
+assistant:';
         const res = await fetch(url, { method: 'POST', headers: { 'Authorization': 'Bearer ' + aiConfig.key, 'Content-Type': 'application/json' }, body: JSON.stringify({ inputs: prompt, parameters: { max_new_tokens: tokens, temperature: temp } }), signal: AbortSignal.timeout(20000) });
         const d = await res.json();
         if (!res.ok) throw new Error(d.error || 'Error HuggingFace');

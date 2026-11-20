@@ -5,6 +5,7 @@
 <script src="quolab-nexus-connectors-core.js?v=20261120-founder-fallback-2"></script>
 <script src="quolab-nexus-tool-connector.js?v=1.9.2"></script>
     <meta charset="UTF-8">
+<script defer src="quolab-nexus-i18n.js?v=1.0.0"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <title>QuOLab Nexus — Quantum App Studio</title>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -787,8 +788,28 @@
             projects.push({
                 id: generateId(),
                 name: "Demo: Quantum greeting",
-                pythonCode: `def greet(name):\n    return f"Hello {name}! from Python on quantum server 🧪"\n\ndef add(a,b):\n    return a+b`,
-                htmlCode: `<!DOCTYPE html>\n<html>\n<head><meta charset="UTF-8"></head>\n<body style="background:#0a0e1a; color:white; font-family:monospace; padding:1rem;">\n<h2>Interactive Demo</h2>\n<input id="nameInput" placeholder="Your name" style="padding:0.3rem;">\n<button onclick="callGreet()">Greet</button>\n<p id="result"></p>\n<script>\nwindow.callGreet = async () => {\n    const name = document.getElementById('nameInput').value;\n    const res = await window.pyCall("greet", name);\n    document.getElementById('result').innerText = res;\n};\n<\/script>\n</body>\n</html>`,
+                pythonCode: `def greet(name):
+    return f"Hello {name}! from Python on quantum server 🧪"
+
+def add(a,b):
+    return a+b`,
+                htmlCode: `<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"></head>
+<body style="background:#0a0e1a; color:white; font-family:monospace; padding:1rem;">
+<h2>Interactive Demo</h2>
+<input id="nameInput" placeholder="Your name" style="padding:0.3rem;">
+<button onclick="callGreet()">Greet</button>
+<p id="result"></p>
+<script>
+window.callGreet = async () => {
+    const name = document.getElementById('nameInput').value;
+    const res = await window.pyCall("greet", name);
+    document.getElementById('result').innerText = res;
+};
+<\/script>
+</body>
+</html>`,
                 serverUrl: "",
                 createdAt: Date.now()
             });
@@ -1077,7 +1098,10 @@
                 if (typeof id !== 'string' || !id || id.length > 120) throw new Error('Invalid Python request id.');
                 if (typeof func !== 'string' || !/^[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*$/.test(func)) throw new Error('Invalid Python function name.');
                 if (!Array.isArray(args) || args.length > 100) throw new Error('Invalid Python function arguments.');
-                const fullCode = `${pythonCode || ''}\nimport json\n_result = ${func}(*${JSON.stringify(args)})\nprint(json.dumps(_result, ensure_ascii=False))`;
+                const fullCode = `${pythonCode || ''}
+import json
+_result = ${func}(*${JSON.stringify(args)})
+print(json.dumps(_result, ensure_ascii=False))`;
                 const output = await executePythonRemote(fullCode, serverUrl, { slot:nexusSlot, connector:nexusConnector, module:nexusModule });
                 let result = output.trim();
                 if ((result.startsWith('"') && result.endsWith('"')) || 
@@ -1363,8 +1387,24 @@
         currentEditId = null;
         externalEditContext = null;
         document.getElementById('project-name-input').value = 'New quantum app';
-        document.getElementById('python-editor').value = '# Remote Python code\ndef my_function(param):\n    return f"Result: {param}"';
-        document.getElementById('html-editor').value = '<!DOCTYPE html>\n<html>\n<head><meta charset="UTF-8"></head>\n<body style="background:#0a0e1a;color:white;font-family:sans-serif;padding:1.5rem;">\n<h2>⚛️ My Quantum App</h2>\n<button onclick="call()">Execute</button>\n<p id="out"></p>\n<script>\nasync function call(){\n  const r = await window.pyCall("my_function","hello");\n  document.getElementById("out").innerText = r;\n}\n<\/script>\n</body>\n</html>';
+        document.getElementById('python-editor').value = '# Remote Python code
+def my_function(param):
+    return f"Result: {param}"';
+        document.getElementById('html-editor').value = '<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"></head>
+<body style="background:#0a0e1a;color:white;font-family:sans-serif;padding:1.5rem;">
+<h2>⚛️ My Quantum App</h2>
+<button onclick="call()">Execute</button>
+<p id="out"></p>
+<script>
+async function call(){
+  const r = await window.pyCall("my_function","hello");
+  document.getElementById("out").innerText = r;
+}
+<\/script>
+</body>
+</html>';
         showScreen('editor');
     }
 

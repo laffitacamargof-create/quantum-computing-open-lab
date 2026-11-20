@@ -5,6 +5,7 @@
 <script src="quolab-nexus-connectors-core.js?v=20261120-founder-fallback-2"></script>
 <script src="quolab-nexus-tool-connector.js?v=1.4.0"></script>
 <meta charset="UTF-8">
+<script defer src="quolab-nexus-i18n.js?v=1.0.0"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>QuOLab Nexus — Quantum Architect</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=JetBrains+Mono:wght@400;500;600&family=Exo+2:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -575,13 +576,15 @@ async function saveIgnoredAttrLocal(attr, reason) {
     }
     const out = document.getElementById('out-body');
     if (out) {
-        out.innerHTML += `<span class="ok">✅ Attribute permanently ignored: ${attr}</span>\n`;
+        out.innerHTML += `<span class="ok">✅ Attribute permanently ignored: ${attr}</span>
+`;
     }
 }
 
 async function callMistralClassifier(errorPayload) {
     let apiKey = localStorage.getItem('qcol_mistral_key') || '';
-    apiKey = apiKey.replace(/[\s"'\n\r\t]/g, '').trim();
+    apiKey = apiKey.replace(/[\s"'
+\r\t]/g, '').trim();
     const enabled = localStorage.getItem('qcol_mistral_enabled') === 'true';
     if (!enabled || !apiKey) return null;
     
@@ -604,7 +607,8 @@ Examples:
 DO NOT add anything else. Just that line.`;
 
     const systemPrompt = customPrompt || defaultPrompt;
-    const userMessage = `Error: ${errorPayload.error_msg || ''}\nSuspicious attribute: ${errorPayload.attribute_name || 'unknown'}`;
+    const userMessage = `Error: ${errorPayload.error_msg || ''}
+Suspicious attribute: ${errorPayload.attribute_name || 'unknown'}`;
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
@@ -631,7 +635,8 @@ DO NOT add anything else. Just that line.`;
         const rawText = await response.text();
         if (rawText.trim().startsWith('<') || rawText.trim().startsWith('<!')) {
             const out = document.getElementById('out-body');
-            if (out) out.innerHTML += `<span class="er">❌ DeepSeek blocked by CORS.</span>\n`;
+            if (out) out.innerHTML += `<span class="er">❌ DeepSeek blocked by CORS.</span>
+`;
             return null;
         }
 
@@ -648,10 +653,12 @@ DO NOT add anything else. Just that line.`;
                 console.warn('DeepSeek auth error:', response.status, errorMsg);
                 if (!window._deepseekAuthWarnShown) {
                     window._deepseekAuthWarnShown = true;
-                    if (out) out.innerHTML += `<span class="er" style="font-size:.6rem;">⚠️ DeepSeek access denied (${response.status}). Using local classifier.</span>\n`;
+                    if (out) out.innerHTML += `<span class="er" style="font-size:.6rem;">⚠️ DeepSeek access denied (${response.status}). Using local classifier.</span>
+`;
                 }
             } else {
-                if (out) out.innerHTML += `<span class="er">❌ DeepSeek Error (${response.status}): ${errorMsg}</span>\n`;
+                if (out) out.innerHTML += `<span class="er">❌ DeepSeek Error (${response.status}): ${errorMsg}</span>
+`;
             }
             return null;
         }
@@ -661,7 +668,8 @@ DO NOT add anything else. Just that line.`;
             data = JSON.parse(rawText);
         } catch(parseErr) {
             const out = document.getElementById('out-body');
-            if (out) out.innerHTML += `<span class="er">❌ Invalid DeepSeek response: ${rawText.slice(0, 100)}</span>\n`;
+            if (out) out.innerHTML += `<span class="er">❌ Invalid DeepSeek response: ${rawText.slice(0, 100)}</span>
+`;
             return null;
         }
 
@@ -684,12 +692,14 @@ DO NOT add anything else. Just that line.`;
 
         console.warn('Unrecognized response:', content);
         const out = document.getElementById('out-body');
-        if (out) out.innerHTML += `<span class="er">⚠️ Unexpected DeepSeek response: ${content}</span>\n`;
+        if (out) out.innerHTML += `<span class="er">⚠️ Unexpected DeepSeek response: ${content}</span>
+`;
         return null;
     } catch (err) {
         console.error('DeepSeek fetch error:', err);
         const out = document.getElementById('out-body');
-        if (out) out.innerHTML += `<span class="er">❌ Network error querying DeepSeek: ${err.message}</span>\n`;
+        if (out) out.innerHTML += `<span class="er">❌ Network error querying DeepSeek: ${err.message}</span>
+`;
         return null;
     } finally {
         clearTimeout(timeoutId);
@@ -1197,9 +1207,11 @@ function validateAndCompleteMeasurements(source) {
   const re = /\bqc\s*\.\s*([A-Za-z_]\w*)\s*\(((?:[^()'"]|'(?:\\.|[^'\\])*'|"(?:\\.|[^"\\])*"|\([^()]*\))*)\)/g;
   let m;
   while ((m = re.exec(code)) !== null) {
-    const lineStart = code.lastIndexOf('\n', m.index) + 1;
+    const lineStart = code.lastIndexOf('
+', m.index) + 1;
     if (code.slice(lineStart, m.index).includes('#')) continue;
-    calls.push({name:m[1].toLowerCase(),args:_splitTopLevel(m[2]),index:m.index,line:code.slice(0,m.index).split('\n').length});
+    calls.push({name:m[1].toLowerCase(),args:_splitTopLevel(m[2]),index:m.index,line:code.slice(0,m.index).split('
+').length});
   }
   const measured=new Set(), used=new Set(), errors=[];
   const wires = arg => { const a=String(arg||'').trim(); let q=_argIndices(a); if(!q.length){const x=a.match(/\bq\s*\[\s*(\d+)\s*\]/);if(x)q=[Number(x[1])];} return q; };
@@ -1215,7 +1227,10 @@ function validateAndCompleteMeasurements(source) {
   if(!hasM){const nq=(code.match(/\bQuantumCircuit\s*\(\s*(\d+)/)||[])[1];additions=nq?[`qc.measure(range(${nq}), range(${nq}))  # QNEXUS_AUTO_MEASURE`]:missing.map(q=>`qc.measure(${q}, ${q})  # QNEXUS_AUTO_MEASURE`);}
   else additions=missing.map(q=>`qc.measure(${q}, ${q})  # QNEXUS_AUTO_MEASURE q[${q}]`);
   let at=code.length;const terminal=/\b(?:qc\.draw\s*\(|simulator\.run\s*\(|\w+\.run\s*\(|get_counts\s*\()/m.exec(code);if(terminal)at=terminal.index;
-  return {ok:true,code:code.slice(0,at).replace(/\s*$/,'')+'\n'+additions.join('\n')+'\n'+code.slice(at),added:true};
+  return {ok:true,code:code.slice(0,at).replace(/\s*$/,'')+'
+'+additions.join('
+')+'
+'+code.slice(at),added:true};
 }
 
 function syncVisualMeasurementMarkers() {
@@ -1245,7 +1260,13 @@ function updateCodeFromCircuit() {
   if (syncQubitCount()) { renderCircuit(); updateCircuitInfo(); }
   const n = circuit.qubits;
   if (syncVisualMeasurementMarkers()) renderCircuit();
-  let code = `from qiskit import QuantumCircuit\nimport numpy as np\nfrom qiskit_aer import AerSimulator\n\nqc = QuantumCircuit(${n}, ${n})\n\n`;
+  let code = `from qiskit import QuantumCircuit
+import numpy as np
+from qiskit_aer import AerSimulator
+
+qc = QuantumCircuit(${n}, ${n})
+
+`;
   // Preserve visual operations and ensure every used wire ends with one measurement.
   const measuredWires = new Set(circuit.gates.filter(g => g.id === 'M').map(g => g.q));
   const usedWires = new Set();
@@ -1254,11 +1275,20 @@ function updateCodeFromCircuit() {
     if (g.id !== 'M') { usedWires.add(g.q); if (g.q2 !== undefined) usedWires.add(g.q2); if (g.q3 !== undefined) usedWires.add(g.q3); }
     if (g.id === 'M' && g.autoMeasurement && !hasExplicitMeasurements) return;
     let line = g.def.code.replace(/\{q2\}/g, g.q2 !== undefined ? g.q2 : 0).replace(/\{q3\}/g, g.q3 !== undefined ? g.q3 : 0).replace(/\{q\}/g, g.q);
-    code += line + '\n';
+    code += line + '
+';
   });
-  if (!hasExplicitMeasurements) code += `qc.measure(range(${n}), range(${n}))  # QNEXUS_AUTO_MEASURE\n`;
-  else [...usedWires].filter(q => !measuredWires.has(q)).sort((a,b)=>a-b).forEach(q => { code += `qc.measure(${q}, ${q})  # QNEXUS_AUTO_MEASURE q[${q}]\n`; });
-  code += `\nprint(qc.draw(output='text'))\n\nsimulator = AerSimulator()\nresult = simulator.run(qc, shots=1024).result()\ncounts = result.get_counts()\nprint("Results:", counts)`;
+  if (!hasExplicitMeasurements) code += `qc.measure(range(${n}), range(${n}))  # QNEXUS_AUTO_MEASURE
+`;
+  else [...usedWires].filter(q => !measuredWires.has(q)).sort((a,b)=>a-b).forEach(q => { code += `qc.measure(${q}, ${q})  # QNEXUS_AUTO_MEASURE q[${q}]
+`; });
+  code += `
+print(qc.draw(output='text'))
+
+simulator = AerSimulator()
+result = simulator.run(qc, shots=1024).result()
+counts = result.get_counts()
+print("Results:", counts)`;
   const ta = document.getElementById('code-ta');
   if (ta && ta.value !== code) { ta.value = code; updateSyntaxHighlight(); }
 }
@@ -1802,19 +1832,22 @@ async function initPyodide() {
     }
     pyodideLoading = true;
     const out = document.getElementById('out-body');
-    out.innerHTML = '<span class="inf">🔄 Loading Pyodide (local Python engine)...</span>\n';
+    out.innerHTML = '<span class="inf">🔄 Loading Pyodide (local Python engine)...</span>
+';
     try {
         pyodide = await loadPyodide();
         await pyodide.runPythonAsync(QISKIT_MOCK_CODE);
         await pyodide.loadPackage('numpy');   // solo numpy al arrancar; scipy/matplotlib/pandas/sklearn se cargan SOLO si el código los importa
         await injectIgnoredAttrsIntoPython(pyodide);
-        out.innerHTML = '<span class="ok">✅ Pyodide ready</span>\n';
+        out.innerHTML = '<span class="ok">✅ Pyodide ready</span>
+';
         notify('✅ Pyodide ready');
         if (document.getElementById('code-ta').value.trim()) {
             syncWithPyodide().catch(console.error);
         }
     } catch (err) {
-        out.innerHTML = `<span class="er">❌ Error loading Pyodide: ${err.message}</span>\n`;
+        out.innerHTML = `<span class="er">❌ Error loading Pyodide: ${err.message}</span>
+`;
         notify('❌ Error loading Pyodide');
         console.error(err);
     }
@@ -1896,11 +1929,14 @@ const QCOL_PROBE_PY = [
   'except Exception:',
   '    pass',
   ''
-].join('\n');
-function nexusAppendProbe(code) { return code + '\n' + QCOL_PROBE_PY; }
+].join('
+');
+function nexusAppendProbe(code) { return code + '
+' + QCOL_PROBE_PY; }
 function nexusExtractStruct(output) {
   let struct = null;
-  const text = String(output || '').replace(/__QCOL_STRUCT__(\{.*\})\n?/g, (m, js) => { try { struct = JSON.parse(js); } catch (e) {} return ''; });
+  const text = String(output || '').replace(/__QCOL_STRUCT__(\{.*\})
+?/g, (m, js) => { try { struct = JSON.parse(js); } catch (e) {} return ''; });
   return { text, struct };
 }
 const _BLOCK_DEF = { id: 'BLK', sym: '▦', bg: '#6a1b9a', glow: '#c06bff', desc: 'Composite block', code: '', block: true };
@@ -1935,7 +1971,8 @@ function nexusRefuse(why, out) {
   renderCircuit(); updateCircuitInfo();
   const msg = `⛔ Visual circuit disabled: your code uses ${why}. Reduce it to ≤ ${MAX_QUBITS} qubits and ≤ ${MAX_GATES} gates to see the diagram (the code itself is untouched).`;
   notify(msg, 7000);
-  if (out) out.innerHTML += `<span class="er">${escapeHtml(msg)}</span>\n`;
+  if (out) out.innerHTML += `<span class="er">${escapeHtml(msg)}</span>
+`;
   const b = document.getElementById('qcount-badge'); if (b) b.textContent = `⛔ over limit: ${why}`;
   return true;
 }
@@ -2010,17 +2047,20 @@ function nexusReconcile(srv, opts) {
   if (py) {
     const cmp = nexusCompare(py, srv, { ignoreMeasure: dropM });
     if (cmp.ok) {
-      out.innerHTML += `\n<span class="ok" style="font-size:.6rem;">✅ Verified: Pyodide and server agree (${cmp.nOps} ops · ${srv.nq} qubits)</span>`;
+      out.innerHTML += `
+<span class="ok" style="font-size:.6rem;">✅ Verified: Pyodide and server agree (${cmp.nOps} ops · ${srv.nq} qubits)</span>`;
       return 'match';
     }
     nexusApplyStruct(srv, { dropMeasures: dropM });
     _pyStruct = srv; _pyStructCode = codeNow;
-    out.innerHTML += `\n<span class="er" style="font-size:.6rem;">⚠️ Pyodide ≠ server — canvas rebuilt from the server (Qiskit):<br>${cmp.diffs.map(escapeHtml).join('<br>')}</span>`;
+    out.innerHTML += `
+<span class="er" style="font-size:.6rem;">⚠️ Pyodide ≠ server — canvas rebuilt from the server (Qiskit):<br>${cmp.diffs.map(escapeHtml).join('<br>')}</span>`;
     return 'rebuilt';
   }
   nexusApplyStruct(srv, { dropMeasures: dropM });
   _pyStruct = srv; _pyStructCode = codeNow;
-  out.innerHTML += `\n<span class="ok" style="font-size:.6rem;">🔧 Canvas built from the server circuit (${srv.ops.filter(o => o.n !== 'barrier').length} ops) — Pyodide preview unavailable</span>`;
+  out.innerHTML += `
+<span class="ok" style="font-size:.6rem;">🔧 Canvas built from the server circuit (${srv.ops.filter(o => o.n !== 'barrier').length} ops) — Pyodide preview unavailable</span>`;
   return 'server-only';
 }
 
@@ -2048,7 +2088,9 @@ function robustPreprocess(code) {
     }
     code = out;
 
-    code = code.replace(/^@(?!property|staticmethod|classmethod|abstractmethod)[^\n]+\n/gm, '');
+    code = code.replace(/^@(?!property|staticmethod|classmethod|abstractmethod)[^
+]+
+/gm, '');
 
     const NON_ESSENTIAL = [
         /\bAerSimulator\s*\(/, /simulator\.run\b/, /\.result\(\)/, /get_counts\(/,
@@ -2061,7 +2103,8 @@ function robustPreprocess(code) {
         /\bqc\.(depth|size|num_parameters|copy|control|inverse|repeat|power|definition|qasm|properties)\s*[(\s]/
     ];
 
-    const lines = code.split('\n');
+    const lines = code.split('
+');
     const result = [];
     
     for (let i = 0; i < lines.length; i++) {
@@ -2089,7 +2132,8 @@ function robustPreprocess(code) {
         result.push(line);
     }
     
-    return result.join('\n');
+    return result.join('
+');
 }
 
 function classifyLocallyFirst(errText, attr) {
@@ -2157,7 +2201,8 @@ function _parseTextDraw(text) {
     // 1) Qiskit parte los circuitos anchos en varios bloques (« al inicio, » al final).
     //    Se unen por qubit para leer el circuito COMPLETO y no solo el primer bloque.
     const rowsByQubit = {};
-    text.split('\n').forEach(line => {
+    text.split('
+').forEach(line => {
         const m = line.match(/^\s*«?\s*(?:q_?(\d+)|q\[(\d+)\])\s*:/);
         if (!m) return;
         const idx = parseInt(m[1] !== undefined ? m[1] : m[2], 10);
@@ -2202,7 +2247,8 @@ async function syncFromServer(reason) {
     const rawCode = document.getElementById('code-ta').value.trim();
     if (!rawCode) return false;
     const out = document.getElementById('out-body');
-    out.innerHTML += `<span class="inf">🔧 Corrector active (${reason}) — running on server...</span>\n`;
+    out.innerHTML += `<span class="inf">🔧 Corrector active (${reason}) — running on server...</span>
+`;
     const _ensC = ensureMeasurements(_cleanCodeForServer(rawCode));
     const cleanCode = nexusAppendProbe(_ensC.code);
     const isHF = engineURL.includes('hf.space') || engineURL.includes('huggingface') || engineURL.includes('nexus-connectors.invalid');
@@ -2220,7 +2266,8 @@ async function syncFromServer(reason) {
         let d = isHF ? (raw.data ? raw.data[0] : raw) : raw;
         if (typeof d === 'string') { try { d = JSON.parse(d); } catch(e) {} }
         if (!d?.success) {
-            out.innerHTML += `<span class="er">⚠️ Server: ${escapeHtml((d?.output||'error').slice(0,120))}</span>\n`;
+            out.innerHTML += `<span class="er">⚠️ Server: ${escapeHtml((d?.output||'error').slice(0,120))}</span>
+`;
             return false;
         }
         const _stS = nexusExtractStruct(d.output || '');
@@ -2241,7 +2288,8 @@ async function syncFromServer(reason) {
                 const _sg0 = parsed.gates.filter(g => g.id !== 'M').length;
                 const _pct0 = _sg0 > 0 ? Math.abs(_vg0 - _sg0) / _sg0 : 0;
                 if (_pct0 <= 0.15) {
-                    out.innerHTML += `<span class="ok">✅ Server check: circuit matches (${_vg0} gates)</span>\n`;
+                    out.innerHTML += `<span class="ok">✅ Server check: circuit matches (${_vg0} gates)</span>
+`;
                     if (d.bloch?.probabilities) updateBlochFromProbs(d.bloch.probabilities);
                     return false;
                 }
@@ -2253,15 +2301,19 @@ async function syncFromServer(reason) {
             renderCircuit();
             updateCircuitInfo();
             if (d.bloch?.probabilities) updateBlochFromProbs(d.bloch.probabilities);
-            out.innerHTML += `<span class="ok">✅ Corrector: ${parsed.numQubits} qubits · ${parsed.gates.filter(g=>g.id!=='M').length} gates reconstructed from server</span>\n`;
+            out.innerHTML += `<span class="ok">✅ Corrector: ${parsed.numQubits} qubits · ${parsed.gates.filter(g=>g.id!=='M').length} gates reconstructed from server</span>
+`;
             notify(`🔧 ${parsed.gates.length} elements from server`);
             return true;
         }
-        out.innerHTML += `<span class="ok">✅ Server OK:\n${escapeHtml(_lastServerOutput.slice(0, 300))}</span>\n`;
+        out.innerHTML += `<span class="ok">✅ Server OK:
+${escapeHtml(_lastServerOutput.slice(0, 300))}</span>
+`;
         if (d.bloch?.probabilities) updateBlochFromProbs(d.bloch.probabilities);
         return false;
     } catch(e) {
-        out.innerHTML += `<span class="er">⚠️ Corrector: ${e.message}</span>\n`;
+        out.innerHTML += `<span class="er">⚠️ Corrector: ${e.message}</span>
+`;
         return false;
     }
 }
@@ -2277,7 +2329,8 @@ async function syncWithPyodide(retryCount = 0) {
     if (!_measurementCheck.ok) {
         _errorLine = _measurementCheck.line || -1;
         updateSyntaxHighlight();
-        out.innerHTML += `<span class="er">❌ Measurement order error (line ${_measurementCheck.line}): ${escapeHtml(_measurementCheck.error)}</span>\n`;
+        out.innerHTML += `<span class="er">❌ Measurement order error (line ${_measurementCheck.line}): ${escapeHtml(_measurementCheck.error)}</span>
+`;
         notify('❌ A measurement must be the final operation on its wire.');
         isUpdatingFromCircuit = false;
         return;
@@ -2287,7 +2340,8 @@ async function syncWithPyodide(retryCount = 0) {
         document.getElementById('code-ta').value = rawCode;
         updateSyntaxHighlight();
     }
-    out.innerHTML += '<span class="inf">🔄 Syncing code → visual circuit... (v4)</span>\n';
+    out.innerHTML += '<span class="inf">🔄 Syncing code → visual circuit... (v4)</span>
+';
     try {
         const py = await initPyodide();
         const code = robustPreprocess(rawCode);
@@ -2456,7 +2510,8 @@ json.dumps({
             
             renderCircuit();
             updateCircuitInfo();
-            out.innerHTML += `<span class="ok">✅ Synced — ${data.num_qubits} qubits · ${_gCount} gates${_mCount > 0 ? ' · ' + _mCount + ' meas.' : ''}</span>\n`;
+            out.innerHTML += `<span class="ok">✅ Synced — ${data.num_qubits} qubits · ${_gCount} gates${_mCount > 0 ? ' · ' + _mCount + ' meas.' : ''}</span>
+`;
             notify(`Circuit updated: ${_gCount} gates`);
             updateSyntaxHighlight();
         } else {
@@ -2471,7 +2526,8 @@ json.dumps({
             const lineHint = _errorLine > 0 ? `<span style="color:#ffd700;"> → Line ${_errorLine}</span>` : '';
             
             if (offendingAttr && QCOL_IGNORED_ATTRS.has(offendingAttr)) {
-                out.innerHTML += `<span class="inf">ℹ️ Attribute '${offendingAttr}' already classified as non-essential. Retrying...</span>${lineHint}\n`;
+                out.innerHTML += `<span class="inf">ℹ️ Attribute '${offendingAttr}' already classified as non-essential. Retrying...</span>${lineHint}
+`;
                 isUpdatingFromCircuit = false;
                 setTimeout(() => syncWithPyodide(), 500);
                 return;
@@ -2481,13 +2537,15 @@ json.dumps({
                 if (_local?.classification === 'unnecessary') {
                     await saveIgnoredAttrLocal(_local.attribute, _local.reason);
                     await injectIgnoredAttrsIntoPython(py);
-                    out.innerHTML += `<span class="ok">⚡ '${escapeHtml(_local.attribute)}' ignored (local). Retrying...</span>${lineHint}\n`;
+                    out.innerHTML += `<span class="ok">⚡ '${escapeHtml(_local.attribute)}' ignored (local). Retrying...</span>${lineHint}
+`;
                     isUpdatingFromCircuit = false;
                     setTimeout(() => syncWithPyodide(), 300);
                     return;
                 }
                 if (mistralEnabled && !_local) {
-                    out.innerHTML += `<span class="inf">🧠 Local classifier could not decide — querying DeepSeek...</span>${lineHint}\n`;
+                    out.innerHTML += `<span class="inf">🧠 Local classifier could not decide — querying DeepSeek...</span>${lineHint}
+`;
                     const errorPayload = {
                         error_type: errText.match(/^\w+Error/)?.[0] || 'Error',
                         error_msg: errText.slice(0, 400),
@@ -2500,16 +2558,19 @@ json.dumps({
                         const attr = classification.attribute || offendingAttr;
                         await saveIgnoredAttrLocal(attr, classification.reason);
                         await injectIgnoredAttrsIntoPython(py);
-                        out.innerHTML += `<span class="ok">✅ DeepSeek: '${escapeHtml(attr)}' non-essential. Retrying...</span>${lineHint}\n`;
+                        out.innerHTML += `<span class="ok">✅ DeepSeek: '${escapeHtml(attr)}' non-essential. Retrying...</span>${lineHint}
+`;
                         isUpdatingFromCircuit = false;
                         setTimeout(() => syncWithPyodide(), 500);
                         return;
                     } else {
-                        out.innerHTML += `<span class="er">⚠️ DeepSeek: critical error or unclassified.</span>${lineHint}\n`;
+                        out.innerHTML += `<span class="er">⚠️ DeepSeek: critical error or unclassified.</span>${lineHint}
+`;
                     }
                 }
             }
-            out.innerHTML += `<span class="er">❌ Error in code:${lineHint}<br>${escapeHtml(errText.slice(0,800))}</span>\n`;
+            out.innerHTML += `<span class="er">❌ Error in code:${lineHint}<br>${escapeHtml(errText.slice(0,800))}</span>
+`;
             if (engineOK && engineURL && retryCount === 0) {
                 isUpdatingFromCircuit = false;
                 await syncFromServer('pyodide-fallback');
@@ -2517,7 +2578,8 @@ json.dumps({
             }
         }
     } catch (err) {
-        out.innerHTML += `<span class="er">❌ Internal error: ${err.message}</span>\n`;
+        out.innerHTML += `<span class="er">❌ Internal error: ${err.message}</span>
+`;
         if (engineOK && engineURL) setTimeout(() => syncFromServer('internal-error'), 800);
     } finally {
         isUpdatingFromCircuit = false;
@@ -2531,14 +2593,16 @@ function ensureMeasurements(code) {
     if (/QNEXUS_AUTO_MEASURE/.test(code)) return { code, added: true };
     if (/\.measure\s*\(/.test(code) || /measure_all\s*\(/.test(code)) return { code, added: false };
     if (!/^\s*qc\s*=\s*QuantumCircuit/m.test(code)) return { code, added: false };
-    const lines = code.split('\n');
+    const lines = code.split('
+');
     let idx = lines.findIndex(l => !/^\s*#/.test(l) && /qc\.draw\s*\(|\.run\s*\(|get_counts|\bexecute\s*\(|\btranspile\s*\(/.test(l));
     if (idx < 0) idx = lines.length;
     const block = [
         'qc.measure(range(qc.num_qubits), range(qc.num_qubits))  # QNEXUS_AUTO_MEASURE'
     ];
     lines.splice(idx, 0, ...block);
-    return { code: lines.join('\n'), added: true };
+    return { code: lines.join('
+'), added: true };
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -2585,7 +2649,9 @@ function _argIndices(arg) {
 }
 
 function scanMaxQubitIndex(code) {
-    const clean = code.split('\n').map(l => l.replace(/#.*$/, '')).join('\n');
+    const clean = code.split('
+').map(l => l.replace(/#.*$/, '')).join('
+');
     let maxIdx = -1, maxClbit = -1, usesMeasure = false, m;
     const re = /\bqc\.(\w+)\s*\(/g;
     while ((m = re.exec(clean))) {
@@ -2671,13 +2737,16 @@ const QCOL_PLOT_SUFFIX = [
   'except Exception:',
   '    pass',
   ''
-].join('\n');
+].join('
+');
 function nexusWithPlotCapture(code) {
-  return /matplotlib|pyplot|\bplt\s*\./.test(code) ? code + '\n' + QCOL_PLOT_SUFFIX : code;
+  return /matplotlib|pyplot|\bplt\s*\./.test(code) ? code + '
+' + QCOL_PLOT_SUFFIX : code;
 }
 function nexusExtractPlots(output) {
   const imgs = [];
-  const text = String(output || '').replace(/@@QCOLPLOT@@([A-Za-z0-9+\/=]+)@@END@@\n?/g, (m, b64) => { if (!imgs.includes(b64)) imgs.push(b64); return ''; });  // figuras idénticas se muestran una sola vez
+  const text = String(output || '').replace(/@@QCOLPLOT@@([A-Za-z0-9+\/=]+)@@END@@
+?/g, (m, b64) => { if (!imgs.includes(b64)) imgs.push(b64); return ''; });  // figuras idénticas se muestran una sola vez
   return { text, imgs };
 }
 
@@ -2689,14 +2758,17 @@ async function runServerCode() {
     if (!_measurementCheck.ok) {
         const out = document.getElementById('out-body');
         _errorLine = _measurementCheck.line || -1; updateSyntaxHighlight(); setTab('out');
-        out.innerHTML = `<span class="er">❌ Measurement order error (line ${_measurementCheck.line}): ${escapeHtml(_measurementCheck.error)}</span>\n`;
+        out.innerHTML = `<span class="er">❌ Measurement order error (line ${_measurementCheck.line}): ${escapeHtml(_measurementCheck.error)}</span>
+`;
         notify('❌ A measurement must be the final operation on its wire.'); return;
     }
     if (_measurementCheck.code !== code) { code = _measurementCheck.code; document.getElementById('code-ta').value = code; updateSyntaxHighlight(); }
     if (!engineOK || !engineURL) {
         notify('❌ No compiler configured. Set up the URL in the Founder panel.');
         const out = document.getElementById('out-body');
-        out.innerHTML = `<span class="er">⚠️ No cloud compiler configured.\n\nGo to the Founder panel → 🤗 HuggingFace Compiler and save your Space URL.</span>`;
+        out.innerHTML = `<span class="er">⚠️ No cloud compiler configured.
+
+Go to the Founder panel → 🤗 HuggingFace Compiler and save your Space URL.</span>`;
         return;
     }
     running = true;
@@ -2707,11 +2779,13 @@ async function runServerCode() {
     setTab('out');
     const t0 = Date.now();
     const out = document.getElementById('out-body');
-    out.innerHTML = `<span class="inf">Sending code to quantum compiler (Qiskit 1.0+)...\n</span>`;
+    out.innerHTML = `<span class="inf">Sending code to quantum compiler (Qiskit 1.0+)...
+</span>`;
 
     const _ens = ensureMeasurements(code);
     const sendCode = nexusAppendProbe(nexusWithPlotCapture(_ens.code));
-    if (_ens.added) out.innerHTML += `<span class="inf">ℹ️ No measurements found — measuring all qubits for this run.\n</span>`;
+    if (_ens.added) out.innerHTML += `<span class="inf">ℹ️ No measurements found — measuring all qubits for this run.
+</span>`;
     const isHF = engineURL.includes('hf.space') || engineURL.includes('huggingface') || engineURL.includes('nexus-connectors.invalid');
     try {
         let res, d;
@@ -2737,8 +2811,13 @@ async function runServerCode() {
         const _st = nexusExtractStruct(_plots.text);
         d.output = _st.text;
         if (d.success) {
-            out.innerHTML = `<span class="inf">╔════════════════════════════╗\n║  Compiler · ${el}s\n╚════════════════════════════╝\n\n</span><span class="ok">${escapeHtml(d.output)}</span>`;
-            _plots.imgs.forEach((b, i) => { out.innerHTML += `\n<div style="margin:.4rem 0;"><div class="inf" style="font-size:.55rem;">📈 MATPLOTLIB PLOT ${_plots.imgs.length > 1 ? (i + 1) : ''}</div><img src="data:image/png;base64,${b}" alt="Plot" style="max-width:100%;background:#fff;border-radius:6px;"></div>`; });
+            out.innerHTML = `<span class="inf">╔════════════════════════════╗
+║  Compiler · ${el}s
+╚════════════════════════════╝
+
+</span><span class="ok">${escapeHtml(d.output)}</span>`;
+            _plots.imgs.forEach((b, i) => { out.innerHTML += `
+<div style="margin:.4rem 0;"><div class="inf" style="font-size:.55rem;">📈 MATPLOTLIB PLOT ${_plots.imgs.length > 1 ? (i + 1) : ''}</div><img src="data:image/png;base64,${b}" alt="Plot" style="max-width:100%;background:#fff;border-radius:6px;"></div>`; });
             if (d.bloch?.probabilities) updateBlochFromProbs(d.bloch.probabilities);
             setRunSt('idle', 'Ready');
             logMonitorRun({ success: true, lib: curLib, qubits: circuit.qubits, time: parseFloat(el) });
@@ -2758,7 +2837,8 @@ async function runServerCode() {
                     circuit.gates = _sp.gates;
                     renderCircuit();
                     updateCircuitInfo();
-                    out.innerHTML += `\n<span class="ok" style="font-size:.6rem;">🔧 Canvas corrected from server output (${_vg}→${_sg} gates)</span>`;
+                    out.innerHTML += `
+<span class="ok" style="font-size:.6rem;">🔧 Canvas corrected from server output (${_vg}→${_sg} gates)</span>`;
                 }
             }
         } else {
@@ -2793,7 +2873,8 @@ function escapeHtml(str) {
 }
 
 function highlightSyntax(plainCode) {
-    const lines = plainCode.split('\n');
+    const lines = plainCode.split('
+');
     const resultLines = [];
     const rules = [
         { regex: /(#.*$)/g, color: '#6272a4' },
@@ -2827,7 +2908,8 @@ function highlightSyntax(plainCode) {
         if (pos < line.length) htmlLine += escapeHtml(line.substring(pos));
         resultLines.push(htmlLine);
     }
-    return resultLines.join('\n');
+    return resultLines.join('
+');
 }
 
 function updateSyntaxHighlight() {
@@ -2836,7 +2918,8 @@ function updateSyntaxHighlight() {
     const lnums = document.getElementById('lnums');
     if (!ta || !syn) return;
     const plainCode = ta.value;
-    const lines = plainCode.split('\n');
+    const lines = plainCode.split('
+');
     
     if (lnums) {
         lnums.innerHTML = lines.map((_, i) => {
@@ -2851,14 +2934,18 @@ function updateSyntaxHighlight() {
     
     const highlighted = highlightSyntax(plainCode);
     if (_errorLine > 0) {
-        const hlLines = highlighted.split('\n');
+        const hlLines = highlighted.split('
+');
         if (hlLines[_errorLine - 1] !== undefined) {
             hlLines[_errorLine - 1] = 
                 `<span style="background:rgba(255,68,102,.12);display:block;margin:0 -.8rem;padding:0 .8rem;">${hlLines[_errorLine - 1]}</span>`;
         }
-        syn.innerHTML = hlLines.join('\n') + '\n';
+        syn.innerHTML = hlLines.join('
+') + '
+';
     } else {
-        syn.innerHTML = highlighted + '\n';
+        syn.innerHTML = highlighted + '
+';
     }
     syn.scrollTop = ta.scrollTop;
     syn.scrollLeft = ta.scrollLeft;
@@ -2880,7 +2967,8 @@ function clearVisualForEmptyCode() {
     updateSyntaxHighlight();
     if (hadContent) {
         const out = document.getElementById('out-body');
-        if (out) out.innerHTML += '<span class="inf">🧹 Code empty — visual circuit cleared</span>\n';
+        if (out) out.innerHTML += '<span class="inf">🧹 Code empty — visual circuit cleared</span>
+';
     }
 }
 
@@ -2889,7 +2977,8 @@ function onCodeEdit() {
     if (!code.trim()) { clearVisualForEmptyCode(); return; }
     const gateCallCount = (code.match(/\bqc\.\w+\s*\(/g) || []).length;
     if (gateCallCount > MAX_GATES) {
-        const lines = code.split('\n');
+        const lines = code.split('
+');
         let count = 0;
         let cutLine = lines.length;
         for (let i = 0; i < lines.length; i++) {
@@ -2898,7 +2987,8 @@ function onCodeEdit() {
         }
         const ta = document.getElementById('code-ta');
         const cursorPos = ta.selectionStart;
-        ta.value = lines.slice(0, cutLine).join('\n');
+        ta.value = lines.slice(0, cutLine).join('
+');
         ta.selectionStart = ta.selectionEnd = Math.min(cursorPos, ta.value.length);
         notify(`⛔ Limit of ${MAX_GATES} gates in code. Extra lines removed.`);
     }
@@ -2910,7 +3000,8 @@ function onCodeEdit() {
         if (!_measurementCheck.ok) {
             _errorLine = _measurementCheck.line || -1; updateSyntaxHighlight();
             const out = document.getElementById('out-body');
-            if (out) out.innerHTML += `<span class="er">❌ Measurement order error (line ${_measurementCheck.line}): ${escapeHtml(_measurementCheck.error)}</span>\n`;
+            if (out) out.innerHTML += `<span class="er">❌ Measurement order error (line ${_measurementCheck.line}): ${escapeHtml(_measurementCheck.error)}</span>
+`;
             notify('❌ A measurement must be the final operation on its wire.');
             return;
         }
@@ -2959,7 +3050,8 @@ function forceSync() {
 }
 
 function formatError(errText, code) {
-    const lines = code ? code.split('\n') : [];
+    const lines = code ? code.split('
+') : [];
     let html = '';
     const lineMatch = errText.match(/line[^\d]*(\d+)/i) || errText.match(/l\u00EDnea[^\d]*(\d+)/i);
     const errLine = lineMatch ? parseInt(lineMatch[1]) : null;
@@ -2978,17 +3070,24 @@ function formatError(errText, code) {
     if (/No counts for experiment/i.test(errText)) {
         explanation = '💡 The circuit has no measurements — add qc.measure(q, q) for each qubit before calling get_counts().';
     }
-    html += `❌ ${errType}` + (errLine ? ` on line ${errLine}` : '') + '\n';
-    if (errLine && lines[errLine - 1]) html += `\n<span class="err-line"><span class="err-arrow">→ L${errLine}:</span> ${escapeHtml(lines[errLine - 1])}</span>\n`;
-    const msgLines = errText.split('\n').filter(l => l.trim());
-    html += `<span class="err-msg">${escapeHtml(msgLines[msgLines.length - 1] || errText)}</span>\n\n<span class="wa">${explanation}</span>`;
+    html += `❌ ${errType}` + (errLine ? ` on line ${errLine}` : '') + '
+';
+    if (errLine && lines[errLine - 1]) html += `
+<span class="err-line"><span class="err-arrow">→ L${errLine}:</span> ${escapeHtml(lines[errLine - 1])}</span>
+`;
+    const msgLines = errText.split('
+').filter(l => l.trim());
+    html += `<span class="err-msg">${escapeHtml(msgLines[msgLines.length - 1] || errText)}</span>
+
+<span class="wa">${explanation}</span>`;
     return html;
 }
 
 function highlightErrorLine(lineNum) {
     const ta = document.getElementById('code-ta');
     if (!ta) return;
-    const lines = ta.value.split('\n');
+    const lines = ta.value.split('
+');
     let pos = 0;
     for (let i = 0; i < lineNum - 1 && i < lines.length; i++) pos += lines[i].length + 1;
     ta.focus();
@@ -3133,7 +3232,8 @@ print("Results:", counts)`;
     onCodeEdit(); 
 }
 function copyCode() { navigator.clipboard.writeText(document.getElementById('code-ta').value); notify('📋 Code copied'); }
-function updCur() { const ta = document.getElementById('code-ta'); const txt = ta.value.substring(0, ta.selectionStart); const lines = txt.split('\n'); document.getElementById('sb-cur').textContent = `Ln ${lines.length}, Col ${lines[lines.length-1].length+1}`; }
+function updCur() { const ta = document.getElementById('code-ta'); const txt = ta.value.substring(0, ta.selectionStart); const lines = txt.split('
+'); document.getElementById('sb-cur').textContent = `Ln ${lines.length}, Col ${lines[lines.length-1].length+1}`; }
 
 function saveCircuit() {
     if (!curUser) { notify('Log in to save circuits'); return; }
@@ -3213,7 +3313,9 @@ function dlNb() {
         nbformat: 4, nbformat_minor: 5,
         metadata: { kernelspec: { display_name: 'Python 3', language: 'python', name: 'python3' } },
         cells: [
-            { cell_type: 'markdown', source: [`# ${name}\n\nGenerated by Quantum Architect`], metadata: {} },
+            { cell_type: 'markdown', source: [`# ${name}
+
+Generated by Quantum Architect`], metadata: {} },
             { cell_type: 'code', source: ['!pip install qiskit qiskit-aer matplotlib -q'], metadata: {}, outputs: [], execution_count: null },
             { cell_type: 'code', source: [code], metadata: {}, outputs: [], execution_count: null }
         ]
