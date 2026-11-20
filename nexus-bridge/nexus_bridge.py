@@ -603,6 +603,8 @@ class Bridge:
         if not ID_RE.match(cid): raise BridgeError("Invalid connector id")
         origin = pkg.get("origin", "private")
         if origin not in ("official", "private", "community"): raise BridgeError("Invalid origin")
+        if origin == "community" and (not sys.platform.startswith("linux") or not shutil.which("bwrap")):
+            raise BridgeError("Community connectors require Linux bubblewrap isolation. Installation is disabled on this platform or until bubblewrap is installed.", "sandbox-unavailable", 503)
         for k in ("py", "ui", "web"):
             if not isinstance(pkg.get(k, ""), str) or len(pkg.get(k, "")) > MAX_CODE: raise BridgeError("The %s code is missing or too large" % k)
         res = analyze(pkg.get("py", ""), origin)   # re-checked here: never trust the web page
@@ -631,7 +633,9 @@ class Bridge:
                     if r.returncode: raise BridgeError("Could not create the Python environment: " + (r.stderr or r.stdout)[-300:], "install")
                 py = os.path.join(vdir, "Scripts" if os.name == "nt" else "bin", "python.exe" if os.name == "nt" else "python")
                 log("Installing packages: " + ", ".join(req))
-                p = subprocess.Popen([py, "-m", "pip", "install", "--disable-pip-version-check", "--no-input"] + req, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+                pip_args = [py, "-m", "pip", "install", "--disable-pip-version-check", "--no-input"]
+                if pkg.get("origin") == "community": pip_args.append("--only-binary=:all:")
+                p = subprocess.Popen(pip_args + req, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
                 t0 = time.time()
                 for line in p.stdout:
                     line = line.strip()
