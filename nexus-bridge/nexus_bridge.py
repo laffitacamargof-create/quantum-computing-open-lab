@@ -16,8 +16,9 @@ Design (read this before trusting it):
   * Connector code never imports Bluetooth/OS libraries: it asks `ctx` and the bridge checks the
     permissions the connector declared in its code (@connector.tool("tool", allow=[...])).
   * Community connectors are additionally checked with a strict AST validator before installing.
-  * IMPORTANT: this is permission enforcement, not an operating-system sandbox. Only install
-    connectors you trust or that were reviewed by an administrator.
+  * Community code uses a strict AST, runtime audit restrictions and Linux bwrap isolation when available,
+    with CPU/memory/file limits where supported. Other operating systems retain the audit restrictions only;
+    this is defense-in-depth, not a universal replacement for an OS sandbox. Only install code you trust.
 Python >= 3.9, standard library only. Bluetooth needs `pip install bleak` in the bridge's Python.
 """
 import argparse, ast, asyncio, base64, concurrent.futures as cf, hmac, http.client, http.server
