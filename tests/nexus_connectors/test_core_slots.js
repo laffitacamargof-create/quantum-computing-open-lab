@@ -72,14 +72,16 @@ require('../../quolab-nexus-connectors-core.js');
   NC.Store.remove(unassignedCpu.id);
   NC.Store.remove(routeCpu.id);
 
-  const privateUrl = await make('Private URL','classical');
-  NC.Store.patch(privateUrl.id,r=>{r.ext.baseUrl='https://127.0.0.1/v1';});
-  NC.Assignments.bind(privateUrl.id,'open_lab','cpu');
-  await assert.rejects(
-    NC.ext.request({tool:'open_lab',connector:privateUrl.id,kind:'cpu',path:'/run'}),
-    e => e.code === 'scope'
-  );
-  NC.Store.remove(privateUrl.id);
+  for (const host of ['127.0.0.1','10.0.0.5','169.254.169.254','192.168.1.10','100.64.0.1','198.18.0.1','224.0.0.1']) {
+    const privateUrl = await make('Private URL '+host,'classical');
+    NC.Store.patch(privateUrl.id,r=>{r.ext.baseUrl='https://'+host+'/v1';});
+    NC.Assignments.bind(privateUrl.id,'open_lab','cpu');
+    await assert.rejects(
+      NC.ext.request({tool:'open_lab',connector:privateUrl.id,kind:'cpu',path:'/run'}),
+      e => e.code === 'scope'
+    );
+    NC.Store.remove(privateUrl.id);
+  }
 
   const credentialUrl = await make('Credential URL','classical');
   NC.Store.patch(credentialUrl.id,r=>{r.ext.baseUrl='https://user:pw@api.example.test/v1';});
