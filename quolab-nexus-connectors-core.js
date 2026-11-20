@@ -361,9 +361,13 @@
       if (!o || !o.connector) throw NexusError('connector-required', 'Select an assigned connector through requestAssigned; implicit connector selection is disabled');
       const rec = Policy.pick('ext', o.tool, o.connector);
       if (!rec) throw NexusError('no-connector', 'No external connector is enabled for ' + (TOOLS[o.tool] || o.tool));
-      const out = await this._do(rec, o);
-      if (out && out.ok) Policy.consume(rec);
-      return out;
+      if (rec.usage === 'once' && onceLocks.has(rec.id)) throw NexusError('once-busy', 'This one-use connector is already processing another request');
+      if (rec.usage === 'once') onceLocks.add(rec.id);
+      try {
+        const out = await this._do(rec, o);
+        if (out && out.ok) Policy.consume(rec);
+        return out;
+      } finally { onceLocks.delete(rec.id); }
     },
     async _do(rec, o) {
       const method = (o.method || 'GET').toUpperCase(), url = this._url(rec, o.path);
