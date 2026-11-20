@@ -112,8 +112,11 @@ def analyze(code, mode):
             elif isinstance(node, ast.Call):
                 f = node.func
                 if isinstance(f, ast.Name) and f.id in FORBIDDEN_CALLS: res["errors"].append("Line %d: %s() is not allowed in community connectors" % (node.lineno, f.id))
+                elif isinstance(f, ast.Attribute) and f.attr == "format" and isinstance(f.value, ast.Constant) and isinstance(f.value.value, str):
+                    if re.search(r"\{[^{}]*(?:\.|\[)", f.value.value):
+                        res["errors"].append("Line %d: format fields cannot access object attributes or indexes in community connectors" % node.lineno)
             elif isinstance(node, ast.Attribute):
-                if (node.attr.startswith("__") and node.attr.endswith("__")) or node.attr in {"sys","os","subprocess","socket","modules","loader","builtins","open","system","popen","connect","load","save","savetxt","loadtxt","genfromtxt","fromfile","memmap","ctypeslib","f2py","format"}:
+                if (node.attr.startswith("__") and node.attr.endswith("__")) or node.attr in {"sys","os","subprocess","socket","modules","loader","builtins","system","popen","connect","load","save","savetxt","loadtxt","genfromtxt","fromfile","memmap","ctypeslib","f2py"}:
                     res["errors"].append("Line %d: access to %s is not allowed in community connectors" % (node.lineno, node.attr))
             elif isinstance(node, ast.Name):
                 if node.id in ("__builtins__", "__loader__", "__spec__"): res["errors"].append("Line %d: %s is not allowed in community connectors" % (node.lineno, node.id))
