@@ -135,7 +135,8 @@
         try { return global.localStorage.getItem(k); } catch (_) { return ''; }
       }).filter(Boolean);
       const known = saved.some(value => { try { return new URL(value).origin === url.origin; } catch (_) { return false; } });
-      if (!known && !/\.hf\.space$/i.test(url.hostname)) return null;
+      const virtualNexusEndpoint = url.hostname === 'nexus-connectors.invalid';
+      if (!known && !/\.hf\.space$/i.test(url.hostname) && !virtualNexusEndpoint) return null;
       const method = String((init && init.method) || (input && input.method) || 'GET').toUpperCase();
       const headers = new Headers((init && init.headers) || (input && input.headers) || {});
       const requestedSlot = (init && init.nexusSlot) || headers.get('X-Nexus-Slot') || 'cpu';

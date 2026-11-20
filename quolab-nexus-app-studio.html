@@ -259,7 +259,7 @@
         <div class="editor-config">
             <label for="nexus-hardware-select" style="font-size:.55rem;color:var(--cy);">NEXUS HARDWARE</label>
             <select id="nexus-hardware-select" style="max-width:260px;background:var(--bg3);border:1px solid var(--bd);border-radius:6px;padding:.4rem;color:white;font-size:.65rem;"></select>
-            <!-- server-url-input hidden: URL arrives automatically from Founder Panel -->
+            <!-- Optional Founder default URL. Nexus Connectors is resolved automatically by the shell broker. -->
             <input type="text" id="server-url-input" style="display:none;" readonly>
             <span id="server-status" style="display:none;"></span>
             <span id="test-server-btn" style="display:none;"></span>
@@ -280,7 +280,7 @@
         </div>
     </div>
     <div style="padding:0.3rem 0.8rem; background:#060912; font-size:0.55rem; color:var(--mu);">
-        💡 Python functions are called with <span style="color:var(--cy);">window.pyCall("function", args...)</span>. The server URL is obtained automatically from the Founder Panel.
+        💡 Python functions are called with <span style="color:var(--cy);">window.pyCall("function", args...)</span>. Nexus Connectors selects the enabled API; Founder services are the fallback.
     </div>
 </div>
 
@@ -397,29 +397,29 @@
         if (!select) return;
         const NC = window.QuOLabNexusConnectors;
         const options = [];
+        const moduleTools = { 'quantum-app-studio':'app_studio', 'quantum-puzzle':'apps' };
+        const categories = { cpu:'classical', qpu:'quantum' };
         ['quantum-app-studio','quantum-puzzle'].forEach(module => {
             ['cpu','qpu'].forEach(slot => {
-                options.push({ value:module+'|'+slot+'|founder', label:(module==='quantum-app-studio'?'App Studio':'Quantum Puzzle')+' · '+slot.toUpperCase()+' · Founder default' });
+                const prefix = (module==='quantum-app-studio'?'App Studio':'Quantum Puzzle')+' · '+slot.toUpperCase()+' · ';
+                options.push({ value:module+'|'+slot+'|auto', label:prefix+'Nexus Connectors → Founder fallback' });
                 if (!NC) return;
-                let assigned = NC.Assignments.get(module,slot);
-                if (assigned === 'founder') assigned = [];
-                if (!Array.isArray(assigned)) assigned = assigned ? [assigned] : [];
-                assigned.forEach(id => {
-                    const rec = NC.Store.get(id);
-                    if (rec && rec.kind === 'ext') options.push({ value:module+'|'+slot+'|'+id, label:(module==='quantum-app-studio'?'App Studio':'Quantum Puzzle')+' · '+slot.toUpperCase()+' · '+rec.name });
-                });
+                NC.Store.byKind('ext').filter(rec =>
+                    NC.Policy.allowed(rec, moduleTools[module]) &&
+                    rec.ext && rec.ext.category === categories[slot]
+                ).forEach(rec => options.push({ value:module+'|'+slot+'|'+rec.id, label:prefix+rec.name }));
             });
         });
         const current = nexusRouteFrom(app || currentNexusRoute);
-        const wanted = current.module+'|'+current.slot+'|'+(current.connector || 'founder');
+        const wanted = current.module+'|'+current.slot+'|'+(current.connector || 'auto');
         select.innerHTML = options.map(o => '<option value="'+escapeHtml(o.value)+'">'+escapeHtml(o.label)+'</option>').join('');
-        select.value = options.some(o => o.value === wanted) ? wanted : 'quantum-app-studio|cpu|founder';
+        select.value = options.some(o => o.value === wanted) ? wanted : 'quantum-app-studio|cpu|auto';
         currentNexusRoute = selectedNexusRoute();
     }
     function selectedNexusRoute() {
         const select = document.getElementById('nexus-hardware-select');
-        const parts = select && select.value ? select.value.split('|') : ['quantum-app-studio','cpu','founder'];
-        return { module:parts[0] || 'quantum-app-studio', slot:parts[1] || 'cpu', connector:parts[2] === 'founder' ? '' : (parts[2] || '') };
+        const parts = select && select.value ? select.value.split('|') : ['quantum-app-studio','cpu','auto'];
+        return { module:parts[0] || 'quantum-app-studio', slot:parts[1] || 'cpu', connector:['auto','founder'].includes(parts[2]) ? '' : (parts[2] || '') };
     }
     function setNexusRoute(app) {
         currentNexusRoute = nexusRouteFrom(app);
@@ -1028,7 +1028,9 @@
     }
 
     async function executePythonRemote(code, serverUrl, nexusRoute) {
-        if (!serverUrl) throw new Error("No server URL");
+        // A virtual URL is only a transport marker. The shell broker resolves the real
+        // API from Nexus Connectors first and Founder services second.
+        serverUrl = serverUrl || 'https://nexus-connectors.invalid';
         const base = serverUrl.trim().replace(/\/+$/, '');
         let parsed;
         try { parsed = new URL(base); } catch (_) { throw new Error("Invalid Python server URL"); }
@@ -1090,7 +1092,6 @@
                 if (typeof id !== 'string' || !id || id.length > 120) throw new Error('Invalid Python request id.');
                 if (typeof func !== 'string' || !/^[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*$/.test(func)) throw new Error('Invalid Python function name.');
                 if (!Array.isArray(args) || args.length > 100) throw new Error('Invalid Python function arguments.');
-                if (!serverUrl) throw new Error("Missing server URL");
                 const fullCode = `${pythonCode || ''}\nimport json\n_result = ${func}(*${JSON.stringify(args)})\nprint(json.dumps(_result, ensure_ascii=False))`;
                 const output = await executePythonRemote(fullCode, serverUrl, { slot:nexusSlot, connector:nexusConnector, module:nexusModule });
                 let result = output.trim();
@@ -1118,7 +1119,6 @@
         window.__nexusModule = ${JSON.stringify(nexusRoute && nexusRoute.module || 'quantum-app-studio')};
         window.__pyCode = ${JSON.stringify(pythonCode || '')};
         window.pyCall = async (funcName, ...args) => {
-            if (!window.__serverUrl) throw new Error('Python backend is not configured. The HTML interface can still run locally; configure the Python server to execute Python functions.');
             return new Promise((resolve, reject) => {
                 const msgId = Date.now() + '-' + Math.random().toString(36).slice(2, 10);
                 const timeout = setTimeout(() => {

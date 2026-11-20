@@ -772,6 +772,15 @@ async function checkEngine(){
     else throw new Error('HTTP '+r.status);
   }catch(e){engineOK=false;badge.textContent='● NO COMPILER';badge.className='eng-pill';}
 }
+function useNexusExternalEngine(){
+  const nc=window.QuOLabNexusConnectors;
+  const rec=nc&&nc.Policy&&nc.Policy.pick('ext','notebook');
+  if(!rec)return false;
+  engineURL='https://nexus-connectors.invalid';engineOK=true;
+  const badge=document.getElementById('eng-badge');
+  if(badge){badge.textContent='● NEXUS CONNECTOR ACTIVE';badge.className='eng-pill on';}
+  return true;
+}
 function setEngineURL(url){engineURL=url;localStorage.setItem('openq_colab_url',url);checkEngine();notify('🌐 Engine updated');}
 
 // ── QISKIT PREAMBLE ───────────────────────────────────────────
@@ -2509,6 +2518,7 @@ function showUI(user){
       // Fallback: try localStorage as last resort
       const stored = localStorage.getItem('openq_colab_url') || '';
       if(stored) { engineURL=stored; checkEngine(); }
+      else useNexusExternalEngine();
     }
   });
   refreshNbs();
@@ -2657,6 +2667,7 @@ function initEngine(){
     } else {
       const s=localStorage.getItem('openq_colab_url');
       if(s){engineURL=s;checkEngine();}
+      else useNexusExternalEngine();
     }
   });
 }
