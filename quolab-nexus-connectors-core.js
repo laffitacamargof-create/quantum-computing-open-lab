@@ -111,6 +111,7 @@
   /* ───────────────────────── Store ─────────────────────────
      Everything a user creates stays on THIS device unless they explicitly share a local connector. */
   const listeners = new Set();
+  const onceLocks = new Set();
   let bc = null;
   try { bc = new BroadcastChannel('nexus'); bc.onmessage = () => emitChange(true); } catch (e) {}
   root.addEventListener && root.addEventListener('storage', (e) => { if (e.key === LS_STORE) emitChange(true); });
@@ -524,10 +525,12 @@
     chat:{ai:Infinity}
   };
   const SLOT_MODULES = {open_lab:'open_lab',notebook:'notebook',apps:'apps',app_studio:'app_studio',chat:'chat'};
+  const MODULE_ALIASES = {architect:'open_lab','architect-pro':'notebook','quantum-puzzle':'apps','quantum-app-studio':'app_studio','nexus-connectors':'chat'};
+  const canonicalModule = id => MODULE_ALIASES[id] || id;
   const slotCategory = {cpu:'classical',qpu:'quantum',storage:'storage'};
   const Assignments = {
     all() { try { return JSON.parse(localStorage.getItem(LS_ASSIGNMENTS) || '{}') || {}; } catch (_) { return {}; } },
-    get(moduleId, kind) { const a=this.all(); const v=a[moduleId]&&a[moduleId][kind]; return v==null?'founder':v; },
+    get(moduleId, kind) { moduleId=canonicalModule(moduleId); const a=this.all(); const v=a[moduleId]&&a[moduleId][kind]; return v==null?'founder':v; },
     _write(a) { localStorage.setItem(LS_ASSIGNMENTS,JSON.stringify(a)); emitChange(false); },
     bind(connectorId, tool, kind) {
       const moduleId=SLOT_MODULES[tool], rec=Store.get(connectorId), slot=String(kind||'').toLowerCase();
@@ -579,7 +582,7 @@
   }
   migrateAssignments();
   async function requestAssigned(o) {
-    o=o||{};const moduleId=String(o.moduleId||''),kind=String(o.kind||'').toLowerCase(),tool=String(o.tool||'');
+    o=o||{};const moduleId=canonicalModule(String(o.moduleId||'')),kind=String(o.kind||'').toLowerCase(),tool=String(o.tool||'');
     if(!moduleId||!['cpu','qpu','storage'].includes(kind)||!tool)throw NexusError('route','Invalid Nexus route identity');
     const assigned=Assignments.get(moduleId,kind);
     if(assigned==='founder')throw NexusError('founder-selected','Founder route is selected for '+(TOOLS[tool]||tool)+' / '+kind.toUpperCase());
