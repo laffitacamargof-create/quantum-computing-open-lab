@@ -1282,6 +1282,8 @@ class QuOLabNexusConfigSyncReader {
   }
   async function aiComplete(messages, options) {
     const o = options || {}, connectors = aiNexusRecs(o.tool || 'chat');
+    const configuredUserAI = !!(NXC() && NXC().Store && NXC().Store.byKind('ai').length);
+    if (!connectors.length && configuredUserAI && !aiFallbackApproved()) throw new Error('No active user AI connector is available. Enable one or explicitly approve Founder gateway fallback.');
     if (connectors.length) {
       try {
         // Do not pin the request to the first connector: the broker rotates through
@@ -1307,7 +1309,17 @@ class QuOLabNexusConfigSyncReader {
       if (data.module !== 'quantum-app-studio' || rootMod !== 'quantum-puzzle' || !studio || event.source !== studio.contentWindow) return;
       mod = data.module;
     }
-    const reply = payload => { try { event.source.postMessage(payload, location.origin); } catch (_) {} };
+    // Opaque-origin sandboxed apps cannot receive a reply targeted at location.origin.
+    const reply = payload => { try { event.source.postMessage(payload, '*'); } catch (_) {} };
+    // Only the Puzzle module itself and its explicitly registered App Studio iframe
+    // may reach the shell broker. Published app iframes are never treated as Puzzle.
+    if (rootMod === 'quantum-puzzle') {
+      const puzzleFrame = iframes['quantum-puzzle'];
+      const studioFrame = puzzleFrame && puzzleFrame.contentDocument && puzzleFrame.contentDocument.getElementById('studioIframe');
+      const fromPuzzle = !!puzzleFrame && event.source === puzzleFrame.contentWindow;
+      const fromStudio = mod === 'quantum-app-studio' && !!studioFrame && event.source === studioFrame.contentWindow;
+      if (!fromPuzzle && !fromStudio) return;
+    }
     if (data.type === 'OPENQ_API_REGISTER') {
       const apiMod = mod;
       const slot = String(data.slot || '').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 32);
@@ -1319,15 +1331,7 @@ class QuOLabNexusConfigSyncReader {
     }
     if (data.type === 'OPENQ_GET_API_ROUTES') { const apiMod = mod; reply({ type:'OPENQ_API_ROUTES', id:data.id, ok:true, routes:routesFor(apiMod) }); return; }
     if (data.type === 'OPENQ_AI_CHAT') {
-      try {
-        const messages = Array.isArray(data.messages) ? data.messages.slice(0,40) : [];
-        if (!messages.length || !messages.every(m => m && ['system','user','assistant'].includes(m.role) && typeof m.content === 'string' && m.content.length < 60000)) throw new Error('Invalid AI messages');
-        const apiMod = mod;
-        const tool = TOOL_OF[apiMod] || 'chat';
-        const text = await aiComplete(messages, { tool, tokens:data.max_tokens, temp:data.temperature });
-        const result = text == null ? await callAI(messages[messages.length-1].content, null, { historyLimit:0, systemSuffix:messages[0] && messages[0].role === 'system' ? messages[0].content : '' }) : text;
-        reply({ type:'OPENQ_AI_RESULT', id:data.id, ok:true, text:result, source:aiNexusRec(tool) ? 'nexus' : 'founder' });
-      } catch (error) { reply({ type:'OPENQ_AI_RESULT', id:data.id, ok:false, error:String(error.message || error) }); }
+      reply({ type:'OPENQ_AI_RESULT', id:data.id, ok:false, error:'AI access is restricted to QNexusAi. Module and app messages cannot invoke AI providers.' });
       return;
     }
     if (data.type === 'OPENQ_API_REQUEST') {
