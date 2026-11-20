@@ -1294,10 +1294,10 @@ class QuOLabNexusConfigSyncReader {
         const result = await NXC().ai.chat({ tool:o.tool || 'chat', messages, max_tokens:o.tokens, temperature:o.temp });
         return result.text;
       } catch (error) {
-        notify('All enabled Nexus AI connectors failed; trying the configured AI fallback.');
+        notify('The active external AI connector failed: ' + (error && error.message || 'unknown error'));
+        throw error;
       }
     }
-    if (aiCfg.provider === 'gateway') return callMultiModelGateway(messages, o.tokens, o.temp);
     return null;
   }
   async function handleModuleMsg(event, data) {
@@ -2255,9 +2255,8 @@ class QuOLabNexusConfigSyncReader {
 
   // ── AI ──
   function isAIAvailable() {
-    // The multi-provider gateway keeps provider keys server-side in Supabase;
-    // an empty browser-side key is expected and must not trigger demo mode.
-    return !!aiNexusRec() || aiCfg.provider === 'gateway' || aiCfg.provider === 'deepseek' || (!!aiCfg.key && aiCfg.provider !== 'none');
+    // QNexusAi is available only through an explicitly enabled Nexus AI connector.
+    return !!aiNexusRec();
   }
 
   function setupAI() {
@@ -2267,20 +2266,8 @@ class QuOLabNexusConfigSyncReader {
     const lbl = document.getElementById('ai-prov-lbl');
     if (isAIAvailable()) {
       const nexusRec = aiNexusRec();
-      if (nexusRec) {
-        if (dot) dot.className = 'ai-status-dot ok';
-        const count = aiNexusRecs().length;
-        if (txt) txt.textContent = count > 1
-          ? 'QNexusAi · ' + count + ' AI APIs active · automatic failover'
-          : 'QNexusAi · Nexus connector · ' + nexusRec.name;
-      } else {
-        if (dot) dot.className = 'ai-status-dot ok';
-        if (txt) txt.textContent = aiCfg.provider === 'gateway'
-          ? 'QNexusAi · founder multi-provider gateway'
-          : aiCfg.provider === 'deepseek'
-            ? 'QNexusAi · founder DeepSeek'
-            : 'QNexusAi · founder provider active';
-      }
+      if (dot) dot.className = 'ai-status-dot ok';
+      if (txt) txt.textContent = 'QNexusAi · Nexus connector · ' + nexusRec.name;
       if (lbl) lbl.textContent = '';
     } else {
       if (dot) dot.className = 'ai-status-dot';
@@ -3031,75 +3018,7 @@ CONTEXT (staged and size-limited): ${c}`;
     ];
     const nexusResult = await aiComplete(msgs, { tool:'chat', tokens, temp });
     if (nexusResult !== null) return nexusResult;
-    if (aiCfg.provider === 'gateway') {
-      return await callMultiModelGateway(msgs, tokens, temp);
-    }
-    const endpoints = {
-      mistral:     'https://api.mistral.ai/v1/chat/completions',
-      groq:        'https://api.groq.com/openai/v1/chat/completions',
-      openai:      'https://api.openai.com/v1/chat/completions',
-      deepseek:    'https://api.deepseek.com/chat/completions',
-      openrouter:  'https://openrouter.ai/api/v1/chat/completions',
-      cerebras:    'https://api.cerebras.ai/v1/chat/completions',
-    };
-    if (aiCfg.provider === 'gemini') {
-      const model = aiCfg.model || 'gemini-1.5-flash';
-      const contents = msgs.filter(m => m.role !== 'system').map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] }));
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(aiCfg.key)}`, {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ systemInstruction:{ parts:[{ text: sys }] }, contents, generationConfig:{ temperature: temp, maxOutputTokens: tokens } }),
-        signal: AbortSignal.timeout(20000),
-      });
-      const d = await res.json();
-      if (!res.ok) throw new Error(d.error?.message || ('Gemini HTTP ' + res.status));
-      return d.candidates?.[0]?.content?.parts?.map(p => p.text).join('') || '';
-    }
-    if (aiCfg.provider === 'huggingface') {
-      // API actual de Hugging Face (compatible con OpenAI); si falla, se prueba la antigua
-      try {
-        const r2 = await fetch('https://router.huggingface.co/v1/chat/completions', {
-          method:'POST', headers:{'Authorization':'Bearer '+aiCfg.key,'Content-Type':'application/json'},
-          body: JSON.stringify({ model: aiCfg.model || 'mistralai/Mistral-7B-Instruct-v0.3', messages: msgs, max_tokens: tokens, temperature: temp }),
-          signal: AbortSignal.timeout(20000),
-        });
-        const j = await r2.json();
-        if (r2.ok && j.choices?.[0]?.message?.content) return j.choices[0].message.content;
-      } catch (e) { /* cae al método antiguo */ }
-      const model = aiCfg.model || 'mistralai/Mistral-7B-Instruct-v0.3';
-      const url = `https://api-inference.huggingface.co/models/${model}`;
-      const prompt = msgs.map(m => `${m.role}: ${m.content}`).join('\n') + '\nassistant:';
-      const res = await fetch(url, {
-        method:'POST',
-        headers:{'Authorization':'Bearer '+aiCfg.key,'Content-Type':'application/json'},
-        body:JSON.stringify({ inputs:prompt, parameters:{ max_new_tokens:tokens, temperature:temp } }),
-        signal: AbortSignal.timeout(20000),
-      });
-      const d = await res.json();
-      if (!res.ok) throw new Error(d.error || 'HuggingFace Error');
-      return Array.isArray(d) ? d[0].generated_text.split('assistant:').pop().trim() : d.generated_text;
-    }
-    const url = endpoints[aiCfg.provider];
-    if (!url) throw new Error('Unsupported provider');
-    const defaultModel = aiCfg.provider==='mistral'  ? 'mistral-large-latest'
-                       : aiCfg.provider==='groq'     ? 'llama3-70b-8192'
-                       : aiCfg.provider==='deepseek' ? 'deepseek-chat'
-                       : aiCfg.provider==='openrouter' ? 'meta-llama/llama-3.3-70b-instruct:free'
-                       : aiCfg.provider==='cerebras' ? 'gpt-oss-120b'
-                       : 'gpt-4o-mini';
-    const res = await fetch(url, {
-      method:'POST',
-      headers:Object.assign({'Authorization':'Bearer '+aiCfg.key,'Content-Type':'application/json'}, aiCfg.provider==='openrouter' ? {'HTTP-Referer': location.origin, 'X-Title': 'Quolab'} : {}),
-      body:JSON.stringify({
-        model:       aiCfg.model || defaultModel,
-        messages:    msgs,
-        max_tokens:  tokens,
-        temperature: temp,
-      }),
-      signal: AbortSignal.timeout(20000),
-    });
-    const d = await res.json();
-    if (!res.ok) throw new Error(d.error?.message || 'API Error');
-    return d.choices[0].message.content;
+    throw new Error('No external AI connector is enabled. Create an AI API in Nexus Connectors and switch it ON for QNexusAi.');
   }
 
   // Markdown + LaTeX: math is pulled out before marked (it would mangle _ * \\), then rendered with KaTeX.
