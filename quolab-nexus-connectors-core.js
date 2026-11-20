@@ -434,7 +434,8 @@
       if (!rec || rec.kind !== 'loc') throw NexusError('no-connector', 'Local connector not found');
       if (o.tool === 'chat' || (rec.tools || []).includes('chat')) throw NexusError('denied', 'QNexusAi can only connect to AI API connectors');
       if (!rec.loc.installed) throw NexusError('not-installed', '"' + rec.name + '" is not installed on this computer');
-      if (!(rec.loc.perms && rec.loc.perms[o.tool])) throw NexusError('denied', '"' + rec.name + '" does not serve ' + (TOOLS[o.tool] || o.tool));
+      const declared = rec.loc.perms || Analyze.python(rec.loc.py).tools;
+      if (!(declared && declared[o.tool])) throw NexusError('denied', '"' + rec.name + '" does not serve ' + (TOOLS[o.tool] || o.tool));
       const j = await Bridge.callRaw(rec.id, o.tool, o.action, o.args);
       if (!j.ok) throw NexusError(j.code || 'connector', j.error || 'Connector error');
       return j.result;
@@ -545,9 +546,11 @@
     },
     loc(f) {
       const a = Analyze.python(f.py);
+      const previous = f.loc || {};
+      const unchanged = previous.py === (f.py || '') && previous.ui === (f.ui || '') && previous.web === (f.web || '');
       return { id: f.id || uid(), kind: 'loc', name: f.name, usage: 'always', tools: Object.keys(a.tools), createdAt: f.createdAt,
-        loc: Object.assign({ version: f.version || '0.1.0', description: f.description || '', ui: f.ui || '', web: f.web || '', py: f.py || '', perms: a.tools, requires: a.requires,
-          installed: false, origin: 'private', share: 'none' }, f.loc || {}) };
+        loc: Object.assign({}, previous, { version: f.version || '0.1.0', description: f.description || '', ui: f.ui || '', web: f.web || '', py: f.py || '', perms: a.tools, requires: a.requires,
+          installed: !!(previous.installed && unchanged), origin: previous.origin || 'private', share: previous.share || 'none' }) };
     },
   };
 
