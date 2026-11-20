@@ -288,7 +288,7 @@ $('pendingX').onclick=()=>$('pendingOv').classList.remove('show');$('pendingOv')
 $('bridgeX').onclick=$('brClose').onclick=()=>$('bridgeOv').classList.remove('show');$('bridgeOv').onclick=e=>{if(e.target===$('bridgeOv'))$('bridgeOv').classList.remove('show');};$('brGo').onclick=async()=>{NC.Bridge.setCfg({url:$('brUrl').value.trim()||'http://127.0.0.1:8765',token:$('brTok').value.trim()});await refreshBridge();toast('Bridge state: '+bridge.state,bridge.state!=='ok');};
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeDialog();$('pendingOv').classList.remove('show');$('bridgeOv').classList.remove('show');}});
 window.addEventListener('message',e=>{if(e.source!==parent||e.origin!==location.origin)return;const d=window.QuOLabNexusCore.normalizeIncoming(e.data||{});if(['NEXUS_USER','NEXUS_USER_UPDATE'].includes(d.type)){user=d.user||null;pendingCount();}});
-normalizeExclusiveState();normalizeAiExclusiveState();analyze();render();refreshBridge();loadCommunity();setInterval(()=>{if(navigator.onLine)refreshBridge();},15000);
+NC.Assignments.normalize();normalizeExclusiveState();normalizeAiExclusiveState();analyze();render();refreshBridge();loadCommunity();setInterval(()=>{if(navigator.onLine)refreshBridge();},15000);
 })();
 </script>
 </body>
