@@ -367,7 +367,9 @@
     },
     async request(o) {
       if (!o || !['cpu','qpu','storage'].includes(String(o.kind || '').toLowerCase())) throw NexusError('route', 'External requests must specify kind: cpu, qpu or storage. Use requestAssigned() for tool routing.');
-      const expected = o.kind === 'cpu' ? 'classical' : o.kind === 'qpu' ? 'quantum' : 'storage';
+      const kind = String(o.kind).toLowerCase();
+      const expected = kind === 'cpu' ? 'classical' : kind === 'qpu' ? 'quantum' : 'storage';
+      if (!o.connector) throw NexusError('route', 'An explicit connector id is required. Use requestAssigned() for module routing.');
       const rec = Policy.pick('ext', o.tool, o.connector);
       if (rec && (!rec.ext || rec.ext.category !== expected)) throw NexusError('route', 'Connector category does not match the requested ' + o.kind + ' slot.');
       if (!rec) throw NexusError('no-connector', 'No external connector is enabled for ' + (TOOLS[o.tool] || o.tool));
@@ -539,7 +541,17 @@
   const Assignments = {
     all() { try { return JSON.parse(localStorage.getItem(LS_ASSIGNMENTS) || '{}') || {}; } catch (_) { return {}; } },
     get(moduleId, kind) { const a=this.all(),v=a[moduleId]&&a[moduleId][kind]; return v == null ? 'founder' : v; },
-    set(moduleId, kind, value) { const a=this.all(); a[moduleId]=Object.assign({},a[moduleId]||{},{[kind]:value}); localStorage.setItem(LS_ASSIGNMENTS,JSON.stringify(a)); emitChange(false); return value; },
+    set(moduleId, kind, value) {
+      const tool=String(moduleId||''),slot=String(kind||''),rule=SLOT_RULES[tool]&&SLOT_RULES[tool][slot];
+      if(rule==null) throw NexusError('assignment','Unsupported tool slot.');
+      if(value!=='founder'){
+        const ids=Array.isArray(value)?value:[value];
+        if(!ids.length||ids.length>rule) throw NexusError('slot-limit',(TOOLS[tool]||tool)+' allows at most '+rule+' '+slot.toUpperCase()+' connector(s).');
+        ids.forEach(id=>{const rec=Store.get(id);if(!rec||rec.kind!=='ext'||rec.ext.category!==SLOT_CATEGORY[slot]||!(rec.tools||[]).includes(tool)||rec.usage==='off')throw NexusError('assignment','Invalid, disabled or incompatible connector in '+tool+' / '+slot+'.');});
+        value=rule===1?ids[0]:ids;
+      }
+      const a=this.all();a[tool]=Object.assign({},a[tool]||{},{[slot]:value});localStorage.setItem(LS_ASSIGNMENTS,JSON.stringify(a));emitChange(false);return value;
+    },
     bind(id,moduleId,kind) {
       const rec=Store.get(id), tool=String(moduleId||''), slot=String(kind||'');
       if(!rec||rec.kind!=='ext'||!SLOT_CATEGORY[slot]||!SLOT_RULES[tool]||!(slot in SLOT_RULES[tool])) throw NexusError('assignment','This connector cannot be assigned to that tool slot.');
@@ -565,9 +577,13 @@
     const ids = Array.isArray(assigned) ? assigned : (assigned && assigned !== 'founder' ? [assigned] : []);
     const expected = kind === 'cpu' ? 'classical' : kind === 'qpu' ? 'quantum' : 'storage';
     const compatible = rec => rec && rec.kind === 'ext' && Policy.allowed(rec, tool) && rec.ext && rec.ext.category === expected;
-    const assignedRecords = ids.map(id => Store.get(id)).filter(compatible);
-    // Multiple APIs may serve the same tool. Keep every enabled compatible connector
-    // and try them in stable priority order instead of silently discarding all but one.
+    let assignedRecords = ids.map(id => Store.get(id)).filter(compatible);
+    const slotMax = SLOT_RULES[moduleId] && SLOT_RULES[moduleId][kind] != null ? SLOT_RULES[moduleId][kind] : 1;
+    if (assignedRecords.length > slotMax) {
+      assignedRecords.sort((a,b)=>String(a.createdAt||'').localeCompare(String(b.createdAt||'')));
+      assignedRecords = assignedRecords.slice(0,slotMax);
+      Assignments.set(moduleId,kind,slotMax===1?assignedRecords[0].id:assignedRecords.map(r=>r.id));
+    }
     if (assigned !== 'founder' && !assignedRecords.length) throw NexusError('no-route', 'The connector assigned to '+tool+' / '+kind+' is disabled, deleted or incompatible. Select another connector or choose Founder explicitly.');
     let candidates = assigned === 'founder' ? [] : assignedRecords;
     if (o.connector) candidates = candidates.slice().sort((a,b) => (a.id === o.connector ? -1 : 0) - (b.id === o.connector ? -1 : 0));
