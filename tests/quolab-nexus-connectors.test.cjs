@@ -29,6 +29,7 @@ assert.match(ui, /function toolPicker\(r\)/);
 assert.match(ui, /function normalizeExclusiveState\(\)/);
 assert.match(ui, /NC\.Assignments\.normalize\(\);normalizeExclusiveState\(\);normalizeAiExclusiveState\(\);analyze\(\);render\(\)/);
 assert.doesNotMatch(ui, /ext-tools|syncExtToolChoices|ASSIGN TO TOOLS/);
+assert.doesNotMatch(ui, /\.perm\{/);
 assert.doesNotMatch(puzzle, /Sources|source-menu|sourceMenu/i);
 assert.match(ui, /data-card-tool/);
 assert.match(ui, /function setCardTool\(id,tool,enabled\).*S\.patch\(id/s);
