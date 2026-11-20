@@ -610,7 +610,10 @@
     }
     if (assigned !== 'founder' && !assignedRecords.length) throw NexusError('no-route', 'The connector assigned to '+tool+' / '+kind+' is disabled, deleted or incompatible. Select another connector or choose Founder explicitly.');
     let candidates = assigned === 'founder' ? [] : assignedRecords;
-    if (o.connector) candidates = candidates.slice().sort((a,b) => (a.id === o.connector ? -1 : 0) - (b.id === o.connector ? -1 : 0));
+    if (o.connector) {
+      candidates = candidates.filter(rec => rec.id === o.connector);
+      if (!candidates.length) throw NexusError('no-route', 'The explicitly requested connector is not assigned and enabled for ' + tool + ' / ' + kind + '.');
+    }
     if (!candidates.length) throw NexusError('no-route', 'No compatible external API is enabled for ' + tool + ' (' + kind + '). Connect and enable one or more APIs in Nexus Connectors.');
     const method = String(o.method || 'GET').toUpperCase();
     const safeToRetry = ['GET','HEAD','OPTIONS'].includes(method);
