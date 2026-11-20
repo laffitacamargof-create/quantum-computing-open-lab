@@ -58,3 +58,8 @@ Ollama can be added as a custom OpenAI-compatible endpoint only when that endpoi
 - This gateway currently provides text chat compatibility. Native tool/function calling, vision, audio, and provider-specific structured output require explicit capability adapters and tests before being enabled.
 - External hardware/storage API connectors can also coexist for the same tool. The Nexus broker tries compatible enabled connectors in priority order. Safe read requests can fail over after transport or HTTP errors; non-idempotent writes are not replayed after ambiguous network/server failures to avoid duplicate jobs or charges.
 - Provider quotas and free-tier availability are controlled by each provider and are not guaranteed by this gateway.
+
+
+## Built-in AI provider endpoints
+
+The shared connector core must define a built-in endpoint and default model for every provider exposed by the connector form. The supported built-ins are DeepSeek, Groq, Cerebras, Mistral, OpenAI, and OpenRouter. The `other` provider uses the user-supplied HTTPS base URL. This prevents a connector from being saved successfully while its provider has no runtime endpoint. Multiple enabled AI connectors are still attempted sequentially in saved priority order; they are not fanned out in parallel, avoiding duplicate requests and charges.

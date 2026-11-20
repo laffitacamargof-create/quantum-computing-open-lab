@@ -1,5 +1,5 @@
 /* ============================================================================
-   NEXUS CORE  v1.0.0
+   NEXUS CORE  v1.2.0
    Shared logic of the Nexus connector module. Plain script (no build step):
    it is loaded by qcol-nexus.html, by the shell (index.html) and may be loaded
    by any tool that wants to use a connector.
@@ -19,7 +19,7 @@
    ========================================================================== */
 (function (root) {
   'use strict';
-  const VERSION = '1.1.0';
+  const VERSION = '1.2.0';
   const SCRIPT_URL = (typeof document !== 'undefined' && document.currentScript && document.currentScript.src) || (root.location && root.location.href) || '';
   const LS_STORE = 'nexus_connectors_v1';
   const LS_ASSIGNMENTS = 'nexus_assignments_v1';
@@ -42,6 +42,9 @@
     deepseek: { label: 'DeepSeek', url: 'https://api.deepseek.com/chat/completions', model: 'deepseek-chat' },
     groq: { label: 'Groq', url: 'https://api.groq.com/openai/v1/chat/completions', model: 'llama-3.3-70b-versatile' },
     cerebras: { label: 'Cerebras', url: 'https://api.cerebras.ai/v1/chat/completions', model: 'gpt-oss-120b' },
+    mistral: { label: 'Mistral', url: 'https://api.mistral.ai/v1/chat/completions', model: 'mistral-large-latest' },
+    openai: { label: 'OpenAI', url: 'https://api.openai.com/v1/chat/completions', model: 'gpt-4o-mini' },
+    openrouter: { label: 'OpenRouter', url: 'https://openrouter.ai/api/v1/chat/completions', model: 'openai/gpt-4o-mini' },
     other: { label: 'Other (compatible URL)', url: '', model: '' },
   };
   // third-party packages a COMMUNITY connector may ask for (everything else needs an official connector)
