@@ -15,9 +15,9 @@ Design (read this before trusting it):
   * Each installed connector runs in its OWN Python process (own venv when it needs packages).
   * Connector code never imports Bluetooth/OS libraries: it asks `ctx` and the bridge checks the
     permissions the connector declared in its code (@connector.tool("tool", allow=[...])).
-  * Community connectors are additionally checked with a strict AST validator before installing.
-  * IMPORTANT: this is permission enforcement, not an operating-system sandbox. Only install
-    connectors you trust or that were reviewed by an administrator.
+  * Community connectors are checked by the Python AST validator and run inside a bubblewrap
+    filesystem/network sandbox on Linux. If bubblewrap is unavailable (or on unsupported OSes),
+    community installation fails closed. Private connectors remain fully trusted code.
 Python >= 3.9, standard library only. Bluetooth needs `pip install bleak` in the bridge's Python.
 """
 import argparse, ast, asyncio, base64, concurrent.futures as cf, hmac, http.client, http.server
@@ -34,8 +34,8 @@ OP_PERM = {
     "fs.list": "file.read", "fs.read": "file.read", "fs.write": "file.write", "fs.delete": "file.write",
     "http.request": "net.http", "proc.run": "proc.run", "emit": None, "log": None,
 }
-COMMUNITY_REQUIRES = set()
-SAFE_IMPORTS = {"nexus", "math", "cmath", "json", "re", "time", "typing", "dataclasses", "collections",
+COMMUNITY_REQUIRES = {"numpy", "scipy"}
+SAFE_IMPORTS = {"nexus", "numpy", "scipy", "math", "cmath", "json", "re", "time", "typing", "dataclasses", "collections",
                 "itertools", "functools", "statistics", "random", "base64", "hashlib", "datetime", "struct", "enum", "decimal", "fractions", "string", "textwrap"}
 FORBIDDEN_CALLS = {"eval", "exec", "compile", "__import__", "open", "globals", "locals", "vars", "getattr", "setattr", "delattr", "input", "breakpoint", "memoryview"}
 ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
@@ -112,7 +112,7 @@ def analyze(code, mode):
                 f = node.func
                 if isinstance(f, ast.Name) and f.id in FORBIDDEN_CALLS: res["errors"].append("Line %d: %s() is not allowed in community connectors" % (node.lineno, f.id))
             elif isinstance(node, ast.Attribute):
-                if (node.attr.startswith("__") and node.attr.endswith("__")) or node.attr in {"sys", "os", "subprocess", "socket", "modules", "loader", "builtins", "ctypes", "f2py"}:
+                if (node.attr.startswith("__") and node.attr.endswith("__")) or node.attr in {"sys", "os", "subprocess", "socket", "modules", "loader", "builtins", "ctypes", "f2py", "load", "save", "savetxt", "loadtxt", "genfromtxt", "fromfile", "memmap", "ctypeslib", "io", "loadmat", "savemat", "readsav", "wavfile", "mmread", "mmwrite", "loadarff", "netcdf_file", "netcdf_dataset", "open_memmap", "FortranFile"}:
                     res["errors"].append("Line %d: access to %s is not allowed in community connectors" % (node.lineno, node.attr))
                 if node.attr in {"format", "format_map"} and isinstance(node.ctx, ast.Load):
                     res["errors"].append("Line %d: str.format is not allowed in community connectors" % node.lineno)
@@ -402,7 +402,7 @@ def _community_audit(connector_path):
     python_root = os.path.realpath(sys.prefix)
     blocked_events = {
         "subprocess.Popen", "os.system", "os.exec", "os.spawn", "os.fork",
-        "os.posix_spawn", "os.posix_spawnp", "os.startfile", "os.chdir", "os.fchdir", "os.chroot", "os.setsid", "os.setpgid", "os.setuid", "os.setgid", "os.setgroups", "os.kill", "os.putenv", "os.unsetenv",
+        "os.posix_spawn", "os.posix_spawnp", "os.startfile",
         "socket.connect", "socket.bind", "socket.sendto", "socket.sendmsg", "socket.sendfile", "socket.getaddrinfo",
         "socket.gethostbyname", "socket.gethostbyname_ex", "socket.gethostbyaddr",
         "socket.getnameinfo", "ctypes.dlopen", "ctypes.dlsym", "pty.spawn"
@@ -462,6 +462,34 @@ main(sys.argv[1])
 '''
 
 
+def _community_sandbox_command(py, runner_path, connector_dir, data_dir):
+    """Build a fail-closed Linux bubblewrap command for untrusted community code."""
+    if not sys.platform.startswith("linux"):
+        raise BridgeError("Community connectors require a supported Linux bubblewrap sandbox; this platform is not enabled.", "sandbox-unavailable", 503)
+    bwrap = shutil.which("bwrap")
+    if not bwrap:
+        raise BridgeError("Community connectors are disabled until bubblewrap is installed on this Linux system.", "sandbox-unavailable", 503)
+    py_abs = os.path.abspath(py)
+    py_real = os.path.realpath(py_abs)
+    connector_real = os.path.realpath(connector_dir)
+    if os.path.commonpath((py_abs, connector_real)) == connector_real:
+        sandbox_py = "/nexus-connector/" + os.path.relpath(py_abs, connector_real).replace(os.sep, "/")
+    elif os.path.commonpath((py_real, "/usr")) == "/usr":
+        sandbox_py = py_real
+    else:
+        raise BridgeError("The Python runtime is outside the approved sandbox mount points.", "sandbox-unavailable", 503)
+    args = [bwrap, "--die-with-parent", "--new-session", "--unshare-all", "--ro-bind", "/usr", "/usr"]
+    for system_path in ("/lib", "/lib64", "/bin", "/sbin"):
+        if os.path.exists(system_path): args += ["--ro-bind", system_path, system_path]
+    args += [
+        "--dev", "/dev", "--proc", "/proc", "--tmpfs", "/tmp",
+        "--dir", "/nexus-connector", "--ro-bind", connector_real, "/nexus-connector",
+        "--dir", "/nexus-data", "--bind", os.path.realpath(data_dir), "/nexus-data",
+        "--chdir", "/nexus-data", "--", sandbox_py, "-u", "/nexus-data/runner.py", "/nexus-connector/connector.py",
+    ]
+    return args
+
+
 # ───────────────────────── worker = one connector process ─────────────────────────
 class Worker:
     def __init__(self, br, cid):
@@ -475,8 +503,15 @@ class Worker:
         data = self.br.ddir(self.cid); os.makedirs(data, exist_ok=True)
         env = {k: v for k, v in os.environ.items() if k in ("PATH", "SYSTEMROOT", "TEMP", "TMP", "LANG", "LC_ALL", "PYTHONPATH_NEXUS")}
         env["PYTHONIOENCODING"] = "utf-8"
-        env["NEXUS_CONNECTOR_ORIGIN"] = str((self.br.meta(self.cid) or {}).get("origin", "private"))
-        self.proc = subprocess.Popen([py, "-u", os.path.join(self.br.home, "runner.py"), os.path.join(d, "connector.py")], stdin=subprocess.PIPE,
+        origin = str((self.br.meta(self.cid) or {}).get("origin", "private"))
+        env["NEXUS_CONNECTOR_ORIGIN"] = origin
+        if origin == "community":
+            runner_path = os.path.join(data, "runner.py")
+            with open(runner_path, "w", encoding="utf-8") as f: f.write(RUNNER)
+            command = _community_sandbox_command(py, runner_path, d, data)
+        else:
+            command = [py, "-u", os.path.join(self.br.home, "runner.py"), os.path.join(d, "connector.py")]
+        self.proc = subprocess.Popen(command, stdin=subprocess.PIPE,
                                      stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=data, env=env, text=True, encoding="utf-8", bufsize=1)
         threading.Thread(target=self._read, daemon=True).start(); threading.Thread(target=self._err, daemon=True).start()
         if not self.ready.wait(25) or self.fatal:
@@ -574,6 +609,8 @@ class Bridge:
         if not ID_RE.match(cid): raise BridgeError("Invalid connector id")
         origin = pkg.get("origin", "private")
         if origin not in ("official", "private", "community"): raise BridgeError("Invalid origin")
+        if origin == "community" and (not sys.platform.startswith("linux") or not shutil.which("bwrap")):
+            raise BridgeError("Community connectors require Linux bubblewrap isolation. Installation is disabled on this platform or until bubblewrap is installed.", "sandbox-unavailable", 503)
         for k in ("py", "ui", "web"):
             if not isinstance(pkg.get(k, ""), str) or len(pkg.get(k, "")) > MAX_CODE: raise BridgeError("The %s code is missing or too large" % k)
         res = analyze(pkg.get("py", ""), origin)   # re-checked here: never trust the web page
@@ -602,7 +639,9 @@ class Bridge:
                     if r.returncode: raise BridgeError("Could not create the Python environment: " + (r.stderr or r.stdout)[-300:], "install")
                 py = os.path.join(vdir, "Scripts" if os.name == "nt" else "bin", "python.exe" if os.name == "nt" else "python")
                 log("Installing packages: " + ", ".join(req))
-                p = subprocess.Popen([py, "-m", "pip", "install", "--disable-pip-version-check", "--no-input"] + req, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+                pip_args = [py, "-m", "pip", "install", "--disable-pip-version-check", "--no-input"]
+                if pkg.get("origin") == "community": pip_args.append("--only-binary=:all:")
+                p = subprocess.Popen(pip_args + req, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
                 t0 = time.time()
                 for line in p.stdout:
                     line = line.strip()
