@@ -2632,9 +2632,19 @@ CONTEXT (staged and size-limited): ${c}`;
   }
 
   function extractActions(text) {
-    const acts = []; const re = /```openq-action\s*([\s\S]*?)```/g;
-    const clean = String(text).replace(re, (m, body) => { try { const a = JSON.parse(body.trim()); if (validAIAction(a) && acts.length < 8) acts.push(a); } catch (e) {} return ''; }).trim();
-    return { text: clean, actions: acts };
+    const acts = [], rejected = [];
+    const re = /```openq-action\s*([\s\S]*?)```/g;
+    const clean = String(text).replace(re, (m, body) => {
+      const raw = body.trim();
+      try {
+        const action = JSON.parse(raw);
+        if (!validAIAction(action)) rejected.push({ raw: raw.slice(0, 1200), reason: 'Acción inválida: revisa tipo, campos requeridos, destino y permisos.' });
+        else if (acts.length >= 4) rejected.push({ raw: raw.slice(0, 1200), reason: 'Límite de 4 acciones por turno superado.' });
+        else acts.push(action);
+      } catch (_) { rejected.push({ raw: raw.slice(0, 1200), reason: 'JSON de acción mal formado.' }); }
+      return '';
+    }).trim();
+    return { text: clean, actions: acts, rejected };
   }
   function validAIAction(a) {
     if (!a || typeof a !== 'object') return false;
@@ -2859,11 +2869,10 @@ CONTEXT (staged and size-limited): ${c}`;
     return Array.isArray(cells)&&cells.some(x=>String(x.output||x.result||'').trim()||(Array.isArray(x.outputs)&&x.outputs.some(v=>String(v||'').trim())));
   }
   async function sendAI(){
-    if(aiTaskInProgress)return;
+    if(aiTaskInProgress || !cmEditor)return;
+    const msg=cmEditor.state.doc.toString().trim();if(!msg)return;
     aiTaskInProgress=true;
     founderFallbackApprovedForCurrentTask = false;
-    if(!cmEditor)return;
-    const msg=cmEditor.state.doc.toString().trim();if(!msg)return;
     cmEditor.dispatch({changes:{from:0,to:cmEditor.state.doc.length,insert:''}});
     addAIMsg(msg,'usr');document.getElementById('ai-loading').classList.add('show');
     let reply='';
@@ -2882,7 +2891,7 @@ CONTEXT (staged and size-limited): ${c}`;
             executionTask?'Continue the same task. Maintain an explicit checklist of every requested acceptance criterion. Inspect, act, verify, correct and continue. Move between modules yourself. No agents or handoffs exist. Do not repeat successful actions.':'Answer directly; do not emit actions unless the user explicitly requests an operation.',
             'If needed, emit up to 4 valid actions (including tool_call for a documented callable module function), each inside its own fenced code block labeled openq-action. Use TASK_STATUS: CONTINUE until all criteria are verified. COMPLETED requires TASK_EVIDENCE grounded in fresh context. Use BLOCKED only for a concrete blocker. Questions are completed directly.'
           ].filter(Boolean).join('\n\n');
-          const raw=await callAI(prompt,ctx,{historyLimit:0,systemSuffix:'\nTASK TURN: retain the original objective and checklist; work only on the next small batch. Never resend an action whose receipt is confirmed.'});
+          const raw=await callAI(prompt,ctx,{historyLimit:0,turn,execution:executionTask,temp:executionTask?0.2:undefined,systemSuffix:'\nTASK TURN: retain the original objective and checklist; work only on the next small batch. Never resend an action whose receipt is confirmed.'});
           window.QuOLabNexusAgent?.acknowledgeEventDelta(ctx?.event_delta?.to_sequence);
            const parsed=extractActions(raw);finalText=parsed.text||raw;const status=taskStatus(finalText);
           finalText=finalText.replace(/^TASK_STATUS\\s*:\\s*(?:COMPLETED|CONTINUE|BLOCKED)\\s*$/gim,'').replace(/^TASK_EVIDENCE\\s*:\\s*.*$/gim,'').trim();
