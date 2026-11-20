@@ -407,6 +407,7 @@ def _community_audit(connector_path):
     }
     write_events = {"os.remove", "os.rename", "os.mkdir", "os.rmdir", "os.chmod",
                     "os.chown", "os.link", "os.symlink", "os.truncate", "os.utime"}
+    two_path_events = {"os.rename", "os.link", "os.symlink"}
     def audit(event, args):
         if event in blocked_events:
             raise PermissionError("Community connector blocked OS/network operation: " + event)
@@ -422,8 +423,16 @@ def _community_audit(connector_path):
                 elif not (_inside(path, data_root) or _inside(path, connector_root) or _inside(path, python_root)):
                     raise PermissionError("Community connector may read only its code, Python runtime and private data directory")
         if event in write_events and args:
-            if not _inside(args[0], data_root):
-                raise PermissionError("Community connector may modify only its private data directory")
+            # Rename/link/symlink have both a source and a destination. Checking
+            # only args[0] lets a community connector move a file out of its
+            # private data directory. Reject dir_fd variants too: they can make
+            # a relative path resolve outside the guarded root.
+            if len(args) > 2 and any(value is not None for value in args[2:4]):
+                raise PermissionError("Community connector may not use dir_fd filesystem operations")
+            paths = args[:2] if event in two_path_events else args[:1]
+            for path in paths:
+                if isinstance(path, (str, bytes, os.PathLike)) and not _inside(path, data_root):
+                    raise PermissionError("Community connector may modify only its private data directory")
     sys.addaudithook(audit)
     try:
         import resource
