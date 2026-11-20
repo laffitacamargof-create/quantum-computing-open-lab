@@ -385,6 +385,18 @@ def main(path):
     try:
         spec = importlib.util.spec_from_file_location("connector_main", path)
         mod = importlib.util.module_from_spec(spec); spec.loader.exec_module(mod)
+        if os.environ.get("NEXUS_COMMUNITY") == "1":
+            _data_root = os.path.realpath(os.environ.get("NEXUS_DATA_DIR", "."))
+            def _community_audit(event, args):
+                if event in ("subprocess.Popen", "os.system", "os.exec", "os.fork", "socket.connect", "socket.getaddrinfo"):
+                    raise PermissionError("Community connector blocked system process or raw network access; use ctx.*")
+                if event == "open" and args:
+                    target = args[0]
+                    if isinstance(target, (str, bytes, os.PathLike)):
+                        resolved = os.path.realpath(os.fsdecode(target))
+                        if resolved != _data_root and not resolved.startswith(_data_root + os.sep):
+                            raise PermissionError("Community connector file access is restricted to its data folder")
+            sys.addaudithook(_community_audit)
     except BaseException:
         _send({"t": "fatal", "error": traceback.format_exc(limit=3)}); os._exit(3)
     _send({"t": "ready", "registry": {t: sorted(a) for t, a in REG.items()}})
@@ -408,6 +420,10 @@ class Worker:
         data = self.br.ddir(self.cid); os.makedirs(data, exist_ok=True)
         env = {k: v for k, v in os.environ.items() if k in ("PATH", "SYSTEMROOT", "TEMP", "TMP", "LANG", "LC_ALL", "PYTHONPATH_NEXUS")}
         env["PYTHONIOENCODING"] = "utf-8"
+        meta = self.br.meta(self.cid) or {}
+        if meta.get("origin") == "community":
+            env["NEXUS_COMMUNITY"] = "1"
+            env["NEXUS_DATA_DIR"] = data
         self.proc = subprocess.Popen([py, "-u", os.path.join(self.br.home, "runner.py"), os.path.join(d, "connector.py")], stdin=subprocess.PIPE,
                                      stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=data, env=env, text=True, encoding="utf-8", bufsize=1)
         threading.Thread(target=self._read, daemon=True).start(); threading.Thread(target=self._err, daemon=True).start()
