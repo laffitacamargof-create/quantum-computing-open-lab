@@ -43,7 +43,7 @@ assert.match(ui, /Use HTTPS without embedded username or password/);
 assert.match(ui, /Private, loopback and link-local IP addresses are blocked/);
 assert.match(ui, /type="url" inputmode="url"/);
 assert.match(ui, /normalizeExternalBaseUrl\(\$\('ext-url'\)\.value\)/);
-assert.match(ui, /Enter a valid HTTPS service address/);
+assert.match(ui, /Enter a complete service URL/);
 assert.match(ui, /SHARE/);
 assert.match(ui, /PENDING/);
 assert.doesNotMatch(ui, /Main assistant|Fast backup|Quantum hardware A|Example device reader|sk-example/i);
