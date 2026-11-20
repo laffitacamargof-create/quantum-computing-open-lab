@@ -1,3 +1,4 @@
+import json
 import os
 import subprocess
 import sys
@@ -84,39 +85,45 @@ class CommunityASTSecurityTests(unittest.TestCase):
             source = data / "source.txt"
             source.write_text("inside", encoding="utf-8")
             outside.write_text("outside", encoding="utf-8")
-            script = r"""
-import importlib.util, os, sys
-from pathlib import Path
-spec = importlib.util.spec_from_file_location("bridge", sys.argv[1])
-m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
-data = Path(sys.argv[2]); outside = Path(sys.argv[3])
-os.chdir(data)
-outside_fd = os.open(str(outside), os.O_RDONLY)
-m._community_audit(str(Path(sys.argv[1])))
-blocked_read = False
-try:
-    open(str(outside), "r").read()
-except PermissionError:
-    blocked_read = True
-try:
-    os.rename("source.txt", str(outside))
-except PermissionError:
-    pass
-else:
-    raise SystemExit("rename escape was not blocked")
-os.lseek(outside_fd, 0, os.SEEK_SET)
-outside_contents = os.read(outside_fd, 100).decode("utf-8")
-os.close(outside_fd)
-if not blocked_read or outside_contents != "outside" or not outside.exists() or not (data / "source.txt").exists():
-    raise SystemExit("filesystem audit did not enforce the private data boundary")
-print("ok")
-"""
-            result = subprocess.run(
-                [sys.executable, "-c", script, str(ROOT / "nexus-bridge" / "nexus_bridge.py"), str(data), str(outside)],
-                cwd=str(data), text=True, capture_output=True, timeout=20
+            runner = Path(root) / "runner.py"
+            runner.write_text(bridge.RUNNER, encoding="utf-8")
+            connector_file = data / "connector.py"
+            connector_file.write_text(
+                "import os\n"
+                "from nexus import connector\n"
+                "@connector.tool('apps', allow=['net.http'])\n"
+                "async def run(ctx):\n"
+                "    read_blocked = False\n"
+                "    try: open(" + repr(str(outside)) + ", 'r').read()\n"
+                "    except PermissionError: read_blocked = True\n"
+                "    rename_blocked = False\n"
+                "    try: os.rename(" + repr(str(source)) + ", " + repr(str(outside)) + ")\n"
+                "    except PermissionError: rename_blocked = True\n"
+                "    return {'read_blocked': read_blocked, 'rename_blocked': rename_blocked}\n",
+                encoding="utf-8"
             )
-            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-            self.assertIn("ok", result.stdout)
+            env = dict(os.environ)
+            env["NEXUS_CONNECTOR_ORIGIN"] = "community"
+            proc = subprocess.Popen(
+                [sys.executable, str(runner), str(connector_file)],
+                cwd=str(data), env=env, text=True,
+                stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+            )
+            try:
+                ready = json.loads(proc.stdout.readline())
+                self.assertEqual("ready", ready.get("t"))
+                request = {"t": "call", "id": 1, "tool": "apps", "action": "run", "args": {}}
+                proc.stdin.write(json.dumps(request) + "\n")
+                proc.stdin.flush()
+                response = json.loads(proc.stdout.readline())
+                self.assertTrue(response.get("ok"), response)
+                self.assertEqual({"read_blocked": True, "rename_blocked": True}, response.get("result"))
+                self.assertEqual("outside", outside.read_text(encoding="utf-8"))
+                self.assertTrue(source.exists())
+            finally:
+                if proc.stdin:
+                    proc.stdin.close()
+                proc.wait(timeout=10)
 
 
 if __name__ == "__main__":
