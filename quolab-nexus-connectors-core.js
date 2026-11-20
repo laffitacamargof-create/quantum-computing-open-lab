@@ -619,6 +619,7 @@
     const allIds = ids;
     const invalid = allIds.find(id => !compatible(Store.get(id)));
     if (invalid) throw NexusError('assigned-unavailable', 'The connector assigned to this slot is disabled, deleted, or incompatible. Reassign it in Nexus Connectors.');
+    if (o.connector && !allIds.includes(o.connector)) throw NexusError('not-assigned', 'The requested connector is not assigned to this tool slot.');
     let candidates = allIds.map(id => Store.get(id)).filter(compatible);
     const max = (SLOT_RULES[tool] && SLOT_RULES[tool][kind]) ?? 1;
     if (candidates.length > max) throw NexusError('slot-overflow', tool + ' has more assigned connectors than its allowed slot count. Reconcile assignments in Nexus Connectors.');
