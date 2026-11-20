@@ -366,7 +366,7 @@
       if (base.username || base.password) throw NexusError('scope', 'Credentials are not allowed in connector URLs.');
       const rootPath = (base.pathname || '/').replace(/\/+$/, '') + '/';
       const rawPath = String(path || '').trim();
-      if (/^[a-z][a-z0-9+.-]*:/i.test(rawPath) || rawPath.startsWith('//') || rawPath.startsWith('/')) throw NexusError('scope', 'Connector paths must be relative to the configured base URL.');
+      if (/^[a-z][a-z0-9+.-]*:/i.test(rawPath) || rawPath.startsWith('//') || rawPath.startsWith('/') || rawPath.includes('\\\\') || /%(?:2e|2f|5c)/i.test(rawPath)) throw NexusError('scope', 'Connector paths must be relative and cannot contain encoded traversal or slash characters.');
       const u = new URL(rawPath, base.origin + rootPath);
       if (u.origin !== base.origin || !(u.pathname + '/').startsWith(rootPath)) throw NexusError('scope', 'This connector can only call paths under ' + rootPath);
       return u.href;
