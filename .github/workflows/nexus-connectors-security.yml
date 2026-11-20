@@ -1,0 +1,22 @@
+name: Nexus connector security
+
+on:
+  push:
+    paths:
+      - "nexus-bridge/**"
+      - ".github/workflows/nexus-connectors-security.yml"
+  pull_request:
+    paths:
+      - "nexus-bridge/**"
+      - ".github/workflows/nexus-connectors-security.yml"
+
+jobs:
+  community-connector-security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Run bridge security regressions
+        run: python -m unittest discover -s nexus-bridge/tests -p "test_*.py" -v
