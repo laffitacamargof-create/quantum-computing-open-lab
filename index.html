@@ -1306,7 +1306,7 @@ class QuOLabNexusConfigSyncReader {
       }
     }
     if (nxConfigured && !aiFallbackApproved()) throw new Error('Your Nexus AI connector is unavailable or consumed. Enable it again or explicitly approve Founder gateway fallback.');
-    if (aiCfg.provider === 'gateway') return callMultiModelGateway(messages, o.tokens, o.temp);
+    if (aiCfg.provider === 'gateway') { if (!aiFallbackApproved()) throw new Error('Founder gateway is not enabled for automatic use. Explicitly approve it in AI settings or connect a Nexus AI provider.'); return callMultiModelGateway(messages, o.tokens, o.temp); }
     return null;
   }
   async function handleModuleMsg(event, data) {
