@@ -65,7 +65,7 @@ def _community_sandbox_command(py, runner, connector, connector_dir, data_dir, e
     args = [bwrap, "--die-with-parent", "--new-session", "--unshare-all", "--clearenv"]
     # Create mount points first, then mount only the Python runtime. Never bind
     # the host root or home; network remains unshared by --unshare-all.
-    args.extend(["--dir", "/etc", "--dir", "/etc/ssl",
+    args.extend(["--dir", "/usr", "--dir", "/etc", "--dir", "/etc/ssl",
                  "--dir", "/bin", "--dir", "/lib", "--dir", "/lib64"])
     for mount in ("/usr", "/usr/local", "/bin", "/lib", "/lib64",
                   "/etc/ld.so.cache", "/etc/ssl/certs", "/etc/localtime",
