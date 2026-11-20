@@ -1219,7 +1219,6 @@ class QuOLabNexusConfigSyncReader {
     const slot = apiSlots[mod + '.' + kind];
     let engineBase = '';
     try { engineBase = localStorage.getItem('nexus_colab_url') || localStorage.getItem('qcol_colab_url') || localStorage.getItem('openq_colab_url') || ''; } catch (_) {}
-    if (!engineBase) engineBase = 'https://francilaffita1027-qcol-motor.hf.space';
     if (slot && slot.founder === 'engine' || (!slot?.founder && ['cpu','qpu'].includes(kind))) {
       return engineBase && /^https:\/\//i.test(engineBase) ? { type:'engine', base:engineBase.replace(/\/$/, ''), name:'Founder · Quantum Engine' } : null;
     }
