@@ -96,9 +96,13 @@ require('../../quolab-nexus-connectors-core.js');
   assert.equal(typeof NC.ext._headers,'undefined');
   assert.equal(typeof NC.ext._url,'undefined');
 
+  const offCpu = await make('Disabled CPU','classical');
+  NC.Assignments.bind(offCpu.id,'open_lab','cpu');
+  NC.Store.patch(offCpu.id,r=>{r.usage='off';});
   let routeError;
   try { await NC.requestAssigned({moduleId:'architect',kind:'cpu',tool:'open_lab',path:'/run'}); }
   catch (e) { routeError=e.code; }
   assert.equal(routeError,'assigned-unavailable');
+  NC.Store.remove(offCpu.id);
   console.log('Nexus Connectors slot and API boundary checks passed');
 })().catch(err => { console.error(err); process.exitCode=1; });
