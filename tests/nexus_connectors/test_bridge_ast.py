@@ -51,7 +51,7 @@ class CommunityASTSecurityTests(unittest.TestCase):
             runner = pathlib.Path(folder) / "runner.py"
             connector = pathlib.Path(folder) / "connector.py"
             runner.write_text(nexus_bridge.RUNNER, encoding="utf-8")
-            connector.write_text("open('/etc/hostname').read()\\n", encoding="utf-8")
+            connector.write_text("open('/etc/hostname').read()\n", encoding="utf-8")
             env = dict(os.environ, NEXUS_CONNECTOR_ORIGIN="community", PYTHONIOENCODING="utf-8")
             result = subprocess.run(
                 [sys.executable, str(runner), str(connector)],
@@ -66,7 +66,7 @@ class CommunityASTSecurityTests(unittest.TestCase):
             runner = pathlib.Path(folder) / "runner.py"
             connector = pathlib.Path(folder) / "connector.py"
             runner.write_text(nexus_bridge.RUNNER, encoding="utf-8")
-            connector.write_text("import subprocess\\nsubprocess.Popen(['id'])\\n", encoding="utf-8")
+            connector.write_text("import subprocess\nsubprocess.Popen(['id'])\n", encoding="utf-8")
             env = dict(os.environ, NEXUS_CONNECTOR_ORIGIN="community", PYTHONIOENCODING="utf-8")
             result = subprocess.run(
                 [sys.executable, str(runner), str(connector)],
