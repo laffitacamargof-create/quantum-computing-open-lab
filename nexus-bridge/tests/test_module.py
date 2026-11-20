@@ -84,6 +84,11 @@ class NexusConnectorsModuleTests(unittest.TestCase):
         self.assertNotIn("SUPABASE_SERVICE_KEY", cfg)
 
 
+    def test_save_button_is_wired_to_save(self): self.assertIn("$('bS').onclick=async()=>", self.ui); self.assertIn('await save()', self.ui)
+    def test_local_connector_card_shows_declared_tools(self): self.assertIn("r.kind==='loc'", self.ui); self.assertIn('Tools declared by local connector', self.ui)
+    def test_local_connector_edit_updates_code_and_invalidates_install(self): self.assertIn("const unchanged = previous.py === (f.py || '')", self.core); self.assertIn('installed: !!(previous.installed && unchanged)', self.core)
+    def test_local_call_can_recover_declared_permissions(self): self.assertIn('Analyze.python(rec.loc.py).tools', self.core)
+
 if __name__ == "__main__":
     unittest.main()
 
