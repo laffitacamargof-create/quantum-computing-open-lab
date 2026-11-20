@@ -107,3 +107,9 @@ assert.match(sql, /set search_path = ''/);
 assert.match(sql, /enable row level security/i);
 assert.doesNotMatch(workflow, /quolab-nexus-library\.html/);
 console.log('QuOLab Nexus connectors checks passed.');
+
+assert.match(ui, /\$\('bS'\)\.onclick=async\(\)=>\{[^}]*await save\(\)/);
+assert.match(ui, /r\.kind==='loc'\)return Object\.keys\(\(r\.loc&&r\.loc\.perms\)\|\|\{\}\)/);
+assert.match(ui, /Tools declared by local connector/);
+assert.match(core, /const unchanged = previous\.py === \(f\.py \|\| ''\)/);
+assert.match(core, /const declared = rec\.loc\.perms \|\| Analyze\.python\(rec\.loc\.py\)\.tools/);
