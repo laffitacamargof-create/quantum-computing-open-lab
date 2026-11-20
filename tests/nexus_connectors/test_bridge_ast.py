@@ -4,6 +4,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "nexus-bridge"))
@@ -79,16 +80,16 @@ class CommunityASTSecurityTests(unittest.TestCase):
 
     def test_community_execution_fails_closed_without_bubblewrap(self):
         with tempfile.TemporaryDirectory() as folder:
-            with unittest.mock.patch.object(nexus_bridge.shutil, "which", return_value=None):
+            with mock.patch.object(nexus_bridge.shutil, "which", return_value=None):
                 with self.assertRaises(nexus_bridge.BridgeError) as caught:
                     nexus_bridge._community_sandbox_command(
-                        sys.executable, str(pathlib.Path(folder) / "runner.py"), folder, folder
+                        os.path.join(folder, "venv", "bin", "python"), str(pathlib.Path(folder) / "runner.py"), folder, folder
                     )
             self.assertEqual("sandbox-unavailable", caught.exception.code)
 
     def test_community_sandbox_unshares_network_and_mounts_connector_read_only(self):
         with tempfile.TemporaryDirectory() as folder:
-            with unittest.mock.patch.object(nexus_bridge.shutil, "which", return_value="/usr/bin/bwrap"):
+            with mock.patch.object(nexus_bridge.shutil, "which", return_value="/usr/bin/bwrap"):
                 command = nexus_bridge._community_sandbox_command(
                     sys.executable, str(pathlib.Path(folder) / "runner.py"), folder, folder
                 )
