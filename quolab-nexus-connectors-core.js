@@ -367,7 +367,16 @@
       const ip4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(host);
       if (base.protocol !== 'https:' || base.username || base.password || base.search || base.hash) throw NexusError('scope', 'Connector base URLs must be HTTPS and cannot contain credentials, queries or fragments.');
       if (host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local') || host === '[::1]' || host === '::1' || host.startsWith('[')) throw NexusError('scope', 'Private, loopback and literal IPv6 addresses are not allowed for external connectors.');
-      if (ip4) { const a=ip4.slice(1).map(Number); if (a.some(n=>n>255) || a[0]===0 || a[0]===10 || a[0]===127 || (a[0]===169&&a[1]===254) || (a[0]===192&&a[1]===168) || (a[0]===172&&a[1]>=16&&a[1]<=31)) throw NexusError('scope', 'Private and loopback addresses are not allowed for external connectors.'); }
+      if (ip4) {
+        const a=ip4.slice(1).map(Number);
+        const blocked = a.some(n=>n>255) || a[0]===0 || a[0]===10 || a[0]===127 || a[0]>=224 ||
+          (a[0]===100&&a[1]>=64&&a[1]<=127) || (a[0]===169&&a[1]===254) ||
+          (a[0]===172&&a[1]>=16&&a[1]<=31) || (a[0]===192&&a[1]===168) ||
+          (a[0]===192&&a[1]===0&&(a[2]===0||a[2]===2)) || (a[0]===192&&a[1]===88&&a[2]===99) ||
+          (a[0]===198&&(a[1]===18||a[1]===19||a[1]===51&&a[2]===100)) ||
+          (a[0]===203&&a[1]===0&&a[2]===113);
+        if (blocked) throw NexusError('scope', 'Private, reserved and loopback addresses are not allowed for external connectors.');
+      }
       const rootPath = (base.pathname || '/').replace(/\/+$/, '') + '/';
       const rawPath = String(path || '').trim();
       if (/^[a-z][a-z0-9+.-]*:/i.test(rawPath) || rawPath.startsWith('//') || rawPath.includes('\\')) throw NexusError('scope', 'Invalid connector path');
