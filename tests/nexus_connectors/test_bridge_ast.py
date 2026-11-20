@@ -76,6 +76,28 @@ class CommunityASTSecurityTests(unittest.TestCase):
             self.assertIn('"fatal"', result.stdout)
             self.assertIn("subprocess.Popen", result.stdout)
 
+
+    def test_community_execution_fails_closed_without_bubblewrap(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with unittest.mock.patch.object(nexus_bridge.shutil, "which", return_value=None):
+                with self.assertRaises(nexus_bridge.BridgeError) as caught:
+                    nexus_bridge._community_sandbox_command(
+                        sys.executable, str(pathlib.Path(folder) / "runner.py"), folder, folder
+                    )
+            self.assertEqual("sandbox-unavailable", caught.exception.code)
+
+    def test_community_sandbox_unshares_network_and_mounts_connector_read_only(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with unittest.mock.patch.object(nexus_bridge.shutil, "which", return_value="/usr/bin/bwrap"):
+                command = nexus_bridge._community_sandbox_command(
+                    sys.executable, str(pathlib.Path(folder) / "runner.py"), folder, folder
+                )
+            self.assertIn("--unshare-all", command)
+            self.assertIn("--ro-bind", command)
+            self.assertIn("--bind", command)
+            self.assertIn("/nexus-data", command)
+            self.assertIn("/nexus-connector", command)
+
     def test_local_origin_allowlist_is_narrow(self):
         self.assertTrue(nexus_bridge.LOCAL_ORIGIN.match("http://localhost:8765"))
         self.assertFalse(nexus_bridge.LOCAL_ORIGIN.match("http://localhost:9999"))
