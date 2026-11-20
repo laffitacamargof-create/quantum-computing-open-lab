@@ -1,7 +1,7 @@
 name: Nexus Connectors regression checks
 on:
   push:
-    branches: [main, "fix/nexus-connectors-hardening"]
+    branches: [main, "fix/nexus-connectors-hardening", "fix/nexus-connectors-integration-final-20261120-a"]
   pull_request:
     branches: [main]
 jobs:
