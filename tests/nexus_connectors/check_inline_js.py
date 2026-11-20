@@ -37,6 +37,7 @@ class ScriptCollector(html.parser.HTMLParser):
 
 
 ui_source = (ROOT / "quolab-nexus-connectors.html").read_text(encoding="utf-8")
+index_source = (ROOT / "index.html").read_text(encoding="utf-8")
 for marker in (
     "function toolPicker(r)",
     "data-card-tool",
@@ -46,13 +47,20 @@ for marker in (
     "record.kind==='ext'&&next!=='off'",
     "previousAssignments=NC.Assignments.all()",
     "editing.tools||[]",
-    "async function aiComplete(messages, options)",
-    "if (connectors.length)",
-    "if (aiCfg.provider === 'gateway') return callMultiModelGateway",
-    "a.provider = 'gateway';",
 ):
     if marker not in ui_source:
         raise AssertionError("Connector UI regression guard missing: " + marker)
+
+for marker in (
+    "async function aiComplete(messages, options)",
+    "const connectors = founderFallbackApprovedForCurrentTask ? [] : aiNexusRecs",
+    "window.confirm(",
+    "No provider switch was made; the selected connector remains active.",
+    "if (aiCfg.provider === 'gateway') return callMultiModelGateway",
+    "a.provider = 'gateway';",
+):
+    if marker not in index_source:
+        raise AssertionError("QNexusAi routing regression guard missing: " + marker)
 
 for html in FILES:
     parser = ScriptCollector()
