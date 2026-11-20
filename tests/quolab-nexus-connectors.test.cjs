@@ -79,6 +79,12 @@ assert.doesNotMatch(index, /hdr-sources|src-modal|renderSources|openSources|clos
 assert.match(index, /Policy\.pick\('ai', tool/);
 assert.doesNotMatch(index, /aiDirectApproved/);
 assert.match(index, /nexus_ai_fallback_approved/);
+assert.match(index, /quantumAppConnectorConsent/);
+assert.match(index, /quantumAppFrameFor/);
+assert.doesNotMatch(index, /francilaffita1027-qcol-motor\\.hf\\.space/);
+assert.match(index, /explicitly requested connector is not assigned and enabled/);
+assert.match(core, /An explicit connector id is required/);
+assert.doesNotMatch(puzzle, /id="execIframe"[^>]*allow-same-origin/);
 assert.match(index, /NXC\(\)\.ai\.chat/);
 assert.match(index, /OPENQ_API_REGISTER/);
 assert.match(index, /OPENQ_API_REQUEST/);
