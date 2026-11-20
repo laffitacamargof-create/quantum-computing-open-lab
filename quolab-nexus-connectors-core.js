@@ -491,32 +491,20 @@
     const ids = Array.isArray(assigned) ? assigned : (assigned && assigned !== 'founder' ? [assigned] : []);
     const expected = kind === 'cpu' ? 'classical' : kind === 'qpu' ? 'quantum' : 'storage';
     const ordered = o.connector && ids.includes(o.connector) ? [o.connector].concat(ids.filter(id => id !== o.connector)) : ids;
-    for (const id of ordered) {
+    const compatible = id => {
       const rec = Store.get(id);
-      if (!rec || rec.kind !== 'ext' || !Policy.allowed(rec, tool) || (rec.ext && rec.ext.category !== expected)) continue;
-      const result = await ext.request({ tool, connector: rec.id, method: o.method, path: o.path, headers: o.headers, body: o.body, timeout: o.timeout });
-      return Object.assign({}, result, { source: 'nexus', connector: rec.id });
+      return rec && rec.kind === 'ext' && Policy.allowed(rec, tool) && rec.ext && rec.ext.category === expected ? rec : null;
+    };
+    // An explicit module assignment takes priority. Otherwise discover the connector
+    // enabled for this tool in Nexus Connectors; never route through Founder.
+    let rec = ordered.map(compatible).find(Boolean) || null;
+    if (!rec) {
+      const candidate = Policy.pick('ext', tool, o.connector);
+      if (candidate && candidate.ext && candidate.ext.category === expected) rec = candidate;
     }
-    const baseValue = String(o.fallbackBase || '').trim();
-    if (!baseValue) throw NexusError('no-route', 'No compatible connector or Founder default is configured for ' + kind);
-    let base, target;
-    try {
-      base = new URL(baseValue);
-      if (!['https:','http:'].includes(base.protocol) || base.username || base.password) throw new Error('scheme');
-      target = new URL(String(o.path || ''), base.href.endsWith('/') ? base.href : base.href + '/');
-    } catch (_) { throw NexusError('route-url', 'The configured Founder endpoint is invalid'); }
-    if (target.origin !== base.origin) throw NexusError('scope', 'The requested path leaves the configured Founder endpoint');
-    const method = String(o.method || 'GET').toUpperCase();
-    if (!/^(GET|HEAD|POST|PUT|PATCH|DELETE|OPTIONS)$/.test(method)) throw NexusError('method', 'HTTP method is not allowed');
-    const headers = Object.assign({}, o.headers || {});
-    const body = o.body && typeof o.body === 'object' ? JSON.stringify(o.body) : o.body;
-    if (body && !Object.keys(headers).some(k => k.toLowerCase() === 'content-type')) headers['Content-Type'] = 'application/json';
-    let response;
-    try { response = await fetch(target.href, { method, headers, body: body || undefined, signal: AbortSignal.timeout(Math.min(Math.max(Number(o.timeout) || 30000, 1000), 180000)) }); }
-    catch (error) { throw NexusError('network', 'Founder endpoint request failed: ' + (error.message || error)); }
-    const text = await response.text(), responseHeaders = {};
-    response.headers.forEach((v,k) => responseHeaders[k] = v);
-    return { status: response.status, ok: response.ok, headers: responseHeaders, text, source: 'founder', connector: null };
+    if (!rec) throw NexusError('no-route', 'No compatible external API is enabled for ' + tool + ' (' + kind + '). Connect and enable it for this tool in Nexus Connectors.');
+    const result = await ext.request({ tool, connector: rec.id, method: o.method, path: o.path, headers: o.headers, body: o.body, timeout: o.timeout });
+    return Object.assign({}, result, { source: 'nexus', connector: rec.id });
   }
   const api = { VERSION, TOOLS, PERMS, PROVIDERS, COMMUNITY_REQUIRES, MAX_CODE, Vault, Store, Policy, Analyze, Bridge, ai, ext, loc, Catalog, Community, Installer, Make, Assignments, requestAssigned, util: { uid, slug, sha256, now, NexusError } };
   root.QuOLabNexusConnectors = api;

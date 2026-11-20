@@ -1182,13 +1182,6 @@ class QuOLabNexusConfigSyncReader {
     }
     return null;
   }
-  function founderBase(key) {
-    const slot = apiSlots[key] || {};
-    if (slot.founder === 'engine') {
-      try { return localStorage.getItem('nexus_colab_url') || localStorage.getItem('qcol_colab_url') || localStorage.getItem('openq_colab_url') || ''; } catch (_) { return ''; }
-    }
-    return /^https:\/\//i.test(slot.founder || '') ? slot.founder : '';
-  }
   function connectorCategory(kind) {
     return kind === 'cpu' ? 'classical' : kind === 'qpu' ? 'quantum' : kind === 'storage' ? 'storage' : null;
   }
@@ -1213,7 +1206,9 @@ class QuOLabNexusConfigSyncReader {
       const expected = connectorCategory(kind);
       const records = nx ? ids.map(id => nx.Store.get(id)).filter(r =>
         r && r.kind === 'ext' && (!expected || (r.ext && r.ext.category === expected))) : [];
-      out[kind] = { source: records.length ? 'nexus' : 'founder', name: records.map(r => r.name).join(', ') || 'Founder default',
+      const automatic = nx ? nx.Policy.pick('ext', TOOL_OF[mod] || 'chat') : null;
+      const selected = records[0] || (automatic && automatic.ext && automatic.ext.category === expected ? automatic : null);
+      out[kind] = { source: selected ? 'nexus' : 'unconfigured', name: selected ? selected.name : 'No external connector assigned',
         options: records.map(r => ({ id:r.id, name:r.name, category:r.ext.category })) };
     });
     return out;
@@ -1278,7 +1273,7 @@ class QuOLabNexusConfigSyncReader {
         if (!nx || typeof nx.requestAssigned !== 'function') throw new Error('Nexus Connectors broker is unavailable');
         const result = await nx.requestAssigned({
           moduleId:apiMod, kind:slot, tool:TOOL_OF[apiMod] || 'chat',
-          connector:data.connector, fallbackBase:founderBase(key), method,
+          connector:data.connector, method,
           path:data.path || '', headers:data.headers, body:data.body, timeout:data.timeout
         });
         reply({ type:'OPENQ_API_RESULT', id:data.id, ok:true, status:result.status, headers:result.headers, text:result.text, source:result.source, connector:result.connector });
