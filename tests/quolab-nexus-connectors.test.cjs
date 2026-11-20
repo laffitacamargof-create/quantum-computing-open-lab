@@ -82,7 +82,7 @@ assert.match(index, /nexus_ai_fallback_approved/);
 assert.match(index, /quantumAppConnectorConsent/);
 assert.match(index, /quantumAppFrameFor/);
 assert.doesNotMatch(index, /francilaffita1027-qcol-motor\\.hf\\.space/);
-assert.match(index, /explicitly requested connector is not assigned and enabled/);
+assert.match(core, /explicitly requested connector is not assigned and enabled/);
 assert.match(core, /An explicit connector id is required/);
 assert.doesNotMatch(puzzle, /id="execIframe"[^>]*allow-same-origin/);
 assert.match(index, /NXC\(\)\.ai\.chat/);
