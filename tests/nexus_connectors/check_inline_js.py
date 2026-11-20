@@ -46,6 +46,10 @@ for marker in (
     "record.kind==='ext'&&next!=='off'",
     "previousAssignments=NC.Assignments.all()",
     "editing.tools||[]",
+    "async function aiComplete(messages, options)",
+    "if (connectors.length)",
+    "if (aiCfg.provider === 'gateway') return callMultiModelGateway",
+    "a.provider = 'gateway';",
 ):
     if marker not in ui_source:
         raise AssertionError("Connector UI regression guard missing: " + marker)
