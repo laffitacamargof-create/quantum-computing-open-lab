@@ -1339,7 +1339,21 @@ class QuOLabNexusConfigSyncReader {
       apiSlots[apiMod + '.' + kind] = { label:String(data.label || (apiMod + ' · ' + kind.toUpperCase())).slice(0,80), founder };
       reply({ type:'OPENQ_API_ROUTES', id:data.id, routes:routesFor(apiMod) }); return;
     }
-    if (data.type === 'OPENQ_GET_API_ROUTES') { const apiMod = mod; reply({ type:'OPENQ_API_ROUTES', id:data.id, ok:true, routes:routesFor(apiMod) }); return; }
+    if (data.type === 'OPENQ_GET_API_ROUTES') {
+      if (nestedApp) {
+        const app = puzzle && puzzle.contentWindow && puzzle.contentWindow.__QNEXUS_ACTIVE_APP_CONTEXT;
+        const nx = NXC(), rec = app && nx && nx.Store.get(app.connectorId);
+        const kind = app && app.slot;
+        const route = rec && rec.kind === 'ext' && rec.ext && rec.ext.category === connectorCategory(kind) && nx.Policy.allowed(rec,'apps')
+          ? {source:'app-selected',name:rec.name,options:[{id:rec.id,name:rec.name,category:rec.ext.category}]}
+          : {source:'unconfigured',name:'Select a connector for this Quantum App',options:[]};
+        reply({type:'OPENQ_API_ROUTES',id:data.id,ok:true,routes:{[kind||'cpu']:route}});
+      } else {
+        const apiMod = mod;
+        reply({ type:'OPENQ_API_ROUTES', id:data.id, ok:true, routes:routesFor(apiMod) });
+      }
+      return;
+    }
     if (data.type === 'OPENQ_API_REQUEST') {
       const apiMod = mod;
       const slotInput = String(data.slot || '').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 32);
@@ -1348,6 +1362,7 @@ class QuOLabNexusConfigSyncReader {
       const key = apiMod + '.' + slot, method = String(data.method || 'GET').toUpperCase();
       try {
         if (!['cpu','qpu','storage'].includes(slot)) throw new Error('Unknown API slot "' + slot + '"');
+        if (!nestedApp && !apiSlots[key]) throw new Error('Unknown API slot "' + slot + '"');
         let result;
         const nx = NXC();
         if (nestedApp) {
