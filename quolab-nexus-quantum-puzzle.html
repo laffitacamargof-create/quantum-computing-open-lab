@@ -1433,7 +1433,7 @@ function executeWithStudio(app) {
 
     const serverUrl = resolvePuzzleServerUrl(app.server_url || app.serverUrl || '');
     const nexusRoute = { slot:app.nexusSlot || app.nexus_slot || 'cpu', connector:app.nexusConnectorId || app.nexus_connector_id || '', module:app.nexusModule || app.nexus_module || 'quantum-puzzle' };
-    window.__QNEXUS_ACTIVE_APP_CONTEXT = { id:String(app.id || ''), name:String(app.name || app.title || 'Quantum App').slice(0,100), connectorId:String(nexusRoute.connector || ''), slot:String(nexusRoute.slot || 'cpu'), module:'apps' };
+    const selectedAppSlot = nexusRoute.slot === 'engine' ? 'cpu' : nexusRoute.slot === 'quantum' ? 'qpu' : String(nexusRoute.slot || 'cpu');\n    window.__QNEXUS_ACTIVE_APP_CONTEXT = { id:String(app.id || ''), name:String(app.name || app.title || 'Quantum App').slice(0,100), connectorId:String(nexusRoute.connector || ''), slot:selectedAppSlot, module:'apps' };
 
     // ✅ Verificación mejorada
     if (!app.python_code && !app.html_code && !app.pythonCode && !app.htmlCode) {
