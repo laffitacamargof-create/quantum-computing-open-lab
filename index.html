@@ -2434,7 +2434,7 @@ class QuOLabNexusConfigSyncReader {
 
   // ═══════════════ QNexusAi: central orchestration and verified tool execution ═══════════════
   const AI_SCREENS = ['projects','architect','architect-pro','nexus-connectors','help','quantum-puzzle','quantum-app-studio'];   // founder/account nunca
-  const AI_NAV_SCREENS = AI_SCREENS.filter(screen => screen !== 'quantum-app-studio');
+  const AI_NAV_SCREENS = AI_SCREENS.slice();
   const AI_TARGET  = { architect: 'architect', notebook: 'architect-pro' };
   function aiOptGet(k) { try { const v = localStorage.getItem('openq_ai_' + k); return k === 'ctx' ? v !== '0' : v === '1'; } catch (e) { return k === 'ctx'; } }
   function aiOpt(k, on) { try { localStorage.setItem('openq_ai_' + k, on ? '1' : '0'); } catch (e) {} notify(on ? '👁 Context sharing enabled' : '👁 Context sharing disabled'); }
@@ -2475,31 +2475,46 @@ class QuOLabNexusConfigSyncReader {
     return window.QuOLabNexusAgent ? window.QuOLabNexusAgent.collectContext(ctx, {consumeEventDelta:true}) : ctx;
   }
 
-  function inferAIContextTools(prompt, ctx) {
+  function inferAIContextTools(prompt, ctx, turn = 0) {
     const text = String(prompt || '').toLowerCase();
-    const ids = [];
-    const add = id => { if (AI_SCREENS.includes(id) && !ids.includes(id) && ids.length < 1) ids.push(id); };
-    const rules = [
-      ['architect-pro', /notebook|cuaderno|celda|ipynb|celdas|notebooks?/],
-      ['architect', /quantum open lab|circuit|circuito|qubit|qiskit|simulat|compil|bloch|ruido|noise/],
-      ['quantum-puzzle', /quantum puzzle|puzzle|challenge|desaf[ií]o|published app|aplicaci[oó]n publicada/],
-      ['quantum-app-studio', /app studio|studio|crear app|create app|editor de app|backend de app/],
-      ['nexus-connectors', /nexus connectors|connectors|conectores|api externa|conector local|conector de ia/],
-      ['projects', /project|proyecto|recurso|publicar recurso/],
-      ['help', /help|ayuda|documentaci[oó]n|c[oó]mo funciona|how does/]
+    const active = ctx?.active_tool || ctx?.user_context?.screen || ctx?.screen;
+    if (Number(turn) > 0 && AI_SCREENS.includes(active)) return [active];
+    const explicit = [
+      ['quantum-app-studio', /\bquantum app studio\b|\bapp studio\b|\bstudio de aplicaciones\b|\beditor de app\b/],
+      ['quantum-puzzle', /\bquantum puzzle\b|\bpuzzle\b|\bdesaf[ií]o\b|\bchallenge\b/],
+      ['nexus-connectors', /\bnexus connectors\b|\bconectores?\b|\bconnectors?\b|\bconector de ia\b/],
+      ['architect-pro', /\bquantum notebook\b|\bnotebook\b|\bcuaderno\b|\bceldas?\b|\bipynb\b/],
+      ['architect', /\bquantum open lab\b|\bquantum architect\b/],
+      ['projects', /\bprojects?\b|\bproyectos?\b|\bpublica(r|ci[oó]n) (este )?(proyecto|recurso)\b/],
+      ['help', /\bhelp\b|\bayuda\b|\bdocumentaci[oó]n\b/]
     ];
-    for (const [id, pattern] of rules) if (pattern.test(text)) add(id);
-    const active = ctx?.active_tool || ctx?.user_context?.screen;
-    const isContinuation = /CONTINUATION AND CHECKLIST|LAST ACTION RESULTS|FRESH LIVE CONTEXT/i.test(String(prompt || ''));
-    if (isContinuation && AI_SCREENS.includes(active)) return [active];
-    if (AI_SCREENS.includes(active) && ids.includes(active)) return [active];
-    if (!ids.length) add(AI_SCREENS.includes(active) ? active : 'help');
-    return ids.slice(0,1);
+    const mentioned = [];
+    for (const [id, pattern] of explicit) if (pattern.test(text) && !mentioned.includes(id)) mentioned.push(id);
+    if (mentioned.length) {
+      const result = [];
+      if (AI_SCREENS.includes(active) && active !== mentioned[0]) result.push(active);
+      result.push(mentioned[0]);
+      return [...new Set(result)].slice(0, 2);
+    }
+    const actionIntent = /\b(open|abre|abrir|create|crear|crea|build|construye|fix|arregla|corrige|run|ejecuta|execute|simula|simular|compile|compila|publish|publica|configure|configura|edit|edita|implementa|implement)\b/i.test(text);
+    if (actionIntent) {
+      const generic = [
+        ['architect-pro', /notebook|cuaderno|celda|ipynb/],
+        ['architect', /circuit|circuito|qubit|qiskit|simulat|compil|bloch|ruido|noise/],
+        ['quantum-puzzle', /reto|challenge|puzzle/],
+        ['quantum-app-studio', /app|aplicaci[oó]n/],
+        ['projects', /project|proyecto|recurso/]
+      ];
+      const scores = generic.map(([id, re]) => ({id, score:(text.match(new RegExp(re.source,'gi'))||[]).length})).filter(x=>x.score>0).sort((a,b)=>b.score-a.score);
+      if (scores.length) return [...new Set([...(AI_SCREENS.includes(active)?[active]:[]),scores[0].id])].slice(0,2);
+    }
+    if (/^\s*(explain|explica|qué es|que es|what is|define|defin(e|ición)|describe|describe)\b/i.test(text) || /\b(explain|explica|what is|qué es|que es|define)\b/i.test(text)) return ['help'];
+    return AI_SCREENS.includes(active) ? [active] : ['help'];
   }
 
-  function aiSystemExtra(ctx, prompt) {
+  function aiSystemExtra(ctx, prompt, turn = 0) {
     const catalog = Array.isArray(ctx?.tool_catalog) ? ctx.tool_catalog : [];
-    const selectedIds = inferAIContextTools(prompt, ctx);
+    const selectedIds = inferAIContextTools(prompt, ctx, turn);
     const allTools = Array.isArray(ctx?.tools) ? ctx.tools : [];
     const compactTools = allTools.filter(tool => selectedIds.includes(tool.id)).map(tool => ({
       id:tool.id,name:tool.tool_name||tool.name,loaded:tool.loaded,
@@ -2844,6 +2859,8 @@ CONTEXT (staged and size-limited): ${c}`;
     return Array.isArray(cells)&&cells.some(x=>String(x.output||x.result||'').trim()||(Array.isArray(x.outputs)&&x.outputs.some(v=>String(v||'').trim())));
   }
   async function sendAI(){
+    if(aiTaskInProgress)return;
+    aiTaskInProgress=true;
     founderFallbackApprovedForCurrentTask = false;
     if(!cmEditor)return;
     const msg=cmEditor.state.doc.toString().trim();if(!msg)return;
@@ -2852,7 +2869,7 @@ CONTEXT (staged and size-limited): ${c}`;
     let reply='';
     if(isAIAvailable()){
       try{
-        let ctx=await gatherAIContext(),previous='',finalText='',finished=false,blocked=false;
+        let ctx=await gatherAIContext(),previous='',finalText='',finished=false,blocked=false,noActionTurns=0;
         const executionTask=isExecutionRequest(msg),maxTurns=executionTask?24:1;
         let lastExecution={ok:true,results:[]},evidence=[];
         for(let turn=0;turn<maxTurns;turn++){
@@ -2861,15 +2878,19 @@ CONTEXT (staged and size-limited): ${c}`;
             'USER REQUEST (preserve the full scope):\n'+msg,
             turn?'CONTINUATION AND CHECKLIST:\n'+previous:'',
             turn?'LAST ACTION RESULTS: '+JSON.stringify(lastExecution.results||[]):'',
-            'FRESH LIVE CONTEXT: use the current structured CONTEXT supplied in the system instructions; do not rely on stale prior context.',
+            
             executionTask?'Continue the same task. Maintain an explicit checklist of every requested acceptance criterion. Inspect, act, verify, correct and continue. Move between modules yourself. No agents or handoffs exist. Do not repeat successful actions.':'Answer directly; do not emit actions unless the user explicitly requests an operation.',
-            'If needed, emit up to 3 valid actions (including tool_call for a documented callable module function), each inside its own fenced code block labeled openq-action. Use TASK_STATUS: CONTINUE until all criteria are verified. COMPLETED requires TASK_EVIDENCE grounded in fresh context. Use BLOCKED only for a concrete blocker. Questions are completed directly.'
+            'If needed, emit up to 4 valid actions (including tool_call for a documented callable module function), each inside its own fenced code block labeled openq-action. Use TASK_STATUS: CONTINUE until all criteria are verified. COMPLETED requires TASK_EVIDENCE grounded in fresh context. Use BLOCKED only for a concrete blocker. Questions are completed directly.'
           ].filter(Boolean).join('\n\n');
           const raw=await callAI(prompt,ctx,{historyLimit:0,systemSuffix:'\nTASK TURN: retain the original objective and checklist; work only on the next small batch. Never resend an action whose receipt is confirmed.'});
           window.QuOLabNexusAgent?.acknowledgeEventDelta(ctx?.event_delta?.to_sequence);
            const parsed=extractActions(raw);finalText=parsed.text||raw;const status=taskStatus(finalText);
+          finalText=finalText.replace(/^TASK_STATUS\\s*:\\s*(?:COMPLETED|CONTINUE|BLOCKED)\\s*$/gim,'').replace(/^TASK_EVIDENCE\\s*:\\s*.*$/gim,'').trim();
           if(parsed.actions.length){
-            lastExecution=await executeAIActionSequence(parsed.actions,ctx);ctx=await gatherAIContext();
+            noActionTurns=0;
+            lastExecution=await executeAIActionSequence(parsed.actions,ctx);
+            if(parsed.rejected?.length) lastExecution.results.push(...parsed.rejected.map(x=>({action:'rejected model action',ok:false,message:x.reason,output:x.raw})));
+            ctx=await gatherAIContext();
             const changed=before!==JSON.stringify(ctx||{}),ack=lastExecution.ok&&lastExecution.results.length===parsed.actions.length;
             const needsOutput=/\b(run|execute|simulate|simulation|ejecutar|ejecuta|simular|simula|simulaci[oó]n)\b/i.test(msg),outputOK=!needsOutput||hasFreshOutput(ctx,lastExecution);
             if(ack&&changed)evidence.push(...lastExecution.results.filter(x=>x.ok).map(x=>x.message));
@@ -2881,6 +2902,9 @@ CONTEXT (staged and size-limited): ${c}`;
           }
           if(!executionTask){finished=true;break;}
           if(status.status==='BLOCKED'){blocked=true;break;}
+          noActionTurns++;
+          if(parsed.rejected?.length) previous=finalText+'\\nRejected actions: '+JSON.stringify(parsed.rejected)+'\\nCorrect the JSON and required fields; do not repeat invalid actions.';
+          if(noActionTurns>=2){blocked=true;previous+='\\nTwo consecutive turns produced no executable actions. Stop and report the concrete blocker.';break;}
           const outputOK=hasFreshOutput(ctx,lastExecution),needsOutput=/\b(run|execute|simulate|simulation|ejecutar|ejecuta|simular|simula|simulaci[oó]n)\b/i.test(msg);
           if(status.status==='COMPLETED'&&status.evidence&&(!needsOutput||outputOK)){finished=true;evidence.push(status.evidence);break;}
           previous=finalText+'\nNo actions this turn. Re-evaluate the unfinished acceptance criteria and provide next actions or a concrete blocker.';
@@ -2895,6 +2919,7 @@ CONTEXT (staged and size-limited): ${c}`;
         if(verifiedCompletion){const completedPanel=document.getElementById('ai-panel-wrapper');if(completedPanel&&completedPanel.classList.contains('open')&&!completedPanel.classList.contains('ai-minimized'))aiMinimize(completedPanel);}
       }catch(e){document.getElementById('ai-loading').classList.remove('show');console.error('QNexusAi error:',e);const err='QNexusAi could not complete the request: '+((e&&e.message)?e.message:String(e));addAIMsg(err,'bot');reply=err;}
     }else{await new Promise(resolve=>setTimeout(resolve,500));document.getElementById('ai-loading').classList.remove('show');const err='QNexusAi gateway is unavailable. Reconnect the AI service to execute tasks.';addAIMsg(err,'bot');reply=err;}
+    aiTaskInProgress=false;
     if(curUser?.username){let data=dbLoad();if(!data)data={ai_history:{}};if(!data.ai_history)data.ai_history={};if(!data.ai_history[curUser.username])data.ai_history[curUser.username]=[];data.ai_history[curUser.username].push({q:msg,a:reply,ts:Date.now()});if(data.ai_history[curUser.username].length>200)data.ai_history[curUser.username]=data.ai_history[curUser.username].slice(-200);dbSave(data);}
   }
 
@@ -3003,7 +3028,7 @@ CONTEXT (staged and size-limited): ${c}`;
       temperature:Number.isFinite(Number(temperature))?Math.min(Math.max(Number(temperature),0),2):0.5
     });
     let lastError = null, gatewayReceived = false;
-    for (let attempt=0; attempt<5; attempt++) {
+    for (let attempt=0; attempt<3; attempt++) {
       let response, data = {};
       try {
         response = await fetch(AI_SUPABASE_URL + '/functions/v1/quolab-nexus-ai', {
@@ -3023,25 +3048,25 @@ CONTEXT (staged and size-limited): ${c}`;
           ? ' · attempted: '+data.attempted_providers.join(', ') : '';
         lastError = new Error('QuOLab AI gateway HTTP '+response.status+': '+(data.error||data.message||'request_failed')+provider+attempted+
           (data.gateway_received===true?' · gateway received request '+requestId:''));
-        const retryable = [408,425,429,500,502,503,504].includes(response.status); // 413 is a deterministic payload error: never resend the same oversized body.
-        if (!retryable || attempt===4) throw lastError;
+        const retryable = [500,502,503,504].includes(response.status); // Never retry 429 or a request already received by the gateway.
+        if (!retryable || gatewayReceived || attempt===2) throw lastError;
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error));
         const statusMatch = String(lastError.message).match(/HTTP (\d{3})/);
         const status = statusMatch ? Number(statusMatch[1]) : 0;
-        if (status && ![408,425,429,500,502,503,504].includes(status)) throw lastError;
-        if (attempt===4) throw new Error(lastError.message+' · request '+requestId+' was retried 5 times; '+(gatewayReceived?'gateway receipt confirmed, but no provider completed the request':'API receipt remains unconfirmed'));
+        if (status && ![500,502,503,504].includes(status)) throw lastError;
+        if (/timeout|timed out|abort/i.test(lastError.message) || gatewayReceived || attempt===2) throw new Error(lastError.message+' · request '+requestId+' was not replayed after timeout/receipt or exhausted retries.');
       }
-      await new Promise(resolve=>setTimeout(resolve,Math.min(700*Math.pow(1.8,attempt),5000)));
+      await new Promise(resolve=>setTimeout(resolve,Math.min(500*Math.pow(1.8,attempt),2500)));
     }
     throw lastError || new Error('AI gateway delivery could not be confirmed');
   }
 
   async function callAI(msg, ctx, options = {}) {
-    const temp   = aiCfg.temp   || 0.7;
-    const tokens = Math.min(Math.max(aiCfg.tokens || 700, 500), 1800);
+    const temp = Number.isFinite(options.temp) ? options.temp : (aiCfg.temp || 0.7);
+    const tokens = Math.min(Math.max(aiCfg.tokens || (options.execution ? 1500 : 900), 500), 1800);
     const langNote = ' Always reply in the same language as the latest user message. Detect Spanish, English, or any other language automatically; preserve technical names and code identifiers. MATH: write every equation and mathematical term in LaTeX so the chat can render it: inline as $...$ and display equations as $$...$$ on their own lines (never plain [ ... ] brackets, never ASCII art). Example: $$i\\hbar\\frac{d}{dt}|\\psi(t)\\rangle=\\hat{H}|\\psi(t)\\rangle$$. Put code in fenced code blocks, not in math.';
-    const sys = (aiCfg.prompt || 'You are QNexusAi, the QuOLab Nexus superagent. Respond technically and concisely.') + langNote + (ctx ? aiSystemExtra(ctx, msg) : '') + (options.systemSuffix || '');
+    const sys = (aiCfg.prompt || 'You are QNexusAi, the QuOLab Nexus superagent. Respond technically and concisely.') + langNote + (ctx ? aiSystemExtra(ctx, msg, options.turn || 0) : '') + (options.systemSuffix || '');
     const historyLimit = Number.isInteger(options.historyLimit) ? Math.max(0,Math.min(options.historyLimit,2)) : 1;
     const msgs = [
       { role:'system', content:sys },
@@ -3176,6 +3201,7 @@ CONTEXT (staged and size-limited): ${c}`;
 
   const proactiveAlertTimes = new Map();
   let proactiveDiagnosticBusy = false;
+  let aiTaskInProgress = false;
   let lastProactiveDiagnosticAt = 0;
   function bindProactiveAlerts() {
     window.addEventListener('quolab:nexus-alert', async event => {
@@ -3184,6 +3210,7 @@ CONTEXT (staged and size-limited): ${c}`;
       const kind = String(detail.kind || 'error').slice(0, 60);
       const message = String(detail.message || 'An unexpected error occurred.').slice(0, 240);
       const safeMessage = message.replace(/[&<>]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[ch]));
+      if (/^(network_error|console_error)$/i.test(kind) && /Failed to fetch/i.test(message) && /colab_url|config-sync/i.test(String(detail.source||detail.url||''))) return;
       const signature = tool + '|' + kind + '|' + message;
       const now = Date.now();
       if (now - (proactiveAlertTimes.get(signature) || 0) < 15000) return;
@@ -3198,7 +3225,7 @@ CONTEXT (staged and size-limited): ${c}`;
       if (panel) panel.classList.add('open');
       addAIMsg(text, 'bot');
       notify(spanish ? 'QNexusAi detectó un error en ' + tool : 'QNexusAi detected an error in ' + tool);
-      if (!configured || proactiveDiagnosticBusy || now - lastProactiveDiagnosticAt < 30000) return;
+      if (!configured || aiTaskInProgress || proactiveDiagnosticBusy || now - lastProactiveDiagnosticAt < 30000) return;
       proactiveDiagnosticBusy = true;
       lastProactiveDiagnosticAt = now;
       try {
@@ -3209,8 +3236,7 @@ CONTEXT (staged and size-limited): ${c}`;
           { systemSuffix: '\n\nPROACTIVE INCIDENT MODE: This analysis was triggered by a tool error, not a new user command. Diagnose only. Do not propose or execute UI actions or tool_call actions, do not modify code, and reply in the same language as the latest user conversation.' }
         );
         addAIMsg(diagnostic, 'bot');
-        aiHistory.push({ role: 'user', content: '[Automatic tool incident] ' + tool + ': ' + kind + ' — ' + message }, { role: 'assistant', content: diagnostic });
-        if (aiHistory.length > 12) aiHistory = aiHistory.slice(-12);
+        
       } catch (diagnosticError) {
         const fallback = spanish ? 'No pude completar el diagnóstico automático. El error sigue registrado en el contexto del agente.' : 'I could not complete the automatic diagnosis. The error remains recorded in the agent context.';
         addAIMsg(fallback, 'bot');
