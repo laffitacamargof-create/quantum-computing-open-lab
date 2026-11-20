@@ -402,8 +402,10 @@ def _community_audit(connector_path):
     python_root = os.path.realpath(sys.prefix)
     blocked_events = {
         "subprocess.Popen", "os.system", "os.exec", "os.spawn", "os.fork",
-        "socket.connect", "socket.bind", "socket.getaddrinfo", "socket.gethostbyname",
-        "ctypes.dlopen", "ctypes.dlsym", "pty.spawn"
+        "os.posix_spawn", "os.posix_spawnp", "os.startfile",
+        "socket.connect", "socket.bind", "socket.sendto", "socket.getaddrinfo",
+        "socket.gethostbyname", "socket.gethostbyname_ex", "socket.gethostbyaddr",
+        "socket.getnameinfo", "ctypes.dlopen", "ctypes.dlsym", "pty.spawn"
     }
     write_events = {"os.remove", "os.rename", "os.mkdir", "os.rmdir", "os.chmod",
                     "os.chown", "os.link", "os.symlink", "os.truncate", "os.utime"}
