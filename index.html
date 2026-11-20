@@ -1204,7 +1204,7 @@ class QuOLabNexusConfigSyncReader {
   }
   function assignedConnector(mod, kind, requested) {
     const nx = NXC(); if (!nx) return null;
-    const value = nx.Assignments.get(mod, kind);
+    const value = nx.Assignments.get(TOOL_OF[mod] || mod, kind);
     const ids = Array.isArray(value) ? value : (value && value !== 'founder' ? [value] : []);
     const ordered = requested && ids.includes(requested)
       ? [requested].concat(ids.filter(id => id !== requested)) : ids;
@@ -1235,7 +1235,7 @@ class QuOLabNexusConfigSyncReader {
   function hasNexusRoute(mod, kind, requested) {
     const nx = NXC(), tool = TOOL_OF[mod] || 'chat', expected = connectorCategory(kind);
     if (!nx || !nx.Store || !nx.Assignments || !nx.Policy) return false;
-    const value = nx.Assignments.get(mod, kind);
+    const value = nx.Assignments.get(TOOL_OF[mod] || mod, kind);
     const ids = Array.isArray(value) ? value : (value && value !== 'founder' ? [value] : []);
     const ordered = requested && ids.includes(requested) ? [requested].concat(ids.filter(id => id !== requested)) : ids;
     // Any explicit assignment is authoritative. If it is disabled or stale,
@@ -1245,7 +1245,8 @@ class QuOLabNexusConfigSyncReader {
   function routesFor(mod) {
     const out = {}, nx = NXC();
     ['cpu','qpu','storage'].forEach(kind => {
-      const value = nx ? nx.Assignments.get(mod, kind) : 'founder';
+      const assignmentModule = TOOL_OF[mod] || mod;
+      const value = nx ? nx.Assignments.get(assignmentModule, kind) : 'founder';
       const ids = Array.isArray(value) ? value : (value && value !== 'founder' ? [value] : []);
       const expected = connectorCategory(kind);
       const records = nx ? ids.map(id => nx.Store.get(id)).filter(r =>
@@ -1375,7 +1376,7 @@ class QuOLabNexusConfigSyncReader {
         } else if (hasNexusRoute(apiMod, slot, data.connector)) {
           if (!nx || typeof nx.requestAssigned !== 'function') throw new Error('Nexus Connectors broker is unavailable');
           result = await nx.requestAssigned({
-            moduleId:apiMod, kind:slot, tool:TOOL_OF[apiMod] || 'chat',
+            moduleId:TOOL_OF[apiMod] || apiMod, kind:slot, tool:TOOL_OF[apiMod] || 'chat',
             connector:data.connector, method,
             path:data.path || '', headers:data.headers, body:data.body, timeout:data.timeout
           });
