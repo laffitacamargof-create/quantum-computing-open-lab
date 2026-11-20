@@ -1,5 +1,5 @@
+import html.parser
 import pathlib
-import re
 import subprocess
 import tempfile
 
@@ -10,10 +10,36 @@ FILES = [
     ROOT / "quolab-nexus-quantum-puzzle.html",
 ]
 
+
+class ScriptCollector(html.parser.HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.current = None
+        self.parts = []
+        self.scripts = []
+
+    def handle_starttag(self, tag, attrs):
+        if tag.lower() != "script":
+            return
+        attrs = dict(attrs)
+        kind = (attrs.get("type") or "").lower()
+        if kind in ("", "text/javascript", "application/javascript", "module"):
+            self.current = []
+
+    def handle_data(self, data):
+        if self.current is not None:
+            self.current.append(data)
+
+    def handle_endtag(self, tag):
+        if tag.lower() == "script" and self.current is not None:
+            self.scripts.append("".join(self.current))
+            self.current = None
+
+
 for html in FILES:
-    text = html.read_text(encoding="utf-8")
-    scripts = re.findall(r"<script\b[^>]*>(.*?)</script\s*>", text, re.I | re.S)
-    for number, script in enumerate(scripts):
+    parser = ScriptCollector()
+    parser.feed(html.read_text(encoding="utf-8"))
+    for script in parser.scripts:
         if not script.strip():
             continue
         with tempfile.NamedTemporaryFile("w", suffix=".js", encoding="utf-8") as f:
