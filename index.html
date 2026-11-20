@@ -1286,19 +1286,34 @@ class QuOLabNexusConfigSyncReader {
   }
   async function aiComplete(messages, options) {
     const o = options || {}, connectors = aiNexusRecs(o.tool || 'chat');
-    // User AI connectors activate and route directly; Founder approval is not required.
+    let externalFailure = null;
+    // External AI connectors are optional overrides. They never replace or disable
+    // the founder-configured AI gateway as the permanent fallback.
     if (connectors.length) {
       try {
-        // Do not pin the request to the first connector: the broker rotates through
-        // every enabled AI API and only consumes a one-shot connector after success.
+        // The connector broker tries every enabled provider automatically. No
+        // approval prompt is shown when a provider fails or becomes unavailable.
         const result = await NXC().ai.chat({ tool:o.tool || 'chat', messages, max_tokens:o.tokens, temperature:o.temp });
-        return result.text;
+        if (result && typeof result.text === 'string' && result.text.trim()) return result.text;
+        throw new Error('External AI connector returned an empty response.');
       } catch (error) {
-        notify('All enabled Nexus AI connectors failed; trying the configured AI fallback.');
+        externalFailure = error;
+        notify('External AI unavailable; switching automatically to the founder-configured AI.');
       }
     }
-    if (aiCfg.provider === 'gateway') return callMultiModelGateway(messages, o.tokens, o.temp);
-    return null;
+    // Always use the founder's server-side multi-provider configuration when no
+    // external connector is enabled or all external providers fail. Do not gate
+    // this on a browser-side provider selector: loadAICfg intentionally keeps
+    // credentials server-side and may normalize legacy settings to "gateway".
+    try {
+      return await callMultiModelGateway(messages, o.tokens, o.temp);
+    } catch (founderError) {
+      if (externalFailure) {
+        throw new Error('External AI failed (' + String(externalFailure.message || externalFailure) +
+          '); founder AI fallback also failed (' + String(founderError.message || founderError) + ').');
+      }
+      throw founderError;
+    }
   }
   async function handleModuleMsg(event, data) {
     const rootMod = moduleOf(event.source); if (!rootMod) return;
