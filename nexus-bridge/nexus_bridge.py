@@ -456,6 +456,7 @@ class Worker:
         env["NEXUS_COMMUNITY_CONNECTOR"] = "1" if meta.get("origin") == "community" else "0"
         env["NEXUS_CONNECTOR_DATA"] = os.path.realpath(data)
         runner_path = os.path.join(self.br.home, "runner.py")
+        runner_fd = None
         command = [py, "-u", runner_path, os.path.join(d, "connector.py")]
         if meta.get("origin") == "community" and sys.platform.startswith("linux"):
             bwrap = shutil.which("bwrap")
@@ -472,13 +473,20 @@ class Worker:
                     pass
                 mount_dirs = [item for target in ("/connector", "/workspace") if not os.path.exists(target) for item in ("--dir", target)]
                 hidden_homes = [item for target in ("/home", "/root") if os.path.isdir(target) for item in ("--tmpfs", target)]
+                runner_fd = os.open(runner_path, os.O_RDONLY)
                 command = [bwrap, "--unshare-all", "--die-with-parent", "--ro-bind", "/", "/"] + mount_dirs + [
                            "--ro-bind", d, "/connector", "--bind", data, "/workspace",
-                           "--ro-bind", runner_path, "/runner.py"] + hidden_homes + [
+                           "--ro-bind-data", str(runner_fd), "/runner.py"] + hidden_homes + [
                            "--proc", "/proc", "--dev", "/dev", "--tmpfs", "/tmp", "--chdir", "/workspace", "--",
                            sandbox_py, "-u", "/runner.py", "/connector/connector.py"]
-        self.proc = subprocess.Popen(command, stdin=subprocess.PIPE,
-                                     stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=data, env=env, text=True, encoding="utf-8", bufsize=1)
+        try:
+            self.proc = subprocess.Popen(command, stdin=subprocess.PIPE,
+                                         stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=data, env=env,
+                                         text=True, encoding="utf-8", bufsize=1,
+                                         pass_fds=(runner_fd,) if runner_fd is not None else ())
+        finally:
+            if runner_fd is not None:
+                os.close(runner_fd)
         threading.Thread(target=self._read, daemon=True).start(); threading.Thread(target=self._err, daemon=True).start()
         if not self.ready.wait(25) or self.fatal:
             err = self.fatal or "The connector did not start. " + " | ".join(self.tail[-3:])
