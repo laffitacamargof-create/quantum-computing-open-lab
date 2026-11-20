@@ -470,10 +470,11 @@ class Worker:
                         sandbox_py = "/connector/" + os.path.relpath(os.path.realpath(py), os.path.realpath(d))
                 except ValueError:
                     pass
-                command = [bwrap, "--unshare-all", "--die-with-parent", "--ro-bind", "/", "/",
-                           "--dir", "/connector", "--dir", "/workspace",
+                mount_dirs = [item for target in ("/connector", "/workspace") if not os.path.exists(target) for item in ("--dir", target)]
+                hidden_homes = [item for target in ("/home", "/root") if os.path.isdir(target) for item in ("--tmpfs", target)]
+                command = [bwrap, "--unshare-all", "--die-with-parent", "--ro-bind", "/", "/"] + mount_dirs + [
                            "--ro-bind", d, "/connector", "--bind", data, "/workspace",
-                           "--ro-bind", runner_path, "/runner.py", "--tmpfs", "/home", "--tmpfs", "/root",
+                           "--ro-bind", runner_path, "/runner.py"] + hidden_homes + [
                            "--proc", "/proc", "--dev", "/dev", "--tmpfs", "/tmp", "--chdir", "/workspace", "--",
                            sandbox_py, "-u", "/runner.py", "/connector/connector.py"]
         self.proc = subprocess.Popen(command, stdin=subprocess.PIPE,
