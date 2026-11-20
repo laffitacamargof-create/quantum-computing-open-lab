@@ -34,8 +34,8 @@ OP_PERM = {
     "fs.list": "file.read", "fs.read": "file.read", "fs.write": "file.write", "fs.delete": "file.write",
     "http.request": "net.http", "proc.run": "proc.run", "emit": None, "log": None,
 }
-COMMUNITY_REQUIRES = {"numpy", "scipy"}
-SAFE_IMPORTS = {"nexus", "numpy", "scipy", "math", "cmath", "json", "re", "time", "asyncio", "typing", "dataclasses", "collections",
+COMMUNITY_REQUIRES = set()
+SAFE_IMPORTS = {"nexus", "math", "cmath", "json", "re", "time", "typing", "dataclasses", "collections",
                 "itertools", "functools", "statistics", "random", "base64", "hashlib", "datetime", "struct", "enum", "decimal", "fractions", "string", "textwrap"}
 FORBIDDEN_CALLS = {"eval", "exec", "compile", "__import__", "open", "globals", "locals", "vars", "getattr", "setattr", "delattr", "input", "breakpoint", "memoryview"}
 ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
@@ -112,7 +112,10 @@ def analyze(code, mode):
                 f = node.func
                 if isinstance(f, ast.Name) and f.id in FORBIDDEN_CALLS: res["errors"].append("Line %d: %s() is not allowed in community connectors" % (node.lineno, f.id))
             elif isinstance(node, ast.Attribute):
-                if node.attr.startswith("__") and node.attr.endswith("__"): res["errors"].append("Line %d: access to %s is not allowed in community connectors" % (node.lineno, node.attr))
+                if (node.attr.startswith("__") and node.attr.endswith("__")) or node.attr in {"sys", "os", "subprocess", "socket", "modules", "loader", "builtins", "ctypes", "f2py"}:
+                    res["errors"].append("Line %d: access to %s is not allowed in community connectors" % (node.lineno, node.attr))
+                if node.attr == "format" and isinstance(node.ctx, ast.Load):
+                    res["errors"].append("Line %d: str.format is not allowed in community connectors" % node.lineno)
             elif isinstance(node, ast.Name):
                 if node.id in ("__builtins__", "__loader__", "__spec__"): res["errors"].append("Line %d: %s is not allowed in community connectors" % (node.lineno, node.id))
     res["errors"] = list(dict.fromkeys(res["errors"]))
@@ -694,6 +697,11 @@ def make_handler(br, port):
                     raw = self.rfile.read(n) if n else b""
                     body = json.loads(raw.decode("utf-8")) if raw else {}
                     if not isinstance(body, dict): raise BridgeError("JSON object expected")
+                if path == "/analyze" and method == "POST":
+                    code = body.get("code", "")
+                    if not isinstance(code, str): raise BridgeError("Python code must be text")
+                    result = analyze(code, "community")
+                    return self._send(200, result, o)
                 if path == "/info" and method == "GET":
                     ok, why = br.ble.available()
                     return self._send(200, {"version": VERSION, "platform": platform.system() + " " + platform.release(), "python": platform.python_version(),
