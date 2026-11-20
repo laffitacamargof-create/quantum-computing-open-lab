@@ -35,8 +35,8 @@ OP_PERM = {
     "fs.list": "file.read", "fs.read": "file.read", "fs.write": "file.write", "fs.delete": "file.write",
     "http.request": "net.http", "proc.run": "proc.run", "emit": None, "log": None,
 }
-COMMUNITY_REQUIRES = set()
-SAFE_IMPORTS = {"nexus", "math", "cmath", "json", "re", "time", "typing", "dataclasses", "collections",
+COMMUNITY_REQUIRES = {"numpy"}
+SAFE_IMPORTS = {"nexus", "numpy", "math", "cmath", "json", "re", "time", "typing", "dataclasses", "collections",
                 "itertools", "functools", "statistics", "random", "base64", "hashlib", "datetime", "struct", "enum", "decimal", "fractions", "string", "textwrap"}
 FORBIDDEN_CALLS = {"eval", "exec", "compile", "__import__", "open", "globals", "locals", "vars", "getattr", "setattr", "delattr", "input", "breakpoint", "memoryview"}
 ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
