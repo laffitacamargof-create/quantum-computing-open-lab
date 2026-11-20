@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
 <script src="quolab-nexus-core.js"></script>
-<script src="quolab-nexus-connectors-core.js"></script>
-<script src="quolab-nexus-tool-connector.js?v=1.3.0"></script>
+<script src="quolab-nexus-connectors-core.js?v=20261119-routing-1"></script>
+<script src="quolab-nexus-tool-connector.js?v=1.4.0"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>QuOLab Nexus — Quantum Architect</title>
@@ -2205,7 +2205,7 @@ async function syncFromServer(reason) {
     out.innerHTML += `<span class="inf">🔧 Corrector active (${reason}) — running on server...</span>\n`;
     const _ensC = ensureMeasurements(_cleanCodeForServer(rawCode));
     const cleanCode = nexusAppendProbe(_ensC.code);
-    const isHF = engineURL.includes('hf.space') || engineURL.includes('huggingface');
+    const isHF = engineURL.includes('hf.space') || engineURL.includes('huggingface') || engineURL.includes('nexus-connectors.invalid');
     try {
         const res = await fetchWithRetry(
             isHF ? engineURL + '/run/predict' : engineURL + '/run',
@@ -2712,7 +2712,7 @@ async function runServerCode() {
     const _ens = ensureMeasurements(code);
     const sendCode = nexusAppendProbe(nexusWithPlotCapture(_ens.code));
     if (_ens.added) out.innerHTML += `<span class="inf">ℹ️ No measurements found — measuring all qubits for this run.\n</span>`;
-    const isHF = engineURL.includes('hf.space') || engineURL.includes('huggingface');
+    const isHF = engineURL.includes('hf.space') || engineURL.includes('huggingface') || engineURL.includes('nexus-connectors.invalid');
     try {
         let res, d;
         if (isHF) {
@@ -3499,6 +3499,18 @@ async function checkEngine() {
     notify('❌ Could not connect after 3 attempts');
 }
 
+function useNexusExternalEngine(){
+    const nc=window.QuOLabNexusConnectors;
+    const rec=nc&&nc.Policy&&nc.Policy.pick('ext','open_lab');
+    if(!rec||!rec.ext||rec.ext.category!=='classical')return false;
+    engineURL='https://nexus-connectors.invalid';engineOK=true;
+    const badge=document.getElementById('eng-badge');
+    const status=document.getElementById('compiler-status');
+    if(badge){badge.textContent='● NEXUS CONNECTOR ACTIVE';badge.className='badge badge-on';}
+    if(status){status.textContent='● NEXUS CONNECTOR ACTIVE';status.className='compiler-status active';}
+    return true;
+}
+
 // ── Opción de ruido (usa quolab-nexus-noise.js) ──
 function openNoise(extra) {
     if (!window.QuOLabNexusNoise) { notify('Noise module not loaded'); return; }
@@ -3647,8 +3659,9 @@ window.addEventListener('message', e => {
         renderSaveList();
     }
     if (d.type === 'QCOL_CONFIG' || d.type === 'QCOL_CONFIG_UPDATED') {
-        const url = localStorage.getItem('qcol_colab_url') || '';
+        const url = localStorage.getItem('nexus_colab_url') || localStorage.getItem('qcol_colab_url') || localStorage.getItem('openq_colab_url') || '';
         if (url && url !== engineURL) { engineURL = url; checkEngine(); }
+        else if (!url && !engineURL) useNexusExternalEngine();
     }
     if (d.type === 'QCOL_USER_UPDATE') {
         curUser = d.user; renderSaveList();
@@ -3660,8 +3673,9 @@ postCore('OPENQ_GET_CONFIG');
 setTimeout(() => {
     const stored = localStorage.getItem('qcol_cur_user');
     if (stored && !curUser) { try { curUser = JSON.parse(stored); renderSaveList(); } catch(e){} }
-    const url = localStorage.getItem('qcol_colab_url') || '';
+    const url = localStorage.getItem('nexus_colab_url') || localStorage.getItem('qcol_colab_url') || localStorage.getItem('openq_colab_url') || '';
     if (url) { engineURL = url; checkEngine(); }
+    else useNexusExternalEngine();
 }, 800);
 
 init();

@@ -775,7 +775,7 @@ async function checkEngine(){
 function useNexusExternalEngine(){
   const nc=window.QuOLabNexusConnectors;
   const rec=nc&&nc.Policy&&nc.Policy.pick('ext','notebook');
-  if(!rec)return false;
+  if(!rec||!rec.ext||rec.ext.category!=='classical')return false;
   engineURL='https://nexus-connectors.invalid';engineOK=true;
   const badge=document.getElementById('eng-badge');
   if(badge){badge.textContent='● NEXUS CONNECTOR ACTIVE';badge.className='eng-pill on';}
