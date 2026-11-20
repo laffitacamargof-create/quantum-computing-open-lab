@@ -69,10 +69,13 @@ def _community_sandbox_command(py, runner, connector, connector_dir, data_dir, e
                   "/etc/passwd", "/etc/group"):
         if os.path.exists(mount):
             args.extend(["--ro-bind", mount, mount])
+    args.extend(["--dir", "/etc", "--dir", "/etc/ssl"])
     args.extend(["--dev", "/dev", "--proc", "/proc", "--tmpfs", "/tmp"])
     args.extend(["--ro-bind", runner, runner, "--ro-bind", connector_dir, connector_dir])
     args.extend(["--bind", data_dir, data_dir, "--chdir", data_dir])
     args.extend(["--setenv", "PATH", env.get("PATH", ""),
+                 "--setenv", "HOME", data_dir,
+                 "--setenv", "TMPDIR", "/tmp",
                  "--setenv", "PYTHONIOENCODING", "utf-8",
                  "--setenv", "PYTHONDONTWRITEBYTECODE", "1",
                  "--setenv", "NEXUS_CONNECTOR_ORIGIN", "community"])
