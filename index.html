@@ -1165,11 +1165,9 @@ class QuOLabNexusConfigSyncReader {
 
   // Nexus connector routing: the shell is the only broker for non-AI APIs.
   const NXC = () => window.QuOLabNexusConnectors || null;
-  const AI_FALLBACK_KEY = 'nexus_ai_fallback_approved';
   const TOOL_OF = { architect:'open_lab', 'architect-pro':'notebook', 'quantum-puzzle':'apps', 'quantum-app-studio':'app_studio', 'nexus-connectors':'chat' };
   const apiSlots = Object.create(null);
   [['architect',['cpu','qpu','storage']],['architect-pro',['cpu','storage']],['quantum-puzzle',['cpu','qpu']],['quantum-app-studio',['cpu','qpu','storage']]].forEach(item => item[1].forEach(kind => { apiSlots[item[0]+'.'+kind] = { label:item[0]+' · '+kind.toUpperCase(), founder:kind==='cpu'?'engine':'' }; }));
-  const aiFallbackApproved = () => { try { return localStorage.getItem(AI_FALLBACK_KEY) === 'yes'; } catch (_) { return false; } };
   function aiNexusRecs(tool) { const nx=NXC(); return nx && nx.Policy ? (typeof nx.Policy.list === 'function' ? nx.Policy.list('ai', tool || 'chat') : [nx.Policy.pick('ai', tool || 'chat')].filter(Boolean)) : []; }
   function aiNexusRec(tool) { return aiNexusRecs(tool)[0] || null; }
   function moduleOf(win) {
@@ -1288,8 +1286,7 @@ class QuOLabNexusConfigSyncReader {
   }
   async function aiComplete(messages, options) {
     const o = options || {}, connectors = aiNexusRecs(o.tool || 'chat');
-    const configuredUserAI = !!(NXC() && NXC().Store && NXC().Store.byKind('ai').length);
-    if (!connectors.length && configuredUserAI && !aiFallbackApproved()) throw new Error('No active user AI connector is available. Enable one or explicitly approve Founder gateway fallback.');
+    // User AI connectors activate and route directly; Founder approval is not required.
     if (connectors.length) {
       try {
         // Do not pin the request to the first connector: the broker rotates through
@@ -1297,8 +1294,7 @@ class QuOLabNexusConfigSyncReader {
         const result = await NXC().ai.chat({ tool:o.tool || 'chat', messages, max_tokens:o.tokens, temperature:o.temp });
         return result.text;
       } catch (error) {
-        if (!aiFallbackApproved()) throw new Error('All enabled Nexus AI connectors failed: ' + (error.message || error) + '. Enable Founder gateway fallback only if you want it used after every connector fails.');
-        notify('All Nexus AI connectors failed; using the approved Founder gateway fallback. This is the founder gateway as approved fallback.');
+        notify('All enabled Nexus AI connectors failed; trying the configured AI fallback.');
       }
     }
     if (aiCfg.provider === 'gateway') return callMultiModelGateway(messages, o.tokens, o.temp);
