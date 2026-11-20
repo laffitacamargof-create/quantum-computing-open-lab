@@ -1,4 +1,7 @@
+import os
+import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -71,6 +74,49 @@ class CommunityASTSecurityTests(unittest.TestCase):
         for address in ("1.1.1.1", "8.8.8.8", "2606:4700:4700::1111"):
             with self.subTest(address=address):
                 self.assertTrue(bridge._public(address))
+
+
+    def test_community_audit_blocks_external_reads_and_rename_escape(self):
+        with tempfile.TemporaryDirectory() as root:
+            data = Path(root) / "data"
+            data.mkdir()
+            outside = Path(root) / "outside.txt"
+            source = data / "source.txt"
+            source.write_text("inside", encoding="utf-8")
+            outside.write_text("outside", encoding="utf-8")
+            script = r"""
+import importlib.util, os, sys
+from pathlib import Path
+spec = importlib.util.spec_from_file_location("bridge", sys.argv[1])
+m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+data = Path(sys.argv[2]); outside = Path(sys.argv[3])
+os.chdir(data)
+outside_fd = os.open(str(outside), os.O_RDONLY)
+m._community_audit(str(Path(sys.argv[1])))
+blocked_read = False
+try:
+    open(str(outside), "r").read()
+except PermissionError:
+    blocked_read = True
+try:
+    os.rename("source.txt", str(outside))
+except PermissionError:
+    pass
+else:
+    raise SystemExit("rename escape was not blocked")
+os.lseek(outside_fd, 0, os.SEEK_SET)
+outside_contents = os.read(outside_fd, 100).decode("utf-8")
+os.close(outside_fd)
+if not blocked_read or outside_contents != "outside" or not outside.exists() or not (data / "source.txt").exists():
+    raise SystemExit("filesystem audit did not enforce the private data boundary")
+print("ok")
+"""
+            result = subprocess.run(
+                [sys.executable, "-c", script, str(ROOT / "nexus-bridge" / "nexus_bridge.py"), str(data), str(outside)],
+                cwd=str(data), text=True, capture_output=True, timeout=20
+            )
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertIn("ok", result.stdout)
 
 
 if __name__ == "__main__":
