@@ -30,4 +30,7 @@ jobs:
       - name: Verify browser and gateway guardrails
         run: |
           grep -q 'providerDeadline' supabase/functions/quolab-nexus-ai/index.ts
+          grep -q 'provider_rate_limited' supabase/functions/quolab-nexus-ai/index.ts
+          grep -q 'Retry-After' supabase/functions/quolab-nexus-ai/index.ts
+          grep -q "response.headers.get('Retry-After')" index.html
           ! grep -q 'SUPABASE_SERVICE_KEY' quolab-nexus-cloud-sync.js
