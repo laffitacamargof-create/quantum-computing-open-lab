@@ -1,5 +1,8 @@
+import os
 import pathlib
+import subprocess
 import sys
+import tempfile
 import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
@@ -41,6 +44,37 @@ class CommunityASTSecurityTests(unittest.TestCase):
         self.assertEqual([], result["errors"])
         self.assertIn("notebook", result["tools"])
 
+
+
+    def test_community_runner_audit_blocks_outside_file_reads(self):
+        with tempfile.TemporaryDirectory() as folder:
+            runner = pathlib.Path(folder) / "runner.py"
+            connector = pathlib.Path(folder) / "connector.py"
+            runner.write_text(nexus_bridge.RUNNER, encoding="utf-8")
+            connector.write_text("open('/etc/hostname').read()\\n", encoding="utf-8")
+            env = dict(os.environ, NEXUS_CONNECTOR_ORIGIN="community", PYTHONIOENCODING="utf-8")
+            result = subprocess.run(
+                [sys.executable, str(runner), str(connector)],
+                cwd=folder, env=env, input="", text=True,
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=8,
+            )
+            self.assertIn('"fatal"', result.stdout)
+            self.assertIn("may read only", result.stdout)
+
+    def test_community_runner_audit_blocks_subprocess(self):
+        with tempfile.TemporaryDirectory() as folder:
+            runner = pathlib.Path(folder) / "runner.py"
+            connector = pathlib.Path(folder) / "connector.py"
+            runner.write_text(nexus_bridge.RUNNER, encoding="utf-8")
+            connector.write_text("import subprocess\\nsubprocess.Popen(['id'])\\n", encoding="utf-8")
+            env = dict(os.environ, NEXUS_CONNECTOR_ORIGIN="community", PYTHONIOENCODING="utf-8")
+            result = subprocess.run(
+                [sys.executable, str(runner), str(connector)],
+                cwd=folder, env=env, input="", text=True,
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=8,
+            )
+            self.assertIn('"fatal"', result.stdout)
+            self.assertIn("subprocess.Popen", result.stdout)
 
     def test_local_origin_allowlist_is_narrow(self):
         self.assertTrue(nexus_bridge.LOCAL_ORIGIN.match("http://localhost:8765"))
