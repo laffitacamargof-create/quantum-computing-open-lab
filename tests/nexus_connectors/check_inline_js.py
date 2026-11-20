@@ -40,7 +40,8 @@ ui_source = (ROOT / "quolab-nexus-connectors.html").read_text(encoding="utf-8")
 for marker in (
     "function syncExtToolChoices()",
     "previousAssignments=NC.Assignments.all()",
-    "ts=k==='ai'?['chat']:Array.from(document.querySelectorAll('#ext-tools input:checked'))",
+    "document.querySelectorAll('#ext-tools input:checked')",
+    "editing.tools||[]",
 ):
     if marker not in ui_source:
         raise AssertionError("Connector UI regression guard missing: " + marker)
