@@ -19,7 +19,7 @@
    ========================================================================== */
 (function (root) {
   'use strict';
-  const VERSION = '1.0.0';
+  const VERSION = '1.1.0';
   const SCRIPT_URL = (typeof document !== 'undefined' && document.currentScript && document.currentScript.src) || (root.location && root.location.href) || '';
   const LS_STORE = 'nexus_connectors_v1';
   const LS_ASSIGNMENTS = 'nexus_assignments_v1';
