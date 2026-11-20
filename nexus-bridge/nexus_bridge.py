@@ -458,10 +458,11 @@ def _community_sandbox_command(py, runner_path, connector_dir, data_dir):
     bwrap = shutil.which("bwrap")
     if not bwrap:
         raise BridgeError("Community connectors are disabled until bubblewrap is installed on this Linux system.", "sandbox-unavailable", 503)
-    py_real = os.path.realpath(py)
+    py_abs = os.path.abspath(py)
+    py_real = os.path.realpath(py_abs)
     connector_real = os.path.realpath(connector_dir)
-    if os.path.commonpath((py_real, connector_real)) == connector_real:
-        sandbox_py = "/nexus-connector/" + os.path.relpath(py_real, connector_real).replace(os.sep, "/")
+    if os.path.commonpath((py_abs, connector_real)) == connector_real:
+        sandbox_py = "/nexus-connector/" + os.path.relpath(py_abs, connector_real).replace(os.sep, "/")
     elif os.path.commonpath((py_real, "/usr")) == "/usr":
         sandbox_py = py_real
     else:
