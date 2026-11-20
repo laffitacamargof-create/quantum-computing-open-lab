@@ -201,6 +201,18 @@ function founderKey(){return window.QuOLabNexusCore.getFounderKey();}
 function author(){return user&&(user.name||user.username||user.id)||'anonymous';}
 function host(u){try{return new URL(u).host;}catch(_){return u||'';}}
  function normalizeExternalBaseUrl(value){
+  let raw=String(value||'').trim();if(raw&&!/^https?:\/\//i.test(raw))raw='https://'+raw;
+  let parsed;try{parsed=new URL(raw);}catch(_){throw Error('Enter a complete service URL, e.g. https://api.provider.com/v1.');}
+  const h=parsed.hostname.toLowerCase(),ip4=/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(h);
+  if(parsed.protocol!=='https:'||!h||parsed.username||parsed.password||parsed.search||parsed.hash)throw Error('Use an HTTPS URL without embedded credentials, query or fragment.');
+  if(h==='localhost'||h.endsWith('.localhost')||h.endsWith('.local')||h.endsWith('.internal')||h.endsWith('.lan')||h==='[::1]'||h==='::1'||h.endsWith('.home.arpa'))throw Error('Private and loopback addresses are blocked.');
+  if(ip4){
+   const a=ip4.slice(1).map(Number),valid=a.every(n=>n>=0&&n<=255),x=a[0],y=a[1],z=a[2];
+   const nonPublic=!valid||x===0||x===10||x===127||x>=224||x===100&&y>=64&&y<=127||x===169&&y===254||x===172&&y>=16&&y<=31||x===192&&(y===0||y===168||y===88&&z===99)||x===198&&(y===18||y===19||y===51&&z===100)||x===203&&y===0&&z===113||a.every(n=>n===255);
+   if(nonPublic)throw Error('Private, reserved and non-public IP addresses are blocked.');
+  }else if(h.startsWith('[')||h.indexOf('.')<0)throw Error('Use a public DNS hostname for external connectors.');
+  return parsed.href.replace(/\/$/,'');
+ }
   let raw=String(value||'').trim();if(raw&&!/^https?:\\/\\//i.test(raw))raw='https://'+raw;
   let parsed;try{parsed=new URL(raw);}catch(_){throw Error('Enter a complete service URL, e.g. https://api.provider.com/v1.');}
   const h=parsed.hostname.toLowerCase(),ip4=/^(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})$/.exec(h);
