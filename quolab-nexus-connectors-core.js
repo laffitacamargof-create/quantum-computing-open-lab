@@ -509,7 +509,7 @@
   /* ───────────────────────── record builders ───────────────────────── */
   const Make = {
     async ai(f) {
-      const rec = { id: f.id || uid(), kind: 'ai', name: f.name, usage: f.usage || 'always', tools: ['chat'], createdAt: f.createdAt,
+      const rec = { id: f.id || uid(), kind: 'ai', name: f.name, usage: f.usage === 'off' ? 'off' : 'always', tools: ['chat'], createdAt: f.createdAt,
         ai: { provider: f.provider, model: f.model || '', baseUrl: f.baseUrl || '' }, secrets: Object.assign({}, f.secrets || {}) };
       if (f.apiKey) rec.secrets.apiKey = await Vault.seal(f.apiKey);
       return rec;
