@@ -193,6 +193,12 @@
       if (rec.usage === 'off') return false;
       if (rec.kind === 'ai') return tool === 'chat';
       if (tool === 'chat') return false;
+      if (rec.kind === 'ext') {
+        const slot = rec.ext && rec.ext.category === 'classical' ? 'cpu' : rec.ext && rec.ext.category === 'quantum' ? 'qpu' : rec.ext && rec.ext.category === 'storage' ? 'storage' : '';
+        if (!slot || !Assignments) return false;
+        const value = Assignments.get(tool, slot), ids = Array.isArray(value) ? value : value === 'founder' ? [] : [value];
+        return ids.includes(rec.id) && (rec.tools || []).includes(tool);
+      }
       return (rec.tools || []).includes(tool);
     },
     list(kind, tool, id) {
@@ -565,8 +571,26 @@
     },
     unbind(id,moduleId,kind) { const v=this.get(moduleId,kind),ids=Array.isArray(v)?v:[v]; const next=ids.filter(x=>x!=='founder'&&x!==id); return this.set(moduleId,kind,next.length?(SLOT_RULES[moduleId]&&SLOT_RULES[moduleId][kind]===1?next[0]:next):'founder'); },
     remove(id) { const a=this.all(); Object.keys(a).forEach(tool=>Object.keys(a[tool]||{}).forEach(kind=>{const v=a[tool][kind],ids=Array.isArray(v)?v:[v],next=ids.filter(x=>x!==id&&x!=='founder');a[tool][kind]=next.length?(SLOT_RULES[tool]&&SLOT_RULES[tool][kind]===1?next[0]:next):'founder';}));localStorage.setItem(LS_ASSIGNMENTS,JSON.stringify(a));emitChange(false); },
+    migrate() {
+      const a=this.all();
+      Object.keys(SLOT_RULES).forEach(tool=>Object.keys(SLOT_RULES[tool]).forEach(kind=>{
+        const v=a[tool]&&a[tool][kind];if(v==null)return;
+        const ids=(Array.isArray(v)?v:[v]).map(id=>Store.get(id)).filter(rec=>rec&&rec.kind==='ext'&&rec.ext&&rec.ext.category===SLOT_CATEGORY[kind]&&rec.usage!=='off'&&(rec.tools||[]).includes(tool)).sort((x,y)=>String(x.createdAt||'').localeCompare(String(y.createdAt||'')));
+        const max=SLOT_RULES[tool][kind],keep=ids.slice(0,max);
+        a[tool][kind]=keep.length?(max===1?keep[0].id:keep.map(x=>x.id)):'founder';
+      }));
+      localStorage.setItem(LS_ASSIGNMENTS,JSON.stringify(a));
+      Store.byKind('ext').sort((x,y)=>String(x.createdAt||'').localeCompare(String(y.createdAt||''))).forEach(rec=>{
+        if(rec.usage==='off')return;
+        const kind=rec.ext&&rec.ext.category==='classical'?'cpu':rec.ext&&rec.ext.category==='quantum'?'qpu':rec.ext&&rec.ext.category==='storage'?'storage':'';
+        if(!kind)return;
+        (rec.tools||[]).forEach(tool=>{try{const v=this.get(tool,kind),ids=Array.isArray(v)?v:v==='founder'?[]:[v];if(!ids.includes(rec.id))this.bind(rec.id,tool,kind);}catch(_){}});
+      });
+      return this.all();
+    },
     resolve(moduleId,kind) { const v=this.get(moduleId,kind); if(v==='founder')return null; return (Array.isArray(v)?v:[v]).map(id=>Store.get(id)).filter(Boolean); }
   };
+  Assignments.migrate();
   // Single egress for module engines: resolve assigned connectors here,
   // and keep the legacy Founder endpoint behind the same broker.
   async function requestAssigned(o) {
