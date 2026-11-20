@@ -390,6 +390,7 @@ def main(path):
     if os.environ.get("NEXUS_COMMUNITY_CONNECTOR") == "1":
         data_root = os.path.realpath(os.environ.get("NEXUS_CONNECTOR_DATA", os.getcwd()))
         python_root = os.path.realpath(sys.prefix)
+        connector_root = os.path.realpath(os.path.dirname(path))
         def _community_audit(event, args):
             if event in ("subprocess.Popen", "os.system", "os.posix_spawn", "socket.connect", "socket.getaddrinfo"):
                 raise PermissionError("Community connector blocked by runtime security policy: " + event)
@@ -398,7 +399,7 @@ def main(path):
                 if isinstance(target, (str, bytes, os.PathLike)):
                     real = os.path.realpath(os.fsdecode(target))
                     try:
-                        allowed = os.path.commonpath((real, data_root)) == data_root or os.path.commonpath((real, python_root)) == python_root
+                        allowed = (os.path.commonpath((real, data_root)) == data_root or os.path.commonpath((real, python_root)) == python_root or os.path.commonpath((real, connector_root)) == connector_root)
                     except ValueError:
                         allowed = False
                     if not allowed:
