@@ -455,13 +455,26 @@ class Worker:
         meta = self.br.meta(self.cid) or {}
         env["NEXUS_COMMUNITY_CONNECTOR"] = "1" if meta.get("origin") == "community" else "0"
         env["NEXUS_CONNECTOR_DATA"] = os.path.realpath(data)
-        command = [py, "-u", os.path.join(self.br.home, "runner.py"), os.path.join(d, "connector.py")]
+        runner_path = os.path.join(self.br.home, "runner.py")
+        command = [py, "-u", runner_path, os.path.join(d, "connector.py")]
         if meta.get("origin") == "community" and sys.platform.startswith("linux"):
             bwrap = shutil.which("bwrap")
             if bwrap:
                 env["NEXUS_BWRAP_ACTIVE"] = "1"
-                command = [bwrap, "--unshare-all", "--die-with-parent", "--ro-bind", "/", "/", "--bind", data, data,
-                           "--proc", "/proc", "--dev", "/dev", "--chdir", data, "--"] + command
+                env["NEXUS_CONNECTOR_DATA"] = "/workspace"
+                env["HOME"] = "/workspace"
+                env["TMPDIR"] = "/tmp"
+                sandbox_py = py
+                try:
+                    if os.path.commonpath((os.path.realpath(py), os.path.realpath(d))) == os.path.realpath(d):
+                        sandbox_py = "/connector/" + os.path.relpath(os.path.realpath(py), os.path.realpath(d))
+                except ValueError:
+                    pass
+                command = [bwrap, "--unshare-all", "--die-with-parent", "--ro-bind", "/", "/",
+                           "--ro-bind", d, "/connector", "--bind", data, "/workspace",
+                           "--ro-bind", runner_path, "/runner.py", "--tmpfs", "/home", "--tmpfs", "/root",
+                           "--proc", "/proc", "--dev", "/dev", "--tmpfs", "/tmp", "--chdir", "/workspace", "--",
+                           sandbox_py, "-u", "/runner.py", "/connector/connector.py"]
         self.proc = subprocess.Popen(command, stdin=subprocess.PIPE,
                                      stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=data, env=env, text=True, encoding="utf-8", bufsize=1)
         threading.Thread(target=self._read, daemon=True).start(); threading.Thread(target=self._err, daemon=True).start()
