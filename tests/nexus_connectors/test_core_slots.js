@@ -64,6 +64,12 @@ require('../../quolab-nexus-connectors-core.js');
     NC.ext.request({tool:'open_lab',connector:routeCpu.id,path:'/run'}),
     e => e.code === 'assignment-required'
   );
+  const unassignedCpu = await make('Unassigned CPU','classical');
+  await assert.rejects(
+    NC.requestAssigned({moduleId:'architect',kind:'cpu',tool:'open_lab',connector:unassignedCpu.id,path:'/run'}),
+    e => e.code === 'not-assigned'
+  );
+  NC.Store.remove(unassignedCpu.id);
   NC.Store.remove(routeCpu.id);
 
   const privateUrl = await make('Private URL','classical');
