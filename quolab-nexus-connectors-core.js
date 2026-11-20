@@ -369,7 +369,7 @@
           host.startsWith('[') || host === '::1') {
         throw NexusError('scope', 'External connectors require a public HTTPS hostname without embedded credentials.');
       }
-      const ip4 = /^(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})$/.exec(host);
+      const ip4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(host);
       if (ip4) {
         const a = ip4.slice(1).map(Number);
         const invalid = a.some(n => n > 255) || a[0] === 0 || a[0] === 10 || a[0] === 127 ||
@@ -378,7 +378,7 @@
           (a[0] >= 224);
         if (invalid) throw NexusError('scope', 'Private, loopback, link-local and reserved IP addresses are blocked.');
       }
-      const rootPath = (base.pathname || '/').replace(/\\/+$/, '') + '/';
+      const rootPath = (base.pathname || '/').replace(/\/+$/, '') + '/';
       const rawPath = String(path || '').trim();
       if (/^[a-z][a-z0-9+.-]*:/i.test(rawPath) || rawPath.startsWith('//') || rawPath.includes('\\')) throw NexusError('scope', 'Invalid connector path');
       const relative = rawPath.replace(/^\/+/, '');
