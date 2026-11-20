@@ -513,7 +513,7 @@
   /* ───────────────────────── record builders ───────────────────────── */
   const Make = {
     async ai(f) {
-      const rec = { id: f.id || uid(), kind: 'ai', name: f.name, usage: f.usage || 'always', tools: ['chat'], createdAt: f.createdAt,
+      const rec = { id: f.id || uid(), kind: 'ai', name: f.name, usage: f.usage === 'off' ? 'off' : 'always', tools: ['chat'], createdAt: f.createdAt,
         ai: { provider: f.provider, model: f.model || '', baseUrl: f.baseUrl || '' }, secrets: f.secrets || {} };
       if (f.apiKey) rec.secrets.apiKey = await Vault.seal(f.apiKey);
       return rec;
@@ -533,6 +533,10 @@
           installed: false, origin: 'private', share: 'none' }, f.loc || {}) };
     },
   };
+
+  // AI providers intentionally do not support per-call "once": one user task may
+  // require multiple model turns. Normalize legacy once records to always.
+  Store.byKind('ai').forEach(r => { if (r.usage === 'once') Store.patch(r.id, x => { x.usage = 'always'; }); });
 
   const SLOT_RULES = {
     open_lab:{cpu:1,qpu:1,storage:Infinity}, notebook:{cpu:1,qpu:0,storage:Infinity},
