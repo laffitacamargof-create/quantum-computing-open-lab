@@ -127,7 +127,10 @@ def _public(ip):
 
 
 def _resolve_public(host, port):
-    ips = [i[4][0] for i in socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)]
+    try:
+        ips = [i[4][0] for i in socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)]
+    except OSError as e:
+        raise BridgeError("DNS lookup failed: %s" % (str(e) or "unavailable"), "dns", 502)
     if not ips or not all(_public(ip) for ip in ips):
         raise BridgeError("Blocked: that address points to this computer or a private network", "denied", 403)
     return ips[0]
