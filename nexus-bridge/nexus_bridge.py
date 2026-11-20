@@ -63,13 +63,15 @@ def _community_sandbox_command(py, runner, connector, connector_dir, data_dir, e
     if not bwrap:
         raise BridgeError("Community connectors are disabled because bubblewrap (bwrap) is not installed. Private connectors remain available only as trusted code.", "sandbox-unavailable", 503)
     args = [bwrap, "--die-with-parent", "--new-session", "--unshare-all", "--clearenv"]
-    # Mount only the runtime needed by Python. Never bind the host root or home.
+    # Create mount points first, then mount only the Python runtime. Never bind
+    # the host root or home; network remains unshared by --unshare-all.
+    args.extend(["--dir", "/etc", "--dir", "/etc/ssl",
+                 "--dir", "/bin", "--dir", "/lib", "--dir", "/lib64"])
     for mount in ("/usr", "/usr/local", "/bin", "/lib", "/lib64",
                   "/etc/ld.so.cache", "/etc/ssl/certs", "/etc/localtime",
                   "/etc/passwd", "/etc/group"):
         if os.path.exists(mount):
             args.extend(["--ro-bind", mount, mount])
-    args.extend(["--dir", "/etc", "--dir", "/etc/ssl"])
     args.extend(["--dev", "/dev", "--proc", "/proc", "--tmpfs", "/tmp"])
     args.extend(["--ro-bind", runner, runner, "--ro-bind", connector_dir, connector_dir])
     args.extend(["--bind", data_dir, data_dir, "--chdir", data_dir])
