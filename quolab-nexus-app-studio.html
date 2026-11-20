@@ -263,6 +263,11 @@
             <span id="test-server-btn" style="display:none;"></span>
             <span id="auto-status" class="auto-status" style="display:none;"></span>
         </div>
+        <div class="nexus-route-controls" style="display:flex;gap:.45rem;align-items:center;flex-wrap:wrap;margin-right:.4rem;">
+            <label for="nexus-hardware-select" style="font-size:.58rem;color:var(--tx2);">HARDWARE</label>
+            <select id="nexus-hardware-select" aria-label="Quantum app hardware slot" style="width:auto;min-width:92px;padding:.42rem .5rem;"><option value="cpu">CPU</option><option value="qpu">QPU</option><option value="storage">Storage</option></select>
+            <select id="nexus-connector-select" aria-label="Quantum app connector" style="width:auto;min-width:145px;padding:.42rem .5rem;"><option value="">Founder service</option></select>
+        </div>
         <button class="btn-primary" id="save-project-editor">💾 Save project</button>
         <button class="btn-secondary" id="preview-run-btn">▶ Test run</button>
         <button class="btn-secondary" id="back-to-repo-editor">← Back</button>
@@ -393,8 +398,32 @@
     function selectedNexusRoute() {
         return Object.assign({ module:'quantum-app-studio', slot:'cpu', connector:'' }, currentNexusRoute || {});
     }
+    async function refreshNexusRouteSelector() {
+        const slotSelect = document.getElementById('nexus-hardware-select');
+        const connectorSelect = document.getElementById('nexus-connector-select');
+        if (!slotSelect || !connectorSelect) return;
+        const slot = slotSelect.value || 'cpu';
+        let routes = {};
+        try {
+            const response = await window.QuOLabNexusCore.api.getRoutes('quantum-app-studio');
+            routes = response && response.routes || {};
+        } catch (_) {}
+        const route = routes[slot] || {source:'unconfigured',options:[]};
+        const options = Array.isArray(route.options) ? route.options : [];
+        connectorSelect.innerHTML = route.source === 'founder'
+            ? '<option value="">Founder service</option>'
+            : options.length
+                ? '<option value="">Select connector…</option>' + options.map(item => '<option value="' + String(item.id).replace(/[&<>"']/g, '') + '">' + escapeHtml(item.name) + '</option>').join('')
+                : '<option value="" disabled>No connector assigned</option>';
+        const wanted = currentNexusRoute && currentNexusRoute.slot === slot ? currentNexusRoute.connector : '';
+        connectorSelect.value = wanted && options.some(item => item.id === wanted) ? wanted : '';
+        if (currentNexusRoute) { currentNexusRoute.slot = slot; currentNexusRoute.connector = connectorSelect.value; }
+    }
     function setNexusRoute(app) {
         currentNexusRoute = nexusRouteFrom(app);
+        const slotSelect = document.getElementById('nexus-hardware-select');
+        if (slotSelect) slotSelect.value = ['cpu','qpu','storage'].includes(currentNexusRoute.slot) ? currentNexusRoute.slot : 'cpu';
+        void refreshNexusRouteSelector();
     }
 
     // ================== OVER-READING PROTECTION ==================
@@ -484,6 +513,7 @@
             if (appId && appName) {
                 const externalType = sourceType === 'pending' ? 'pending' : 'published';
                 if (externalType === 'pending') {
+                setNexusRoute({ nexusSlot, nexusConnectorId, nexusModule });
                     // Store a dedicated review copy; never mix it into the user's private project list.
                     const reviewCopy = {
                         id: String(appId), name: String(appName), pythonCode: pythonCode || '',
@@ -1372,6 +1402,10 @@
             };
         }
         document.getElementById('save-project-editor').onclick = saveCurrentEdit;
+        const hardwareSelect = document.getElementById('nexus-hardware-select');
+        const connectorSelect = document.getElementById('nexus-connector-select');
+        if (hardwareSelect) hardwareSelect.onchange = () => { currentNexusRoute.slot = hardwareSelect.value; currentNexusRoute.connector = ''; void refreshNexusRouteSelector(); };
+        if (connectorSelect) connectorSelect.onchange = () => { currentNexusRoute.connector = connectorSelect.value || ''; };
         document.getElementById('back-to-repo-editor').onclick = () => showScreen('repo');
         document.getElementById('back-to-repo-runner').onclick = () => showScreen('repo');
         document.getElementById('preview-run-btn').onclick = runPreview;
