@@ -257,8 +257,6 @@
     <div class="top-editor-bar">
         <input type="text" id="project-name-input" placeholder="Project name" style="background:var(--bg3); border:1px solid var(--bd); border-radius:6px; padding:0.4rem; color:white; width:240px;">
         <div class="editor-config">
-            <label for="nexus-hardware-select" style="font-size:.55rem;color:var(--cy);">NEXUS HARDWARE</label>
-            <select id="nexus-hardware-select" style="max-width:260px;background:var(--bg3);border:1px solid var(--bd);border-radius:6px;padding:.4rem;color:white;font-size:.65rem;"></select>
             <!-- Optional Founder default URL. Nexus Connectors is resolved automatically by the shell broker. -->
             <input type="text" id="server-url-input" style="display:none;" readonly>
             <span id="server-status" style="display:none;"></span>
@@ -392,38 +390,11 @@
             connector: r.nexusConnectorId || r.nexus_connector_id || ''
         };
     }
-    function renderNexusHardwareOptions(app) {
-        const select = document.getElementById('nexus-hardware-select');
-        if (!select) return;
-        const NC = window.QuOLabNexusConnectors;
-        const options = [];
-        const moduleTools = { 'quantum-app-studio':'app_studio', 'quantum-puzzle':'apps' };
-        const categories = { cpu:'classical', qpu:'quantum' };
-        ['quantum-app-studio','quantum-puzzle'].forEach(module => {
-            ['cpu','qpu'].forEach(slot => {
-                const prefix = (module==='quantum-app-studio'?'App Studio':'Quantum Puzzle')+' · '+slot.toUpperCase()+' · ';
-                options.push({ value:module+'|'+slot+'|auto', label:prefix+'Nexus Connectors → Founder fallback' });
-                if (!NC) return;
-                NC.Store.byKind('ext').filter(rec =>
-                    NC.Policy.allowed(rec, moduleTools[module]) &&
-                    rec.ext && rec.ext.category === categories[slot]
-                ).forEach(rec => options.push({ value:module+'|'+slot+'|'+rec.id, label:prefix+rec.name }));
-            });
-        });
-        const current = nexusRouteFrom(app || currentNexusRoute);
-        const wanted = current.module+'|'+current.slot+'|'+(current.connector || 'auto');
-        select.innerHTML = options.map(o => '<option value="'+escapeHtml(o.value)+'">'+escapeHtml(o.label)+'</option>').join('');
-        select.value = options.some(o => o.value === wanted) ? wanted : 'quantum-app-studio|cpu|auto';
-        currentNexusRoute = selectedNexusRoute();
-    }
     function selectedNexusRoute() {
-        const select = document.getElementById('nexus-hardware-select');
-        const parts = select && select.value ? select.value.split('|') : ['quantum-app-studio','cpu','auto'];
-        return { module:parts[0] || 'quantum-app-studio', slot:parts[1] || 'cpu', connector:['auto','founder'].includes(parts[2]) ? '' : (parts[2] || '') };
+        return Object.assign({ module:'quantum-app-studio', slot:'cpu', connector:'' }, currentNexusRoute || {});
     }
     function setNexusRoute(app) {
         currentNexusRoute = nexusRouteFrom(app);
-        renderNexusHardwareOptions(currentNexusRoute);
     }
 
     // ================== OVER-READING PROTECTION ==================
@@ -1401,8 +1372,6 @@
             };
         }
         document.getElementById('save-project-editor').onclick = saveCurrentEdit;
-        const nexusSelect = document.getElementById('nexus-hardware-select');
-        if (nexusSelect) nexusSelect.addEventListener('change', () => { currentNexusRoute = selectedNexusRoute(); });
         document.getElementById('back-to-repo-editor').onclick = () => showScreen('repo');
         document.getElementById('back-to-repo-runner').onclick = () => showScreen('repo');
         document.getElementById('preview-run-btn').onclick = runPreview;
@@ -1413,7 +1382,7 @@
     // Initialization
     loadProjects();
     loadPendingReviewApps();
-    renderNexusHardwareOptions();
+
     renderRepository();
     bindEvents();
     
