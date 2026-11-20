@@ -29,13 +29,13 @@ class NexusConnectorsModuleTests(unittest.TestCase):
     def test_local_connector_share_action_exists(self): self.assertIn("SHARE", self.ui)
     def test_pending_review_panel_exists(self): self.assertIn("PENDING", self.ui)
     def test_founder_approval_action_exists(self): self.assertIn("APPROVE", self.ui)
-    def test_assignment_panel_is_removed(self): self.assertNotIn("TOOL ASSIGNMENTS", self.ui); self.assertNotIn("renderAssignments", self.ui)
+    def test_assignment_panel_exists(self): self.assertIn("TOOL ASSIGNMENTS", self.ui); self.assertIn("renderAssignments", self.ui)
     def test_tool_selector_lives_on_connector_cards(self): self.assertIn("data-card-tool", self.ui); self.assertIn("function toolPicker(r)", self.ui)
     def test_api_creation_forms_do_not_choose_tools(self):
         ai = self.ui[self.ui.index('id="p-ai"'):self.ui.index('id="p-ext"')]
         ext = self.ui[self.ui.index('id="p-ext"'):self.ui.index('id="p-loc"')]
         self.assertNotIn("data-tools", ai + ext)
-    def test_connector_exclusivity_exempts_quantum_puzzle(self): self.assertIn("tool!=='apps'", self.ui); self.assertIn("normalizeExclusiveState", self.ui)
+    def test_connector_slot_rules_allow_multiplicity_only_in_puzzle(self): self.assertIn("apps:{cpu:Infinity,qpu:Infinity,storage:0}", self.core); self.assertIn("open_lab:{cpu:1,qpu:1,storage:Infinity}", self.core); self.assertIn("normalizeExclusiveState", self.ui)
     def test_ai_external_local_categories_exist(self): self.assertIn("API · AI", self.ui); self.assertIn("API · EXTERNAL", self.ui); self.assertIn("LOCAL CONNECTOR", self.ui)
     def test_direct_or_bridge_transport_option_exists(self): self.assertIn("ext-via", self.ui)
     def test_credentials_are_not_sampled(self): self.assertNotIn("sk-example", self.ui)
