@@ -202,9 +202,12 @@
       return (rec.tools || []).includes(tool);
     },
     list(kind, tool, id) {
-      return Store.byKind(kind).filter(r => (id ? r.id === id : true) && this.allowed(r, tool))
+      const records = Store.byKind(kind).filter(r => (id ? r.id === id : true) && this.allowed(r, tool))
         .sort((a, b) => (a.usage === 'always' ? 0 : 1) - (b.usage === 'always' ? 0 : 1) ||
           String(a.createdAt || '').localeCompare(String(b.createdAt || '')));
+      // AI is a single active route to QNexusAi. External hardware/storage
+      // connectors retain their multi-slot behavior (notably Quantum Puzzle).
+      return kind === 'ai' ? records.slice(0, 1) : records;
     },
     pick(kind, tool, id) { return this.list(kind, tool, id)[0] || null; },
     consume(rec) { if (rec && rec.usage === 'once') Store.patch(rec.id, r => { r.usage = 'off'; r.usedAt = now(); }); },
