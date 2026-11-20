@@ -7,7 +7,6 @@ class QuantumSync {
         // Configuración de Supabase
         this.SUPABASE_URL = config.supabaseUrl || 'https://tu-proyecto.supabase.co';
         this.SUPABASE_ANON_KEY = config.supabaseAnonKey || 'tu-anon-key';
-        this.SUPABASE_SERVICE_KEY = config.supabaseServiceKey || 'tu-service-key';
         
         // Tablas en Supabase
         this.TABLES = {
