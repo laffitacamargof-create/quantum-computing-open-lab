@@ -90,6 +90,8 @@ class CommunityASTSecurityTests(unittest.TestCase):
             connector_file = data / "connector.py"
             connector_file.write_text(
                 "import os\n"
+                "import socket\n"
+                "import sys\n"
                 "from nexus import connector\n"
                 "@connector.tool('apps', allow=['net.http'])\n"
                 "async def run(ctx):\n"
@@ -99,7 +101,23 @@ class CommunityASTSecurityTests(unittest.TestCase):
                 "    rename_blocked = False\n"
                 "    try: os.rename(" + repr(str(source)) + ", " + repr(str(outside)) + ")\n"
                 "    except PermissionError: rename_blocked = True\n"
-                "    return {'read_blocked': read_blocked, 'rename_blocked': rename_blocked}\n",
+                "    link_blocked = False\n"
+                "    try: os.link(" + repr(str(source)) + ", " + repr(str(outside) + ".link") + ")\n"
+                "    except PermissionError: link_blocked = True\n"
+                "    symlink_blocked = False\n"
+                "    try: os.symlink(" + repr(str(source)) + ", " + repr(str(outside) + ".sym") + ")\n"
+                "    except PermissionError: symlink_blocked = True\n"
+                "    network_blocked = False\n"
+                "    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)\n"
+                "    try: sock.sendto(b'x', ('127.0.0.1', 9))\n"
+                "    except PermissionError: network_blocked = True\n"
+                "    finally: sock.close()\n"
+                "    spawn_blocked = True\n"
+                "    if hasattr(os, 'posix_spawn'):\n"
+                "        try: os.posix_spawn(sys.executable, [sys.executable, '-c', 'pass'], os.environ)\n"
+                "        except PermissionError: spawn_blocked = True\n"
+                "        else: spawn_blocked = False\n"
+                "    return {'read_blocked': read_blocked, 'rename_blocked': rename_blocked, 'link_blocked': link_blocked, 'symlink_blocked': symlink_blocked, 'network_blocked': network_blocked, 'spawn_blocked': spawn_blocked}\n",
                 encoding="utf-8"
             )
             env = dict(os.environ)
@@ -117,9 +135,15 @@ class CommunityASTSecurityTests(unittest.TestCase):
                 proc.stdin.flush()
                 response = json.loads(proc.stdout.readline())
                 self.assertTrue(response.get("ok"), response)
-                self.assertEqual({"read_blocked": True, "rename_blocked": True}, response.get("result"))
+                self.assertEqual({
+                    "read_blocked": True, "rename_blocked": True,
+                    "link_blocked": True, "symlink_blocked": True,
+                    "network_blocked": True, "spawn_blocked": True,
+                }, response.get("result"))
                 self.assertEqual("outside", outside.read_text(encoding="utf-8"))
                 self.assertTrue(source.exists())
+                self.assertFalse(Path(str(outside) + ".link").exists())
+                self.assertFalse(Path(str(outside) + ".sym").exists())
             finally:
                 if proc.stdin:
                     proc.stdin.close()
