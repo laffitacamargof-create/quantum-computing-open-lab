@@ -80,6 +80,7 @@ assert.match(index, /Policy\.pick\('ai', tool/);
 assert.doesNotMatch(index, /aiDirectApproved/);
 assert.match(index, /nexus_ai_fallback_approved/);
 assert.match(index, /quantumAppConnectorConsent/);
+assert.match(index, /quantumAppFounderConsent/);
 assert.match(index, /quantumAppFrameFor/);
 assert.doesNotMatch(index, /francilaffita1027-qcol-motor\\.hf\\.space/);
 assert.match(core, /explicitly requested connector is not assigned and enabled/);
