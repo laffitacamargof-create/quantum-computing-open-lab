@@ -1,0 +1,119 @@
+name: Validate QuOLab Nexus AI
+
+on:
+  push:
+    branches:
+      - feature/quolab-nexus-five-specialists
+      - feature/quolab-nexus-real-specialist-dispatch
+      - feature/nexus-connectors-remove-library
+  pull_request:
+    paths:
+      - "index.html"
+      - "quolab-nexus-agent.js"
+      - "quolab-nexus-tool-connector.js"
+      - "quolab-nexus-core.js"
+      - "quolab-nexus-connectors-core.js"
+      - "quolab-nexus-connectors.html"
+      - "quolab-nexus-connectors.sql"
+      - "nexus-bridge/**"
+      - "tests/quolab-nexus-connectors.test.cjs"
+      - "quolab-nexus-*.html"
+      - "tests/quolab-nexus-specialists.test.cjs"
+      - "tests/quolab-nexus-security.test.cjs"
+      - "tests/test_execution_sandbox.py"
+      - "app.py"
+      - "quolab_nexus_server.py"
+      - "quolab_execution_sandbox.py"
+      - "supabase/functions/quolab-nexus-admin/index.ts"
+      - "supabase/functions/quolab-nexus-ai/index.ts"
+      - "supabase/migrations/*.sql"
+      - "requirements.txt"
+      - "Dockerfile"
+      - ".dockerignore"
+      - ".github/workflows/validate-nexus-agent.yml"
+      - ".github/workflows/deploy-pages.yml"
+
+concurrency:
+  group: validate-quolab-nexus-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  syntax-and-security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Run Nexus bridge, module and shell security tests
+        run: python -m unittest discover -s nexus-bridge/tests -p 'test_*.py' -v
+      - name: Verify Nexus connectors integration checks
+        run: node tests/quolab-nexus-connectors.test.cjs
+      - name: Check Nexus connectors core syntax
+        run: node --check quolab-nexus-connectors-core.js
+      - name: Verify Python sandbox escape attempts are rejected
+        run: python tests/test_execution_sandbox.py
+      - name: Compile Python entrypoints
+        run: python -m py_compile app.py quolab_nexus_server.py quolab_execution_sandbox.py
+      - name: Check central agent syntax
+        run: node --check quolab-nexus-agent.js
+      - name: Check universal tool connector syntax
+        run: node --check quolab-nexus-tool-connector.js
+      - name: Verify unified single-agent architecture and tool routing
+        run: node tests/quolab-nexus-specialists.test.cjs
+      - name: Verify security invariants across the app and backend
+        run: node tests/quolab-nexus-security.test.cjs
+      - name: Extract and check the main index module
+        run: |
+          python - <<'PY'
+          import re
+          from pathlib import Path
+          source = Path("index.html").read_text(encoding="utf-8")
+          blocks = re.findall(r'<script type="module">([\s\S]*?)</script>', source)
+          if len(blocks) != 1:
+              raise SystemExit(f"Expected one main module script, found {len(blocks)}")
+          Path("/tmp/quolab-index.mjs").write_text(blocks[0], encoding="utf-8")
+          PY
+          node --check /tmp/quolab-index.mjs
+      - name: Extract and check inline scripts in every tool module
+        run: |
+          python - <<'PY'
+          import re
+          from pathlib import Path
+          pages = [
+              "quolab-nexus-projects.html",
+              "quolab-nexus-architect.html",
+              "quolab-nexus-quantum-notebook.html",
+              "quolab-nexus-quantum-puzzle.html",
+              "quolab-nexus-app-studio.html",
+              "quolab-nexus-connectors.html",
+              "quolab-nexus-help.html",
+          ]
+          count = 0
+          for page in pages:
+              source = Path(page).read_text(encoding="utf-8")
+              for match in re.finditer(r'<script\b([^>]*)>([\s\S]*?)</script\s*>', source, re.I):
+                  attrs, body = match.group(1), match.group(2)
+                  if re.search(r'\bsrc\s*=', attrs, re.I) or not body.strip():
+                      continue
+                  kind = re.search(r"""\btype\s*=\s*["']([^"']+)["']""", attrs, re.I)
+                  if kind and kind.group(1).lower() not in ("module", "text/javascript", "application/javascript"):
+                      continue
+                  suffix = "mjs" if kind and kind.group(1).lower() == "module" else "js"
+                  Path(f"/tmp/quolab-module-{count}.{suffix}").write_text(body, encoding="utf-8")
+                  count += 1
+          if count == 0:
+              raise SystemExit("No inline module scripts found")
+          print(f"Extracted {count} inline tool scripts")
+          PY
+          for file in /tmp/quolab-module-*.js /tmp/quolab-module-*.mjs; do
+            [ -e "$file" ] || continue
+            node --check "$file"
+          done
+      - name: Build isolated quantum engine image
+        run: docker build --pull --tag quolab-nexus-engine:test .
+      - name: Verify bubblewrap is present in the runtime image
+        run: docker run --rm --entrypoint bwrap quolab-nexus-engine:test --version
+      - name: Verify isolated Python execution works or fails closed
+        run: |
+          docker run --rm --security-opt seccomp=unconfined --entrypoint python quolab-nexus-engine:test -c "from quolab_execution_sandbox import execute_isolated, sandbox_runtime_status; s=sandbox_runtime_status(); r=execute_isolated('print(42)'); print(s); assert (r['success'] and '42' in r['output']) if s['ready'] else (not r['success'] and 'sandbox' in r['output'].lower()), r"

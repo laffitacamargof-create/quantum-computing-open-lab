@@ -1,0 +1,12 @@
+qiskit==1.0.2
+qiskit-aer==0.13.3
+cirq==1.3.0
+pennylane==0.36.0
+pennylane-qiskit
+qutip==4.7.5
+numpy
+scipy
+matplotlib
+sympy
+gradio==4.44.0
+spaces

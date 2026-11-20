@@ -1,0 +1,57 @@
+name: Deploy QuOLab Nexus to GitHub Pages
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "github-pages"
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Configure GitHub Pages deployment
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+      - name: Assemble static site without backend or database files
+        run: |
+          rm -rf dist
+          mkdir -p dist
+          cp index.html .nojekyll dist/
+          cp quolab-nexus-*.html dist/
+          cp quolab-nexus-*.js dist/
+          test -s dist/index.html
+          test -s dist/quolab-nexus-quantum-notebook.html
+          test -s dist/quolab-nexus-supabase-config.js
+          test -s dist/quolab-nexus-tool-connector.js
+          test ! -e dist/app.py
+          test ! -e dist/quolab_execution_sandbox.py
+          test ! -e dist/quolab_nexus_server.py
+          test ! -e dist/requirements.txt
+          test ! -e dist/Dockerfile
+          echo "Static site assembled; backend and deployment files excluded."
+      - name: Upload site
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

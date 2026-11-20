@@ -1,0 +1,335 @@
+// ============================================================
+// QuOLab Nexus CONFIG SYNC - Sincronización de configuración en la nube
+// ============================================================
+
+class QuOLabNexusConfigSync {
+    constructor(config) {
+        this.SUPABASE_URL = config.supabaseUrl;
+        this.SUPABASE_ANON_KEY = config.supabaseAnonKey;
+        
+        this.isReady = false;
+        this.currentUser = null;
+        this.configCache = {};
+        this.syncInterval = null;
+        this._syncInProgress = false;
+        this._syncingKeys = new Set();
+        this._onlineHandler = () => { if (!this._syncInProgress) this.init(); };
+        window.addEventListener('online', this._onlineHandler);
+        
+        // Callbacks
+        this.onConfigUpdate = null;
+        this.onSyncComplete = null;
+    }
+
+    // ==================== INICIALIZACIÓN ====================
+    
+    async init() {
+        try {
+            console.log('🔌 Config Sync: Probando conexión...');
+            
+            const testResponse = await this._fetchWithRetry(`${this.SUPABASE_URL}/rest/v1/quantum_ecosystem_config?select=key&limit=1`, {
+                method: 'GET',
+                headers: {
+                    'apikey': this.SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${this.SUPABASE_ANON_KEY}`
+                }
+            });
+            
+            if (!testResponse.ok && testResponse.status !== 404) {
+                console.warn('⚠️ Config Sync: Error de conexión');
+                this.isReady = false;
+                this._startRetryPolling();
+                return false;
+            }
+            
+            console.log('✅ Config Sync: Conexión establecida');
+            await this.syncAll();
+            
+            this.isReady = true;
+            console.log('✅ Config Sync inicializado');
+            
+            this._startRetryPolling();
+            
+            return true;
+        } catch (error) {
+            console.error('❌ Config Sync error:', error.message);
+            this.isReady = false;
+            this._startRetryPolling();
+            return false;
+        }
+    }
+
+    _startRetryPolling() {
+        if (this.syncInterval) return;
+        this.syncInterval = setInterval(() => {
+            if (navigator.onLine) {
+                if (!this.isReady) this.init();
+                else this.syncAll();
+            }
+        }, 15000);
+    }
+
+    async _fetchWithRetry(url, options = {}, attempts = ((options.method || 'GET').toUpperCase() === 'GET' ? 3 : 1)) {
+        let lastError;
+        for (let attempt = 0; attempt < attempts; attempt++) {
+            try {
+                const response = await fetch(url, options);
+                if (response.status < 500 && response.status !== 408 && response.status !== 429) return response;
+                lastError = new Error('HTTP ' + response.status);
+            } catch (error) { lastError = error; }
+            if (attempt < attempts - 1) await new Promise(resolve => setTimeout(resolve, 800 * Math.pow(2, attempt)));
+        }
+        throw lastError || new Error('Network unavailable');
+    }
+
+    // ==================== FUNCIONES BASE ====================
+    
+    async _fetch(table, options = {}) {
+        let url = `${this.SUPABASE_URL}/rest/v1/${table}?select=*`;
+        
+        if (options.eq) {
+            Object.entries(options.eq).forEach(([key, value]) => {
+                url += `&${key}=eq.${value}`;
+            });
+        }
+        
+        const response = await this._fetchWithRetry(url, {
+            method: 'GET',
+            headers: {
+                'apikey': this.SUPABASE_ANON_KEY,
+                'Authorization': `Bearer ${this.SUPABASE_ANON_KEY}`
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        return await response.json();
+    }
+
+    async _insert(table, data) {
+        const response = await this._fetchWithRetry(`${this.SUPABASE_URL}/rest/v1/${table}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'apikey': this.SUPABASE_ANON_KEY,
+                'Authorization': `Bearer ${this.SUPABASE_ANON_KEY}`,
+                'Prefer': 'return=representation'
+            },
+            body: JSON.stringify(data)
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        return await response.json();
+    }
+
+    async _update(table, key, data) {
+        const response = await this._fetchWithRetry(`${this.SUPABASE_URL}/rest/v1/${table}?key=eq.${key}`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'apikey': this.SUPABASE_ANON_KEY,
+                'Authorization': `Bearer ${this.SUPABASE_ANON_KEY}`,
+                'Prefer': 'return=representation'
+            },
+            body: JSON.stringify(data)
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        return await response.json();
+    }
+
+    // ==================== SINCRONIZACIÓN COMPLETA ====================
+    
+    async syncAll() {
+        if (this._syncInProgress) return;
+        this._syncInProgress = true;
+        try {
+            // Solo sincronizar valores no sensibles. Las claves y contraseñas permanecen locales.
+            await this._syncConfig('colab_url', 'qcol_colab_url');
+            await this._syncConfig('system_config', 'qcol_sys');
+            await this._syncConfig('platform_config', 'qcol_cfg');
+            await this._syncConfig('monitor_config', 'qcol_monitor_cfg');
+            
+            if (this.onSyncComplete) this.onSyncComplete();
+        } catch (error) {
+            console.error('Config Sync error:', error.message);
+        } finally {
+            this._syncInProgress = false;
+        }
+    }
+
+    async _syncConfig(cloudKey, localKey) {
+        // ✅ Evitar sincronización en bucle
+        if (this._syncingKeys.has(cloudKey)) {
+            console.log(`⏭️ ${cloudKey} ya está sincronizando, skip`);
+            return;
+        }
+        this._syncingKeys.add(cloudKey);
+        
+        try {
+            // 1. Obtener valor de la nube
+            const cloudData = await this._fetch('quantum_ecosystem_config', {
+                eq: { key: cloudKey }
+            });
+            
+            let cloudValue = null;
+            let cloudTimestamp = null;
+            if (cloudData && cloudData.length > 0) {
+                cloudValue = cloudData[0].value;
+                cloudTimestamp = new Date(cloudData[0].updated_at);
+                try { cloudValue = JSON.parse(cloudValue); } catch(e) {}
+                
+                // 🔧 FORZAR founder_password como cadena SIEMPRE
+                if (cloudKey === 'founder_password' && cloudValue !== null && cloudValue !== undefined) {
+                    cloudValue = String(cloudValue);
+                }
+            }
+            
+            // 2. Obtener valor local
+            let localValue = localStorage.getItem(localKey);
+            try { localValue = JSON.parse(localValue); } catch(e) {}
+            
+            // 🔧 FORZAR founder_password como cadena en local también
+            if (cloudKey === 'founder_password') {
+                localValue = String(localValue || '');
+            }
+            
+            const localTimestamp = localStorage.getItem(localKey + '_timestamp');
+            const localTime = localTimestamp ? new Date(localTimestamp) : null;
+            
+            // 3. Comparar valores
+            const localString = JSON.stringify(localValue);
+            const cloudString = JSON.stringify(cloudValue);
+            
+            if (localString === cloudString && cloudValue !== null) {
+                this._syncingKeys.delete(cloudKey);
+                return;
+            }
+            
+            // 4. Sincronizar
+            if (cloudValue !== null && cloudValue !== undefined) {
+                if (!localValue || (cloudTimestamp && localTime && cloudTimestamp > localTime)) {
+                    // 🔧 Nube más reciente → actualizar local
+                    const valueToStore = cloudKey === 'founder_password' ? String(cloudValue) : cloudValue;
+                    localStorage.setItem(localKey, typeof valueToStore === 'string' ? valueToStore : JSON.stringify(valueToStore));
+                    localStorage.setItem(localKey + '_timestamp', new Date().toISOString());
+                    console.log(`📥 Config ${cloudKey} ACTUALIZADA desde la nube`);
+                    
+                    if (this.onConfigUpdate) this.onConfigUpdate(cloudKey, cloudValue);
+                    if (typeof loadSaved === 'function') setTimeout(loadSaved, 100);
+                    
+                } else if (localValue && (!cloudTimestamp || !localTime || localTime > cloudTimestamp)) {
+                    // 🔧 Local más reciente → actualizar nube
+                    const valueToUpload = cloudKey === 'founder_password' ? String(localValue) : localValue;
+                    await this._updateOrInsert(cloudKey, valueToUpload);
+                    console.log(`📤 Config ${cloudKey} subida a la nube`);
+                }
+            } else if (localValue !== null && localValue !== undefined) {
+                // Solo local → subir a la nube
+                const valueToUpload = cloudKey === 'founder_password' ? String(localValue) : localValue;
+                await this._updateOrInsert(cloudKey, valueToUpload);
+                console.log(`📤 Config ${cloudKey} subida a la nube (nueva)`);
+            }
+        } catch (error) {
+            console.warn(`⚠️ Error sincronizando ${cloudKey}:`, error.message);
+        } finally {
+            this._syncingKeys.delete(cloudKey);
+        }
+    }
+
+    async _updateOrInsert(key, value) {
+        const allowed = ['colab_url', 'system_config', 'platform_config', 'monitor_config'];
+        if (!allowed.includes(key)) throw new Error('Sensitive configuration is local-only');
+        const founderKey = localStorage.getItem('qcol_repo_founder_key') || '';
+        if (!founderKey) throw new Error('Founder key required to update shared configuration');
+        const stringValue = typeof value === 'string' ? value : JSON.stringify(value);
+        const response = await this._fetchWithRetry(`${this.SUPABASE_URL}/functions/v1/quolab-nexus-admin`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'apikey': this.SUPABASE_ANON_KEY,
+                'Authorization': `Bearer ${this.SUPABASE_ANON_KEY}`
+            },
+            body: JSON.stringify({
+                action: 'quantum_config_save',
+                params: { p_key: key, p_value: stringValue, p_founder_key: founderKey }
+            })
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.error || `HTTP ${response.status}`);
+    }
+
+    // ==================== OBTENER CONFIGURACIÓN ====================
+    
+    getConfig(key) {
+        const localKey = this._getLocalKey(key);
+        const value = localStorage.getItem(localKey);
+        if (value) {
+            try { 
+                const parsed = JSON.parse(value);
+                // 🔧 Si es founder_password, asegurar que sea string
+                if (key === 'founder_password') {
+                    return String(parsed);
+                }
+                return parsed; 
+            } catch(e) { 
+                // 🔧 Si es founder_password, asegurar que sea string
+                if (key === 'founder_password') {
+                    return String(value);
+                }
+                return value; 
+            }
+        }
+        return null;
+    }
+
+    setConfig(key, value) {
+        const localKey = this._getLocalKey(key);
+        
+        // 🔧 FORZAR founder_password como string
+        if (key === 'founder_password') {
+            value = String(value);
+            localStorage.setItem(localKey, value);
+        } else {
+            localStorage.setItem(localKey, typeof value === 'string' ? value : JSON.stringify(value));
+        }
+        localStorage.setItem(localKey + '_timestamp', new Date().toISOString());
+        
+        if (this.isReady) {
+            setTimeout(() => this._syncConfig(key, localKey), 500);
+        }
+    }
+
+    _getLocalKey(cloudKey) {
+        const map = {
+            'colab_url': 'qcol_colab_url',
+            'ai_config': 'qcol_ai',
+            'github_config': 'qcol_gh',
+            'deepseek_config': 'qcol_mistral',
+            'system_config': 'qcol_sys',
+            'platform_config': 'qcol_cfg',
+            'monitor_config': 'qcol_monitor_cfg',
+            'founder_password': 'qcol_fp'  // ✅ NUEVO
+        };
+        return map[cloudKey] || cloudKey;
+    }
+
+    setUser(user) {
+        this.currentUser = user;
+    }
+
+    destroy() {
+        if (this.syncInterval) {
+            clearInterval(this.syncInterval);
+            this.syncInterval = null;
+        }
+        if (this._onlineHandler) window.removeEventListener('online', this._onlineHandler);
+    }
+}
+
+export default QuOLabNexusConfigSync;

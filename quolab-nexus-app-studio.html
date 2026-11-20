@@ -1,0 +1,1458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="quolab-nexus-core.js"></script>
+<script src="quolab-nexus-connectors-core.js"></script>
+<script src="quolab-nexus-tool-connector.js?v=1.9.1"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>QuOLab Nexus — Quantum App Studio</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg: #0a0e1a;
+            --bg2: #0d1220;
+            --bg3: #111827;
+            --bg4: #060912;
+            --bd: #1a2a48;
+            --bd2: #1e3058;
+            --bl: #0088ff;
+            --bl2: #00aaff;
+            --cy: #00ffdd;
+            --gr: #00ff88;
+            --yw: #ffd700;
+            --rd: #ff4466;
+            --pu: #bd93f9;
+            --tx: #dce8ff;
+            --tx2: #8aa0c4;
+            --mu: #3d5a8a;
+        }
+        body {
+            background: var(--bg);
+            color: var(--tx);
+            font-family: 'Inter', sans-serif;
+            height: 100vh;
+            overflow: hidden;
+        }
+        .notif {
+            position: fixed;
+            top: 0.6rem;
+            right: 0.6rem;
+            z-index: 9999;
+            padding: 0.45rem 0.85rem;
+            background: rgba(6,9,18,0.97);
+            border: 1px solid var(--cy);
+            border-radius: 7px;
+            font-family: monospace;
+            font-size: 0.55rem;
+            color: var(--cy);
+            transform: translateX(130%);
+            transition: transform 0.28s;
+            backdrop-filter: blur(20px);
+            pointer-events: none;
+        }
+        .notif.show { transform: translateX(0); }
+        .screen { width: 100%; height: 100%; display: flex; flex-direction: column; overflow: hidden; }
+        .hidden { display: none !important; }
+        .repo-header {
+            padding: 0.8rem 1rem;
+            background: var(--bg2);
+            border-bottom: 1px solid var(--bd);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .repo-title {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--bl2);
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #003a9e, var(--bl));
+            border: none;
+            border-radius: 6px;
+            padding: 0.3rem 0.7rem;
+            font-weight: bold;
+            font-size: 0.75rem;
+            color: white;
+            font-family: monospace;
+            cursor: pointer;
+            transition: 0.1s;
+        }
+        .btn-primary:hover {
+            transform: scale(0.98);
+        }
+        .projects-grid {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1rem;
+        }
+        .project-card {
+            background: var(--bg3);
+            border: 1px solid var(--bd);
+            border-radius: 16px;
+            padding: 1rem;
+            transition: 0.1s;
+        }
+        .project-card:hover { border-color: var(--bl); background: rgba(0,136,255,0.05); }
+        .project-name { font-size: 1rem; font-weight: 600; margin-bottom: 0.5rem; }
+        .card-actions { display: flex; gap: 0.5rem; margin-top: 0.8rem; flex-wrap: wrap; }
+        .btn-secondary {
+            background: rgba(30,48,88,0.7);
+            border: 1px solid var(--bd2);
+            border-radius: 6px;
+            padding: 0.3rem 0.7rem;
+            font-family: monospace;
+            font-size: 0.6rem;
+            color: var(--tx2);
+            cursor: pointer;
+        }
+        .btn-secondary:hover { background: var(--bl); color: white; border-color: var(--bl); }
+        .btn-pending {
+            background: rgba(255,215,0,0.15);
+            border: 1px solid var(--yw);
+            color: var(--yw);
+        }
+        .btn-pending:hover { background: var(--yw); color: #0a0e1a; border-color: var(--yw); }
+        .editor-container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+            gap: 0;
+        }
+        .editor-pane {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: var(--bg4);
+            border-right: 1px solid var(--bd);
+        }
+        .pane-header {
+            padding: 0.5rem;
+            background: #060912;
+            border-bottom: 1px solid var(--bd);
+            font-family: monospace;
+            font-size: 0.7rem;
+        }
+        .code-area {
+            flex: 1;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            background: var(--bg4);
+            color: var(--tx);
+            border: none;
+            padding: 0.8rem;
+            resize: none;
+            outline: none;
+            white-space: pre-wrap;
+        }
+        .top-editor-bar {
+            padding: 0.5rem;
+            display: flex;
+            gap: 0.8rem;
+            background: var(--bg2);
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .editor-config {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            margin-left: auto;
+        }
+        .server-input {
+            background: var(--bg3);
+            border: 1px solid var(--bd2);
+            border-radius: 6px;
+            padding: 0.3rem 0.6rem;
+            font-family: monospace;
+            font-size: 0.6rem;
+            color: var(--tx);
+            width: 220px;
+        }
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.85);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            visibility: hidden;
+            opacity: 0;
+            transition: 0.2s;
+        }
+        .modal.open { visibility: visible; opacity: 1; }
+        .modal-content {
+            width: 90%;
+            height: 85%;
+            background: white;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .modal-header {
+            padding: 0.5rem 1rem;
+            background: #1e1e2f;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-iframe { flex: 1; border: none; background: white; }
+        .runner-container {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+        .runner-header {
+            padding: 0.5rem 1rem;
+            background: var(--bg2);
+            border-bottom: 1px solid var(--bd);
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+        .app-iframe { flex: 1; width: 100%; border: none; background: white; }
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--mu);
+            display: inline-block;
+        }
+        .status-dot.active { background: var(--gr); box-shadow: 0 0 5px var(--gr); }
+        .auto-status {
+            font-size: 0.5rem;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            background: rgba(0,255,136,0.1);
+            color: var(--gr);
+            margin-left: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+<div class="notif" id="notif"></div>
+
+<!-- REPOSITORY -->
+<div id="repo-screen" class="screen">
+    <div class="repo-header">
+        <div class="repo-title"></div>
+        <button class="btn-primary" id="new-project-btn">+ New application</button>
+    </div>
+    <div class="projects-grid" id="projects-grid"></div>
+</div>
+
+<!-- EDITOR -->
+<div id="editor-screen" class="screen hidden">
+    <div class="top-editor-bar">
+        <input type="text" id="project-name-input" placeholder="Project name" style="background:var(--bg3); border:1px solid var(--bd); border-radius:6px; padding:0.4rem; color:white; width:240px;">
+        <div class="editor-config">
+            <label for="nexus-hardware-select" style="font-size:.55rem;color:var(--cy);">NEXUS HARDWARE</label>
+            <select id="nexus-hardware-select" style="max-width:260px;background:var(--bg3);border:1px solid var(--bd);border-radius:6px;padding:.4rem;color:white;font-size:.65rem;"></select>
+            <!-- server-url-input hidden: URL arrives automatically from Founder Panel -->
+            <input type="text" id="server-url-input" style="display:none;" readonly>
+            <span id="server-status" style="display:none;"></span>
+            <span id="test-server-btn" style="display:none;"></span>
+            <span id="auto-status" class="auto-status" style="display:none;"></span>
+        </div>
+        <button class="btn-primary" id="save-project-editor">💾 Save project</button>
+        <button class="btn-secondary" id="preview-run-btn">▶ Test run</button>
+        <button class="btn-secondary" id="back-to-repo-editor">← Back</button>
+    </div>
+    <div class="editor-container">
+        <div class="editor-pane">
+            <div class="pane-header">🐍 PYTHON LOGIC (remote backend)</div>
+            <textarea id="python-editor" class="code-area" spellcheck="false"></textarea>
+        </div>
+        <div class="editor-pane">
+            <div class="pane-header">🌐 HTML + JS INTERFACE (frontend)</div>
+            <textarea id="html-editor" class="code-area" spellcheck="false"></textarea>
+        </div>
+    </div>
+    <div style="padding:0.3rem 0.8rem; background:#060912; font-size:0.55rem; color:var(--mu);">
+        💡 Python functions are called with <span style="color:var(--cy);">window.pyCall("function", args...)</span>. The server URL is obtained automatically from the Founder Panel.
+    </div>
+</div>
+
+<!-- RUNNER -->
+<div id="runner-screen" class="screen hidden">
+    <div class="runner-header">
+        <button class="btn-secondary" id="back-to-repo-runner">← Repository</button>
+        <span id="runner-app-name" style="font-weight:bold;"></span>
+        <span id="runner-mode" style="margin-left:auto; font-size:0.6rem;"><span class="status-dot" id="runner-dot"></span> Connecting...</span>
+    </div>
+    <iframe id="app-iframe" class="app-iframe" sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-modals"></iframe>
+</div>
+
+<!-- PREVIEW MODAL -->
+<div id="preview-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <strong>🔬 Application test (unsaved)</strong>
+            <button class="btn-secondary" id="close-modal-btn">Close</button>
+        </div>
+        <iframe id="preview-iframe" class="modal-iframe" sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-modals"></iframe>
+    </div>
+</div>
+
+<script>
+    // ---------- REPOSITORY + EDITOR + REMOTE BACKEND ----------
+    let projects = [];
+    // Pending review copies are kept separate from the user's private Studio projects.
+    let pendingReviewApps = [];
+    const PENDING_REVIEW_STORAGE_KEY = 'quolab_nexus_pending_review_apps_v1';
+    let currentEditId = null;
+    let currentNexusRoute = { module:'quantum-app-studio', slot:'cpu', connector:'' };
+    let remoteSessionStatus = false;
+    let isEmbedded = false;
+    let parentOrigin = null;          // trusted origin when embedded
+    let receivedUrl = false;
+    let externalEditContext = null;
+    let pendingSaveInFlight = false;
+    let pendingSaveRequestId = null;
+    let pendingSaveDraft = null;
+
+    // ═══════════════════════════════════════════════════════════
+    // 🛡️ PROTECTION: Force English AI + Clean editor on project switch
+    // ═══════════════════════════════════════════════════════════
+    (function initProtections() {
+        // Never delete local apps merely because two projects contain identical code.
+        try {
+            const storedAI = JSON.parse(localStorage.getItem('qcol_ai') || '{}');
+            if (!storedAI.lang || storedAI.lang === 'es') {
+                storedAI.lang = 'en';
+                localStorage.setItem('qcol_ai', JSON.stringify(storedAI));
+            }
+        } catch (e) { console.warn('[Quantum App Studio] AI preferences could not be parsed.', e); }
+        try {
+            const stored = localStorage.getItem('quantum_apps_repo_v2');
+            if (stored && !localStorage.getItem('quantum_apps_repo_v2_backup')) {
+                localStorage.setItem('quantum_apps_repo_v2_backup', stored);
+            }
+        } catch (e) { console.error('[Quantum App Studio] Local storage unavailable.', e); }
+    })();
+
+    function notify(msg, dur=2000) {
+        const n = document.getElementById('notif');
+        if (n) {
+            n.textContent = msg;
+            n.classList.add('show');
+            clearTimeout(n._t);
+            n._t = setTimeout(() => { if (n.isConnected) n.classList.remove('show'); }, dur);
+        } else {
+            console.warn('[Quantum App Studio]', msg);
+        }
+        if (isEmbedded && parentOrigin) sendToParent({ type: 'QCOL_STUDIO_NOTIFICATION', message: msg });
+    }
+
+    function generateId() { return Date.now() + '-' + Math.random().toString(36).substring(2, 10); }
+    function escapeHtml(str) { return String(str).replace(/[&<>]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;'})[m]); }
+    function sendToParent(msg) {
+        // Send to the immediate parent: when Studio is opened inside Quantum Puzzle,
+        // the Puzzle module must receive and validate the event before any top-level relay.
+        if (window.parent && window.parent !== window) {
+            try { window.parent.postMessage({ type: 'NEXUS_STUDIO_EVENT', message: msg }, window.location.origin); } catch(e) {}
+        }
+    }
+
+    function decodeUnicode(str) {
+        if (!str || typeof str !== 'string') return str;
+        return str.replace(/\\u([0-9a-fA-F]{4})/g, (match, hex) => String.fromCharCode(parseInt(hex, 16)));
+    }
+
+    function setServerUrl(url) {
+        if (!url) return;
+        const input = document.getElementById('server-url-input');
+        if (input && input.value !== url) {
+            input.value = url;
+            input.style.background = '#0a4a2a';
+            setTimeout(() => { if(input) input.style.background = '#0a0e1a'; }, 500);
+            updateServerStatusText(url);
+            notify('✅ Server URL automatically configured', 1500);
+            receivedUrl = true;
+        }
+    }
+
+
+    function nexusRouteFrom(app) {
+        const r = app || {};
+        return {
+            module: r.nexusModule || r.nexus_module || 'quantum-app-studio',
+            slot: r.nexusSlot || r.nexus_slot || 'cpu',
+            connector: r.nexusConnectorId || r.nexus_connector_id || ''
+        };
+    }
+    function renderNexusHardwareOptions(app) {
+        const select = document.getElementById('nexus-hardware-select');
+        if (!select) return;
+        const NC = window.QuOLabNexusConnectors;
+        const options = [];
+        ['quantum-app-studio','quantum-puzzle'].forEach(module => {
+            ['cpu','qpu'].forEach(slot => {
+                options.push({ value:module+'|'+slot+'|founder', label:(module==='quantum-app-studio'?'App Studio':'Quantum Puzzle')+' · '+slot.toUpperCase()+' · Founder default' });
+                if (!NC) return;
+                let assigned = NC.Assignments.get(module,slot);
+                if (assigned === 'founder') assigned = [];
+                if (!Array.isArray(assigned)) assigned = assigned ? [assigned] : [];
+                assigned.forEach(id => {
+                    const rec = NC.Store.get(id);
+                    if (rec && rec.kind === 'ext') options.push({ value:module+'|'+slot+'|'+id, label:(module==='quantum-app-studio'?'App Studio':'Quantum Puzzle')+' · '+slot.toUpperCase()+' · '+rec.name });
+                });
+            });
+        });
+        const current = nexusRouteFrom(app || currentNexusRoute);
+        const wanted = current.module+'|'+current.slot+'|'+(current.connector || 'founder');
+        select.innerHTML = options.map(o => '<option value="'+escapeHtml(o.value)+'">'+escapeHtml(o.label)+'</option>').join('');
+        select.value = options.some(o => o.value === wanted) ? wanted : 'quantum-app-studio|cpu|founder';
+        currentNexusRoute = selectedNexusRoute();
+    }
+    function selectedNexusRoute() {
+        const select = document.getElementById('nexus-hardware-select');
+        const parts = select && select.value ? select.value.split('|') : ['quantum-app-studio','cpu','founder'];
+        return { module:parts[0] || 'quantum-app-studio', slot:parts[1] || 'cpu', connector:parts[2] === 'founder' ? '' : (parts[2] || '') };
+    }
+    function setNexusRoute(app) {
+        currentNexusRoute = nexusRouteFrom(app);
+        renderNexusHardwareOptions(currentNexusRoute);
+    }
+
+    // ================== OVER-READING PROTECTION ==================
+    // Validate the origin of each message before processing it
+    window.addEventListener('message', async (event) => {
+        const data = event.data;
+        if (!data || typeof data !== 'object') return;
+
+        // --- Origin validation (protect against over-reading) ---
+        if (isEmbedded) {
+            // If we don't have a trusted origin yet, only accept the connection message
+            if (!parentOrigin) {
+                if (data.type === 'QCOL_REQUEST_STUDIO_CONNECTION') {
+                    parentOrigin = event.origin;
+                    // Continue with normal message handling
+                } else {
+                    return; // any other message before connection is ignored
+                }
+            } else if (event.origin !== parentOrigin) {
+                // Unauthorized origin
+                return;
+            }
+        } else {
+            // Standalone mode: only accept messages from the same origin (or null for file://)
+            const selfOrigin = window.location.origin;
+            if (selfOrigin !== 'null' && event.origin !== selfOrigin) return;
+            if (selfOrigin === 'null' && event.origin !== 'null') return;
+        }
+
+        // --- From here the message comes from a trusted origin ---
+        
+        if (data.type === 'QCOL_STUDIO_ADMIN_SAVE_RESULT') {
+            if (pendingSaveInFlight && (!data.requestId || data.requestId === pendingSaveRequestId)) {
+                pendingSaveInFlight = false;
+                pendingSaveRequestId = null;
+                const saveButton = document.getElementById('save-project-editor');
+                if (saveButton) saveButton.disabled = false;
+                if (data.success) {
+                    const draft = pendingSaveDraft;
+                    if (draft && externalEditContext?.type === 'pending') {
+                        const reviewIndex = pendingReviewApps.findIndex(app => String(app.id) === String(draft.id));
+                        if (reviewIndex >= 0) {
+                            Object.assign(pendingReviewApps[reviewIndex], draft, { savedAt: Date.now() });
+                            savePendingReviewApps();
+                        }
+                    }
+                    const savedType = externalEditContext?.type || 'external';
+                    pendingSaveDraft = null;
+                    externalEditContext = null;
+                    currentEditId = null;
+                    notify(savedType === 'pending'
+                        ? 'Pending app updated in Supabase. Its status remains pending.'
+                        : 'Published database app updated. It remains outside your local Studio repository.');
+                    showScreen('repo');
+                    renderRepository();
+                } else {
+                    pendingSaveDraft = null;
+                    notify('Cloud save failed: ' + (data.error || 'unknown error') + '. Your editor content is still open; nothing was marked as saved.', 5000);
+                }
+            } else {
+                notify(data.success ? 'Cloud record updated successfully.' : ('Cloud update failed: ' + (data.error || 'unknown error')));
+            }
+            return;
+        }
+        if (data.type === 'QCOL_COMPILER_URL' && data.url) {
+            setServerUrl(data.url);
+            return;
+        }
+        if (data.type === 'QCOL_CONFIG_UPDATE' && data.compilerUrl) {
+            setServerUrl(data.compilerUrl);
+            return;
+        }
+        
+        if (data.type === 'QCOL_REQUEST_STUDIO_CONNECTION') {
+            isEmbedded = true;
+            if (!parentOrigin) parentOrigin = event.origin;
+            // The ready handshake must go to the immediate parent (Quantum Puzzle), not window.top (index.html).
+            // Puzzle waits for this exact iframe before sending the selected pending app.
+            try { window.parent.postMessage({ type: 'QCOL_STUDIO_OPENED', version: '2.1', status: 'ready' }, event.origin); } catch (error) { console.warn('[Quantum App Studio] Parent handshake failed:', error); }
+            notify('Connected to Founder Panel (origin validated)', 1500);
+            sendToParent({ type: 'QCOL_REQUEST_COMPILER_URL' });
+            return;
+        }
+        
+        if (data.type === 'QCOL_OPEN_APP_FROM_PUZZLE') {
+            const { requestId, appId, appName, pythonCode, htmlCode, serverUrl, sourceType, description, tags, duration, nexusSlot, nexusConnectorId, nexusModule } = data;
+            if (appId && appName) {
+                const externalType = sourceType === 'pending' ? 'pending' : 'published';
+                if (externalType === 'pending') {
+                    // Store a dedicated review copy; never mix it into the user's private project list.
+                    const reviewCopy = {
+                        id: String(appId), name: String(appName), pythonCode: pythonCode || '',
+                        htmlCode: htmlCode || '', serverUrl: serverUrl || '',
+                        description: description || '', tags: tags || '', duration: duration || 8,
+                        downloadedAt: Date.now(), source: 'supabase-pending'
+                    };
+                    const existing = pendingReviewApps.findIndex(app => String(app.id) === String(appId));
+                    if (existing >= 0) pendingReviewApps[existing] = reviewCopy;
+                    else pendingReviewApps.unshift(reviewCopy);
+                    savePendingReviewApps();
+                    currentEditId = 'nexus-pending-' + String(appId);
+                    externalEditContext = { type: 'pending', id: String(appId) };
+                    document.getElementById('project-name-input').value = reviewCopy.name;
+                    document.getElementById('python-editor').value = reviewCopy.pythonCode;
+                    document.getElementById('html-editor').value = reviewCopy.htmlCode;
+                    if (reviewCopy.serverUrl) setServerUrl(reviewCopy.serverUrl);
+                    showScreen('editor');
+                    notify('Pending app opened directly in the Studio editor');
+                    const loadedMessage = { type: 'QCOL_STUDIO_APP_LOADED', requestId: requestId || null, appId: String(appId), sourceType: externalType, section: 'editor' };
+                    // Acknowledge directly to Puzzle only after showScreen('editor') has run.
+                    try { window.parent.postMessage(loadedMessage, parentOrigin || event.origin); } catch (error) { console.warn('[Quantum App Studio] Editor-open acknowledgement failed:', error); }
+                    sendToParent(loadedMessage);
+                    return;
+                }
+
+                // Open published database apps transiently in the editor. Do not add
+                // them to projects/localStorage or expose them in the normal repository.
+                currentEditId = 'nexus-published-' + String(appId);
+                externalEditContext = {
+                    type: 'published', id: String(appId),
+                    name: String(appName), description: description || '',
+                    tags: tags || '', duration: duration || 8,
+                    serverUrl: serverUrl || ''
+                };
+                document.getElementById('project-name-input').value = String(appName);
+                document.getElementById('python-editor').value = pythonCode || '';
+                document.getElementById('html-editor').value = htmlCode || '';
+                if (serverUrl) setServerUrl(serverUrl);
+            setNexusRoute({ nexusSlot, nexusConnectorId, nexusModule });
+                showScreen('editor');
+                notify('Published app opened temporarily; it is not added to your local repository.');
+                const loadedMessage = { type: 'QCOL_STUDIO_APP_LOADED', requestId: requestId || null, appId: String(appId), sourceType: 'published', section: 'editor' };
+                try { window.parent.postMessage(loadedMessage, parentOrigin || event.origin); } catch (error) {}
+                sendToParent(loadedMessage);
+            }
+            return;
+        }
+
+        if (data.type === 'QCOL_GET_APPS') {
+            const apps = projects.map(p => ({ id: p.id, name: p.name, serverUrl: p.serverUrl, createdAt: p.createdAt }));
+            sendToParent({ type: 'QCOL_APPS_LIST', apps });
+            return;
+        }
+
+        if (data.type === 'QCOL_REQUEST_COMPILE') {
+            const { requestId, appId, appName, pythonCode, htmlCode, serverUrl } = data;
+            try {
+                const finalServerUrl = serverUrl || localStorage.getItem('qcol_colab_url') || '';
+                
+                const bridge = `
+                <script>
+                window.__serverUrl = ${JSON.stringify(finalServerUrl)};
+                window.__pyCode = ${JSON.stringify(pythonCode || '# Empty Python')};
+                window.pyCall = async (funcName, ...args) => {
+                    return new Promise((resolve, reject) => {
+                        const msgId = Date.now() + '-' + Math.random();
+                        const handler = (event) => {
+                            if (event.data.type === 'pyResult' && event.data.id === msgId) {
+                                window.removeEventListener('message', handler);
+                                if (event.data.error) reject(new Error(event.data.error));
+                                else resolve(event.data.result);
+                            }
+                        };
+                        window.addEventListener('message', handler);
+                        window.parent.postMessage({ type: 'pyCall', id: msgId, func: funcName, args: args, serverUrl: window.__serverUrl, pythonCode: window.__pyCode, nexusSlot:window.__nexusSlot, nexusConnector:window.__nexusConnector, nexusModule:window.__nexusModule }, '*');
+                    });
+                };
+                console.log("Bridge ready, server:", window.__serverUrl);
+                <\/script>
+                `;
+                
+                let finalHtml = htmlCode || '<!DOCTYPE html><html><body><h1>App without interface</h1></body></html>';
+                if (finalHtml.includes('<head>')) {
+                    finalHtml = finalHtml.replace('<head>', '<head>' + bridge);
+                } else if (finalHtml.includes('<html>')) {
+                    finalHtml = finalHtml.replace('<html>', '<html><head>' + bridge + '</head>');
+                } else {
+                    finalHtml = bridge + finalHtml;
+                }
+                
+                if (event.source) {
+                    event.source.postMessage({
+                        type: 'QCOL_COMPILE_RESPONSE',
+                        requestId: requestId,
+                        html: finalHtml,
+                        error: null
+                    }, parentOrigin || '*');
+                }
+            } catch (err) {
+                if (event.source) {
+                    event.source.postMessage({
+                        type: 'QCOL_COMPILE_RESPONSE',
+                        requestId: requestId,
+                        html: null,
+                        error: err.message
+                    }, parentOrigin || '*');
+                }
+            }
+            return;
+        }
+    });
+
+    function notifyParentAboutChange(action, appId, appData = null) {
+        if (!isEmbedded || !parentOrigin) return;
+        sendToParent({ type: action === 'save' ? 'QCOL_APP_SAVED' : 'QCOL_APP_DELETED', appId, appData });
+    }
+
+    function loadPendingReviewApps() {
+        try {
+            const raw = localStorage.getItem(PENDING_REVIEW_STORAGE_KEY);
+            if (raw === null) { pendingReviewApps = []; return; }
+            const parsed = JSON.parse(raw);
+            if (!Array.isArray(parsed)) throw new Error('Pending review cache is not an array');
+            pendingReviewApps = parsed.filter(app => app && typeof app === 'object' && app.id != null).map(app => ({
+                ...app, id: String(app.id), name: String(app.name || app.title || 'Pending app'),
+                pythonCode: String(app.pythonCode || app.python_code || ''),
+                htmlCode: String(app.htmlCode || app.html_code || ''),
+                serverUrl: String(app.serverUrl || app.server_url || '')
+            }));
+        } catch (error) {
+            console.error('[Quantum App Studio] Pending review cache was not loaded; original data is preserved.', error);
+            pendingReviewApps = [];
+            notify('Pending review cache could not be read. Existing data was preserved.');
+        }
+    }
+
+    function savePendingReviewApps() {
+        try {
+            const previous = localStorage.getItem(PENDING_REVIEW_STORAGE_KEY);
+            if (previous) localStorage.setItem(PENDING_REVIEW_STORAGE_KEY + '_backup', previous);
+            localStorage.setItem(PENDING_REVIEW_STORAGE_KEY, JSON.stringify(pendingReviewApps));
+        } catch (error) {
+            console.error('[Quantum App Studio] Could not save pending review copies:', error);
+            notify('Could not save the review copy locally. The Supabase pending record was not changed.');
+        }
+    }
+
+    function renderPendingReviewSection() {
+        // Database-backed pending apps are edited only through the founder's EDIT
+        // action in Quantum Puzzle; they are not part of the normal Studio repository.
+        const section = document.getElementById('pending-review-section');
+        const container = document.getElementById('pending-review-grid');
+        if (section) section.classList.add('hidden');
+        if (container) container.replaceChildren();
+    }
+
+    function editPendingReviewApp(id) {
+        const app = pendingReviewApps.find(item => String(item.id) === String(id));
+        if (!app) { notify('Pending review copy not found'); return; }
+        if (currentEditId && projects.some(project => String(project.id) === String(currentEditId))) {
+            const previous = projects.find(project => String(project.id) === String(currentEditId));
+            previous.pythonCode = document.getElementById('python-editor').value;
+            previous.htmlCode = document.getElementById('html-editor').value;
+            previous.name = document.getElementById('project-name-input').value.trim() || previous.name;
+            saveProjects();
+        }
+        currentEditId = 'nexus-pending-' + String(app.id);
+        externalEditContext = { type: 'pending', id: String(app.id) };
+        document.getElementById('project-name-input').value = app.name;
+        document.getElementById('python-editor').value = app.pythonCode || '';
+        document.getElementById('html-editor').value = app.htmlCode || '';
+        if (app.serverUrl) setServerUrl(app.serverUrl);
+        setNexusRoute(app);
+        setNexusRoute(app);
+        showScreen('editor');
+        notify('Editing a review copy. The pending database record changes only when you save as founder.');
+    }
+
+    async function runPendingReviewApp(id) {
+        const app = pendingReviewApps.find(item => String(item.id) === String(id));
+        if (!app) { notify('Pending review copy not found'); return; }
+        const iframe = document.getElementById('preview-iframe');
+        const modal = document.getElementById('preview-modal');
+        if (!iframe || !modal) { notify('Preview interface is unavailable'); return; }
+        try {
+            const { srcdoc } = await buildAppBlob(app.pythonCode || '', app.htmlCode || '', app.serverUrl || localStorage.getItem('qcol_colab_url') || '', nexusRouteFrom(app));
+            iframe.removeAttribute('src');
+            iframe.srcdoc = srcdoc;
+            modal.classList.add('open');
+        } catch (error) { notify('Could not preview pending app: ' + error.message); }
+    }
+
+    function saveProjects() {
+        // Preserve the previous valid snapshot before writing the next version.
+        try {
+            const previousBackup = localStorage.getItem('quantum_apps_repo_v2');
+            if (previousBackup) localStorage.setItem('quantum_apps_repo_v2_backup', previousBackup);
+            localStorage.setItem('quantum_apps_repo_v2', JSON.stringify(projects));
+        } catch (error) {
+            console.error('[Quantum App Studio] Could not persist projects:', error);
+            notify('Could not save locally. Existing saved data was not intentionally cleared.');
+            throw error;
+        }
+        if (isEmbedded && currentEditId && parentOrigin) {
+            const proj = projects.find(p => p.id === currentEditId);
+            if (proj) notifyParentAboutChange('save', currentEditId, { name: proj.name, serverUrl: proj.serverUrl });
+        }
+    }
+
+    function normalizeStoredProject(raw, index) {
+        const p = raw && typeof raw === 'object' ? raw : {};
+        return {
+            ...p,
+            id: String(p.id || p.appId || p.projectId || ('legacy-' + index + '-' + generateId())),
+            name: String(p.name || p.title || p.appName || ('Recovered app ' + (index + 1))),
+            pythonCode: String(p.pythonCode ?? p.python ?? p.pyCode ?? p.code ?? ''),
+            htmlCode: String(p.htmlCode ?? p.html ?? p.htmlContent ?? p.frontendCode ?? p.content ?? ''),
+            serverUrl: String(p.serverUrl || p.compilerUrl || ''),
+            createdAt: p.createdAt || p.timestamp || Date.now()
+        };
+    }
+
+    function loadProjects() {
+        let stored = null;
+        try { stored = localStorage.getItem('quantum_apps_repo_v2'); }
+        catch (e) { notify('Local project storage is blocked by the browser.'); console.error(e); return; }
+        if (stored !== null) {
+            try {
+                const parsed = JSON.parse(stored);
+                if (!Array.isArray(parsed)) throw new Error('Saved project data is not an array.');
+                const normalized = parsed.map(normalizeStoredProject);
+                const localOnly = normalized.filter(project => !String(project.id).startsWith('nexus-published-'));
+                if (localOnly.length !== normalized.length) {
+                    // Preserve the pre-filter repository in the backup before excluding
+                    // synthetic database imports created by the previous Studio bridge.
+                    localStorage.setItem('quantum_apps_repo_v2_backup', stored);
+                    projects = localOnly;
+                    localStorage.setItem('quantum_apps_repo_v2', JSON.stringify(projects));
+                    notify('Studio repository cleaned: only locally saved projects are shown.');
+                } else {
+                    projects = normalized;
+                }
+                if (JSON.stringify(parsed) !== JSON.stringify(projects)) {
+                    localStorage.setItem('quantum_apps_repo_v2_backup', stored);
+                    localStorage.setItem('quantum_apps_repo_v2', JSON.stringify(projects));
+                }
+            } catch (e) {
+                // Recover from the last known-good snapshot without overwriting the
+                // original invalid value until the backup has been validated.
+                let recovered = false;
+                try {
+                    const backup = localStorage.getItem('quantum_apps_repo_v2_backup');
+                    const backupItems = backup ? JSON.parse(backup) : null;
+                    if (Array.isArray(backupItems)) {
+                        projects = backupItems.map(normalizeStoredProject);
+                        localStorage.setItem('quantum_apps_repo_v2', JSON.stringify(projects));
+                        notify('Recovered saved apps from the local backup.');
+                        recovered = true;
+                    }
+                } catch (backupError) {
+                    console.error('[Quantum App Studio] Backup recovery failed:', backupError);
+                }
+                if (!recovered) {
+                    notify('Saved projects could not be read. Original data was preserved.');
+                    console.error('[Quantum App Studio] Refusing to overwrite invalid saved data.', e);
+                    projects = [];
+                    return;
+                }
+            }
+        } else {
+            // A missing primary key can happen after an interrupted browser write.
+            // Restore only a valid array backup; an intentional empty array remains empty.
+            try {
+                const backup = localStorage.getItem('quantum_apps_repo_v2_backup');
+                const backupItems = backup ? JSON.parse(backup) : null;
+                if (Array.isArray(backupItems) && backupItems.length) {
+                    projects = backupItems.map(normalizeStoredProject);
+                    localStorage.setItem('quantum_apps_repo_v2', JSON.stringify(projects));
+                    notify('Recovered saved apps from the local backup.');
+                }
+            } catch (backupError) {
+                console.error('[Quantum App Studio] Backup recovery failed:', backupError);
+            }
+        }
+        if (!projects.length && stored === null) {
+            projects.push({
+                id: generateId(),
+                name: "Demo: Quantum greeting",
+                pythonCode: `def greet(name):\n    return f"Hello {name}! from Python on quantum server 🧪"\n\ndef add(a,b):\n    return a+b`,
+                htmlCode: `<!DOCTYPE html>\n<html>\n<head><meta charset="UTF-8"></head>\n<body style="background:#0a0e1a; color:white; font-family:monospace; padding:1rem;">\n<h2>Interactive Demo</h2>\n<input id="nameInput" placeholder="Your name" style="padding:0.3rem;">\n<button onclick="callGreet()">Greet</button>\n<p id="result"></p>\n<script>\nwindow.callGreet = async () => {\n    const name = document.getElementById('nameInput').value;\n    const res = await window.pyCall("greet", name);\n    document.getElementById('result').innerText = res;\n};\n<\/script>\n</body>\n</html>`,
+                serverUrl: "",
+                createdAt: Date.now()
+            });
+            saveProjects();
+        }
+    }
+
+    function renderRepository() {
+        const grid = document.getElementById('projects-grid');
+        if (!grid) return;
+        grid.innerHTML = '';
+        projects.forEach(proj => {
+            const card = document.createElement('div');
+            card.className = 'project-card';
+            card.innerHTML = `
+                <div class="project-name">📦 ${escapeHtml(proj.name)}</div>
+                <div class="card-actions">
+                    <button class="btn-secondary edit-proj" data-id="${proj.id}">✏️ Edit</button>
+                    <button class="btn-secondary run-proj" data-id="${proj.id}">▶ Run</button>
+                    <button class="btn-secondary btn-pending launch-proj" data-id="${proj.id}">📤 Launch</button>
+                    <button class="btn-secondary delete-proj" data-id="${proj.id}">🗑 Delete</button>
+                </div>
+            `;
+            grid.appendChild(card);
+        });
+        document.querySelectorAll('.edit-proj').forEach(btn => btn.addEventListener('click', (e) => { e.stopPropagation(); editProject(btn.getAttribute('data-id')); }));
+        document.querySelectorAll('.run-proj').forEach(btn => btn.addEventListener('click', (e) => { e.stopPropagation(); launchProject(btn.getAttribute('data-id')); }));
+        document.querySelectorAll('.launch-proj').forEach(btn => btn.addEventListener('click', (e) => { e.stopPropagation(); sendToPending(btn.getAttribute('data-id')); }));
+        document.querySelectorAll('.delete-proj').forEach(btn => btn.addEventListener('click', (e) => { e.stopPropagation(); deleteProject(btn.getAttribute('data-id')); }));
+    }
+
+    // ============================================================
+    // 🔄 FUNCIÓN SEND TO PENDING CON SINCRONIZACIÓN A LA NUBE
+    // ============================================================
+    function sendToPending(id) {
+        const proj = projects.find(p => p.id === id);
+        if (!proj) {
+            notify("❌ Project not found");
+            return;
+        }
+        
+        // 1. Guardar en localStorage (comportamiento original)
+        let pendingApps = JSON.parse(localStorage.getItem('qcol_pending_apps') || '[]');
+        const existingIndex = pendingApps.findIndex(entry => entry.id === proj.id);
+        const newEntry = {
+            id: proj.id,
+            name: proj.name,
+            pythonCode: proj.pythonCode,
+            htmlCode: proj.htmlCode,
+            serverUrl: proj.serverUrl,
+            timestamp: Date.now()
+        };
+        if (existingIndex !== -1) {
+            pendingApps[existingIndex] = newEntry;
+        } else {
+            pendingApps.push(newEntry);
+        }
+        localStorage.setItem('qcol_pending_apps', JSON.stringify(pendingApps));
+        
+        // 2. 🔥 SINCRONIZAR CON LA NUBE - Enviar mensaje al Puzzle (padre)
+        if (window.parent !== window) {
+            // Estamos dentro del iframe, enviamos mensaje al Puzzle
+            const message = {
+                type: 'QCOL_STUDIO_SYNC_APP',
+                appId: proj.id,
+                appData: {
+                    id: proj.id,
+                    name: proj.name,
+                    title: proj.name,
+                    description: '',
+                    tags: '',
+                    pythonCode: proj.pythonCode || '',
+                    htmlCode: proj.htmlCode || '',
+                    serverUrl: proj.serverUrl || localStorage.getItem('qcol_colab_url') || '',
+                    duration: 8
+                }
+            };
+            
+            if (parentOrigin) {
+                window.parent.postMessage(message, parentOrigin);
+                notify(`☁️ Enviando "${proj.name}" a la nube...`);
+            } else {
+                // Fallback: si no hay parentOrigin, intentar con '*'
+                window.parent.postMessage(message, '*');
+                notify(`☁️ Enviando "${proj.name}" a la nube...`);
+            }
+        } else {
+            // Modo standalone: usar window.quantumSync directamente
+            if (window.quantumSync && window.quantumSync.isReady) {
+                try {
+                    window.quantumSync.submitApp({
+                        id: proj.id,
+                        name: proj.name,
+                        title: proj.name,
+                        description: '',
+                        tags: '',
+                        pythonCode: proj.pythonCode || '',
+                        htmlCode: proj.htmlCode || '',
+                        serverUrl: proj.serverUrl || localStorage.getItem('qcol_colab_url') || '',
+                        duration: 8
+                    }).then(() => {
+                        notify(`☁️ App "${proj.name}" enviada a la nube (pendiente)`);
+                    }).catch((err) => {
+                        console.warn('⚠️ No se pudo sincronizar con la nube:', err);
+                        notify(`📦 App "${proj.name}" guardada localmente (sin conexión a la nube)`);
+                    });
+                } catch (error) {
+                    console.warn('⚠️ No se pudo sincronizar con la nube:', error);
+                    notify(`📦 App "${proj.name}" guardada localmente (sin conexión a la nube)`);
+                }
+            } else {
+                notify(`📦 App "${proj.name}" guardada localmente.`, 3000);
+            }
+        }
+        
+        // 3. También enviar el mensaje original QCOL_LAUNCH_QUANTUM_APP
+        if (window.parent !== window && parentOrigin) {
+            const launchMessage = {
+                type: 'QCOL_LAUNCH_QUANTUM_APP',
+                appId: proj.id,
+                appTitle: proj.name,
+                appMetadata: {
+                    name: proj.name,
+                    pythonCode: proj.pythonCode,
+                    htmlCode: proj.htmlCode,
+                    serverUrl: proj.serverUrl || localStorage.getItem('qcol_colab_url') || '',
+                    createdAt: proj.createdAt
+                }
+            };
+            sendToParent(launchMessage);
+        }
+    }
+
+    function editProject(id) {
+        const proj = projects.find(p => p.id === id);
+        if (!proj) return;
+        // Switching to a locally saved project ends any transient database edit session.
+        externalEditContext = null;
+
+        // ── Anti-contamination: auto-save previous ONLY if it exists in the array
+        // and its editor content does not match another project (prevents propagation)
+        if (currentEditId && currentEditId !== id) {
+            const prevIdx = projects.findIndex(p => p.id === currentEditId);
+            if (prevIdx !== -1) {
+                const pyVal   = document.getElementById('python-editor').value;
+                const htmlVal = document.getElementById('html-editor').value;
+                const nameVal = document.getElementById('project-name-input').value.trim();
+                projects[prevIdx].pythonCode = pyVal;
+                projects[prevIdx].htmlCode   = htmlVal;
+                projects[prevIdx].name       = nameVal || projects[prevIdx].name;
+                saveProjects();
+            }
+        }
+
+        // ── 🛡️ CRITICAL: Clear editor BEFORE loading new project content
+        // This prevents the old project's code from appearing briefly
+        document.getElementById('project-name-input').value = '';
+        document.getElementById('python-editor').value      = '';
+        document.getElementById('html-editor').value        = '';
+
+        // ── Load snapshot from array (source of truth), never from DOM
+        currentEditId = id;
+        document.getElementById('project-name-input').value = proj.name;
+        document.getElementById('python-editor').value      = proj.pythonCode || '';
+        document.getElementById('html-editor').value        = proj.htmlCode   || '';
+        showScreen('editor');
+    }
+
+    async function updateServerStatusText(url) {
+        const statusSpan = document.getElementById('server-status');
+        if (!url) { statusSpan.innerHTML = '⚠️ No URL'; remoteSessionStatus = false; return; }
+        statusSpan.innerHTML = '⏳ waking server...';
+        const ok = await testBackendConnection(url);
+        if (ok) { statusSpan.innerHTML = '✅ server ready'; remoteSessionStatus = true; }
+        else { statusSpan.innerHTML = '❌ server unavailable'; remoteSessionStatus = false; }
+    }
+
+    // Hugging Face Spaces can take several minutes to wake. A timeout on one
+    // health probe is transient, not proof that the server is offline.
+    async function testBackendConnection(baseUrl) {
+        const cleanUrl = String(baseUrl || '').trim().replace(/\/+$/, '');
+        if (!cleanUrl) return false;
+        const recoveryDeadline = Date.now() + 180000;
+        for (let attempt = 0; attempt < 45 && Date.now() < recoveryDeadline; attempt++) {
+            const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+            const timeout = controller ? setTimeout(() => controller.abort(), 12000) : null;
+            try {
+                let res = await fetch(cleanUrl + '/health', {
+                    method: 'GET',
+                    headers: { 'Accept': 'application/json' },
+                    ...(controller ? { signal: controller.signal } : {})
+                });
+                let raw = await res.text().catch(() => '');
+                let payload = null;
+                try { payload = JSON.parse(raw); } catch (_) {}
+
+                // Older Spaces may expose only the Gradio-compatible health route.
+                if (res.status === 404 || res.status === 405) {
+                    res = await fetch(cleanUrl + '/health/predict', {
+                        method: 'GET',
+                        headers: { 'Accept': 'application/json' },
+                        ...(controller ? { signal: controller.signal } : {})
+                    });
+                    raw = await res.text().catch(() => '');
+                    try { payload = JSON.parse(raw); } catch (_) { payload = null; }
+                }
+
+                const health = payload && Array.isArray(payload.data) ? payload.data[0] : payload;
+                if (res.ok && health && health.sandbox && health.sandbox.ready === true) return true;
+                // A reachable 200 response without sandbox metadata is accepted for legacy backends.
+                if (res.ok && (!health || !health.sandbox || typeof health.sandbox.ready !== 'boolean')) return true;
+                // HTTP 503 with a valid not-ready health payload means the Space is waking.
+                if (![404, 405, 429, 502, 503, 504].includes(res.status) && !res.ok) return false;
+            } catch (error) {
+                // Abort/network errors are retried; do not collapse them into "offline" immediately.
+            } finally {
+                if (timeout) clearTimeout(timeout);
+            }
+            if (attempt < 44 && Date.now() < recoveryDeadline) await new Promise(resolve => setTimeout(resolve, 4000));
+        }
+        return false;
+    }
+
+    async function executePythonRemote(code, serverUrl, nexusRoute) {
+        if (!serverUrl) throw new Error("No server URL");
+        const base = serverUrl.trim().replace(/\/+$/, '');
+        let parsed;
+        try { parsed = new URL(base); } catch (_) { throw new Error("Invalid Python server URL"); }
+        if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') throw new Error("Python server URL must use HTTP or HTTPS");
+        const isHF = base.includes('hf.space') || base.includes('huggingface');
+        const url = isHF ? base + '/run/predict' : base + '/run';
+        const body = isHF
+            ? JSON.stringify({ data: [code], fn_index: 0 })
+            : JSON.stringify({ code: code, lib: 'python' });
+        const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+        const timeoutId = controller ? setTimeout(() => controller.abort(), 120000) : null;
+        let raw;
+        try {
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                body,
+                nexusSlot: nexusRoute && nexusRoute.slot || 'cpu',
+                nexusConnector: nexusRoute && nexusRoute.connector || '',
+                nexusModule: nexusRoute && nexusRoute.module || 'quantum-app-studio',
+                ...(controller ? { signal: controller.signal } : {})
+            });
+            if (!res.ok) {
+                const detail = await res.text().catch(() => '');
+                throw new Error('Python server HTTP ' + res.status + ': ' + detail.slice(0, 500));
+            }
+            try { raw = await res.json(); }
+            catch (_) { throw new Error('Python server returned invalid JSON.'); }
+        } catch (error) {
+            if (error && error.name === 'AbortError') throw new Error('Python server timed out after 120 seconds.');
+            if (/^Python server HTTP |^Python server returned invalid JSON/.test(error.message || '')) throw error;
+            throw new Error('Could not connect to Python server (' + parsed.hostname + '): ' + (error?.message || error));
+        } finally {
+            if (timeoutId) clearTimeout(timeoutId);
+        }
+        const data = isHF && raw && Array.isArray(raw.data) ? raw.data[0] : raw;
+        if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('Python server returned an invalid response.');
+        if (data.success === false) throw new Error(data.output || data.error || 'Python execution failed.');
+        if (!Object.prototype.hasOwnProperty.call(data, 'output') && !Object.prototype.hasOwnProperty.call(data, 'result')) {
+            throw new Error('Python server response has no output or result field.');
+        }
+        let output = data.output ?? data.result ?? '';
+        if (typeof output !== 'string') output = JSON.stringify(output);
+        return decodeUnicode(output);
+    }
+
+    // Handler for calls from iframes (pyCall) - same origin, no token needed
+    window.addEventListener('message', async (event) => {
+        // Only process pyCall if the origin is the same (blob:iframe origin is the same)
+        if (event.data.type === 'pyCall') {
+            // srcdoc runners can have an opaque ('null') origin; validate their exact Window.
+            const runner = document.getElementById('app-iframe');
+            const preview = document.getElementById('preview-iframe');
+            if (event.source !== runner?.contentWindow && event.source !== preview?.contentWindow) return;
+            if (event.origin !== window.location.origin && event.origin !== 'null') return;
+            
+            const { id, func, args, serverUrl, pythonCode, nexusSlot, nexusConnector, nexusModule } = event.data;
+            try {
+                if (typeof id !== 'string' || !id || id.length > 120) throw new Error('Invalid Python request id.');
+                if (typeof func !== 'string' || !/^[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*$/.test(func)) throw new Error('Invalid Python function name.');
+                if (!Array.isArray(args) || args.length > 100) throw new Error('Invalid Python function arguments.');
+                if (!serverUrl) throw new Error("Missing server URL");
+                const fullCode = `${pythonCode || ''}\nimport json\n_result = ${func}(*${JSON.stringify(args)})\nprint(json.dumps(_result, ensure_ascii=False))`;
+                const output = await executePythonRemote(fullCode, serverUrl, { slot:nexusSlot, connector:nexusConnector, module:nexusModule });
+                let result = output.trim();
+                if ((result.startsWith('"') && result.endsWith('"')) || 
+                    (result.startsWith('{') && result.endsWith('}')) ||
+                    (result.startsWith('[') && result.endsWith(']'))) {
+                    try { result = JSON.parse(result); } catch(e) {}
+                }
+                event.source.postMessage({ type: 'pyResult', id: id, result: result }, '*');
+            } catch(err) {
+                event.source.postMessage({ type: 'pyResult', id: id, error: err.message }, '*');
+            }
+        }
+    });
+
+    async function buildAppBlob(pythonCode, htmlCode, serverUrl, nexusRoute) {
+        const connectorUrl = new URL('quolab-nexus-tool-connector.js?v=1.9.1', location.href).href;
+        const bridge = `
+        <script>window.__QUOLAB_NEXUS_TOOL='quantum-app-studio';<\/script>
+        <script src="${connectorUrl}"><\/script>
+        <script>
+        window.__serverUrl = ${JSON.stringify(serverUrl || '')};
+        window.__nexusSlot = ${JSON.stringify(nexusRoute && nexusRoute.slot || 'cpu')};
+        window.__nexusConnector = ${JSON.stringify(nexusRoute && nexusRoute.connector || '')};
+        window.__nexusModule = ${JSON.stringify(nexusRoute && nexusRoute.module || 'quantum-app-studio')};
+        window.__pyCode = ${JSON.stringify(pythonCode || '')};
+        window.pyCall = async (funcName, ...args) => {
+            if (!window.__serverUrl) throw new Error('Python backend is not configured. The HTML interface can still run locally; configure the Python server to execute Python functions.');
+            return new Promise((resolve, reject) => {
+                const msgId = Date.now() + '-' + Math.random().toString(36).slice(2, 10);
+                const timeout = setTimeout(() => {
+                    window.removeEventListener('message', handler);
+                    reject(new Error('Python backend request timed out after 210 seconds.'));
+                }, 210000);
+                const handler = (event) => {
+                    if (!event.data || event.data.type !== 'pyResult' || event.data.id !== msgId) return;
+                    clearTimeout(timeout);
+                    window.removeEventListener('message', handler);
+                    if (event.data.error) reject(new Error(event.data.error));
+                    else resolve(event.data.result);
+                };
+                window.addEventListener('message', handler);
+                window.parent.postMessage({ type: 'pyCall', id: msgId, func: funcName, args: args, serverUrl: window.__serverUrl, pythonCode: window.__pyCode, nexusSlot:window.__nexusSlot, nexusConnector:window.__nexusConnector, nexusModule:window.__nexusModule }, '*');
+            });
+        };
+        console.log('QuOLab local app bridge ready; Python server:', window.__serverUrl || 'not configured');
+        <\/script>
+        `;
+        let finalHtml = typeof htmlCode === 'string' ? htmlCode : '';
+        if (!finalHtml.trim()) finalHtml = '<!doctype html><html><head><meta charset="utf-8"></head><body><p>This saved app has no HTML interface. Open Edit to restore its interface code.</p></body></html>';
+        if (/<head\b[^>]*>/i.test(finalHtml)) {
+            finalHtml = finalHtml.replace(/<head\b[^>]*>/i, match => match + bridge);
+        } else if (/<html\b[^>]*>/i.test(finalHtml)) {
+            finalHtml = finalHtml.replace(/<html\b[^>]*>/i, match => match + '<head>' + bridge + '</head>');
+        } else {
+            finalHtml = '<!doctype html><html><head>' + bridge + '</head><body>' + finalHtml + '</body></html>';
+        }
+        // srcdoc preserves relative ./css and ./js paths; blob: URLs do not.
+        return { srcdoc: finalHtml };
+    }
+
+    // Relay sanitized activity from the user app's live preview iframe to the App Studio connector.
+    window.addEventListener('message', event => {
+        if(event.origin!==location.origin||!event.data||event.data.type!=='NEXUS_TOOL_EVENT')return;
+        const preview=Array.from(document.querySelectorAll('iframe')).find(frame=>frame.contentWindow===event.source);
+        if(!preview||preview.id!=='app-iframe')return;
+        const payload=event.data;
+        if(window.QuOLabNexusToolConnector)window.QuOLabNexusToolConnector.report('preview_'+String(payload.kind||'event').slice(0,40),{tool:'quantum-app-studio-preview',details:payload.details||{}});
+    },true);
+
+    async function launchProject(id) {
+        // ── 🛡️ PROTECTION: ALWAYS load from projects array, never from editor
+        // The editor may contain content from another project if not saved
+        const proj = projects.find(p => p.id === id);
+        if (!proj) return;
+        showScreen('runner');
+        const runnerName = document.getElementById('runner-app-name');
+        if (runnerName) runnerName.textContent = '⚛️ ' + proj.name;
+        const modeSpan = document.getElementById('runner-mode');
+        const dot = document.getElementById('runner-dot');
+        const runnerFrame = document.getElementById('app-iframe');
+        if (!runnerFrame) {
+            showScreen('repo');
+            notify('Runner interface is incomplete: app frame is missing.');
+            return;
+        }
+
+        let serverToUse = proj.serverUrl || localStorage.getItem('qcol_colab_url') || '';
+        
+        const serverActive = serverToUse && await testBackendConnection(serverToUse);
+        if (serverActive) {
+            if (modeSpan) modeSpan.innerHTML = '<span class="status-dot active"></span> Remote (server active)';
+            if (dot) dot.className = 'status-dot active';
+        } else {
+            if (modeSpan) modeSpan.innerHTML = '<span class="status-dot"></span> ⚠️ No server';
+            if (dot) dot.className = 'status-dot';
+        }
+        const { srcdoc } = await buildAppBlob(proj.pythonCode, proj.htmlCode, serverToUse, nexusRouteFrom(proj));
+        runnerFrame.removeAttribute('src');
+        runnerFrame.srcdoc = srcdoc;
+    }
+
+    async function runPreview() {
+        const serverUrl = localStorage.getItem('qcol_colab_url') || '';
+        const { srcdoc } = await buildAppBlob(
+            document.getElementById('python-editor').value,
+            document.getElementById('html-editor').value,
+            serverUrl,
+            selectedNexusRoute()
+        );
+        const iframe = document.getElementById('preview-iframe');
+        const modal = document.getElementById('preview-modal');
+        if (!iframe || !modal) { notify('Preview interface is incomplete.'); return; }
+        iframe.removeAttribute('src');
+        iframe.srcdoc = srcdoc;
+        modal.classList.add('open');
+    }
+
+    function closeModal() {
+        document.getElementById('preview-modal').classList.remove('open');
+        document.getElementById('preview-iframe').src = 'about:blank';
+    }
+
+    function showScreen(screenId) {
+        document.getElementById('repo-screen').classList.add('hidden');
+        document.getElementById('editor-screen').classList.add('hidden');
+        document.getElementById('runner-screen').classList.add('hidden');
+        if (screenId === 'repo') {
+            document.getElementById('repo-screen').classList.remove('hidden');
+            // ── When returning to repository, clear the editor
+            // Prevents seeing residues from the previous project when opening another
+            currentEditId = null;
+            externalEditContext = null;
+            document.getElementById('project-name-input').value = '';
+            document.getElementById('python-editor').value      = '';
+            document.getElementById('html-editor').value        = '';
+        } else if (screenId === 'editor') {
+            document.getElementById('editor-screen').classList.remove('hidden');
+        } else if (screenId === 'runner') {
+            document.getElementById('runner-screen').classList.remove('hidden');
+        }
+    }
+
+    // ============================================================
+    // 🔄 INTEGRACIÓN CON SUPABASE SYNC
+    // ============================================================
+    function saveCurrentEdit() {
+        const nameVal = document.getElementById('project-name-input').value.trim();
+        if (externalEditContext && externalEditContext.type === 'pending') {
+            if (pendingSaveInFlight) { notify('A cloud save is already in progress.'); return; }
+            const pendingId = String(externalEditContext.id);
+            const reviewIndex = pendingReviewApps.findIndex(app => String(app.id) === pendingId);
+            if (reviewIndex < 0) { notify('Pending review copy not found. No cloud record was changed.'); return; }
+            if (!nameVal) { notify('Enter a name'); return; }
+            const reviewed = pendingReviewApps[reviewIndex];
+            const draft = {
+                id: pendingId, name: nameVal, title: nameVal,
+                description: reviewed.description || '', tags: reviewed.tags || '',
+                duration: reviewed.duration || 8,
+                pythonCode: document.getElementById('python-editor').value,
+                htmlCode: document.getElementById('html-editor').value,
+                serverUrl: localStorage.getItem('qcol_colab_url') || reviewed.serverUrl || '',
+                nexusModule:selectedNexusRoute().module, nexusSlot:selectedNexusRoute().slot, nexusConnectorId:selectedNexusRoute().connector
+            };
+            pendingSaveDraft = draft;
+            pendingSaveRequestId = generateId();
+            pendingSaveInFlight = true;
+            const saveButton = document.getElementById('save-project-editor');
+            if (saveButton) saveButton.disabled = true;
+            sendToParent({
+                type: 'QCOL_STUDIO_ADMIN_SAVE', sourceType: 'pending', sourceAppId: pendingId,
+                requestId: pendingSaveRequestId, appData: draft
+            });
+            notify('Saving changes to the original Supabase pending record…');
+            return;
+        }
+        if (externalEditContext && externalEditContext.type === 'published') {
+            if (pendingSaveInFlight) { notify('A cloud save is already in progress.'); return; }
+            if (!nameVal) { notify('Enter a name'); return; }
+            const draft = {
+                id: String(externalEditContext.id), name: nameVal, title: nameVal,
+                description: externalEditContext.description || '',
+                tags: externalEditContext.tags || '', duration: externalEditContext.duration || 8,
+                pythonCode: document.getElementById('python-editor').value,
+                htmlCode: document.getElementById('html-editor').value,
+                serverUrl: localStorage.getItem('qcol_colab_url') || externalEditContext.serverUrl || '',
+                nexusModule:selectedNexusRoute().module, nexusSlot:selectedNexusRoute().slot, nexusConnectorId:selectedNexusRoute().connector,
+                nexusModule:selectedNexusRoute().module, nexusSlot:selectedNexusRoute().slot, nexusConnectorId:selectedNexusRoute().connector
+            };
+            pendingSaveDraft = draft;
+            pendingSaveRequestId = generateId();
+            pendingSaveInFlight = true;
+            const saveButton = document.getElementById('save-project-editor');
+            if (saveButton) saveButton.disabled = true;
+            sendToParent({
+                type: 'QCOL_STUDIO_ADMIN_SAVE', sourceType: 'published',
+                sourceAppId: String(externalEditContext.id),
+                requestId: pendingSaveRequestId, appData: draft
+            });
+            notify('Saving published app directly to its database record…');
+            return;
+        }
+        const pyVal = document.getElementById('python-editor').value;
+        const htmlVal = document.getElementById('html-editor').value;
+        const urlVal = localStorage.getItem('qcol_colab_url') || (projects.find(p => p.id === currentEditId)?.serverUrl || '');
+        if (!nameVal) { notify('Enter a name'); return; }
+
+        let idx = projects.findIndex(p => p.id === currentEditId);
+        if (idx === -1) {
+            const newId = generateId();
+            projects.push({ id: newId, name: nameVal, pythonCode: pyVal, htmlCode: htmlVal, serverUrl: urlVal, nexusModule:selectedNexusRoute().module, nexusSlot:selectedNexusRoute().slot, nexusConnectorId:selectedNexusRoute().connector, createdAt: Date.now() });
+            currentEditId = newId;
+            idx = projects.length - 1;
+        } else {
+            projects[idx].name = nameVal;
+            projects[idx].pythonCode = pyVal;
+            projects[idx].htmlCode = htmlVal;
+            projects[idx].serverUrl = urlVal;
+            projects[idx].nexusModule = selectedNexusRoute().module;
+            projects[idx].nexusSlot = selectedNexusRoute().slot;
+            projects[idx].nexusConnectorId = selectedNexusRoute().connector;
+        }
+
+        try { saveProjects(); }
+        catch (error) { notify('Could not save this project locally.'); return; }
+
+        if (externalEditContext && currentEditId === 'nexus-' + externalEditContext.type + '-' + externalEditContext.id) {
+            const project = projects[idx];
+            sendToParent({
+                type: 'QCOL_STUDIO_ADMIN_SAVE',
+                sourceType: externalEditContext.type,
+                sourceAppId: externalEditContext.id,
+                appData: {
+                    id: externalEditContext.id,
+                    name: project.name,
+                    title: project.name,
+                    description: project.description || '',
+                    tags: project.tags || '',
+                    duration: project.duration || 8,
+                    pythonCode: project.pythonCode,
+                    htmlCode: project.htmlCode,
+                    serverUrl: project.serverUrl
+                }
+            });
+            notify('Saved locally. Sending founder update to Quantum Puzzle…');
+        } else {
+            notify('Project saved privately in Quantum App Studio');
+        }
+
+        showScreen('repo');
+        renderRepository();
+    }
+
+    function deleteProject(id) {
+        if (projects.length === 1) { notify("There must be at least one project"); return; }
+        if (confirm("Delete application?")) {
+            const deleted = projects.find(p => p.id === id);
+            projects = projects.filter(p => p.id !== id);
+            if (currentEditId === id) currentEditId = null;
+            saveProjects();
+            renderRepository();
+            notify("Project deleted");
+            if (isEmbedded && deleted && parentOrigin) sendToParent({ type: 'QCOL_APP_DELETED', appId: id });
+        }
+    }
+
+    function startNewProject() {
+        // ── Only auto-save if the project exists and the editor has no contaminated content
+        if (currentEditId) {
+            const prevIdx = projects.findIndex(p => p.id === currentEditId);
+            if (prevIdx !== -1) {
+                const pyVal   = document.getElementById('python-editor').value;
+                const htmlVal = document.getElementById('html-editor').value;
+                const nameVal = document.getElementById('project-name-input').value.trim();
+                const isContaminated = projects.some((p, i) =>
+                    i !== prevIdx && p.pythonCode === pyVal && p.htmlCode === htmlVal);
+                if (!isContaminated) {
+                    projects[prevIdx].pythonCode = pyVal;
+                    projects[prevIdx].htmlCode   = htmlVal;
+                    projects[prevIdx].name       = nameVal || projects[prevIdx].name;
+                    saveProjects();
+                }
+            }
+        }
+        currentEditId = null;
+        externalEditContext = null;
+        document.getElementById('project-name-input').value = 'New quantum app';
+        document.getElementById('python-editor').value = '# Remote Python code\ndef my_function(param):\n    return f"Result: {param}"';
+        document.getElementById('html-editor').value = '<!DOCTYPE html>\n<html>\n<head><meta charset="UTF-8"></head>\n<body style="background:#0a0e1a;color:white;font-family:sans-serif;padding:1.5rem;">\n<h2>⚛️ My Quantum App</h2>\n<button onclick="call()">Execute</button>\n<p id="out"></p>\n<script>\nasync function call(){\n  const r = await window.pyCall("my_function","hello");\n  document.getElementById("out").innerText = r;\n}\n<\/script>\n</body>\n</html>';
+        showScreen('editor');
+    }
+
+    function bindEvents() {
+        const newProjectButton = document.getElementById('new-project-btn');
+        if (newProjectButton) {
+            // Assign the handler directly so the editor action cannot be lost
+            // behind duplicate/stale listeners after iframe restoration.
+            newProjectButton.onclick = function(event) {
+                if (event) event.preventDefault();
+                try {
+                    startNewProject();
+                    const editor = document.getElementById('editor-screen');
+                    if (!editor || editor.classList.contains('hidden')) throw new Error('Editor screen did not open');
+                } catch (error) {
+                    console.error('[Quantum App Studio] New application failed:', error);
+                    notify('New application could not open: ' + (error.message || 'initialization error'), 5000);
+                }
+            };
+        }
+        document.getElementById('save-project-editor').onclick = saveCurrentEdit;
+        const nexusSelect = document.getElementById('nexus-hardware-select');
+        if (nexusSelect) nexusSelect.addEventListener('change', () => { currentNexusRoute = selectedNexusRoute(); });
+        document.getElementById('back-to-repo-editor').onclick = () => showScreen('repo');
+        document.getElementById('back-to-repo-runner').onclick = () => showScreen('repo');
+        document.getElementById('preview-run-btn').onclick = runPreview;
+        document.getElementById('close-modal-btn').onclick = closeModal;
+        // test-server-btn hidden — URL arrives automatically from Founder Panel
+    }
+
+    // Initialization
+    loadProjects();
+    loadPendingReviewApps();
+    renderNexusHardwareOptions();
+    renderRepository();
+    bindEvents();
+    
+    if (window.parent !== window) {
+        setTimeout(() => {
+            // Announce readiness directly to the immediate parent (Puzzle iframe).
+            // The top-level index relay remains in place for admin save operations.
+            try { window.parent.postMessage({ type: 'QCOL_STUDIO_OPENED', version: '2.2', status: 'ready' }, window.location.origin); } catch (error) { console.warn('[Quantum App Studio] Initial ready signal failed:', error); }
+            sendToParent({ type: 'QCOL_STUDIO_OPENED', version: '2.2', status: 'ready' });
+            notify('Connected to Founder Panel (origin validated)', 1500);
+            sendToParent({ type: 'QCOL_REQUEST_COMPILER_URL' });
+            const savedUrl = localStorage.getItem('qcol_colab_url');
+            if (savedUrl && !receivedUrl) setServerUrl(savedUrl);
+        }, 500);
+    } else {
+        const savedUrl = localStorage.getItem('qcol_colab_url');
+        if (savedUrl) setServerUrl(savedUrl);
+    }
+    
+    let compilerRequestAttempts = 0;
+    const compilerRequestTimer = setInterval(() => {
+        if (window.parent === window || receivedUrl || !parentOrigin || compilerRequestAttempts >= 10) {
+            clearInterval(compilerRequestTimer);
+            return;
+        }
+        compilerRequestAttempts++;
+        sendToParent({ type: 'QCOL_REQUEST_COMPILER_URL' });
+    }, 3000);
+    
+    window.addEventListener('error', function(event) {
+        console.error('[Quantum App Studio] Runtime error:', event.message, event.filename, event.lineno);
+        notify('Studio runtime error: ' + (event.message || 'unknown JavaScript error'), 7000);
+    });
+    window.addEventListener('unhandledrejection', function(event) {
+        const reason = event.reason && event.reason.message ? event.reason.message : String(event.reason || 'unknown error');
+        console.error('[Quantum App Studio] Unhandled promise rejection:', event.reason);
+        notify('Studio operation failed: ' + reason, 7000);
+    });
+    notify("Quantum App Studio · Protected against over-reading · Origins validated", 4000);
+</script>
+</body>
+</html>
