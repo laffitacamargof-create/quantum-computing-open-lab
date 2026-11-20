@@ -99,7 +99,7 @@
       text = String(text == null ? '' : text);
       const iv = crypto.getRandomValues(new Uint8Array(12));
       const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, await this.key(), enc.encode(text));
-      return { iv: b64(iv), ct: b64(ct), hint: text.length > 8 ? text.slice(0, 3) + '••••' + text.slice(-4) : '••••••••' };
+      return { iv: b64(iv), ct: b64(ct), hint: text.length >= 16 ? '••••••••' + text.slice(-4) : '••••••••' };
     },
     async open(o) {
       if (!o || !o.ct) return '';
