@@ -471,7 +471,7 @@ class Worker:
                 except ValueError:
                     pass
                 command = [bwrap, "--unshare-all", "--die-with-parent", "--ro-bind", "/", "/",
-                           "--dir", "/connector", "--dir", "/workspace", "--dir", "/tmp",
+                           "--dir", "/connector", "--dir", "/workspace",
                            "--ro-bind", d, "/connector", "--bind", data, "/workspace",
                            "--ro-bind", runner_path, "/runner.py", "--tmpfs", "/home", "--tmpfs", "/root",
                            "--proc", "/proc", "--dev", "/dev", "--tmpfs", "/tmp", "--chdir", "/workspace", "--",
