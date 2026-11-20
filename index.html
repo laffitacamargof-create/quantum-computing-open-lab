@@ -3019,64 +3019,6 @@ CONTEXT (staged and size-limited): ${c}`;
     const nexusResult = await aiComplete(msgs, { tool:'chat', tokens, temp });
     if (nexusResult !== null) return nexusResult;
     throw new Error('No external AI connector is enabled. Create an AI API in Nexus Connectors and switch it ON for QNexusAi.');
-    if (aiCfg.provider === 'gemini') {
-      const model = aiCfg.model || 'gemini-1.5-flash';
-      const contents = msgs.filter(m => m.role !== 'system').map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] }));
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(aiCfg.key)}`, {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ systemInstruction:{ parts:[{ text: sys }] }, contents, generationConfig:{ temperature: temp, maxOutputTokens: tokens } }),
-        signal: AbortSignal.timeout(20000),
-      });
-      const d = await res.json();
-      if (!res.ok) throw new Error(d.error?.message || ('Gemini HTTP ' + res.status));
-      return d.candidates?.[0]?.content?.parts?.map(p => p.text).join('') || '';
-    }
-    if (aiCfg.provider === 'huggingface') {
-      // API actual de Hugging Face (compatible con OpenAI); si falla, se prueba la antigua
-      try {
-        const r2 = await fetch('https://router.huggingface.co/v1/chat/completions', {
-          method:'POST', headers:{'Authorization':'Bearer '+aiCfg.key,'Content-Type':'application/json'},
-          body: JSON.stringify({ model: aiCfg.model || 'mistralai/Mistral-7B-Instruct-v0.3', messages: msgs, max_tokens: tokens, temperature: temp }),
-          signal: AbortSignal.timeout(20000),
-        });
-        const j = await r2.json();
-        if (r2.ok && j.choices?.[0]?.message?.content) return j.choices[0].message.content;
-      } catch (e) { /* cae al método antiguo */ }
-      const model = aiCfg.model || 'mistralai/Mistral-7B-Instruct-v0.3';
-      const url = `https://api-inference.huggingface.co/models/${model}`;
-      const prompt = msgs.map(m => `${m.role}: ${m.content}`).join('\n') + '\nassistant:';
-      const res = await fetch(url, {
-        method:'POST',
-        headers:{'Authorization':'Bearer '+aiCfg.key,'Content-Type':'application/json'},
-        body:JSON.stringify({ inputs:prompt, parameters:{ max_new_tokens:tokens, temperature:temp } }),
-        signal: AbortSignal.timeout(20000),
-      });
-      const d = await res.json();
-      if (!res.ok) throw new Error(d.error || 'HuggingFace Error');
-      return Array.isArray(d) ? d[0].generated_text.split('assistant:').pop().trim() : d.generated_text;
-    }
-    const url = endpoints[aiCfg.provider];
-    if (!url) throw new Error('Unsupported provider');
-    const defaultModel = aiCfg.provider==='mistral'  ? 'mistral-large-latest'
-                       : aiCfg.provider==='groq'     ? 'llama3-70b-8192'
-                       : aiCfg.provider==='deepseek' ? 'deepseek-chat'
-                       : aiCfg.provider==='openrouter' ? 'meta-llama/llama-3.3-70b-instruct:free'
-                       : aiCfg.provider==='cerebras' ? 'gpt-oss-120b'
-                       : 'gpt-4o-mini';
-    const res = await fetch(url, {
-      method:'POST',
-      headers:Object.assign({'Authorization':'Bearer '+aiCfg.key,'Content-Type':'application/json'}, aiCfg.provider==='openrouter' ? {'HTTP-Referer': location.origin, 'X-Title': 'Quolab'} : {}),
-      body:JSON.stringify({
-        model:       aiCfg.model || defaultModel,
-        messages:    msgs,
-        max_tokens:  tokens,
-        temperature: temp,
-      }),
-      signal: AbortSignal.timeout(20000),
-    });
-    const d = await res.json();
-    if (!res.ok) throw new Error(d.error?.message || 'API Error');
-    return d.choices[0].message.content;
   }
 
   // Markdown + LaTeX: math is pulled out before marked (it would mangle _ * \\), then rendered with KaTeX.
