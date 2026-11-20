@@ -191,11 +191,12 @@
       if (tool === 'chat') return false;
       return (rec.tools || []).includes(tool);
     },
-    pick(kind, tool, id) {
-      const l = Store.byKind(kind).filter(r => (id ? r.id === id : true) && this.allowed(r, tool));
-      l.sort((a, b) => (a.usage === 'always' ? 0 : 1) - (b.usage === 'always' ? 0 : 1));
-      return l[0] || null;
+    list(kind, tool, id) {
+      return Store.byKind(kind).filter(r => (id ? r.id === id : true) && this.allowed(r, tool))
+        .sort((a, b) => (a.usage === 'always' ? 0 : 1) - (b.usage === 'always' ? 0 : 1) ||
+          String(a.createdAt || '').localeCompare(String(b.createdAt || '')));
     },
+    pick(kind, tool, id) { return this.list(kind, tool, id)[0] || null; },
     consume(rec) { if (rec && rec.usage === 'once') Store.patch(rec.id, r => { r.usage = 'off'; r.usedAt = now(); }); },
   };
 
@@ -251,14 +252,24 @@
 
   /* ───────────────────────── ai ───────────────────────── */
   const ai = {
-    /** Which connector would answer for this tool? (never exposes the key) */
-    pick(tool, id) { const r = Policy.pick('ai', tool, id); return r ? { id: r.id, name: r.name, provider: r.ai.provider, usage: r.usage } : null; },
+    /** Return every enabled AI connector without exposing credentials. */
+    list(tool, id) { return Policy.list('ai', tool || 'chat', id).map(r => ({ id:r.id, name:r.name, provider:r.ai.provider, model:r.ai.model || '', usage:r.usage })); },
+    pick(tool, id) { const r = Policy.pick('ai', tool || 'chat', id); return r ? { id:r.id, name:r.name, provider:r.ai.provider, usage:r.usage } : null; },
     async chat(o) {
-      const rec = Policy.pick('ai', o.tool, o.connector);
-      if (!rec) throw NexusError('no-connector', 'No AI connector is enabled for ' + (TOOLS[o.tool] || o.tool));
-      const text = await this._call(rec, o);
-      Policy.consume(rec);
-      return { text, connector: rec.id, name: rec.name };
+      const connectors = Policy.list('ai', o.tool || 'chat', o.connector);
+      if (!connectors.length) throw NexusError('no-connector', 'No AI connector is enabled for ' + (TOOLS[o.tool] || o.tool));
+      const failures = [];
+      for (const rec of connectors) {
+        try {
+          const text = await this._call(rec, o);
+          Policy.consume(rec);
+          return { text, connector:rec.id, name:rec.name, provider:rec.ai.provider, model:rec.ai.model || '', attempted:failures.map(x => x.name) };
+        } catch (error) {
+          failures.push({ id:rec.id, name:rec.name, provider:rec.ai.provider, error:String(error && error.message || error) });
+        }
+      }
+      const summary = failures.map(x => x.name + ' (' + x.provider + '): ' + x.error).join(' | ');
+      throw NexusError('all-connectors-failed', 'All enabled AI connectors failed. ' + summary, { attempted:failures });
     },
     async test(id) { // does not consume "once"
       const rec = Store.get(id); if (!rec) throw NexusError('missing', 'Connector not found');
@@ -324,7 +335,7 @@
       const rec = Policy.pick('ext', o.tool, o.connector);
       if (!rec) throw NexusError('no-connector', 'No external connector is enabled for ' + (TOOLS[o.tool] || o.tool));
       const out = await this._do(rec, o);
-      Policy.consume(rec);
+      if (out && out.ok) Policy.consume(rec);
       return out;
     },
     async _do(rec, o) {
@@ -494,21 +505,31 @@
     const assigned = Assignments.get(moduleId, kind);
     const ids = Array.isArray(assigned) ? assigned : (assigned && assigned !== 'founder' ? [assigned] : []);
     const expected = kind === 'cpu' ? 'classical' : kind === 'qpu' ? 'quantum' : 'storage';
-    const ordered = o.connector && ids.includes(o.connector) ? [o.connector].concat(ids.filter(id => id !== o.connector)) : ids;
-    const compatible = id => {
-      const rec = Store.get(id);
-      return rec && rec.kind === 'ext' && Policy.allowed(rec, tool) && rec.ext && rec.ext.category === expected ? rec : null;
-    };
-    // An explicit module assignment takes priority. Otherwise discover the connector
-    // enabled for this tool in Nexus Connectors; never route through Founder.
-    let rec = ordered.map(compatible).find(Boolean) || null;
-    if (!rec) {
-      const candidate = Policy.pick('ext', tool, o.connector);
-      if (candidate && candidate.ext && candidate.ext.category === expected) rec = candidate;
+    const compatible = rec => rec && rec.kind === 'ext' && Policy.allowed(rec, tool) && rec.ext && rec.ext.category === expected;
+    const assignedRecords = ids.map(id => Store.get(id)).filter(compatible);
+    // Multiple APIs may serve the same tool. Keep every enabled compatible connector
+    // and try them in stable priority order instead of silently discarding all but one.
+    let candidates = assignedRecords.length ? assignedRecords : Policy.list('ext', tool).filter(compatible);
+    if (o.connector) candidates = candidates.slice().sort((a,b) => (a.id === o.connector ? -1 : 0) - (b.id === o.connector ? -1 : 0));
+    if (!candidates.length) throw NexusError('no-route', 'No compatible external API is enabled for ' + tool + ' (' + kind + '). Connect and enable one or more APIs in Nexus Connectors.');
+    const method = String(o.method || 'GET').toUpperCase();
+    const safeToRetry = ['GET','HEAD','OPTIONS'].includes(method);
+    const failures = [];
+    for (const rec of candidates) {
+      try {
+        const result = await ext.request({ tool, connector:rec.id, method, path:o.path, headers:o.headers, body:o.body, timeout:o.timeout });
+        if (result && result.ok) return Object.assign({}, result, { source:'nexus', connector:rec.id, attempted:failures.map(x => x.name) });
+        const status = Number(result && result.status || 0);
+        failures.push({ name:rec.name, status });
+        const rejectedWithoutExecution = [401,403,404,405,415,422,429].includes(status);
+        if (!safeToRetry && !rejectedWithoutExecution) return Object.assign({}, result, { source:'nexus', connector:rec.id, attempted:failures.map(x => x.name) });
+      } catch (error) {
+        failures.push({ name:rec.name, error:String(error && error.message || error) });
+        if (!safeToRetry) break;
+      }
     }
-    if (!rec) throw NexusError('no-route', 'No compatible external API is enabled for ' + tool + ' (' + kind + '). Connect and enable it for this tool in Nexus Connectors.');
-    const result = await ext.request({ tool, connector: rec.id, method: o.method, path: o.path, headers: o.headers, body: o.body, timeout: o.timeout });
-    return Object.assign({}, result, { source: 'nexus', connector: rec.id });
+    throw NexusError('no-route', 'All compatible external APIs failed for ' + tool + ' (' + kind + '): ' +
+      failures.map(x => x.name + (x.status ? ' HTTP ' + x.status : ': ' + x.error)).join(' | '), { attempted:failures });
   }
   const api = { VERSION, TOOLS, PERMS, PROVIDERS, COMMUNITY_REQUIRES, MAX_CODE, Vault, Store, Policy, Analyze, Bridge, ai, ext, loc, Catalog, Community, Installer, Make, Assignments, requestAssigned, util: { uid, slug, sha256, now, NexusError } };
   root.QuOLabNexusConnectors = api;

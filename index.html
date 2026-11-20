@@ -1170,7 +1170,8 @@ class QuOLabNexusConfigSyncReader {
   const apiSlots = Object.create(null);
   [['architect',['cpu','qpu','storage']],['architect-pro',['cpu','storage']],['quantum-puzzle',['cpu','qpu']],['quantum-app-studio',['cpu','qpu','storage']]].forEach(item => item[1].forEach(kind => { apiSlots[item[0]+'.'+kind] = { label:item[0]+' · '+kind.toUpperCase(), founder:kind==='cpu'?'engine':'' }; }));
   const aiFallbackApproved = () => { try { return localStorage.getItem(AI_FALLBACK_KEY) === 'yes'; } catch (_) { return false; } };
-  function aiNexusRec(tool) { const nx=NXC(); return nx && nx.Policy ? nx.Policy.pick('ai', tool || 'chat') : null; }
+  function aiNexusRecs(tool) { const nx=NXC(); return nx && nx.Policy ? (typeof nx.Policy.list === 'function' ? nx.Policy.list('ai', tool || 'chat') : [nx.Policy.pick('ai', tool || 'chat')].filter(Boolean)) : []; }
+  function aiNexusRec(tool) { return aiNexusRecs(tool)[0] || null; }
   function moduleOf(win) {
     for (const key of Object.keys(iframes)) {
       const rootFrame = iframes[key]; if (!rootFrame || !rootFrame.contentWindow) continue;
@@ -1280,14 +1281,16 @@ class QuOLabNexusConfigSyncReader {
     } finally { clearTimeout(timer); }
   }
   async function aiComplete(messages, options) {
-    const o = options || {}, rec = aiNexusRec(o.tool || 'chat');
-    if (rec) {
+    const o = options || {}, connectors = aiNexusRecs(o.tool || 'chat');
+    if (connectors.length) {
       try {
-        const result = await NXC().ai.chat({ tool:o.tool || 'chat', connector:rec.id, messages, max_tokens:o.tokens, temperature:o.temp });
+        // Do not pin the request to the first connector: the broker rotates through
+        // every enabled AI API and only consumes a one-shot connector after success.
+        const result = await NXC().ai.chat({ tool:o.tool || 'chat', messages, max_tokens:o.tokens, temperature:o.temp });
         return result.text;
       } catch (error) {
-        if (!aiFallbackApproved()) throw new Error('Nexus AI connector failed: ' + (error.message || error) + '. Choose Founder default or explicitly enable founder-gateway fallback.');
-        notify('External AI connector failed; using the founder gateway as approved fallback.');
+        if (!aiFallbackApproved()) throw new Error('All enabled Nexus AI connectors failed: ' + (error.message || error) + '. Enable Founder gateway fallback only if you want it used after every connector fails.');
+        notify('All Nexus AI connectors failed; using the approved Founder gateway fallback.');
       }
     }
     if (aiCfg.provider === 'gateway') return callMultiModelGateway(messages, o.tokens, o.temp);
@@ -2233,7 +2236,10 @@ class QuOLabNexusConfigSyncReader {
       const nexusRec = aiNexusRec();
       if (nexusRec) {
         if (dot) dot.className = 'ai-status-dot ok';
-        if (txt) txt.textContent = 'QNexusAi · Nexus connector · ' + nexusRec.name;
+        const count = aiNexusRecs().length;
+        if (txt) txt.textContent = count > 1
+          ? 'QNexusAi · ' + count + ' AI APIs active · automatic failover'
+          : 'QNexusAi · Nexus connector · ' + nexusRec.name;
       } else {
         if (dot) dot.className = 'ai-status-dot ok';
         if (txt) txt.textContent = aiCfg.provider === 'gateway'

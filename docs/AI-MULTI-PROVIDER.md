@@ -56,4 +56,5 @@ Ollama can be added as a custom OpenAI-compatible endpoint only when that endpoi
 - The gateway tries configured providers in order. It falls back on authentication/billing/rate-limit/upstream/network failures; malformed client requests are not retried.
 - The response keeps the existing `choices[0].message.content` shape so the current chat UI remains compatible, and adds provider/model metadata.
 - This gateway currently provides text chat compatibility. Native tool/function calling, vision, audio, and provider-specific structured output require explicit capability adapters and tests before being enabled.
+- External hardware/storage API connectors can also coexist for the same tool. The Nexus broker tries compatible enabled connectors in priority order. Safe read requests can fail over after transport or HTTP errors; non-idempotent writes are not replayed after ambiguous network/server failures to avoid duplicate jobs or charges.
 - Provider quotas and free-tier availability are controlled by each provider and are not guaranteed by this gateway.
