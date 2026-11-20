@@ -15,16 +15,17 @@ Design (read this before trusting it):
   * Each installed connector runs in its OWN Python process (own venv when it needs packages).
   * Connector code never imports Bluetooth/OS libraries: it asks `ctx` and the bridge checks the
     permissions the connector declared in its code (@connector.tool("tool", allow=[...])).
-  * Community connectors are additionally checked with a strict AST validator before installing.
-  * IMPORTANT: this is permission enforcement, not an operating-system sandbox. Only install
-    connectors you trust or that were reviewed by an administrator.
+  * Community connectors are checked with a strict AST validator and run in a Linux bubblewrap
+    sandbox with no network namespace and only their private data directory writable.
+  * Community installation fails closed when bubblewrap isolation is unavailable.
+  * Private connectors are trusted code and still run with the bridge user's OS permissions.
 Python >= 3.9, standard library only. Bluetooth needs `pip install bleak` in the bridge's Python.
 """
 import argparse, ast, asyncio, base64, concurrent.futures as cf, hmac, http.client, http.server
 import ipaddress, json, os, platform, queue, re, secrets, shutil, socket, socketserver, ssl
 import subprocess, sys, threading, time, urllib.parse, uuid
 
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 TOOLS = {"open_lab", "notebook", "apps", "app_studio", "chat"}
 PERMS = {"ble.scan", "ble.link", "ble.read", "ble.write", "ble.notify", "proc.run", "file.read", "file.write", "net.http"}
 # which declared permission a ctx operation needs
@@ -47,6 +48,39 @@ LOCAL_ORIGIN = re.compile(r"^http://(localhost|127\.0\.0\.1)(:8765)?$")
 class BridgeError(Exception):
     def __init__(self, msg, code="bridge", status=400):
         super().__init__(msg); self.code = code; self.status = status
+
+
+def _community_sandbox_command(py, runner, connector, connector_dir, data_dir, env):
+    """Run untrusted community code in a fail-closed Linux bubblewrap sandbox.
+
+    The connector can read its own package and the Python runtime, and write only
+    to its private data directory. Network, host home, and unrelated host files
+    are not mounted. ctx.* operations continue over the worker's inherited pipes.
+    """
+    if not sys.platform.startswith("linux"):
+        raise BridgeError("Community connectors are disabled on this OS: an operating-system sandbox is not available.", "sandbox-unavailable", 503)
+    bwrap = shutil.which("bwrap")
+    if not bwrap:
+        raise BridgeError("Community connectors are disabled because bubblewrap (bwrap) is not installed. Private connectors remain available only as trusted code.", "sandbox-unavailable", 503)
+    args = [bwrap, "--die-with-parent", "--new-session", "--unshare-all", "--clearenv"]
+    # Mount only the runtime needed by Python. Never bind the host root or home.
+    for mount in ("/usr", "/usr/local", "/bin", "/lib", "/lib64",
+                  "/etc/ld.so.cache", "/etc/ssl/certs", "/etc/localtime",
+                  "/etc/passwd", "/etc/group"):
+        if os.path.exists(mount):
+            args.extend(["--ro-bind", mount, mount])
+    args.extend(["--dir", "/etc", "--dir", "/etc/ssl"])
+    args.extend(["--dev", "/dev", "--proc", "/proc", "--tmpfs", "/tmp"])
+    args.extend(["--ro-bind", runner, runner, "--ro-bind", connector_dir, connector_dir])
+    args.extend(["--bind", data_dir, data_dir, "--chdir", data_dir])
+    args.extend(["--setenv", "PATH", env.get("PATH", ""),
+                 "--setenv", "HOME", data_dir,
+                 "--setenv", "TMPDIR", "/tmp",
+                 "--setenv", "PYTHONIOENCODING", "utf-8",
+                 "--setenv", "PYTHONDONTWRITEBYTECODE", "1",
+                 "--setenv", "NEXUS_CONNECTOR_ORIGIN", "community"])
+    args.extend([py, "-u", runner, connector])
+    return args
 
 
 # ───────────────────────── code validation ─────────────────────────
@@ -464,8 +498,14 @@ class Worker:
         data = self.br.ddir(self.cid); os.makedirs(data, exist_ok=True)
         env = {k: v for k, v in os.environ.items() if k in ("PATH", "SYSTEMROOT", "TEMP", "TMP", "LANG", "LC_ALL", "PYTHONPATH_NEXUS")}
         env["PYTHONIOENCODING"] = "utf-8"
-        env["NEXUS_CONNECTOR_ORIGIN"] = str((self.br.meta(self.cid) or {}).get("origin", "private"))
-        self.proc = subprocess.Popen([py, "-u", os.path.join(self.br.home, "runner.py"), os.path.join(d, "connector.py")], stdin=subprocess.PIPE,
+        origin = str((self.br.meta(self.cid) or {}).get("origin", "private"))
+        env["NEXUS_CONNECTOR_ORIGIN"] = origin
+        runner = os.path.join(self.br.home, "runner.py")
+        connector = os.path.join(d, "connector.py")
+        command = [py, "-u", runner, connector]
+        if origin == "community":
+            command = _community_sandbox_command(py, runner, connector, d, data, env)
+        self.proc = subprocess.Popen(command, stdin=subprocess.PIPE,
                                      stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=data, env=env, text=True, encoding="utf-8", bufsize=1)
         threading.Thread(target=self._read, daemon=True).start(); threading.Thread(target=self._err, daemon=True).start()
         if not self.ready.wait(25) or self.fatal:
@@ -563,6 +603,8 @@ class Bridge:
         if not ID_RE.match(cid): raise BridgeError("Invalid connector id")
         origin = pkg.get("origin", "private")
         if origin not in ("official", "private", "community"): raise BridgeError("Invalid origin")
+        if origin == "community" and (not sys.platform.startswith("linux") or not shutil.which("bwrap")):
+            raise BridgeError("Community connectors require Linux bubblewrap isolation. This system has no supported sandbox; installation was blocked.", "sandbox-unavailable", 503)
         for k in ("py", "ui", "web"):
             if not isinstance(pkg.get(k, ""), str) or len(pkg.get(k, "")) > MAX_CODE: raise BridgeError("The %s code is missing or too large" % k)
         res = analyze(pkg.get("py", ""), origin)   # re-checked here: never trust the web page
