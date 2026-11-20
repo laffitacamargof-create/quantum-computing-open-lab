@@ -88,7 +88,7 @@ assert.match(index, /function aiNexusRecs\(tool\)/);
 assert.match(index, /async function aiComplete\(messages, options\)/);
 assert.match(index, /const connectors = founderFallbackApprovedForCurrentTask \? \[\] : aiNexusRecs/);\nassert.match(index, /window\.confirm\([\s\S]*?founderFallbackApprovedForCurrentTask = true/);\nassert.match(index, /No provider switch was made; the selected connector remains active/);\nassert.match(index, /founderFallbackApprovedForCurrentTask = false/);
 assert.match(index, /a\.provider = 'gateway';[\s\S]*?a\.model = 'auto'/);
-assert.match(index, /Do not pin the request to the first connector/);
+assert.match(index, /Use the selected external AI connector directly/);
 assert.match(core, /nexus_submit_connector/);
 assert.match(protocol, /function brokerWindow/);
 assert.match(protocol, /NEXUS_API_REQUEST/);
