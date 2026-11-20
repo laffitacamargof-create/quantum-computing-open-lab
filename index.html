@@ -1294,10 +1294,10 @@ class QuOLabNexusConfigSyncReader {
         const result = await NXC().ai.chat({ tool:o.tool || 'chat', messages, max_tokens:o.tokens, temperature:o.temp });
         return result.text;
       } catch (error) {
-        notify('All enabled Nexus AI connectors failed; trying the configured AI fallback.');
+        notify('The active external AI connector failed: ' + (error && error.message || 'unknown error'));
+        throw error;
       }
     }
-    if (aiCfg.provider === 'gateway') return callMultiModelGateway(messages, o.tokens, o.temp);
     return null;
   }
   async function handleModuleMsg(event, data) {
@@ -2255,9 +2255,8 @@ class QuOLabNexusConfigSyncReader {
 
   // ── AI ──
   function isAIAvailable() {
-    // The multi-provider gateway keeps provider keys server-side in Supabase;
-    // an empty browser-side key is expected and must not trigger demo mode.
-    return !!aiNexusRec() || aiCfg.provider === 'gateway' || aiCfg.provider === 'deepseek' || (!!aiCfg.key && aiCfg.provider !== 'none');
+    // QNexusAi is available only through an explicitly enabled Nexus AI connector.
+    return !!aiNexusRec();
   }
 
   function setupAI() {
@@ -2267,20 +2266,8 @@ class QuOLabNexusConfigSyncReader {
     const lbl = document.getElementById('ai-prov-lbl');
     if (isAIAvailable()) {
       const nexusRec = aiNexusRec();
-      if (nexusRec) {
-        if (dot) dot.className = 'ai-status-dot ok';
-        const count = aiNexusRecs().length;
-        if (txt) txt.textContent = count > 1
-          ? 'QNexusAi · ' + count + ' AI APIs active · automatic failover'
-          : 'QNexusAi · Nexus connector · ' + nexusRec.name;
-      } else {
-        if (dot) dot.className = 'ai-status-dot ok';
-        if (txt) txt.textContent = aiCfg.provider === 'gateway'
-          ? 'QNexusAi · founder multi-provider gateway'
-          : aiCfg.provider === 'deepseek'
-            ? 'QNexusAi · founder DeepSeek'
-            : 'QNexusAi · founder provider active';
-      }
+      if (dot) dot.className = 'ai-status-dot ok';
+      if (txt) txt.textContent = 'QNexusAi · Nexus connector · ' + nexusRec.name;
       if (lbl) lbl.textContent = '';
     } else {
       if (dot) dot.className = 'ai-status-dot';
@@ -3031,17 +3018,7 @@ CONTEXT (staged and size-limited): ${c}`;
     ];
     const nexusResult = await aiComplete(msgs, { tool:'chat', tokens, temp });
     if (nexusResult !== null) return nexusResult;
-    if (aiCfg.provider === 'gateway') {
-      return await callMultiModelGateway(msgs, tokens, temp);
-    }
-    const endpoints = {
-      mistral:     'https://api.mistral.ai/v1/chat/completions',
-      groq:        'https://api.groq.com/openai/v1/chat/completions',
-      openai:      'https://api.openai.com/v1/chat/completions',
-      deepseek:    'https://api.deepseek.com/chat/completions',
-      openrouter:  'https://openrouter.ai/api/v1/chat/completions',
-      cerebras:    'https://api.cerebras.ai/v1/chat/completions',
-    };
+    throw new Error('No external AI connector is enabled. Create an AI API in Nexus Connectors and switch it ON for QNexusAi.');
     if (aiCfg.provider === 'gemini') {
       const model = aiCfg.model || 'gemini-1.5-flash';
       const contents = msgs.filter(m => m.role !== 'system').map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] }));
