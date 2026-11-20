@@ -601,7 +601,7 @@
   async function requestAssigned(o) {
     o = o || {};
     const moduleId = String(o.moduleId || ''), kind = String(o.kind || '').toLowerCase(), tool = String(o.tool || '');
-    if (!moduleId || !['cpu','qpu','storage'].includes(kind) || !tool) throw NexusError('route', 'Invalid Nexus route identity');
+    if (!moduleId || !['cpu','qpu','storage'].includes(kind) || !tool || TOOL_MODULE[tool] !== moduleId) throw NexusError('route', 'Invalid Nexus route identity: module and tool do not match.');
     const assigned = Assignments.get(moduleId, kind);
     const ids = Array.isArray(assigned) ? assigned : (assigned && assigned !== 'founder' ? [assigned] : []);
     const expected = kind === 'cpu' ? 'classical' : kind === 'qpu' ? 'quantum' : 'storage';
