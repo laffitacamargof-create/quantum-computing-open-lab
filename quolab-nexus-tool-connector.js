@@ -1,9 +1,9 @@
-/* QuOLab Nexus Tool Connector — sanitized telemetry bridge v1.9.0 */
+/* QuOLab Nexus Tool Connector — sanitized telemetry bridge v1.9.1 */
 (function (global) {
   'use strict';
   if (global.QuOLabNexusToolConnector) return;
 
-  const VERSION = '1.9.0';
+  const VERSION = '1.9.1';
   const TOOL_BY_FILE = {
     'quolab-nexus-projects.html': 'projects',
     'quolab-nexus-architect.html': 'architect',

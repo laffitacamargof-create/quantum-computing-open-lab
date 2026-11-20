@@ -1213,7 +1213,7 @@ class QuOLabNexusConfigSyncReader {
       const expected = connectorCategory(kind);
       const records = nx ? ids.map(id => nx.Store.get(id)).filter(r =>
         r && r.kind === 'ext' && (!expected || (r.ext && r.ext.category === expected))) : [];
-      out[kind] = { source: records.length ? 'nexus' : 'founder', name: records.map(r => r.name).join(', ') || 'Founder default',
+      out[kind] = { source: records.length ? 'nexus' : 'unconfigured', name: records.map(r => r.name).join(', ') || 'No connector assigned',
         options: records.map(r => ({ id:r.id, name:r.name, category:r.ext.category })) };
     });
     return out;
@@ -1275,10 +1275,10 @@ class QuOLabNexusConfigSyncReader {
       try {
         if (!apiSlots[key]) throw new Error('Unknown API slot "' + slot + '"');
         const nx = NXC();
-        if (!nx || typeof nx.requestAssigned !== 'function') throw new Error('Nexus Connectors broker is unavailable');
+        if (!nx || typeof nx.requestAssigned !== 'function') throw new Error('Nexus Connectors module is unavailable. Open the Connectors module and configure an external API for this tool.');
         const result = await nx.requestAssigned({
           moduleId:apiMod, kind:slot, tool:TOOL_OF[apiMod] || 'chat',
-          connector:data.connector, fallbackBase:founderBase(key), method,
+          connector:data.connector, method,
           path:data.path || '', headers:data.headers, body:data.body, timeout:data.timeout
         });
         reply({ type:'OPENQ_API_RESULT', id:data.id, ok:true, status:result.status, headers:result.headers, text:result.text, source:result.source, connector:result.connector });
