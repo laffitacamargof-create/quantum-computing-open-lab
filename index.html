@@ -1226,9 +1226,9 @@ class QuOLabNexusConfigSyncReader {
       const rec = nx.Store.get(id);
       return rec && rec.kind === 'ext' && nx.Policy.allowed(rec, tool) && rec.ext && rec.ext.category === expected;
     };
-    if (ordered.some(compatible)) return true;
-    const automatic = nx.Policy.pick('ext', tool, requested);
-    return !!(automatic && automatic.ext && automatic.ext.category === expected);
+    if (value === 'founder' || !ids.length) return false;
+    if (requested && !ids.includes(requested)) return false;
+    return ordered.some(compatible);
   }
   function routesFor(mod) {
     const out = {}, nx = NXC();
@@ -1238,9 +1238,8 @@ class QuOLabNexusConfigSyncReader {
       const expected = connectorCategory(kind);
       const records = nx ? ids.map(id => nx.Store.get(id)).filter(r =>
         r && r.kind === 'ext' && (!expected || (r.ext && r.ext.category === expected))) : [];
-      const automatic = nx ? nx.Policy.pick('ext', TOOL_OF[mod] || 'chat') : null;
-      const selected = records[0] || (automatic && automatic.ext && automatic.ext.category === expected ? automatic : null);
-      const founder = founderRouteFor(mod, kind);
+      const selected = value !== 'founder' ? (records[0] || null) : null;
+      const founder = value === 'founder' ? founderRouteFor(mod, kind) : null;
       const route = selected ? 'nexus' : (founder ? 'founder' : 'unconfigured');
       out[kind] = { source:route, name:selected ? selected.name : (founder ? founder.name : 'No connector or Founder service configured'),
         options:records.map(r => ({ id:r.id, name:r.name, category:r.ext.category })) };
