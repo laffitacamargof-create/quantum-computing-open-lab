@@ -619,6 +619,25 @@
       }));
       localStorage.setItem(LS_ASSIGNMENTS, JSON.stringify(a)); emitChange(false);
     },
+    normalize() {
+      const assignments = this.all();
+      Object.keys(TOOL_MODULE).forEach(tool => {
+        const moduleId = TOOL_MODULE[tool], rule = SLOT_RULES[tool], slots = assignments[moduleId] || {};
+        Object.keys(rule).forEach(kind => {
+          const value = slots[kind];
+          if (value == null || value === 'founder') return;
+          const ids = Array.isArray(value) ? value.slice() : [value];
+          const kept = ids.slice(0, rule[kind]);
+          const dropped = ids.slice(rule[kind]);
+          slots[kind] = kept.length ? (rule[kind] === 1 ? kept[0] : kept) : 'founder';
+          dropped.forEach(id => Store.patch(id, rec => { rec.tools = (rec.tools || []).filter(t => t !== tool); if (!rec.tools.length) rec.usage = 'off'; }));
+        });
+        assignments[moduleId] = slots;
+      });
+      localStorage.setItem(LS_ASSIGNMENTS, JSON.stringify(assignments));
+      emitChange(false);
+      return assignments;
+    },
     resolve(moduleId, kind) { const value = this.get(moduleId, kind); if (value === 'founder') return null; return (Array.isArray(value) ? value : [value]).map(id => Store.get(id)).filter(Boolean); }
   };
   const onceLocks = new Set();
