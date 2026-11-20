@@ -1,0 +1,33 @@
+name: QNexusAi agent regression
+on:
+  push:
+    branches: [main, 'fix/qnexusai-agent-routing-*']
+  pull_request:
+    branches: [main]
+jobs:
+  infer-regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Verify tool routing across active screens
+        run: node tests/qnexusai-agent-regression.cjs
+      - name: Check main application module syntax
+        run: |
+          python - <<'PY'
+          import re
+          from pathlib import Path
+          source = Path("index.html").read_text(encoding="utf-8")
+          blocks = re.findall(r'<script type="module">([\s\S]*?)</script>', source)
+          if len(blocks) != 1:
+              raise SystemExit(f"Expected one main module script, found {len(blocks)}")
+          Path("/tmp/qnexus-index.mjs").write_text(blocks[0], encoding="utf-8")
+          PY
+          node --check /tmp/qnexus-index.mjs
+          node --check quolab-nexus-cloud-sync.js
+      - name: Verify browser and gateway guardrails
+        run: |
+          grep -q 'providerDeadline' supabase/functions/quolab-nexus-ai/index.ts
+          ! grep -q 'SUPABASE_SERVICE_KEY' quolab-nexus-cloud-sync.js
