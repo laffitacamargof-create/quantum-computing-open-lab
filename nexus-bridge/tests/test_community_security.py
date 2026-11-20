@@ -68,6 +68,7 @@ async def run(ctx):
             outside = Path(root) / "outside.txt"
             source = data / "source.txt"
             source.write_text("inside", encoding="utf-8")
+            outside.write_text("outside", encoding="utf-8")
             script = r'''
 import importlib.util, os, sys
 from pathlib import Path
@@ -78,7 +79,7 @@ os.chdir(data)
 m._community_audit(str(Path(sys.argv[1])))
 blocked_read = False
 try:
-    open(str(outside), "w").write("escape")
+    open(str(outside), "r").read()
 except PermissionError:
     blocked_read = True
 try:
@@ -87,7 +88,7 @@ except PermissionError:
     pass
 else:
     raise SystemExit("rename escape was not blocked")
-if not blocked_read or outside.exists() or not (data / "source.txt").exists():
+if not blocked_read or outside.read_text(encoding="utf-8") != "outside" or not (data / "source.txt").exists():
     raise SystemExit("filesystem audit did not enforce the private data boundary")
 print("ok")
 '''
