@@ -34,14 +34,14 @@ OP_PERM = {
     "fs.list": "file.read", "fs.read": "file.read", "fs.write": "file.write", "fs.delete": "file.write",
     "http.request": "net.http", "proc.run": "proc.run", "emit": None, "log": None,
 }
-COMMUNITY_REQUIRES = {"numpy", "scipy"}
-SAFE_IMPORTS = {"nexus", "numpy", "scipy", "math", "cmath", "json", "re", "time", "asyncio", "typing", "dataclasses", "collections",
+COMMUNITY_REQUIRES = set()
+SAFE_IMPORTS = {"nexus", "math", "cmath", "json", "re", "time", "typing", "dataclasses", "collections",
                 "itertools", "functools", "statistics", "random", "base64", "hashlib", "datetime", "struct", "enum", "decimal", "fractions", "string", "textwrap"}
 FORBIDDEN_CALLS = {"eval", "exec", "compile", "__import__", "open", "globals", "locals", "vars", "getattr", "setattr", "delattr", "input", "breakpoint", "memoryview"}
 ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 REQ_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._\-\[\],<>=!~ ]{0,80}$")
 MAX_CODE = 60000
-LOCAL_ORIGIN = re.compile(r"^http://(localhost|127\.0\.0\.1)(:\d+)?$")
+LOCAL_ORIGIN = re.compile(r"^http://(localhost|127\.0\.0\.1)(:8765)?$")
 
 
 class BridgeError(Exception):
@@ -112,9 +112,13 @@ def analyze(code, mode):
                 f = node.func
                 if isinstance(f, ast.Name) and f.id in FORBIDDEN_CALLS: res["errors"].append("Line %d: %s() is not allowed in community connectors" % (node.lineno, f.id))
             elif isinstance(node, ast.Attribute):
-                if node.attr.startswith("__") and node.attr.endswith("__"): res["errors"].append("Line %d: access to %s is not allowed in community connectors" % (node.lineno, node.attr))
+                if (node.attr.startswith("__") and node.attr.endswith("__")) or node.attr in {"sys", "os", "subprocess", "socket", "modules", "loader", "builtins", "ctypes", "f2py"}:
+                    res["errors"].append("Line %d: access to %s is not allowed in community connectors" % (node.lineno, node.attr))
+                if node.attr in {"format", "format_map"} and isinstance(node.ctx, ast.Load):
+                    res["errors"].append("Line %d: str.format is not allowed in community connectors" % node.lineno)
             elif isinstance(node, ast.Name):
-                if node.id in ("__builtins__", "__loader__", "__spec__"): res["errors"].append("Line %d: %s is not allowed in community connectors" % (node.lineno, node.id))
+                if node.id in {"__builtins__", "__loader__", "__spec__", "sys", "os", "subprocess", "socket", "builtins", "importlib"}:
+                    res["errors"].append("Line %d: %s is not allowed in community connectors" % (node.lineno, node.id))
     res["errors"] = list(dict.fromkeys(res["errors"]))
     return res
 
@@ -127,7 +131,10 @@ def _public(ip):
 
 
 def _resolve_public(host, port):
-    ips = [i[4][0] for i in socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)]
+    try:
+        ips = [i[4][0] for i in socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)]
+    except (OSError, socket.gaierror) as e:
+        raise BridgeError("The connector host could not be resolved", "dns", 502)
     if not ips or not all(_public(ip) for ip in ips):
         raise BridgeError("Blocked: that address points to this computer or a private network", "denied", 403)
     return ips[0]
@@ -381,7 +388,56 @@ def _reader():
                 _loop.call_soon_threadsafe(_set)
     os._exit(0)  # bridge closed the pipe
 
+def _inside(path, root):
+    try:
+        path = os.path.realpath(os.fsdecode(path))
+        root = os.path.realpath(root)
+        return os.path.commonpath((path, root)) == root
+    except Exception:
+        return False
+
+def _community_audit(connector_path):
+    data_root = os.path.realpath(os.getcwd())
+    connector_root = os.path.realpath(os.path.dirname(connector_path))
+    python_root = os.path.realpath(sys.prefix)
+    blocked_events = {
+        "subprocess.Popen", "os.system", "os.exec", "os.spawn", "os.fork",
+        "socket.connect", "socket.bind", "socket.getaddrinfo", "socket.gethostbyname",
+        "ctypes.dlopen", "ctypes.dlsym", "pty.spawn"
+    }
+    write_events = {"os.remove", "os.rename", "os.mkdir", "os.rmdir", "os.chmod",
+                    "os.chown", "os.link", "os.symlink", "os.truncate", "os.utime"}
+    def audit(event, args):
+        if event in blocked_events:
+            raise PermissionError("Community connector blocked OS/network operation: " + event)
+        if event == "open" and args:
+            path = args[0]
+            if isinstance(path, (str, bytes, os.PathLike)):
+                mode = args[1] if len(args) > 1 else None
+                flags = args[2] if len(args) > 2 and isinstance(args[2], int) else 0
+                writing = (isinstance(mode, str) and any(ch in mode for ch in "wax+")) or bool(flags & (os.O_WRONLY | os.O_RDWR | os.O_CREAT | os.O_TRUNC | os.O_APPEND))
+                if writing:
+                    if not _inside(path, data_root):
+                        raise PermissionError("Community connector may write only inside its private data directory")
+                elif not (_inside(path, data_root) or _inside(path, connector_root) or _inside(path, python_root)):
+                    raise PermissionError("Community connector may read only its code, Python runtime and private data directory")
+        if event in write_events and args:
+            if not _inside(args[0], data_root):
+                raise PermissionError("Community connector may modify only its private data directory")
+    sys.addaudithook(audit)
+    try:
+        import resource
+        resource.setrlimit(resource.RLIMIT_CPU, (15, 20))
+        resource.setrlimit(resource.RLIMIT_FSIZE, (10 * 1024 * 1024, 10 * 1024 * 1024))
+        resource.setrlimit(resource.RLIMIT_NOFILE, (64, 64))
+        if hasattr(resource, "RLIMIT_AS"):
+            resource.setrlimit(resource.RLIMIT_AS, (512 * 1024 * 1024, 512 * 1024 * 1024))
+    except (ImportError, OSError, ValueError):
+        pass
+
 def main(path):
+    if os.environ.get("NEXUS_CONNECTOR_ORIGIN") == "community":
+        _community_audit(path)
     try:
         spec = importlib.util.spec_from_file_location("connector_main", path)
         mod = importlib.util.module_from_spec(spec); spec.loader.exec_module(mod)
@@ -408,6 +464,7 @@ class Worker:
         data = self.br.ddir(self.cid); os.makedirs(data, exist_ok=True)
         env = {k: v for k, v in os.environ.items() if k in ("PATH", "SYSTEMROOT", "TEMP", "TMP", "LANG", "LC_ALL", "PYTHONPATH_NEXUS")}
         env["PYTHONIOENCODING"] = "utf-8"
+        env["NEXUS_CONNECTOR_ORIGIN"] = str((self.br.meta(self.cid) or {}).get("origin", "private"))
         self.proc = subprocess.Popen([py, "-u", os.path.join(self.br.home, "runner.py"), os.path.join(d, "connector.py")], stdin=subprocess.PIPE,
                                      stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=data, env=env, text=True, encoding="utf-8", bufsize=1)
         threading.Thread(target=self._read, daemon=True).start(); threading.Thread(target=self._err, daemon=True).start()
@@ -694,6 +751,11 @@ def make_handler(br, port):
                     raw = self.rfile.read(n) if n else b""
                     body = json.loads(raw.decode("utf-8")) if raw else {}
                     if not isinstance(body, dict): raise BridgeError("JSON object expected")
+                if path == "/analyze" and method == "POST":
+                    code = body.get("code", "")
+                    if not isinstance(code, str): raise BridgeError("Python code must be text")
+                    result = analyze(code, "community")
+                    return self._send(200, result, o)
                 if path == "/info" and method == "GET":
                     ok, why = br.ble.available()
                     return self._send(200, {"version": VERSION, "platform": platform.system() + " " + platform.release(), "python": platform.python_version(),

@@ -2,7 +2,7 @@
 <html lang="en" id="root">
 <head>
 <script src="quolab-nexus-core.js"></script>
-<script src="quolab-nexus-connectors-core.js?v=20261120-ai-parallel-1"></script>
+<script src="quolab-nexus-connectors-core.js?v=20261120-connectors-hardening-1"></script>
 <script defer src="quolab-nexus-agent.js?v=1.9.0"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -1173,6 +1173,12 @@ class QuOLabNexusConfigSyncReader {
   function aiNexusRecs(tool) { const nx=NXC(); return nx && nx.Policy ? (typeof nx.Policy.list === 'function' ? nx.Policy.list('ai', tool || 'chat') : [nx.Policy.pick('ai', tool || 'chat')].filter(Boolean)) : []; }
   function aiNexusRec(tool) { return aiNexusRecs(tool)[0] || null; }
   function moduleOf(win) {
+    // Identify the opaque-origin published app iframe before walking up to Puzzle.
+    const puzzleRoot = iframes['quantum-puzzle'];
+    try {
+      const appFrame = puzzleRoot && puzzleRoot.contentDocument && puzzleRoot.contentDocument.getElementById('execIframe');
+      if (appFrame && appFrame.contentWindow === win && appFrame.dataset.appId) return 'app:' + appFrame.dataset.appId;
+    } catch (_) {}
     for (const key of Object.keys(iframes)) {
       const rootFrame = iframes[key]; if (!rootFrame || !rootFrame.contentWindow) continue;
       let current = win, depth = 0;
@@ -1226,9 +1232,9 @@ class QuOLabNexusConfigSyncReader {
       const rec = nx.Store.get(id);
       return rec && rec.kind === 'ext' && nx.Policy.allowed(rec, tool) && rec.ext && rec.ext.category === expected;
     };
-    if (ordered.some(compatible)) return true;
-    const automatic = nx.Policy.pick('ext', tool, requested);
-    return !!(automatic && automatic.ext && automatic.ext.category === expected);
+    // An explicit slot assignment is authoritative, including a disabled or
+    // deleted connector. Never silently route to another connector or Founder.
+    return value !== 'founder' && ordered.length > 0;
   }
   function routesFor(mod) {
     const out = {}, nx = NXC();
@@ -1237,12 +1243,12 @@ class QuOLabNexusConfigSyncReader {
       const ids = Array.isArray(value) ? value : (value && value !== 'founder' ? [value] : []);
       const expected = connectorCategory(kind);
       const records = nx ? ids.map(id => nx.Store.get(id)).filter(r =>
-        r && r.kind === 'ext' && (!expected || (r.ext && r.ext.category === expected))) : [];
-      const automatic = nx ? nx.Policy.pick('ext', TOOL_OF[mod] || 'chat') : null;
-      const selected = records[0] || (automatic && automatic.ext && automatic.ext.category === expected ? automatic : null);
-      const founder = founderRouteFor(mod, kind);
+        r && r.kind === 'ext' && (!expected || (r.ext && r.ext.category === expected)) && nx.Policy.allowed(r, TOOL_OF[mod] || 'chat')) : [];
+      const explicitlyAssigned = value !== 'founder';
+      const selected = records[0] || null;
+      const founder = explicitlyAssigned ? null : founderRouteFor(mod, kind);
       const route = selected ? 'nexus' : (founder ? 'founder' : 'unconfigured');
-      out[kind] = { source:route, name:selected ? selected.name : (founder ? founder.name : 'No connector or Founder service configured'),
+      out[kind] = { source:route, name:selected ? selected.name : (explicitlyAssigned ? 'Assigned connector unavailable' : (founder ? founder.name : 'No connector or Founder service configured')),
         options:records.map(r => ({ id:r.id, name:r.name, category:r.ext.category })) };
     });
     return out;
@@ -1282,6 +1288,8 @@ class QuOLabNexusConfigSyncReader {
   }
   async function aiComplete(messages, options) {
     const o = options || {}, connectors = aiNexusRecs(o.tool || 'chat');
+    const configuredUserAI = !!(NXC() && NXC().Store && NXC().Store.byKind('ai').length);
+    if (!connectors.length && configuredUserAI && !aiFallbackApproved()) throw new Error('No active user AI connector is available. Enable one or explicitly approve Founder gateway fallback.');
     if (connectors.length) {
       try {
         // Do not pin the request to the first connector: the broker rotates through
@@ -1298,16 +1306,32 @@ class QuOLabNexusConfigSyncReader {
   }
   async function handleModuleMsg(event, data) {
     const rootMod = moduleOf(event.source); if (!rootMod) return;
-    // A nested App Studio iframe is physically inside Quantum Puzzle. Trust its
-    // declared identity only when the message really comes from that exact iframe.
-    let mod = rootMod;
-    if (data.module && TOOL_OF[data.module] && data.module !== rootMod) {
+    const appId = rootMod.startsWith('app:') ? rootMod.slice(4) : null;
+    // Published apps are separate principals. They can only ask for the Puzzle
+    // CPU/QPU slots and must obtain per-app, per-connector user consent.
+    let mod = appId ? 'quantum-puzzle' : rootMod;
+    if (!appId && data.module && TOOL_OF[data.module] && data.module !== rootMod) {
       const puzzle = iframes['quantum-puzzle'];
       const studio = puzzle && puzzle.contentDocument && puzzle.contentDocument.getElementById('studioIframe');
       if (data.module !== 'quantum-app-studio' || rootMod !== 'quantum-puzzle' || !studio || event.source !== studio.contentWindow) return;
       mod = data.module;
     }
-    const reply = payload => { try { event.source.postMessage(payload, location.origin); } catch (_) {} };
+    // Opaque-origin sandboxed apps cannot receive a reply targeted at location.origin.
+    const reply = payload => { try { event.source.postMessage(payload, '*'); } catch (_) {} };
+    // Only the Puzzle module itself and its explicitly registered App Studio iframe
+    // may reach the shell broker. Published app iframes are never treated as Puzzle.
+    if (appId) {
+      const puzzleFrame = iframes['quantum-puzzle'];
+      const appFrame = puzzleFrame && puzzleFrame.contentDocument && puzzleFrame.contentDocument.getElementById('execIframe');
+      if (!appFrame || event.source !== appFrame.contentWindow || String(appFrame.dataset.appId || '') !== appId) return;
+      if (data.type === 'OPENQ_API_REGISTER') { reply({type:'OPENQ_API_ROUTES',id:data.id,ok:false,error:'Published apps cannot register or change Nexus routes.'}); return; }
+    } else if (rootMod === 'quantum-puzzle') {
+      const puzzleFrame = iframes['quantum-puzzle'];
+      const studioFrame = puzzleFrame && puzzleFrame.contentDocument && puzzleFrame.contentDocument.getElementById('studioIframe');
+      const fromPuzzle = !!puzzleFrame && event.source === puzzleFrame.contentWindow;
+      const fromStudio = mod === 'quantum-app-studio' && !!studioFrame && event.source === studioFrame.contentWindow;
+      if (!fromPuzzle && !fromStudio) return;
+    }
     if (data.type === 'OPENQ_API_REGISTER') {
       const apiMod = mod;
       const slot = String(data.slot || '').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 32);
@@ -1319,15 +1343,7 @@ class QuOLabNexusConfigSyncReader {
     }
     if (data.type === 'OPENQ_GET_API_ROUTES') { const apiMod = mod; reply({ type:'OPENQ_API_ROUTES', id:data.id, ok:true, routes:routesFor(apiMod) }); return; }
     if (data.type === 'OPENQ_AI_CHAT') {
-      try {
-        const messages = Array.isArray(data.messages) ? data.messages.slice(0,40) : [];
-        if (!messages.length || !messages.every(m => m && ['system','user','assistant'].includes(m.role) && typeof m.content === 'string' && m.content.length < 60000)) throw new Error('Invalid AI messages');
-        const apiMod = mod;
-        const tool = TOOL_OF[apiMod] || 'chat';
-        const text = await aiComplete(messages, { tool, tokens:data.max_tokens, temp:data.temperature });
-        const result = text == null ? await callAI(messages[messages.length-1].content, null, { historyLimit:0, systemSuffix:messages[0] && messages[0].role === 'system' ? messages[0].content : '' }) : text;
-        reply({ type:'OPENQ_AI_RESULT', id:data.id, ok:true, text:result, source:aiNexusRec(tool) ? 'nexus' : 'founder' });
-      } catch (error) { reply({ type:'OPENQ_AI_RESULT', id:data.id, ok:false, error:String(error.message || error) }); }
+      reply({ type:'OPENQ_AI_RESULT', id:data.id, ok:false, error:'AI access is restricted to QNexusAi. Module and app messages cannot invoke AI providers.' });
       return;
     }
     if (data.type === 'OPENQ_API_REQUEST') {
@@ -1340,6 +1356,24 @@ class QuOLabNexusConfigSyncReader {
         if (!apiSlots[key]) throw new Error('Unknown API slot "' + slot + '"');
         let result;
         const nx = NXC();
+        if (appId) {
+          if (!['cpu','qpu'].includes(slot)) throw new Error('Published apps may use only their assigned CPU or QPU slot.');
+          if (!nx || !nx.Assignments) throw new Error('Nexus connector assignments are unavailable.');
+          const assigned = nx.Assignments.get('quantum-puzzle', slot);
+          const assignedIds = assigned === 'founder' ? [] : (Array.isArray(assigned) ? assigned : [assigned]);
+          if (!assignedIds.length) throw new Error('No CPU/QPU connector is assigned to Quantum Puzzle.');
+          if (data.connector && !assignedIds.includes(data.connector)) throw new Error('This connector is not assigned to the Quantum Puzzle slot.');
+          for (const connectorId of assignedIds) {
+            const rec = nx.Store.get(connectorId);
+            if (!rec || rec.usage === 'off') throw new Error('An assigned Puzzle connector is unavailable; reassign it before allowing this app.');
+            const consentKey = 'nexus_app_connector_consent_v1:' + encodeURIComponent(appId) + ':' + encodeURIComponent(connectorId);
+            if (localStorage.getItem(consentKey) !== '1') {
+              const allow = window.confirm('Allow published Quantum App ' + appId + ' to use ' + rec.name + ' (' + slot.toUpperCase() + ')?');
+              if (!allow) throw new Error('Connector access was not approved for this app.');
+              localStorage.setItem(consentKey, '1');
+            }
+          }
+        }
         if (hasNexusRoute(apiMod, slot, data.connector)) {
           if (!nx || typeof nx.requestAssigned !== 'function') throw new Error('Nexus Connectors broker is unavailable');
           result = await nx.requestAssigned({
@@ -1356,7 +1390,10 @@ class QuOLabNexusConfigSyncReader {
   }
   window.addEventListener('message', e => {
     const d = e.data; if (!d?.type) return;
-    if (e.origin !== location.origin) return;
+    // Sandboxed published apps have an opaque origin ("null"). Only broker
+    // messages are admitted from them; handleModuleMsg verifies the exact iframe.
+    const opaqueBrokerMessage = e.origin === 'null' && ['OPENQ_API_REQUEST','OPENQ_GET_API_ROUTES','OPENQ_AI_CHAT','OPENQ_API_REGISTER'].includes(d.type);
+    if (e.origin !== location.origin && !opaqueBrokerMessage) return;
     // Canonicalize legacy module messages, then adapt them for the shell's established handlers.
     if (window.QuOLabNexusCore) {
       Object.assign(d, window.QuOLabNexusCore.normalizeIncoming(d));

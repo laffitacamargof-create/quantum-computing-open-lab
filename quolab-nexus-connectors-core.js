@@ -99,7 +99,7 @@
       text = String(text == null ? '' : text);
       const iv = crypto.getRandomValues(new Uint8Array(12));
       const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, await this.key(), enc.encode(text));
-      return { iv: b64(iv), ct: b64(ct), hint: text.length > 8 ? text.slice(0, 3) + '••••' + text.slice(-4) : '••••••••' };
+      return { iv: b64(iv), ct: b64(ct), hint: text.length >= 16 ? '••••••••' + text.slice(-4) : '••••••••' };
     },
     async open(o) {
       if (!o || !o.ct) return '';
@@ -126,7 +126,7 @@
       this.save(l); return rec;
     },
     patch(id, fn) { const r = this.get(id); if (!r) return null; fn(r); return this.upsert(r); },
-    remove(id) { this.save(this.all().filter(r => r.id !== id)); },
+    remove(id) { this.save(this.all().filter(r => r.id !== id)); try { Assignments.remove(id); } catch (_) {} },
     byKind(k) { return this.all().filter(r => r.kind === k); },
     subscribe(f) { listeners.add(f); return () => listeners.delete(f); },
   };
@@ -192,6 +192,13 @@
       if (rec.usage === 'off') return false;
       if (rec.kind === 'ai') return tool === 'chat';
       if (tool === 'chat') return false;
+      if (rec.kind === 'ext') {
+        const moduleId = TOOL_MODULE[tool], kind = rec.ext && ASSIGN_KIND[rec.ext.category];
+        if (!moduleId || !kind || !Assignments) return false;
+        const value = Assignments.get(moduleId, kind);
+        const ids = value === 'founder' ? [] : (Array.isArray(value) ? value : [value]);
+        return ids.includes(rec.id);
+      }
       return (rec.tools || []).includes(tool);
     },
     list(kind, tool, id) {
@@ -265,18 +272,22 @@
       // AI requests are intentionally fanned out: every enabled provider gets the
       // same prompt, and the first valid answer wins. Losing browser requests are
       // aborted as soon as possible; providers may still bill a request already received.
-      const attempts = connectors.map((rec, index) => this._call(rec, Object.assign({}, o, { signal:controllers[index].signal }))
-        .then(text => {
-          Policy.consume(rec);
-          return { text, rec };
-        })
-        .catch(error => {
-          failures.push({ id:rec.id, name:rec.name, provider:rec.ai.provider, error:String(error && error.message || error) });
-          throw error;
-        }));
+      const reservations = new Map();
+      const attempts = connectors.map((rec, index) => {
+        let reservation;
+        try { reservation = reserveOnce(rec); reservations.set(rec.id, reservation); }
+        catch (error) { failures.push({id:rec.id,name:rec.name,provider:rec.ai.provider,error:error.message}); return Promise.reject(error); }
+        return this._call(rec, Object.assign({}, o, { signal:controllers[index].signal }))
+          .then(text => { reservation.commit(); return { text, rec }; })
+          .catch(error => {
+            reservation.release();
+            failures.push({ id:rec.id, name:rec.name, provider:rec.ai.provider, error:String(error && error.message || error) });
+            throw error;
+          });
+      });
       try {
         const winner = await Promise.any(attempts);
-        controllers.forEach((controller, index) => { if (connectors[index].id !== winner.rec.id) controller.abort(); });
+        controllers.forEach((controller, index) => { if (connectors[index].id !== winner.rec.id) { controller.abort(); const r=reservations.get(connectors[index].id); if(r) r.release(); } });
         return { text:winner.text, connector:winner.rec.id, name:winner.rec.name, provider:winner.rec.ai.provider,
           model:winner.rec.ai.model || '', parallel:true, providers:connectors.map(r => r.name), failed:failures };
       } catch (_) {
@@ -352,16 +363,24 @@
     },
     _url(rec, path) { // the credentials can only ever travel to the registered address
       const base = new URL(rec.ext.baseUrl);
-      const u = new URL(path || '', base.href.endsWith('/') ? base.href : base.href + '/');
-      if (u.origin !== base.origin) throw NexusError('scope', 'This connector can only call ' + base.origin);
+      const rootPath = (base.pathname || '/').replace(/\/+$/, '') + '/';
+      const rawPath = String(path || '').trim();
+      if (/^[a-z][a-z0-9+.-]*:/i.test(rawPath) || rawPath.startsWith('//') || rawPath.includes('\\')) throw NexusError('scope', 'Invalid connector path');
+      const relative = rawPath.replace(/^\/+/, '');
+      const u = new URL(relative, base.origin + rootPath);
+      const normalizedRoot = rootPath.replace(/\/+$/, '') || '/';
+      if (u.origin !== base.origin || !(u.pathname === normalizedRoot || u.pathname.startsWith(rootPath))) throw NexusError('scope', 'This connector can only call paths below ' + normalizedRoot);
       return u.href;
     },
     async request(o) {
-      const rec = Policy.pick('ext', o.tool, o.connector);
-      if (!rec) throw NexusError('no-connector', 'No external connector is enabled for ' + (TOOLS[o.tool] || o.tool));
-      const out = await this._do(rec, o);
-      if (out && out.ok) Policy.consume(rec);
-      return out;
+      o = o || {};
+      if (!o.connector || !o.kind) throw NexusError('assignment-required', 'Specify an assigned connector and its category; use requestAssigned() for routed requests.');
+      const expected = o.kind === 'cpu' ? 'classical' : o.kind === 'qpu' ? 'quantum' : o.kind === 'storage' ? 'storage' : '';
+      const rec = Store.get(o.connector);
+      if (!expected || !rec || rec.kind !== 'ext' || !rec.ext || rec.ext.category !== expected || !Policy.allowed(rec, o.tool)) throw NexusError('no-connector', 'The selected connector is not enabled for this tool and category.');
+      const reservation = reserveOnce(rec);
+      try { const out = await this._do(rec, o); if (out && out.ok) reservation.commit(); else reservation.release(); return out; }
+      catch (e) { reservation.release(); throw e; }
     },
     async _do(rec, o) {
       const method = (o.method || 'GET').toUpperCase(), url = this._url(rec, o.path);
@@ -494,7 +513,7 @@
   /* ───────────────────────── record builders ───────────────────────── */
   const Make = {
     async ai(f) {
-      const rec = { id: f.id || uid(), kind: 'ai', name: f.name, usage: f.usage || 'always', tools: ['chat'], createdAt: f.createdAt,
+      const rec = { id: f.id || uid(), kind: 'ai', name: f.name, usage: f.usage === 'off' ? 'off' : 'always', tools: ['chat'], createdAt: f.createdAt,
         ai: { provider: f.provider, model: f.model || '', baseUrl: f.baseUrl || '' }, secrets: f.secrets || {} };
       if (f.apiKey) rec.secrets.apiKey = await Vault.seal(f.apiKey);
       return rec;
@@ -515,34 +534,99 @@
     },
   };
 
+  // AI providers intentionally do not support per-call "once": one user task may
+  // require multiple model turns. Normalize legacy once records to always.
+  Store.byKind('ai').forEach(r => { if (r.usage === 'once') Store.patch(r.id, x => { x.usage = 'always'; }); });
+
+  const SLOT_RULES = {
+    open_lab:{cpu:1,qpu:1,storage:Infinity}, notebook:{cpu:1,qpu:0,storage:Infinity},
+    apps:{cpu:Infinity,qpu:Infinity,storage:0}, app_studio:{cpu:1,qpu:1,storage:1}
+  };
+  const TOOL_MODULE = {open_lab:'architect',notebook:'architect-pro',apps:'quantum-puzzle',app_studio:'quantum-app-studio'};
+  const ASSIGN_KIND = {classical:'cpu',quantum:'qpu',storage:'storage'};
   const Assignments = {
     all() { try { return JSON.parse(localStorage.getItem(LS_ASSIGNMENTS) || '{}') || {}; } catch (_) { return {}; } },
     get(moduleId, kind) { const a = this.all(); const v = a[moduleId] && a[moduleId][kind]; return v == null ? 'founder' : v; },
-    set(moduleId, kind, value) { const a = this.all(); a[moduleId] = Object.assign({}, a[moduleId] || {}, { [kind]: value }); localStorage.setItem(LS_ASSIGNMENTS, JSON.stringify(a)); emitChange(false); return value; },
-    resolve(moduleId, kind) { const value = this.get(moduleId, kind); if (value === 'founder') return null; if (Array.isArray(value)) return value.map(id => Store.get(id)).filter(Boolean); return Store.get(value) || null; }
+    set(moduleId, kind, value) {
+      const tool = Object.keys(TOOL_MODULE).find(t => TOOL_MODULE[t] === moduleId), rule = tool && SLOT_RULES[tool];
+      if (!rule || !Object.prototype.hasOwnProperty.call(rule, kind)) throw NexusError('slot', 'This tool does not support the ' + kind + ' slot.');
+      if (value !== 'founder') {
+        const ids = Array.isArray(value) ? Array.from(new Set(value)) : [value], max = rule[kind];
+        const expected = kind === 'cpu' ? 'classical' : kind === 'qpu' ? 'quantum' : 'storage';
+        if (ids.length > max) throw NexusError('slot-full', tool + ' only allows ' + max + ' ' + kind.toUpperCase() + ' connector(s).');
+        for (const id of ids) { const rec = Store.get(id); if (!rec || rec.kind !== 'ext' || !rec.ext || rec.ext.category !== expected || rec.usage === 'off') throw NexusError('assignment', 'The assigned connector is missing, disabled, or has the wrong category.'); }
+        value = max === 1 ? (ids[0] || 'founder') : ids;
+      }
+      const a = this.all(); a[moduleId] = Object.assign({}, a[moduleId] || {}, { [kind]: value }); localStorage.setItem(LS_ASSIGNMENTS, JSON.stringify(a)); emitChange(false); return value;
+    },
+    bind(connectorId, tool, kind) {
+      const moduleId = TOOL_MODULE[tool], rec = Store.get(connectorId), rule = SLOT_RULES[tool];
+      if (!moduleId || !rule || !Object.prototype.hasOwnProperty.call(rule, kind)) throw NexusError('slot', 'This tool does not support the ' + kind + ' slot.');
+      if (!rec || rec.kind !== 'ext' || !rec.ext || ASSIGN_KIND[rec.ext.category] !== kind) throw NexusError('category', 'Connector category does not match the ' + kind + ' slot.');
+      if (rec.usage === 'off') throw NexusError('disabled', 'Enable the connector before assigning it.');
+      const max = rule[kind], current = this.get(moduleId, kind);
+      const ids = current === 'founder' ? [] : (Array.isArray(current) ? current.slice() : [current]);
+      if (!ids.includes(connectorId) && ids.length >= max) throw NexusError('slot-full', tool + ' only allows ' + max + ' ' + kind.toUpperCase() + ' connector(s).');
+      if (!ids.includes(connectorId)) ids.push(connectorId);
+      this.set(moduleId, kind, max === 1 ? connectorId : ids);
+      Store.patch(connectorId, r => { r.tools = Array.from(new Set([...(r.tools || []), tool])); });
+      return this.get(moduleId, kind);
+    },
+    unbind(connectorId, tool) {
+      const moduleId = TOOL_MODULE[tool], rec = Store.get(connectorId);
+      if (!moduleId || !rec) return false;
+      const kind = ASSIGN_KIND[rec.ext && rec.ext.category]; if (!kind) return false;
+      const current = this.get(moduleId, kind), ids = current === 'founder' ? [] : (Array.isArray(current) ? current : [current]);
+      const next = ids.filter(id => id !== connectorId);
+      this.set(moduleId, kind, next.length ? (SLOT_RULES[tool][kind] === 1 ? next[0] : next) : 'founder');
+      Store.patch(connectorId, r => { r.tools = (r.tools || []).filter(t => t !== tool); if (!r.tools.length) r.usage = 'off'; });
+      return true;
+    },
+    remove(connectorId) {
+      const a = this.all();
+      Object.keys(a).forEach(mod => Object.keys(a[mod] || {}).forEach(kind => {
+        const v = a[mod][kind], ids = Array.isArray(v) ? v.filter(id => id !== connectorId) : v === connectorId ? [] : null;
+        if (ids) a[mod][kind] = ids.length ? ids : 'founder';
+      }));
+      localStorage.setItem(LS_ASSIGNMENTS, JSON.stringify(a)); emitChange(false);
+    },
+    resolve(moduleId, kind) { const value = this.get(moduleId, kind); if (value === 'founder') return null; return (Array.isArray(value) ? value : [value]).map(id => Store.get(id)).filter(Boolean); }
   };
+  const onceLocks = new Set();
+  function reserveOnce(rec) {
+    if (rec.usage !== 'once') return {commit(){},release(){}};
+    if (onceLocks.has(rec.id)) throw NexusError('once-busy', 'This one-time connector is already reserved by another request.');
+    onceLocks.add(rec.id); let settled = false;
+    return { commit(){ if (settled) return; settled = true; onceLocks.delete(rec.id); Policy.consume(rec); },
+      release(){ if (settled) return; settled = true; onceLocks.delete(rec.id); } };
+  }
   // Single egress for module engines: resolve assigned connectors here,
   // and keep the legacy Founder endpoint behind the same broker.
   async function requestAssigned(o) {
     o = o || {};
     const moduleId = String(o.moduleId || ''), kind = String(o.kind || '').toLowerCase(), tool = String(o.tool || '');
-    if (!moduleId || !['cpu','qpu','storage'].includes(kind) || !tool) throw NexusError('route', 'Invalid Nexus route identity');
+    if (!moduleId || !['cpu','qpu','storage'].includes(kind) || !tool || TOOL_MODULE[tool] !== moduleId) throw NexusError('route', 'Invalid Nexus route identity: module and tool do not match.');
     const assigned = Assignments.get(moduleId, kind);
     const ids = Array.isArray(assigned) ? assigned : (assigned && assigned !== 'founder' ? [assigned] : []);
     const expected = kind === 'cpu' ? 'classical' : kind === 'qpu' ? 'quantum' : 'storage';
     const compatible = rec => rec && rec.kind === 'ext' && Policy.allowed(rec, tool) && rec.ext && rec.ext.category === expected;
-    const assignedRecords = ids.map(id => Store.get(id)).filter(compatible);
-    // Multiple APIs may serve the same tool. Keep every enabled compatible connector
-    // and try them in stable priority order instead of silently discarding all but one.
-    let candidates = assignedRecords.length ? assignedRecords : Policy.list('ext', tool).filter(compatible);
+    if (assigned === 'founder') throw NexusError('founder-selected', 'This slot is assigned to Founder. Select a Nexus connector to use one.');
+    const allIds = ids;
+    const invalid = allIds.find(id => !compatible(Store.get(id)));
+    if (invalid) throw NexusError('assigned-unavailable', 'The connector assigned to this slot is disabled, deleted, or incompatible. Reassign it in Nexus Connectors.');
+    let candidates = allIds.map(id => Store.get(id)).filter(compatible);
+    const max = (SLOT_RULES[tool] && SLOT_RULES[tool][kind]) ?? 1;
+    if (candidates.length > max) throw NexusError('slot-overflow', tool + ' has more assigned connectors than its allowed slot count. Reconcile assignments in Nexus Connectors.');
     if (o.connector) candidates = candidates.slice().sort((a,b) => (a.id === o.connector ? -1 : 0) - (b.id === o.connector ? -1 : 0));
     if (!candidates.length) throw NexusError('no-route', 'No compatible external API is enabled for ' + tool + ' (' + kind + '). Connect and enable one or more APIs in Nexus Connectors.');
     const method = String(o.method || 'GET').toUpperCase();
     const safeToRetry = ['GET','HEAD','OPTIONS'].includes(method);
+    const deadline = Date.now() + 60000;
     const failures = [];
     for (const rec of candidates) {
+      if (Date.now() >= deadline) throw NexusError('timeout', 'Connector failover exceeded the 60-second total limit.', {attempted:failures});
       try {
-        const result = await ext.request({ tool, connector:rec.id, method, path:o.path, headers:o.headers, body:o.body, timeout:o.timeout });
+        const result = await ext.request({ tool, connector:rec.id, kind, method, path:o.path, headers:o.headers, body:o.body, timeout:Math.min(Number(o.timeout)||30000, deadline-Date.now()) });
         if (result && result.ok) return Object.assign({}, result, { source:'nexus', connector:rec.id, attempted:failures.map(x => x.name) });
         const status = Number(result && result.status || 0);
         failures.push({ name:rec.name, status });
@@ -556,7 +640,11 @@
     throw NexusError('no-route', 'All compatible external APIs failed for ' + tool + ' (' + kind + '): ' +
       failures.map(x => x.name + (x.status ? ' HTTP ' + x.status : ': ' + x.error)).join(' | '), { attempted:failures });
   }
-  const api = { VERSION, TOOLS, PERMS, PROVIDERS, COMMUNITY_REQUIRES, MAX_CODE, Vault, Store, Policy, Analyze, Bridge, ai, ext, loc, Catalog, Community, Installer, Make, Assignments, requestAssigned, util: { uid, slug, sha256, now, NexusError } };
+  // Do not publish Vault.open(), key derivation, or raw credential-header helpers.
+  // Secret decryption remains inside this closure and is used only by connector requests.
+  const publicVault = Object.freeze({ seal: Vault.seal.bind(Vault) });
+  const publicExt = Object.freeze({ pick: ext.pick.bind(ext), request: ext.request.bind(ext), test: ext.test.bind(ext) });
+  const api = { VERSION, TOOLS, PERMS, PROVIDERS, COMMUNITY_REQUIRES, MAX_CODE, Vault:publicVault, Store, Policy, Analyze, Bridge, ai, ext:publicExt, loc, Catalog, Community, Installer, Make, Assignments, SLOT_RULES, requestAssigned, util: { uid, slug, sha256, now, NexusError } };
   root.QuOLabNexusConnectors = api;
   if (root.QuOLabNexusCore && !Object.isFrozen(root.QuOLabNexusCore)) root.QuOLabNexusCore.connectors = api;
 })(typeof window !== 'undefined' ? window : globalThis);
