@@ -44,6 +44,7 @@ class CommunitySandboxTests(unittest.TestCase):
         self.assertIn("/home/nexus/data/demo", command)
         self.assertIn("--ro-bind", command)
         self.assertIn("/home/nexus/connectors/demo", command)
+        self.assertLess(command.index("--dir"), command.index("/etc/ld.so.cache") if "/etc/ld.so.cache" in command else command.index("--dev"))
         self.assertNotIn("--share-net", command)
 
     def test_community_install_requires_supported_sandbox(self):
