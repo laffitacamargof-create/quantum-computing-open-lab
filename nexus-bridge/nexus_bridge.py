@@ -15,16 +15,17 @@ Design (read this before trusting it):
   * Each installed connector runs in its OWN Python process (own venv when it needs packages).
   * Connector code never imports Bluetooth/OS libraries: it asks `ctx` and the bridge checks the
     permissions the connector declared in its code (@connector.tool("tool", allow=[...])).
-  * Community connectors are additionally checked with a strict AST validator before installing.
-  * IMPORTANT: this is permission enforcement, not an operating-system sandbox. Only install
-    connectors you trust or that were reviewed by an administrator.
+  * Community connectors are checked with a strict AST validator and run in a Linux bubblewrap
+    sandbox with no network namespace and only their private data directory writable.
+  * Community installation fails closed when bubblewrap isolation is unavailable.
+  * Private connectors are trusted code and still run with the bridge user's OS permissions.
 Python >= 3.9, standard library only. Bluetooth needs `pip install bleak` in the bridge's Python.
 """
 import argparse, ast, asyncio, base64, concurrent.futures as cf, hmac, http.client, http.server
 import ipaddress, json, os, platform, queue, re, secrets, shutil, socket, socketserver, ssl
 import subprocess, sys, threading, time, urllib.parse, uuid
 
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 TOOLS = {"open_lab", "notebook", "apps", "app_studio", "chat"}
 PERMS = {"ble.scan", "ble.link", "ble.read", "ble.write", "ble.notify", "proc.run", "file.read", "file.write", "net.http"}
 # which declared permission a ctx operation needs
