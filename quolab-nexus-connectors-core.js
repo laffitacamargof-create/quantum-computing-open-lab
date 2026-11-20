@@ -268,6 +268,14 @@
     /** Return every enabled AI connector without exposing credentials. */
     list(tool, id) { return Policy.list('ai', tool || 'chat', id).map(r => ({ id:r.id, name:r.name, provider:r.ai.provider, model:r.ai.model || '', usage:r.usage })); },
     pick(tool, id) { const r = Policy.pick('ai', tool || 'chat', id); return r ? { id:r.id, name:r.name, provider:r.ai.provider, usage:r.usage } : null; },
+    setActive(id, active) {
+      const selected = Store.get(id);
+      if (!selected || selected.kind !== 'ai') throw NexusError('missing', 'AI connector not found');
+      if (active) Store.byKind('ai').forEach(r => { if (r.id !== id && r.usage !== 'off') Store.patch(r.id, x => { x.usage = 'off'; }); });
+      Store.patch(id, r => { r.usage = active ? 'always' : 'off'; if (active) delete r.usedAt; });
+      emitChange(false);
+      return { id, usage: active ? 'always' : 'off' };
+    },
     async chat(o) {
       const connectors = Policy.list('ai', o.tool || 'chat', o.connector);
       if (!connectors.length) throw NexusError('no-connector', 'No AI connector is enabled for ' + (TOOLS[o.tool] || o.tool));
@@ -556,7 +564,7 @@
   Store.byKind('ai').forEach(r => { if (r.usage === 'once') Store.patch(r.id, x => { x.usage = 'always'; }); });
 
   const SLOT_RULES = {
-    open_lab:{cpu:1,qpu:1,storage:Infinity}, notebook:{cpu:1,qpu:0,storage:Infinity},
+    open_lab:{cpu:1,qpu:1,storage:1}, notebook:{cpu:1,qpu:0,storage:1},
     apps:{cpu:Infinity,qpu:Infinity,storage:0}, app_studio:{cpu:1,qpu:1,storage:1}
   };
   const TOOL_MODULE = {open_lab:'architect',notebook:'architect-pro',apps:'quantum-puzzle',app_studio:'quantum-app-studio'};
@@ -582,10 +590,16 @@
       if (!rec || rec.kind !== 'ext' || !rec.ext || ASSIGN_KIND[rec.ext.category] !== kind) throw NexusError('category', 'Connector category does not match the ' + kind + ' slot.');
       if (rec.usage === 'off') throw NexusError('disabled', 'Enable the connector before assigning it.');
       const max = rule[kind], current = this.get(moduleId, kind);
-      const ids = current === 'founder' ? [] : (Array.isArray(current) ? current.slice() : [current]);
-      if (!ids.includes(connectorId) && ids.length >= max) throw NexusError('slot-full', tool + ' only allows ' + max + ' ' + kind.toUpperCase() + ' connector(s).');
-      if (!ids.includes(connectorId)) ids.push(connectorId);
-      this.set(moduleId, kind, max === 1 ? connectorId : ids);
+      let ids = current === 'founder' ? [] : (Array.isArray(current) ? current.slice() : [current]);
+      if (max === 1 && !ids.includes(connectorId)) {
+        const replaced = ids.slice();
+        this.set(moduleId, kind, connectorId);
+        replaced.forEach(oldId => Store.patch(oldId, old => { old.tools = (old.tools || []).filter(t => t !== tool); if (!old.tools.length) old.usage = 'off'; }));
+      } else {
+        if (!ids.includes(connectorId) && ids.length >= max) throw NexusError('slot-full', tool + ' only allows ' + max + ' ' + kind.toUpperCase() + ' connector(s).');
+        if (!ids.includes(connectorId)) ids.push(connectorId);
+        this.set(moduleId, kind, max === 1 ? connectorId : ids);
+      }
       Store.patch(connectorId, r => { r.tools = Array.from(new Set([...(r.tools || []), tool])); });
       return this.get(moduleId, kind);
     },
@@ -606,6 +620,25 @@
         if (ids) a[mod][kind] = ids.length ? ids : 'founder';
       }));
       localStorage.setItem(LS_ASSIGNMENTS, JSON.stringify(a)); emitChange(false);
+    },
+    normalize() {
+      const assignments = this.all();
+      Object.keys(TOOL_MODULE).forEach(tool => {
+        const moduleId = TOOL_MODULE[tool], rule = SLOT_RULES[tool], slots = assignments[moduleId] || {};
+        Object.keys(rule).forEach(kind => {
+          const value = slots[kind];
+          if (value == null || value === 'founder') return;
+          const ids = Array.isArray(value) ? value.slice() : [value];
+          const kept = ids.slice(0, rule[kind]);
+          const dropped = ids.slice(rule[kind]);
+          slots[kind] = kept.length ? (rule[kind] === 1 ? kept[0] : kept) : 'founder';
+          dropped.forEach(id => Store.patch(id, rec => { rec.tools = (rec.tools || []).filter(t => t !== tool); if (!rec.tools.length) rec.usage = 'off'; }));
+        });
+        assignments[moduleId] = slots;
+      });
+      localStorage.setItem(LS_ASSIGNMENTS, JSON.stringify(assignments));
+      emitChange(false);
+      return assignments;
     },
     resolve(moduleId, kind) { const value = this.get(moduleId, kind); if (value === 'founder') return null; return (Array.isArray(value) ? value : [value]).map(id => Store.get(id)).filter(Boolean); }
   };
