@@ -41,7 +41,7 @@ FORBIDDEN_CALLS = {"eval", "exec", "compile", "__import__", "open", "globals", "
 ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 REQ_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._\-\[\],<>=!~ ]{0,80}$")
 MAX_CODE = 60000
-LOCAL_ORIGIN = re.compile(r"^http://(localhost|127\.0\.0\.1)(:\d+)?$")
+LOCAL_ORIGIN = re.compile(r"^http://(localhost|127\.0\.0\.1)(:8765)?$")
 
 
 class BridgeError(Exception):
@@ -117,7 +117,8 @@ def analyze(code, mode):
                 if node.attr == "format" and isinstance(node.ctx, ast.Load):
                     res["errors"].append("Line %d: str.format is not allowed in community connectors" % node.lineno)
             elif isinstance(node, ast.Name):
-                if node.id in ("__builtins__", "__loader__", "__spec__"): res["errors"].append("Line %d: %s is not allowed in community connectors" % (node.lineno, node.id))
+                if node.id in {"__builtins__", "__loader__", "__spec__", "sys", "os", "subprocess", "socket", "builtins", "importlib"}:
+                    res["errors"].append("Line %d: %s is not allowed in community connectors" % (node.lineno, node.id))
     res["errors"] = list(dict.fromkeys(res["errors"]))
     return res
 
@@ -130,7 +131,10 @@ def _public(ip):
 
 
 def _resolve_public(host, port):
-    ips = [i[4][0] for i in socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)]
+    try:
+        ips = [i[4][0] for i in socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)]
+    except (OSError, socket.gaierror) as e:
+        raise BridgeError("The connector host could not be resolved", "dns", 502)
     if not ips or not all(_public(ip) for ip in ips):
         raise BridgeError("Blocked: that address points to this computer or a private network", "denied", 403)
     return ips[0]
