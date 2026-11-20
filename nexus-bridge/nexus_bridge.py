@@ -387,6 +387,23 @@ def _reader():
     os._exit(0)  # bridge closed the pipe
 
 def main(path):
+    if os.environ.get("NEXUS_COMMUNITY_CONNECTOR") == "1":
+        data_root = os.path.realpath(os.environ.get("NEXUS_CONNECTOR_DATA", os.getcwd()))
+        python_root = os.path.realpath(sys.prefix)
+        def _community_audit(event, args):
+            if event in ("subprocess.Popen", "os.system", "os.posix_spawn", "socket.connect", "socket.getaddrinfo"):
+                raise PermissionError("Community connector blocked by runtime security policy: " + event)
+            if event == "open" and args:
+                target = args[0]
+                if isinstance(target, (str, bytes, os.PathLike)):
+                    real = os.path.realpath(os.fsdecode(target))
+                    try:
+                        allowed = os.path.commonpath((real, data_root)) == data_root or os.path.commonpath((real, python_root)) == python_root
+                    except ValueError:
+                        allowed = False
+                    if not allowed:
+                        raise PermissionError("Community connector file access is restricted to its data folder")
+        sys.addaudithook(_community_audit)
     try:
         spec = importlib.util.spec_from_file_location("connector_main", path)
         mod = importlib.util.module_from_spec(spec); spec.loader.exec_module(mod)
@@ -413,6 +430,9 @@ class Worker:
         data = self.br.ddir(self.cid); os.makedirs(data, exist_ok=True)
         env = {k: v for k, v in os.environ.items() if k in ("PATH", "SYSTEMROOT", "TEMP", "TMP", "LANG", "LC_ALL", "PYTHONPATH_NEXUS")}
         env["PYTHONIOENCODING"] = "utf-8"
+        meta = self.br.meta(self.cid) or {}
+        env["NEXUS_COMMUNITY_CONNECTOR"] = "1" if meta.get("origin") == "community" else "0"
+        env["NEXUS_CONNECTOR_DATA"] = os.path.realpath(data)
         self.proc = subprocess.Popen([py, "-u", os.path.join(self.br.home, "runner.py"), os.path.join(d, "connector.py")], stdin=subprocess.PIPE,
                                      stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=data, env=env, text=True, encoding="utf-8", bufsize=1)
         threading.Thread(target=self._read, daemon=True).start(); threading.Thread(target=self._err, daemon=True).start()
