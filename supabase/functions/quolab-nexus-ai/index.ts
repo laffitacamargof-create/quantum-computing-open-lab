@@ -51,7 +51,7 @@ function configuredProviders(): Provider[] {
   if (geminiKey) providers.push({
     id: "gemini", kind: "gemini",
     endpoint: "https://generativelanguage.googleapis.com/v1beta/models/",
-    key: geminiKey, model: modelFor("gemini", "gemini-2.5-flash"), timeoutMs: 25_000,
+    key: geminiKey, model: modelFor("gemini", "gemini-2.5-flash"), timeoutMs: 10_000,
   });
   addOpenAI("groq", "https://api.groq.com/openai/v1/chat/completions", "GROQ_API_KEY", "openai/gpt-oss-120b");
   addOpenAI("openrouter", "https://openrouter.ai/api/v1/chat/completions", "OPENROUTER_API_KEY", "openrouter/free");
@@ -70,7 +70,7 @@ function configuredProviders(): Provider[] {
       if (!/^[a-z0-9_-]{2,40}$/.test(id) || !/^https:\/\//i.test(endpoint) ||
           !/^[A-Z][A-Z0-9_]{2,80}$/.test(secretName) || !model || providers.some(p => p.id === id)) continue;
       const key = env(secretName);
-      if (key) providers.push({ id, kind: "openai", endpoint, key, model, timeoutMs: 25_000 });
+      if (key) providers.push({ id, kind: "openai", endpoint, key, model, timeoutMs: 10_000 });
     }
   } catch { console.error("AI_CUSTOM_PROVIDERS_JSON is invalid JSON"); }
   return providers;
