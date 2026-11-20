@@ -126,7 +126,7 @@
       this.save(l); return rec;
     },
     patch(id, fn) { const r = this.get(id); if (!r) return null; fn(r); return this.upsert(r); },
-    remove(id) { this.save(this.all().filter(r => r.id !== id)); },
+    remove(id) { this.save(this.all().filter(r => r.id !== id)); try { Assignments.remove(id); } catch (_) {} },
     byKind(k) { return this.all().filter(r => r.kind === k); },
     subscribe(f) { listeners.add(f); return () => listeners.delete(f); },
   };
@@ -265,18 +265,22 @@
       // AI requests are intentionally fanned out: every enabled provider gets the
       // same prompt, and the first valid answer wins. Losing browser requests are
       // aborted as soon as possible; providers may still bill a request already received.
-      const attempts = connectors.map((rec, index) => this._call(rec, Object.assign({}, o, { signal:controllers[index].signal }))
-        .then(text => {
-          Policy.consume(rec);
-          return { text, rec };
-        })
-        .catch(error => {
-          failures.push({ id:rec.id, name:rec.name, provider:rec.ai.provider, error:String(error && error.message || error) });
-          throw error;
-        }));
+      const reservations = new Map();
+      const attempts = connectors.map((rec, index) => {
+        let reservation;
+        try { reservation = reserveOnce(rec); reservations.set(rec.id, reservation); }
+        catch (error) { failures.push({id:rec.id,name:rec.name,provider:rec.ai.provider,error:error.message}); return Promise.reject(error); }
+        return this._call(rec, Object.assign({}, o, { signal:controllers[index].signal }))
+          .then(text => { reservation.commit(); return { text, rec }; })
+          .catch(error => {
+            reservation.release();
+            failures.push({ id:rec.id, name:rec.name, provider:rec.ai.provider, error:String(error && error.message || error) });
+            throw error;
+          });
+      });
       try {
         const winner = await Promise.any(attempts);
-        controllers.forEach((controller, index) => { if (connectors[index].id !== winner.rec.id) controller.abort(); });
+        controllers.forEach((controller, index) => { if (connectors[index].id !== winner.rec.id) { controller.abort(); const r=reservations.get(connectors[index].id); if(r) r.release(); } });
         return { text:winner.text, connector:winner.rec.id, name:winner.rec.name, provider:winner.rec.ai.provider,
           model:winner.rec.ai.model || '', parallel:true, providers:connectors.map(r => r.name), failed:failures };
       } catch (_) {
