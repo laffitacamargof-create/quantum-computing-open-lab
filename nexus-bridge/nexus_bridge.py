@@ -15,9 +15,9 @@ Design (read this before trusting it):
   * Each installed connector runs in its OWN Python process (own venv when it needs packages).
   * Connector code never imports Bluetooth/OS libraries: it asks `ctx` and the bridge checks the
     permissions the connector declared in its code (@connector.tool("tool", allow=[...])).
-  * Community connectors are additionally checked with a strict AST validator before installing.
-  * IMPORTANT: this is permission enforcement, not an operating-system sandbox. Only install
-    connectors you trust or that were reviewed by an administrator.
+  * Community connectors are checked by the Python AST validator and run inside a bubblewrap
+    filesystem/network sandbox on Linux. If bubblewrap is unavailable (or on unsupported OSes),
+    community execution fails closed. Private connectors remain fully trusted code.
 Python >= 3.9, standard library only. Bluetooth needs `pip install bleak` in the bridge's Python.
 """
 import argparse, ast, asyncio, base64, concurrent.futures as cf, hmac, http.client, http.server
@@ -451,6 +451,38 @@ main(sys.argv[1])
 '''
 
 
+def _community_sandbox_command(py, runner_path, connector_dir, data_dir):
+    """Build a fail-closed Linux bubblewrap command for untrusted community code."""
+    if not sys.platform.startswith("linux"):
+        raise BridgeError("Community connectors require a supported Linux bubblewrap sandbox; this platform is not enabled.", "sandbox-unavailable", 503)
+    bwrap = shutil.which("bwrap")
+    if not bwrap:
+        raise BridgeError("Community connectors are disabled until bubblewrap is installed on this Linux system.", "sandbox-unavailable", 503)
+    py_real = os.path.realpath(py)
+    connector_real = os.path.realpath(connector_dir)
+    if os.path.commonpath((py_real, connector_real)) == connector_real:
+        sandbox_py = "/nexus-connector/" + os.path.relpath(py_real, connector_real).replace(os.sep, "/")
+    elif os.path.commonpath((py_real, "/usr")) == "/usr":
+        sandbox_py = py_real
+    else:
+        raise BridgeError("The Python runtime is outside the approved sandbox mount points.", "sandbox-unavailable", 503)
+    args = [
+        bwrap, "--die-with-parent", "--new-session", "--unshare-all",
+        "--ro-bind", "/usr", "/usr",
+    ]
+    for system_path in ("/lib", "/lib64", "/bin", "/sbin"):
+        if os.path.exists(system_path):
+            args += ["--ro-bind", system_path, system_path]
+    args += [
+        "--dev", "/dev", "--proc", "/proc", "--tmpfs", "/tmp",
+        "--dir", "/nexus-connector", "--ro-bind", connector_real, "/nexus-connector",
+        "--dir", "/nexus-data", "--bind", os.path.realpath(data_dir), "/nexus-data",
+        "--chdir", "/nexus-data", "--",
+        sandbox_py, "-u", "/nexus-data/runner.py", "/nexus-connector/connector.py",
+    ]
+    return args
+
+
 # ───────────────────────── worker = one connector process ─────────────────────────
 class Worker:
     def __init__(self, br, cid):
@@ -464,8 +496,15 @@ class Worker:
         data = self.br.ddir(self.cid); os.makedirs(data, exist_ok=True)
         env = {k: v for k, v in os.environ.items() if k in ("PATH", "SYSTEMROOT", "TEMP", "TMP", "LANG", "LC_ALL", "PYTHONPATH_NEXUS")}
         env["PYTHONIOENCODING"] = "utf-8"
-        env["NEXUS_CONNECTOR_ORIGIN"] = str((self.br.meta(self.cid) or {}).get("origin", "private"))
-        self.proc = subprocess.Popen([py, "-u", os.path.join(self.br.home, "runner.py"), os.path.join(d, "connector.py")], stdin=subprocess.PIPE,
+        origin = str((self.br.meta(self.cid) or {}).get("origin", "private"))
+        env["NEXUS_CONNECTOR_ORIGIN"] = origin
+        if origin == "community":
+            runner_path = os.path.join(data, "runner.py")
+            with open(runner_path, "w", encoding="utf-8") as f: f.write(RUNNER)
+            command = _community_sandbox_command(py, runner_path, d, data)
+        else:
+            command = [py, "-u", os.path.join(self.br.home, "runner.py"), os.path.join(d, "connector.py")]
+        self.proc = subprocess.Popen(command, stdin=subprocess.PIPE,
                                      stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=data, env=env, text=True, encoding="utf-8", bufsize=1)
         threading.Thread(target=self._read, daemon=True).start(); threading.Thread(target=self._err, daemon=True).start()
         if not self.ready.wait(25) or self.fatal:
