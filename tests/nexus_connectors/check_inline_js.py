@@ -38,9 +38,13 @@ class ScriptCollector(html.parser.HTMLParser):
 
 ui_source = (ROOT / "quolab-nexus-connectors.html").read_text(encoding="utf-8")
 for marker in (
-    "function syncExtToolChoices()",
+    "function toolPicker(r)",
+    "data-card-tool",
+    "Assign it to a tool later using the selector on its connector card",
+    "NC.ai.list('chat').some",
+    "if(tool!=='apps')records.filter",
+    "record.kind==='ext'&&next!=='off'",
     "previousAssignments=NC.Assignments.all()",
-    "document.querySelectorAll('#ext-tools input:checked')",
     "editing.tools||[]",
 ):
     if marker not in ui_source:
