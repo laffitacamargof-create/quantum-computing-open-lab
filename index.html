@@ -1200,13 +1200,18 @@ class QuOLabNexusConfigSyncReader {
   }
   function founderRouteFor(mod, kind) {
     const slot = apiSlots[mod + '.' + kind];
-    if (!slot || !slot.founder) return null;
-    if (slot.founder === 'engine') {
-      let base = '';
-      try { base = localStorage.getItem('qcol_colab_url') || ''; } catch (_) {}
-      return base && /^https:\/\//i.test(base) ? { type:'engine', base:base.replace(/\/$/, ''), name:'Founder · Quantum Engine' } : null;
+    let engineBase = '';
+    try { engineBase = localStorage.getItem('qcol_colab_url') || ''; } catch (_) {}
+    if (slot && slot.founder === 'engine' || (!slot?.founder && ['cpu','qpu'].includes(kind))) {
+      return engineBase && /^https:\/\//i.test(engineBase) ? { type:'engine', base:engineBase.replace(/\/$/, ''), name:'Founder · Quantum Engine' } : null;
     }
-    if (/^https:\/\//i.test(slot.founder)) return { type:'url', base:slot.founder.replace(/\/$/, ''), name:'Founder · Configured API' };
+    if (slot && /^https:\/\//i.test(slot.founder)) return { type:'url', base:slot.founder.replace(/\/$/, ''), name:'Founder · Configured API' };
+    if (kind === 'storage') {
+      try {
+        const github = JSON.parse(localStorage.getItem('qcol_gh') || '{}');
+        if (github.token && github.user && github.repo) return { type:'github', base:'https://api.github.com', name:'Founder · GitHub Storage', github };
+      } catch (_) {}
+    }
     return null;
   }
   function hasNexusRoute(mod, kind, requested) {
@@ -1248,6 +1253,11 @@ class QuOLabNexusConfigSyncReader {
     const url = new URL(rawPath, route.base + '/');
     if (url.origin !== new URL(route.base).origin) throw new Error('Founder fallback cannot call a different host.');
     const headers = { 'Accept':'application/json' };
+    if (route.type === 'github') {
+      headers.Authorization = 'Bearer ' + route.github.token;
+      headers['X-GitHub-Api-Version'] = '2022-11-28';
+      headers.Accept = 'application/vnd.github+json';
+    }
     if (data.headers && typeof data.headers === 'object') {
       Object.entries(data.headers).forEach(([key,value]) => {
         if (/^(accept|content-type|x-requested-with)$/i.test(key) && typeof value === 'string' && value.length < 200) headers[key] = value;
