@@ -35,7 +35,7 @@ OP_PERM = {
     "http.request": "net.http", "proc.run": "proc.run", "emit": None, "log": None,
 }
 COMMUNITY_REQUIRES = {"numpy", "scipy"}
-SAFE_IMPORTS = {"nexus", "numpy", "scipy", "math", "cmath", "json", "re", "time", "asyncio", "typing", "dataclasses", "collections",
+SAFE_IMPORTS = {"nexus",  "math", "cmath", "json", "re", "time",  "typing", "dataclasses", "collections",
                 "itertools", "functools", "statistics", "random", "base64", "hashlib", "datetime", "struct", "enum", "decimal", "fractions", "string", "textwrap"}
 FORBIDDEN_CALLS = {"eval", "exec", "compile", "__import__", "open", "globals", "locals", "vars", "getattr", "setattr", "delattr", "input", "breakpoint", "memoryview"}
 ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
@@ -112,7 +112,7 @@ def analyze(code, mode):
                 f = node.func
                 if isinstance(f, ast.Name) and f.id in FORBIDDEN_CALLS: res["errors"].append("Line %d: %s() is not allowed in community connectors" % (node.lineno, f.id))
             elif isinstance(node, ast.Attribute):
-                if node.attr.startswith("__") and node.attr.endswith("__"): res["errors"].append("Line %d: access to %s is not allowed in community connectors" % (node.lineno, node.attr))
+                if (node.attr.startswith("__") and node.attr.endswith("__")) or node.attr in {"sys","os","subprocess","modules","loader","builtins","open","system","popen","fork","spawn","connect","create_subprocess_shell","create_subprocess_exec"}: res["errors"].append("Line %d: access to %s is not allowed in community connectors" % (node.lineno, node.attr))
             elif isinstance(node, ast.Name):
                 if node.id in ("__builtins__", "__loader__", "__spec__"): res["errors"].append("Line %d: %s is not allowed in community connectors" % (node.lineno, node.id))
     res["errors"] = list(dict.fromkeys(res["errors"]))
