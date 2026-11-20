@@ -1148,6 +1148,8 @@ function executeQuantumApp(appId) {
         }
         
         currentExecutingApp = app;
+        const appFrame = document.getElementById('execIframe');
+        if (appFrame) appFrame.dataset.appId = String(app.id);
         try { parent.postMessage({ type: 'OPENQ_SET_ROUTE', hash: 'app/' + encodeURIComponent(app.id), title: app.title || app.name || 'Quantum App' }, '*'); } catch (e) {}
         const modal = document.getElementById('execAppModal');
         const titleSpan = document.getElementById('execAppTitle');
@@ -1478,7 +1480,7 @@ function closeExecModal() {
     const modal = document.getElementById('execAppModal');
     if (modal) modal.classList.remove('open');
     const iframe = document.getElementById('execIframe');
-    if (iframe) { iframe.removeAttribute('srcdoc'); iframe.src = 'about:blank'; }
+    if (iframe) { iframe.removeAttribute('srcdoc'); iframe.src = 'about:blank'; delete iframe.dataset.appId; }
     currentExecutingApp = null;
     try { parent.postMessage({ type: 'OPENQ_SET_ROUTE', hash: 'quantum-puzzle', title: 'Quantum Puzzle' }, '*'); } catch (e) {}
 }
