@@ -34,8 +34,8 @@ OP_PERM = {
     "fs.list": "file.read", "fs.read": "file.read", "fs.write": "file.write", "fs.delete": "file.write",
     "http.request": "net.http", "proc.run": "proc.run", "emit": None, "log": None,
 }
-COMMUNITY_REQUIRES = set()
-SAFE_IMPORTS = {"nexus", "math", "cmath", "json", "re", "time", "typing", "dataclasses", "collections",
+COMMUNITY_REQUIRES = {"numpy", "scipy"}
+SAFE_IMPORTS = {"nexus", "numpy", "scipy", "math", "cmath", "json", "re", "time", "typing", "dataclasses", "collections",
                 "itertools", "functools", "statistics", "random", "base64", "hashlib", "datetime", "struct", "enum", "decimal", "fractions", "string", "textwrap"}
 FORBIDDEN_CALLS = {"eval", "exec", "compile", "__import__", "open", "globals", "locals", "vars", "getattr", "setattr", "delattr", "input", "breakpoint", "memoryview"}
 ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
@@ -112,7 +112,7 @@ def analyze(code, mode):
                 f = node.func
                 if isinstance(f, ast.Name) and f.id in FORBIDDEN_CALLS: res["errors"].append("Line %d: %s() is not allowed in community connectors" % (node.lineno, f.id))
             elif isinstance(node, ast.Attribute):
-                if (node.attr.startswith("__") and node.attr.endswith("__")) or node.attr in {"sys", "os", "subprocess", "socket", "modules", "loader", "builtins", "ctypes", "f2py"}:
+                if (node.attr.startswith("__") and node.attr.endswith("__")) or node.attr in {"sys", "os", "subprocess", "socket", "modules", "loader", "builtins", "ctypes", "f2py", "load", "save", "savetxt", "loadtxt", "genfromtxt", "fromfile", "memmap", "ctypeslib", "io", "loadmat", "savemat", "readsav", "wavfile", "mmread", "mmwrite", "loadarff", "netcdf_file", "netcdf_dataset", "open_memmap", "FortranFile"}:
                     res["errors"].append("Line %d: access to %s is not allowed in community connectors" % (node.lineno, node.attr))
                 if node.attr in {"format", "format_map"} and isinstance(node.ctx, ast.Load):
                     res["errors"].append("Line %d: str.format is not allowed in community connectors" % node.lineno)
