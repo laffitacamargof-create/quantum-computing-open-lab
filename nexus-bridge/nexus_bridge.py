@@ -392,6 +392,14 @@ def _reader():
 
 def main(path):
     if os.environ.get("NEXUS_COMMUNITY_CONNECTOR") == "1":
+        if os.environ.get("NEXUS_BWRAP_ACTIVE") != "1":
+            import builtins
+            _original_import = builtins.__import__
+            def _restricted_import(name, globals=None, locals=None, fromlist=(), level=0):
+                if str(name).split(".")[0] in {"numpy", "scipy"}:
+                    raise ImportError("Native numerical packages require the Linux bwrap community sandbox")
+                return _original_import(name, globals, locals, fromlist, level)
+            builtins.__import__ = _restricted_import
         data_root = os.path.realpath(os.environ.get("NEXUS_CONNECTOR_DATA", os.getcwd()))
         python_root = os.path.realpath(sys.prefix)
         connector_root = os.path.realpath(os.path.dirname(path))
@@ -451,6 +459,7 @@ class Worker:
         if meta.get("origin") == "community" and sys.platform.startswith("linux"):
             bwrap = shutil.which("bwrap")
             if bwrap:
+                env["NEXUS_BWRAP_ACTIVE"] = "1"
                 command = [bwrap, "--unshare-all", "--die-with-parent", "--ro-bind", "/", "/", "--bind", data, data,
                            "--proc", "/proc", "--dev", "/dev", "--chdir", data, "--"] + command
         self.proc = subprocess.Popen(command, stdin=subprocess.PIPE,
