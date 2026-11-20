@@ -114,7 +114,7 @@ def analyze(code, mode):
             elif isinstance(node, ast.Attribute):
                 if (node.attr.startswith("__") and node.attr.endswith("__")) or node.attr in {"sys", "os", "subprocess", "socket", "modules", "loader", "builtins", "ctypes", "f2py"}:
                     res["errors"].append("Line %d: access to %s is not allowed in community connectors" % (node.lineno, node.attr))
-                if node.attr == "format" and isinstance(node.ctx, ast.Load):
+                if node.attr in {"format", "format_map"} and isinstance(node.ctx, ast.Load):
                     res["errors"].append("Line %d: str.format is not allowed in community connectors" % node.lineno)
             elif isinstance(node, ast.Name):
                 if node.id in {"__builtins__", "__loader__", "__spec__", "sys", "os", "subprocess", "socket", "builtins", "importlib"}:
