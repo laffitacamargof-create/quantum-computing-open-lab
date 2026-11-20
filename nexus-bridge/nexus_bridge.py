@@ -405,7 +405,7 @@ def _community_audit(connector_path):
         "socket.connect", "socket.bind", "socket.getaddrinfo", "socket.gethostbyname",
         "ctypes.dlopen", "ctypes.dlsym", "pty.spawn"
     }
-    write_events = {"os.remove", "os.rename", "os.mkdir", "os.rmdir", "os.chmod",
+    write_events = {"os.remove", "os.rename", "os.replace", "os.mkdir", "os.rmdir", "os.chmod",
                     "os.chown", "os.link", "os.symlink", "os.truncate", "os.utime"}
     def audit(event, args):
         if event in blocked_events:
@@ -422,8 +422,9 @@ def _community_audit(connector_path):
                 elif not (_inside(path, data_root) or _inside(path, connector_root) or _inside(path, python_root)):
                     raise PermissionError("Community connector may read only its code, Python runtime and private data directory")
         if event in write_events and args:
-            if not _inside(args[0], data_root):
-                raise PermissionError("Community connector may modify only its private data directory")
+            for path in args[:2]:
+                if isinstance(path, (str, bytes, os.PathLike)) and not _inside(path, data_root):
+                    raise PermissionError("Community connector may modify only its private data directory")
     sys.addaudithook(audit)
     try:
         import resource
