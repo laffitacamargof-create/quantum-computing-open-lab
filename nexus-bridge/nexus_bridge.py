@@ -466,8 +466,8 @@ class Worker:
                 env["TMPDIR"] = "/tmp"
                 sandbox_py = py
                 try:
-                    if os.path.commonpath((os.path.realpath(py), os.path.realpath(d))) == os.path.realpath(d):
-                        sandbox_py = "/connector/" + os.path.relpath(os.path.realpath(py), os.path.realpath(d))
+                    if os.path.commonpath((os.path.abspath(py), os.path.abspath(d))) == os.path.abspath(d):
+                        sandbox_py = "/connector/" + os.path.relpath(os.path.abspath(py), os.path.abspath(d))
                 except ValueError:
                     pass
                 mount_dirs = [item for target in ("/connector", "/workspace") if not os.path.exists(target) for item in ("--dir", target)]
