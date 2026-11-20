@@ -2480,7 +2480,7 @@ class QuOLabNexusConfigSyncReader {
     const active = ctx?.active_tool || ctx?.user_context?.screen || ctx?.screen;
     if (Number(turn) > 0 && AI_SCREENS.includes(active)) return [active];
     const explicit = [
-      ['quantum-app-studio', /\bquantum app studio\b|\bapp studio\b|\bstudio de aplicaciones\b|\beditor de app\b/],
+      ['quantum-app-studio', /\bquantum app studio\b|\bapp studio\b|\bstudio\b|\bstudio de aplicaciones\b|\beditor de app\b/],
       ['quantum-puzzle', /\bquantum puzzle\b|\bpuzzle\b|\bdesaf[ií]o\b|\bchallenge\b/],
       ['nexus-connectors', /\bnexus connectors\b|\bconectores?\b|\bconnectors?\b|\bconector de ia\b/],
       ['architect-pro', /\bquantum notebook\b|\bnotebook\b|\bcuaderno\b|\bceldas?\b|\bipynb\b/],
