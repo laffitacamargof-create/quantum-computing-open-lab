@@ -361,8 +361,23 @@
       else if (rec.ext.auth === 'basic') h['Authorization'] = 'Basic ' + btoa(unescape(encodeURIComponent((await Vault.open(s.user)) + ':' + (await Vault.open(s.pass)))));
       return h;
     },
-    _url(rec, path) { // the credentials can only ever travel to the registered address
+    _url(rec, path) { // the credentials can only ever travel to a public HTTPS address and its registered path
       const base = new URL(rec.ext.baseUrl);
+      const host = String(base.hostname || '').toLowerCase();
+      if (base.protocol !== 'https:' || !host || base.username || base.password ||
+          host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local') ||
+          host.startsWith('[') || host === '::1') {
+        throw NexusError('scope', 'External connectors require a public HTTPS hostname without embedded credentials.');
+      }
+      const ip4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(host);
+      if (ip4) {
+        const a = ip4.slice(1).map(Number);
+        const invalid = a.some(n => n > 255) || a[0] === 0 || a[0] === 10 || a[0] === 127 ||
+          (a[0] === 169 && a[1] === 254) || (a[0] === 172 && a[1] >= 16 && a[1] <= 31) ||
+          (a[0] === 192 && a[1] === 168) || (a[0] === 100 && a[1] >= 64 && a[1] <= 127) ||
+          (a[0] >= 224);
+        if (invalid) throw NexusError('scope', 'Private, loopback, link-local and reserved IP addresses are blocked.');
+      }
       const rootPath = (base.pathname || '/').replace(/\/+$/, '') + '/';
       const rawPath = String(path || '').trim();
       if (/^[a-z][a-z0-9+.-]*:/i.test(rawPath) || rawPath.startsWith('//') || rawPath.includes('\\')) throw NexusError('scope', 'Invalid connector path');
@@ -612,6 +627,7 @@
     const compatible = rec => rec && rec.kind === 'ext' && Policy.allowed(rec, tool) && rec.ext && rec.ext.category === expected;
     if (assigned === 'founder') throw NexusError('founder-selected', 'This slot is assigned to Founder. Select a Nexus connector to use one.');
     const allIds = ids;
+    if (o.connector && !allIds.includes(o.connector)) throw NexusError('not-assigned', 'The requested connector is not assigned to this tool slot.');
     const invalid = allIds.find(id => !compatible(Store.get(id)));
     if (invalid) throw NexusError('assigned-unavailable', 'The connector assigned to this slot is disabled, deleted, or incompatible. Reassign it in Nexus Connectors.');
     let candidates = allIds.map(id => Store.get(id)).filter(compatible);
