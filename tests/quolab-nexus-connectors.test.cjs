@@ -34,7 +34,7 @@ assert.match(ui, /NC\.ai\.list\('chat'\)/);
 assert.match(ui, /AI API enabled for QNexusAi/);
 assert.match(ui, /active\.slice\(1\)\.forEach/);
 assert.match(ui, /Removing the last tool assignment will leave this API unassigned/);
-assert.match(ui, /One active external API per tool outside Quantum Puzzle/);
+assert.match(ui, /if\(enabled&&tool!==\x27apps\x27\)snapshot\.filter/);
 assert.match(ui, /normalizeExclusiveState\(\);function migrateAssignments/);
 assert.match(ui, /migrateAssignments\(\);analyze\(\);render\(\)/);
 assert.match(ui, /data-card-tool/);
