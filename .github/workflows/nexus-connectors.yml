@@ -21,5 +21,7 @@ jobs:
         run: python -m unittest discover -s tests/nexus_connectors -p "test_*.py"
       - name: Check connector core JavaScript
         run: node --check quolab-nexus-connectors-core.js
+      - name: Test connector slot rules and API boundaries
+        run: node tests/nexus_connectors/test_core_slots.js
       - name: Check inline application scripts
         run: python tests/nexus_connectors/check_inline_js.py
