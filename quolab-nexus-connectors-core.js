@@ -353,10 +353,11 @@
     _url(rec, path) { // the credentials can only ever travel to the registered address
       const base = new URL(rec.ext.baseUrl);
       const u = new URL(path || '', base.href.endsWith('/') ? base.href : base.href + '/');
-      if (u.origin !== base.origin) throw NexusError('scope', 'This connector can only call ' + base.origin);
+      if (u.origin !== base.origin || (base.pathname !== '/' && !(u.pathname === base.pathname || u.pathname.startsWith(base.pathname.replace(/\\/$/,'') + '/')))) throw NexusError('scope', 'This connector can only call within ' + base.origin + base.pathname);
       return u.href;
     },
     async request(o) {
+      if (!o || !o.connector) throw NexusError('connector-required', 'Select an assigned connector through requestAssigned; implicit connector selection is disabled');
       const rec = Policy.pick('ext', o.tool, o.connector);
       if (!rec) throw NexusError('no-connector', 'No external connector is enabled for ' + (TOOLS[o.tool] || o.tool));
       const out = await this._do(rec, o);
@@ -515,46 +516,91 @@
     },
   };
 
+  const SLOT_RULES = {
+    open_lab:{cpu:1,qpu:1,storage:Infinity},
+    notebook:{cpu:1,qpu:0,storage:Infinity},
+    apps:{cpu:Infinity,qpu:Infinity,storage:0},
+    app_studio:{cpu:1,qpu:1,storage:1},
+    chat:{ai:Infinity}
+  };
+  const SLOT_MODULES = {open_lab:'open_lab',notebook:'notebook',apps:'apps',app_studio:'app_studio',chat:'chat'};
+  const slotCategory = {cpu:'classical',qpu:'quantum',storage:'storage'};
   const Assignments = {
     all() { try { return JSON.parse(localStorage.getItem(LS_ASSIGNMENTS) || '{}') || {}; } catch (_) { return {}; } },
-    get(moduleId, kind) { const a = this.all(); const v = a[moduleId] && a[moduleId][kind]; return v == null ? 'founder' : v; },
-    set(moduleId, kind, value) { const a = this.all(); a[moduleId] = Object.assign({}, a[moduleId] || {}, { [kind]: value }); localStorage.setItem(LS_ASSIGNMENTS, JSON.stringify(a)); emitChange(false); return value; },
-    resolve(moduleId, kind) { const value = this.get(moduleId, kind); if (value === 'founder') return null; if (Array.isArray(value)) return value.map(id => Store.get(id)).filter(Boolean); return Store.get(value) || null; }
+    get(moduleId, kind) { const a=this.all(); const v=a[moduleId]&&a[moduleId][kind]; return v==null?'founder':v; },
+    _write(a) { localStorage.setItem(LS_ASSIGNMENTS,JSON.stringify(a)); emitChange(false); },
+    bind(connectorId, tool, kind) {
+      const moduleId=SLOT_MODULES[tool], rec=Store.get(connectorId), slot=String(kind||'').toLowerCase();
+      if(!moduleId||!slotCategory[slot]||!rec||rec.kind!=='ext') throw NexusError('assignment','Invalid connector assignment');
+      if(!rec.ext||rec.ext.category!==slotCategory[slot]) throw NexusError('assignment','Connector category does not match '+slot.toUpperCase());
+      if(!Policy.allowed(rec,tool)) throw NexusError('assignment','Connector is disabled or not authorized for '+(TOOLS[tool]||tool));
+      const max=(SLOT_RULES[tool]||{})[slot]||0;
+      if(!max) throw NexusError('assignment',(TOOLS[tool]||tool)+' does not support '+slot.toUpperCase());
+      const a=this.all(), current=a[moduleId]&&a[moduleId][slot];
+      const ids=Array.isArray(current)?current.slice():(current&&current!=='founder'?[current]:[]);
+      if(!ids.includes(connectorId)) ids.push(connectorId);
+      if(ids.length>max) throw NexusError('assignment',(TOOLS[tool]||tool)+' allows '+(max===1?'only 1 '+slot.toUpperCase():'no additional '+slot.toUpperCase())+' connector');
+      a[moduleId]=Object.assign({},a[moduleId]||{},{[slot]:max===1?ids[0]:ids}); this._write(a); return a[moduleId][slot];
+    },
+    unbind(connectorId, tool, kind) {
+      const moduleId=SLOT_MODULES[tool], slot=String(kind||'').toLowerCase(); if(!moduleId||!slotCategory[slot]) return false;
+      const a=this.all(), current=a[moduleId]&&a[moduleId][slot];
+      const ids=Array.isArray(current)?current:(current&&current!=='founder'?[current]:[]);
+      const next=ids.filter(id=>id!==connectorId);
+      a[moduleId]=Object.assign({},a[moduleId]||{},{[slot]:next.length?(next.length===1?next[0]:next):'founder'});this._write(a);return true;
+    },
+    set(moduleId, kind, value) {
+      const tool=moduleId, slot=String(kind||'').toLowerCase(), max=(SLOT_RULES[tool]||{})[slot];
+      if(max==null) throw NexusError('assignment','Unsupported assignment slot');
+      const ids=Array.isArray(value)?value.slice():(value&&value!=='founder'?[value]:[]);
+      if(ids.length>max) throw NexusError('assignment',(TOOLS[tool]||tool)+' exceeds the '+slot.toUpperCase()+' slot limit');
+      for(const id of ids){const rec=Store.get(id);if(!rec||rec.kind!=='ext'||!rec.ext||rec.ext.category!==slotCategory[slot]||!Policy.allowed(rec,tool))throw NexusError('assignment','Connector is unavailable or incompatible');}
+      const a=this.all();a[moduleId]=Object.assign({},a[moduleId]||{},{[slot]:value});this._write(a);return value;
+    },
+    resolve(moduleId,kind){const v=this.get(moduleId,kind);if(v==='founder')return null;return (Array.isArray(v)?v:[v]).map(id=>Store.get(id)).filter(Boolean);}
   };
-  // Single egress for module engines: resolve assigned connectors here,
-  // and keep the legacy Founder endpoint behind the same broker.
+  function migrateAssignments() {
+    const a=Assignments.all();
+    const map={open_lab:'open_lab',notebook:'notebook',apps:'apps',app_studio:'app_studio'};
+    Store.all().filter(r=>r.kind==='ext').forEach(r=>(r.tools||[]).forEach(tool=>{
+      const moduleId=map[tool], slot=Object.keys(slotCategory).find(k=>slotCategory[k]===r.ext.category);
+      if(!moduleId||!slot||(SLOT_RULES[tool]||{})[slot]===0)return;
+      const existing=a[moduleId]&&a[moduleId][slot], ids=Array.isArray(existing)?existing:(existing&&existing!=='founder'?[existing]:[]);
+      const max=(SLOT_RULES[tool]||{})[slot]; if(!ids.includes(r.id)&&ids.length<max)ids.push(r.id);
+      if(ids.length)a[moduleId]=Object.assign({},a[moduleId]||{},{[slot]:max===1?ids[0]:ids});
+    }));
+    Object.keys(a).forEach(mod=>Object.keys(a[mod]||{}).forEach(slot=>{
+      const max=(SLOT_RULES[mod]||{})[slot];if(max==null)return;
+      const ids=Array.isArray(a[mod][slot])?a[mod][slot]:[a[mod][slot]];
+      const valid=ids.filter(id=>{const r=Store.get(id);return r&&r.kind==='ext'&&r.ext&&r.ext.category===slotCategory[slot]&&Policy.allowed(r,mod);}).slice(0,max);
+      a[mod][slot]=valid.length?(max===1?valid[0]:valid):'founder';
+    }));
+    localStorage.setItem(LS_ASSIGNMENTS,JSON.stringify(a));
+  }
+  migrateAssignments();
   async function requestAssigned(o) {
-    o = o || {};
-    const moduleId = String(o.moduleId || ''), kind = String(o.kind || '').toLowerCase(), tool = String(o.tool || '');
-    if (!moduleId || !['cpu','qpu','storage'].includes(kind) || !tool) throw NexusError('route', 'Invalid Nexus route identity');
-    const assigned = Assignments.get(moduleId, kind);
-    const ids = Array.isArray(assigned) ? assigned : (assigned && assigned !== 'founder' ? [assigned] : []);
-    const expected = kind === 'cpu' ? 'classical' : kind === 'qpu' ? 'quantum' : 'storage';
-    const compatible = rec => rec && rec.kind === 'ext' && Policy.allowed(rec, tool) && rec.ext && rec.ext.category === expected;
-    const assignedRecords = ids.map(id => Store.get(id)).filter(compatible);
-    // Multiple APIs may serve the same tool. Keep every enabled compatible connector
-    // and try them in stable priority order instead of silently discarding all but one.
-    let candidates = assignedRecords.length ? assignedRecords : Policy.list('ext', tool).filter(compatible);
-    if (o.connector) candidates = candidates.slice().sort((a,b) => (a.id === o.connector ? -1 : 0) - (b.id === o.connector ? -1 : 0));
-    if (!candidates.length) throw NexusError('no-route', 'No compatible external API is enabled for ' + tool + ' (' + kind + '). Connect and enable one or more APIs in Nexus Connectors.');
-    const method = String(o.method || 'GET').toUpperCase();
-    const safeToRetry = ['GET','HEAD','OPTIONS'].includes(method);
-    const failures = [];
-    for (const rec of candidates) {
-      try {
-        const result = await ext.request({ tool, connector:rec.id, method, path:o.path, headers:o.headers, body:o.body, timeout:o.timeout });
-        if (result && result.ok) return Object.assign({}, result, { source:'nexus', connector:rec.id, attempted:failures.map(x => x.name) });
-        const status = Number(result && result.status || 0);
-        failures.push({ name:rec.name, status });
-        const rejectedWithoutExecution = [401,403,404,405,415,422,429].includes(status);
-        if (!safeToRetry && !rejectedWithoutExecution) return Object.assign({}, result, { source:'nexus', connector:rec.id, attempted:failures.map(x => x.name) });
-      } catch (error) {
-        failures.push({ name:rec.name, error:String(error && error.message || error) });
-        if (!safeToRetry) break;
-      }
+    o=o||{};const moduleId=String(o.moduleId||''),kind=String(o.kind||'').toLowerCase(),tool=String(o.tool||'');
+    if(!moduleId||!['cpu','qpu','storage'].includes(kind)||!tool)throw NexusError('route','Invalid Nexus route identity');
+    const assigned=Assignments.get(moduleId,kind);
+    if(assigned==='founder')throw NexusError('founder-selected','Founder route is selected for '+(TOOLS[tool]||tool)+' / '+kind.toUpperCase());
+    const ids=Array.isArray(assigned)?assigned:[assigned],max=(SLOT_RULES[tool]||{})[kind];
+    if(max==null||max===0)throw NexusError('unsupported-slot',(TOOLS[tool]||tool)+' does not support '+kind.toUpperCase());
+    const expected=slotCategory[kind],candidates=ids.map(id=>Store.get(id));
+    if(candidates.some(r=>!r||!Policy.allowed(r,tool)||!r.ext||r.ext.category!==expected))throw NexusError('assigned-unavailable','The assigned '+kind.toUpperCase()+' connector is disabled, deleted or incompatible. Reassign it in Nexus Connectors.');
+    if(candidates.length>max)throw NexusError('assignment','The assigned slot exceeds its configured limit');
+    const method=String(o.method||'GET').toUpperCase(),safeToRetry=['GET','HEAD','OPTIONS'].includes(method),failures=[];
+    const started=Date.now(),totalLimit=Math.min(Number(o.totalTimeout)||60000,60000);
+    for(const rec of candidates){
+      if(Date.now()-started>=totalLimit)break;
+      try{
+        const result=await ext.request({tool,connector:rec.id,method,path:o.path,headers:o.headers,body:o.body,timeout:Math.min(Number(o.timeout)||30000,totalLimit-(Date.now()-started))});
+        if(result&&result.ok)return Object.assign({},result,{source:'nexus',connector:rec.id,attempted:failures.map(x=>x.name)});
+        const status=Number(result&&result.status||0);failures.push({name:rec.name,status});
+        if(!safeToRetry&&! [401,403,404,405,415,422,429].includes(status))return Object.assign({},result,{source:'nexus',connector:rec.id,attempted:failures.map(x=>x.name)});
+        if(max===1)break;
+      }catch(error){failures.push({name:rec.name,error:String(error&&error.message||error)});if(!safeToRetry||max===1)break;}
     }
-    throw NexusError('no-route', 'All compatible external APIs failed for ' + tool + ' (' + kind + '): ' +
-      failures.map(x => x.name + (x.status ? ' HTTP ' + x.status : ': ' + x.error)).join(' | '), { attempted:failures });
+    throw NexusError('no-route','Assigned external API failed for '+tool+' ('+kind+'): '+failures.map(x=>x.name+(x.status?' HTTP '+x.status:': '+x.error)).join(' | '),{attempted:failures});
   }
   const api = { VERSION, TOOLS, PERMS, PROVIDERS, COMMUNITY_REQUIRES, MAX_CODE, Vault, Store, Policy, Analyze, Bridge, ai, ext, loc, Catalog, Community, Installer, Make, Assignments, requestAssigned, util: { uid, slug, sha256, now, NexusError } };
   root.QuOLabNexusConnectors = api;
