@@ -27,7 +27,7 @@ class NexusShellRoutingTests(unittest.TestCase):
     def test_card_activation_authorizes_ai_connector(self): self.assertNotIn("nexus_ai_direct_approved", self.index)
     def test_founder_fallback_requires_explicit_approval(self): self.assertIn("nexus_ai_fallback_approved", self.index)
     def test_external_ai_uses_connector_broker(self): self.assertIn("NXC().ai.chat", self.index)
-    def test_ai_fallback_is_visible(self): self.assertIn("using the approved Founder gateway fallback", self.index); self.assertIn("nxConfigured && !aiFallbackApproved()", self.index)
+    def test_ai_fallback_is_visible(self): self.assertIn("using the approved Founder gateway fallback", self.index); self.assertIn("nxConfigured && !aiFallbackApproved()", self.index); self.assertIn("aiCfg.provider === 'gateway'", self.index)
     def test_module_api_registration_is_handled(self): self.assertIn("OPENQ_API_REGISTER", self.index)
     def test_module_api_request_is_handled(self): self.assertIn("OPENQ_API_REQUEST", self.index)
     def test_ai_chat_is_not_exposed_to_tool_iframes(self): self.assertNotIn("OPENQ_AI_CHAT", self.index); self.assertIn("AI APIs are reserved exclusively for QNexusAi", read("quolab-nexus-core.js"))
