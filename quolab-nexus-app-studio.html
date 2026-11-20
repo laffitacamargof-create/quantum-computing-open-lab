@@ -859,6 +859,7 @@
             pythonCode: proj.pythonCode,
             htmlCode: proj.htmlCode,
             serverUrl: proj.serverUrl,
+            nexusModule:proj.nexusModule || 'quantum-app-studio', nexusSlot:proj.nexusSlot || 'cpu', nexusConnectorId:proj.nexusConnectorId || '',
             timestamp: Date.now()
         };
         if (existingIndex !== -1) {
@@ -883,6 +884,7 @@
                     pythonCode: proj.pythonCode || '',
                     htmlCode: proj.htmlCode || '',
                     serverUrl: proj.serverUrl || localStorage.getItem('qcol_colab_url') || '',
+                    nexusModule:proj.nexusModule || 'quantum-app-studio', nexusSlot:proj.nexusSlot || 'cpu', nexusConnectorId:proj.nexusConnectorId || '',
                     duration: 8
                 }
             };
@@ -908,6 +910,7 @@
                         pythonCode: proj.pythonCode || '',
                         htmlCode: proj.htmlCode || '',
                         serverUrl: proj.serverUrl || localStorage.getItem('qcol_colab_url') || '',
+                        nexusModule:proj.nexusModule || 'quantum-app-studio', nexusSlot:proj.nexusSlot || 'cpu', nexusConnectorId:proj.nexusConnectorId || '',
                         duration: 8
                     }).then(() => {
                         notify(`☁️ App "${proj.name}" enviada a la nube (pendiente)`);
