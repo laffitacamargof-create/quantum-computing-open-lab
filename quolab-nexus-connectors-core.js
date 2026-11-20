@@ -192,6 +192,13 @@
       if (rec.usage === 'off') return false;
       if (rec.kind === 'ai') return tool === 'chat';
       if (tool === 'chat') return false;
+      if (rec.kind === 'ext') {
+        const moduleId = TOOL_MODULE[tool], kind = rec.ext && ASSIGN_KIND[rec.ext.category];
+        if (!moduleId || !kind || !Assignments) return false;
+        const value = Assignments.get(moduleId, kind);
+        const ids = value === 'founder' ? [] : (Array.isArray(value) ? value : [value]);
+        return ids.includes(rec.id);
+      }
       return (rec.tools || []).includes(tool);
     },
     list(kind, tool, id) {
