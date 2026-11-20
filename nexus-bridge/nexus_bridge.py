@@ -403,7 +403,7 @@ def _community_audit(connector_path):
     blocked_events = {
         "subprocess.Popen", "os.system", "os.exec", "os.spawn", "os.fork",
         "os.posix_spawn", "os.posix_spawnp", "os.startfile", "os.chdir", "os.fchdir", "os.chroot", "os.setsid", "os.setpgid", "os.setuid", "os.setgid", "os.setgroups", "os.kill", "os.putenv", "os.unsetenv",
-        "socket.__new__", "socket.connect", "socket.bind", "socket.sendto", "socket.sendmsg", "socket.sendfile", "socket.getaddrinfo",
+        "socket.connect", "socket.bind", "socket.sendto", "socket.sendmsg", "socket.sendfile", "socket.getaddrinfo",
         "socket.gethostbyname", "socket.gethostbyname_ex", "socket.gethostbyaddr",
         "socket.getnameinfo", "ctypes.dlopen", "ctypes.dlsym", "pty.spawn"
     }
