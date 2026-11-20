@@ -24,7 +24,7 @@ import argparse, ast, asyncio, base64, concurrent.futures as cf, hmac, http.clie
 import ipaddress, json, os, platform, queue, re, secrets, shutil, socket, socketserver, ssl
 import subprocess, sys, threading, time, urllib.parse, uuid
 
-VERSION = "1.0.0"
+VERSION = "1.0.1"
 TOOLS = {"open_lab", "notebook", "apps", "app_studio", "chat"}
 PERMS = {"ble.scan", "ble.link", "ble.read", "ble.write", "ble.notify", "proc.run", "file.read", "file.write", "net.http"}
 # which declared permission a ctx operation needs
@@ -402,11 +402,17 @@ def _community_audit(connector_path):
     python_root = os.path.realpath(sys.prefix)
     blocked_events = {
         "subprocess.Popen", "os.system", "os.exec", "os.spawn", "os.fork",
-        "socket.connect", "socket.bind", "socket.getaddrinfo", "socket.gethostbyname",
-        "ctypes.dlopen", "ctypes.dlsym", "pty.spawn"
+        "os.posix_spawn", "os.posix_spawnp", "os.startfile",
+        "socket.connect", "socket.bind", "socket.sendto", "socket.getaddrinfo",
+        "socket.gethostbyname", "socket.gethostbyname_ex", "socket.gethostbyaddr",
+        "socket.getnameinfo", "ctypes.dlopen", "ctypes.dlsym", "pty.spawn"
     }
-    write_events = {"os.remove", "os.rename", "os.mkdir", "os.rmdir", "os.chmod",
-                    "os.chown", "os.link", "os.symlink", "os.truncate", "os.utime"}
+    # Rename/link/symlink operations have two path arguments. Deny them for
+    # community code rather than accidentally checking only the source path
+    # and allowing a destination outside the connector's private data directory.
+    path_pair_events = {"os.rename", "os.link", "os.symlink"}
+    write_events = {"os.remove", "os.mkdir", "os.rmdir", "os.chmod",
+                    "os.chown", "os.truncate", "os.utime"}
     def audit(event, args):
         if event in blocked_events:
             raise PermissionError("Community connector blocked OS/network operation: " + event)
@@ -421,6 +427,11 @@ def _community_audit(connector_path):
                         raise PermissionError("Community connector may write only inside its private data directory")
                 elif not (_inside(path, data_root) or _inside(path, connector_root) or _inside(path, python_root)):
                     raise PermissionError("Community connector may read only its code, Python runtime and private data directory")
+        if event in path_pair_events:
+            # Both source and destination must be contained. This also blocks
+            # symlinks whose target points outside the private data directory.
+            if len(args) < 2 or any(not _inside(path, data_root) for path in args[:2]):
+                raise PermissionError("Community connector may link or rename only inside its private data directory")
         if event in write_events and args:
             if not _inside(args[0], data_root):
                 raise PermissionError("Community connector may modify only its private data directory")
