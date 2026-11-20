@@ -388,7 +388,56 @@ def _reader():
                 _loop.call_soon_threadsafe(_set)
     os._exit(0)  # bridge closed the pipe
 
+def _inside(path, root):
+    try:
+        path = os.path.realpath(os.fsdecode(path))
+        root = os.path.realpath(root)
+        return os.path.commonpath((path, root)) == root
+    except Exception:
+        return False
+
+def _community_audit(connector_path):
+    data_root = os.path.realpath(os.getcwd())
+    connector_root = os.path.realpath(os.path.dirname(connector_path))
+    python_root = os.path.realpath(sys.prefix)
+    blocked_events = {
+        "subprocess.Popen", "os.system", "os.exec", "os.spawn", "os.fork",
+        "socket.connect", "socket.bind", "socket.getaddrinfo", "socket.gethostbyname",
+        "ctypes.dlopen", "ctypes.dlsym", "pty.spawn"
+    }
+    write_events = {"os.remove", "os.rename", "os.mkdir", "os.rmdir", "os.chmod",
+                    "os.chown", "os.link", "os.symlink", "os.truncate", "os.utime"}
+    def audit(event, args):
+        if event in blocked_events:
+            raise PermissionError("Community connector blocked OS/network operation: " + event)
+        if event == "open" and args:
+            path = args[0]
+            if isinstance(path, (str, bytes, os.PathLike)):
+                mode = args[1] if len(args) > 1 else None
+                flags = args[2] if len(args) > 2 and isinstance(args[2], int) else 0
+                writing = (isinstance(mode, str) and any(ch in mode for ch in "wax+")) or bool(flags & (os.O_WRONLY | os.O_RDWR | os.O_CREAT | os.O_TRUNC | os.O_APPEND))
+                if writing:
+                    if not _inside(path, data_root):
+                        raise PermissionError("Community connector may write only inside its private data directory")
+                elif not (_inside(path, data_root) or _inside(path, connector_root) or _inside(path, python_root)):
+                    raise PermissionError("Community connector may read only its code, Python runtime and private data directory")
+        if event in write_events and args:
+            if not _inside(args[0], data_root):
+                raise PermissionError("Community connector may modify only its private data directory")
+    sys.addaudithook(audit)
+    try:
+        import resource
+        resource.setrlimit(resource.RLIMIT_CPU, (15, 20))
+        resource.setrlimit(resource.RLIMIT_FSIZE, (10 * 1024 * 1024, 10 * 1024 * 1024))
+        resource.setrlimit(resource.RLIMIT_NOFILE, (64, 64))
+        if hasattr(resource, "RLIMIT_AS"):
+            resource.setrlimit(resource.RLIMIT_AS, (512 * 1024 * 1024, 512 * 1024 * 1024))
+    except (ImportError, OSError, ValueError):
+        pass
+
 def main(path):
+    if os.environ.get("NEXUS_CONNECTOR_ORIGIN") == "community":
+        _community_audit(path)
     try:
         spec = importlib.util.spec_from_file_location("connector_main", path)
         mod = importlib.util.module_from_spec(spec); spec.loader.exec_module(mod)
@@ -415,6 +464,7 @@ class Worker:
         data = self.br.ddir(self.cid); os.makedirs(data, exist_ok=True)
         env = {k: v for k, v in os.environ.items() if k in ("PATH", "SYSTEMROOT", "TEMP", "TMP", "LANG", "LC_ALL", "PYTHONPATH_NEXUS")}
         env["PYTHONIOENCODING"] = "utf-8"
+        env["NEXUS_CONNECTOR_ORIGIN"] = str((self.br.meta(self.cid) or {}).get("origin", "private"))
         self.proc = subprocess.Popen([py, "-u", os.path.join(self.br.home, "runner.py"), os.path.join(d, "connector.py")], stdin=subprocess.PIPE,
                                      stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=data, env=env, text=True, encoding="utf-8", bufsize=1)
         threading.Thread(target=self._read, daemon=True).start(); threading.Thread(target=self._err, daemon=True).start()
