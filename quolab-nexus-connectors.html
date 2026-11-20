@@ -170,7 +170,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--bl2)}
   </div>
 
   <div class="pane" id="p-loc">
-    <p class="note">Connector studio: build the interface, the web logic and the local logic. A connector can serve one or several tools. Permissions are declared in the code, per tool, and can never overlap between tools.</p>
+    <p class="note">Connector studio: build the interface, the web logic and the local logic. A connector can serve one or several tools. Permissions are declared in the code, per tool, and can never overlap between tools.</p><p class="note" style="border-left-color:var(--rd);color:var(--tx)"><strong>PRIVATE CODE TRUST WARNING:</strong> private connector code runs with the permissions of the local bridge process. It can access this computer and its files. Install only code you wrote or fully trust. Community connectors receive stricter AST checks, but AST validation is not an operating-system sandbox.</p>
     <div class="two"><div><label>NAME</label><input id="loc-name" placeholder="My local connector"></div><div><label>VERSION</label><input id="loc-version" value="0.1.0"></div></div><div><label>DESCRIPTION</label><input id="loc-desc" placeholder="What does this connector do?"></div>
     <div><label>DETECTED FROM CODE (TOOLS AND THEIR PERMISSIONS)</label><div class="detect" id="detect"></div><div class="vmsg" id="vmsg"></div></div>
     <div class="stabs"><button class="stab on" data-s="ui">① INTERFACE</button><button class="stab" data-s="web">② WEB LOGIC</button><button class="stab" data-s="py">③ LOCAL LOGIC</button></div>
