@@ -698,6 +698,12 @@ def make_handler(br, port):
                     ok, why = br.ble.available()
                     return self._send(200, {"version": VERSION, "platform": platform.system() + " " + platform.release(), "python": platform.python_version(),
                                             "ble": {"available": ok, "reason": why}, "installed": br.installed()}, o)
+                if path == "/analyze" and method == "POST":
+                    code = body.get("code", "")
+                    mode = body.get("mode", "community")
+                    if not isinstance(code, str) or mode not in ("community", "private", "official"):
+                        raise BridgeError("Invalid analysis request", "bad-args")
+                    return self._send(200, analyze(code, mode), o)
                 if path == "/install" and method == "POST":
                     return self._send(200, {"job": br.start_install(body)}, o)
                 if path.startswith("/job/") and method == "GET":
