@@ -1226,9 +1226,9 @@ class QuOLabNexusConfigSyncReader {
       const rec = nx.Store.get(id);
       return rec && rec.kind === 'ext' && nx.Policy.allowed(rec, tool) && rec.ext && rec.ext.category === expected;
     };
-    if (value === 'founder' || !ids.length) return false;
-    if (requested && !ids.includes(requested)) return false;
-    return ordered.some(compatible);
+    // Route all explicit assignments to the broker, including stale/off IDs,
+    // so it can report the problem instead of silently falling back to Founder.
+    return value !== 'founder' && ids.length > 0;
   }
   function routesFor(mod) {
     const out = {}, nx = NXC();
