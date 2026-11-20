@@ -1238,12 +1238,9 @@ class QuOLabNexusConfigSyncReader {
     const value = nx.Assignments.get(mod, kind);
     const ids = Array.isArray(value) ? value : (value && value !== 'founder' ? [value] : []);
     const ordered = requested && ids.includes(requested) ? [requested].concat(ids.filter(id => id !== requested)) : ids;
-    const compatible = id => {
-      const rec = nx.Store.get(id);
-      return rec && rec.kind === 'ext' && nx.Policy.allowed(rec, tool) && rec.ext && rec.ext.category === expected;
-    };
-    if (value === 'founder') return false;
-    return ordered.some(compatible);
+    // Any explicit assignment is authoritative. If it is disabled or stale,
+    // requestAssigned must return a visible error instead of silently using Founder.
+    return value !== 'founder' && ordered.length > 0;
   }
   function routesFor(mod) {
     const out = {}, nx = NXC();
@@ -1252,7 +1249,7 @@ class QuOLabNexusConfigSyncReader {
       const ids = Array.isArray(value) ? value : (value && value !== 'founder' ? [value] : []);
       const expected = connectorCategory(kind);
       const records = nx ? ids.map(id => nx.Store.get(id)).filter(r =>
-        r && r.kind === 'ext' && (!expected || (r.ext && r.ext.category === expected))) : [];
+        r && r.kind === 'ext' && (!expected || (r.ext && r.ext.category === expected)) && (!nx || nx.Policy.allowed(r, TOOL_OF[mod] || 'chat'))) : [];
       const selected = records[0] || null;
       const founder = value === 'founder' ? founderRouteFor(mod, kind) : null;
       const route = selected ? 'nexus' : (founder ? 'founder' : 'unconfigured');
