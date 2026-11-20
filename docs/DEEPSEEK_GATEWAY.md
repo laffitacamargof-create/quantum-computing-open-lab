@@ -1,37 +1,38 @@
-# QuOLab Nexus AI — DeepSeek gateway
+# QuOLab Nexus AI gateway
 
-QuOLab Nexus routes DeepSeek requests through the Supabase Edge Function
-`quolab-nexus-ai`. The DeepSeek API key must remain server-side.
+All browser AI requests pass through the Supabase Edge Function `quolab-nexus-ai`. Provider credentials are server-side secrets and must never be placed in browser code, local storage, or Git.
 
-## Supabase setup
+## Configure providers
 
-1. In Supabase Dashboard, open **Authentication → Sign In / Providers**.
-2. Enable **Allow anonymous sign-ins**. QuOLab Nexus uses anonymous Auth sessions
-   so the browser can obtain a short-lived user JWT without collecting an email.
-3. In **Edge Functions → Secrets**, create or confirm `DEEPSEEK_API_KEY`.
-4. Deploy the `quolab-nexus-ai` Edge Function with JWT verification enabled.
+Set one or more of these Edge Function secrets in Supabase:
 
-## Runtime flow
+- `GEMINI_API_KEY`
+- `GROQ_API_KEY`
+- `DEEPSEEK_API_KEY`
+- `OPENROUTER_API_KEY`
 
-1. The browser obtains or refreshes a Supabase anonymous Auth session.
-2. It sends the session JWT and the public publishable key to
-   `/functions/v1/quolab-nexus-ai`.
-3. Supabase verifies the JWT before the function runs.
-4. The function confirms the caller is an anonymous Auth user, validates the
-   request size and message roles, and applies a best-effort per-user rate limit.
-5. The function reads `DEEPSEEK_API_KEY` from its server environment and calls
-   `https://api.deepseek.com/chat/completions`.
-6. The provider key is never sent to the browser or stored in localStorage.
+Optional routing/model settings:
 
-## Operational notes
+- `AI_PROVIDER_ORDER` — comma-separated provider IDs. Default: `gemini,groq,deepseek,openrouter`.
+- `AI_MODEL_GEMINI`, `AI_MODEL_GROQ`, `AI_MODEL_DEEPSEEK`, `AI_MODEL_OPENROUTER`.
+- `AI_CUSTOM_PROVIDERS_JSON` — optional OpenAI-compatible provider registry.
 
-- The gateway currently permits 20 requests per user per minute per warm
-  function instance. This in-memory limit is best-effort, not a durable global
-  quota.
-- The gateway accepts `deepseek-chat` and `deepseek-reasoner`; other model
-  values fall back to `deepseek-chat`.
-- If anonymous sign-ins are disabled, the UI reports a Supabase anonymous
-  authentication error. If the server secret is absent, the function returns
-  `deepseek_gateway_not_configured`.
-- Never commit provider keys to GitHub, frontend configuration, or browser
-  storage. Rotate any key previously pasted into chat or committed to source.
+OpenRouter's free route is intentionally last because availability and latency vary.
+
+## Authentication and limits
+
+The browser obtains an anonymous Supabase Auth session and sends its user JWT to the gateway. Enable anonymous sign-ins in Supabase Auth if this deployment uses that flow. The gateway currently applies an in-memory limit of 60 requests per user per minute; it is process-local and is not a durable cross-instance quota.
+
+## Timeouts and retries
+
+The Edge Function uses a 40-second total provider budget and a maximum 10-second timeout per provider. The client allows 45 seconds for the gateway response and retries only selected server errors, at most twice. It does not retry HTTP 429, nor replay a request after a client timeout or confirmed gateway receipt. Respect any rate-limit response and wait before sending another request.
+
+## Logs
+
+Inspect Edge Function logs with:
+
+```sh
+supabase functions logs quolab-nexus-ai
+```
+
+For the complete provider and secret configuration, see [AI-MULTI-PROVIDER.md](./AI-MULTI-PROVIDER.md). Never place a Supabase service-role key in browser code. Rotate any service-role key that may previously have been exposed.
