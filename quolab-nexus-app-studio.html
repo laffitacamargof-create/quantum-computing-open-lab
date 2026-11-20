@@ -390,7 +390,7 @@
     function nexusRouteFrom(app) {
         const r = app || {};
         return {
-            module: r.nexusModule || r.nexus_module || 'quantum-puzzle',
+            module: 'quantum-puzzle',
             slot: r.nexusSlot || r.nexus_slot || 'cpu',
             connector: r.nexusConnectorId || r.nexus_connector_id || ''
         };
