@@ -1248,6 +1248,7 @@ class QuOLabNexusConfigSyncReader {
   async function requestFounderFallback(mod, kind, data, method) {
     const route = founderRouteFor(mod, kind);
     if (!route) throw new Error('No compatible Nexus connector is assigned and Founder has no configured service for ' + kind + '. Configure it in the Founder module or assign a connector in Nexus Connectors.');
+    if (!['GET','HEAD','POST','PUT','PATCH','DELETE'].includes(method)) throw new Error('HTTP method is not allowed for Founder fallback.');
     const rawPath = String(data.path || (route.type === 'engine' ? '/run' : ''));
     if (!rawPath || rawPath.length > 500 || /[\r\n]/.test(rawPath)) throw new Error('Founder API path is missing or invalid.');
     const url = new URL(rawPath, route.base + '/');
