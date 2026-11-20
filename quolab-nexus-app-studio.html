@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
     <script src="quolab-nexus-core.js"></script>
-<script src="quolab-nexus-connectors-core.js"></script>
-<script src="quolab-nexus-tool-connector.js?v=1.9.1"></script>
+<script src="quolab-nexus-connectors-core.js?v=20261119-routing-1"></script>
+<script src="quolab-nexus-tool-connector.js?v=1.9.2"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <title>QuOLab Nexus — Quantum App Studio</title>
@@ -1035,7 +1035,7 @@
         let parsed;
         try { parsed = new URL(base); } catch (_) { throw new Error("Invalid Python server URL"); }
         if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') throw new Error("Python server URL must use HTTP or HTTPS");
-        const isHF = base.includes('hf.space') || base.includes('huggingface');
+        const isHF = base.includes('hf.space') || base.includes('huggingface') || base.includes('nexus-connectors.invalid');
         const url = isHF ? base + '/run/predict' : base + '/run';
         const body = isHF
             ? JSON.stringify({ data: [code], fn_index: 0 })
@@ -1108,7 +1108,7 @@
     });
 
     async function buildAppBlob(pythonCode, htmlCode, serverUrl, nexusRoute) {
-        const connectorUrl = new URL('quolab-nexus-tool-connector.js?v=1.9.1', location.href).href;
+        const connectorUrl = new URL('quolab-nexus-tool-connector.js?v=1.9.2', location.href).href;
         const bridge = `
         <script>window.__QUOLAB_NEXUS_TOOL='quantum-app-studio';<\/script>
         <script src="${connectorUrl}"><\/script>
