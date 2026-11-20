@@ -1284,19 +1284,37 @@ class QuOLabNexusConfigSyncReader {
       return { status:response.status, headers:Object.fromEntries(response.headers.entries()), text, source:'founder', connector:null };
     } finally { clearTimeout(timer); }
   }
+  // Consent is scoped to one user task. It never changes or disables the selected connector.
+  let founderFallbackApprovedForCurrentTask = false;
   async function aiComplete(messages, options) {
-    const o = options || {}, connectors = aiNexusRecs(o.tool || 'chat');
-    // User AI connectors activate and route directly; Founder approval is not required.
+    const o = options || {};
+    const connectors = founderFallbackApprovedForCurrentTask ? [] : aiNexusRecs(o.tool || 'chat');
     if (connectors.length) {
       try {
-        // Do not pin the request to the first connector: the broker rotates through
-        // every enabled AI API and only consumes a one-shot connector after success.
+        // Use the selected external AI connector directly. A failed request must
+        // never silently switch providers or mutate the user's connector selection.
         const result = await NXC().ai.chat({ tool:o.tool || 'chat', messages, max_tokens:o.tokens, temperature:o.temp });
         return result.text;
       } catch (error) {
-        notify('All enabled Nexus AI connectors failed; trying the configured AI fallback.');
+        const founderConfigured = aiCfg.provider === 'gateway' || aiCfg.provider === 'deepseek' || (!!aiCfg.key && aiCfg.provider !== 'none');
+        if (!founderConfigured) {
+          throw new Error('The selected external AI connector failed, and no Founder AI configuration is available. The selected connector was not changed. ' + String(error && error.message || error));
+        }
+        let approved = false;
+        try {
+          const spanish = /^es(?:-|$)/i.test(navigator.language || '');
+          approved = window.confirm(spanish
+            ? 'El conector de IA externo falló. ¿Autorizas usar la configuración de IA del fundador para continuar esta tarea? La conexión externa seleccionada no se modificará.'
+            : 'The external AI connector failed. Do you authorize using the Founder AI configuration for this task? Your selected external connector will not be changed.');
+        } catch (_) {}
+        if (!approved) {
+          throw new Error('The selected external AI connector failed. No provider switch was made; the selected connector remains active. ' + String(error && error.message || error));
+        }
+        founderFallbackApprovedForCurrentTask = true;
+        notify('Founder AI fallback authorized for this task only. The external connector selection remains unchanged.');
       }
     }
+    // With no active external AI connector, the Founder-configured AI is the default.
     if (aiCfg.provider === 'gateway') return callMultiModelGateway(messages, o.tokens, o.temp);
     return null;
   }
@@ -2826,6 +2844,7 @@ CONTEXT (staged and size-limited): ${c}`;
     return Array.isArray(cells)&&cells.some(x=>String(x.output||x.result||'').trim()||(Array.isArray(x.outputs)&&x.outputs.some(v=>String(v||'').trim())));
   }
   async function sendAI(){
+    founderFallbackApprovedForCurrentTask = false;
     if(!cmEditor)return;
     const msg=cmEditor.state.doc.toString().trim();if(!msg)return;
     cmEditor.dispatch({changes:{from:0,to:cmEditor.state.doc.length,insert:''}});
