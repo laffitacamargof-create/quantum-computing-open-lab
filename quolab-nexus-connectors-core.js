@@ -1,5 +1,5 @@
 /* ============================================================================
-   NEXUS CORE  v1.2.0
+   NEXUS CORE  v1.3.0
    Shared logic of the Nexus connector module. Plain script (no build step):
    it is loaded by qcol-nexus.html, by the shell (index.html) and may be loaded
    by any tool that wants to use a connector.
@@ -19,7 +19,7 @@
    ========================================================================== */
 (function (root) {
   'use strict';
-  const VERSION = '1.2.0';
+  const VERSION = '1.3.0';
   const SCRIPT_URL = (typeof document !== 'undefined' && document.currentScript && document.currentScript.src) || (root.location && root.location.href) || '';
   const LS_STORE = 'nexus_connectors_v1';
   const LS_ASSIGNMENTS = 'nexus_assignments_v1';
@@ -261,18 +261,28 @@
     async chat(o) {
       const connectors = Policy.list('ai', o.tool || 'chat', o.connector);
       if (!connectors.length) throw NexusError('no-connector', 'No AI connector is enabled for ' + (TOOLS[o.tool] || o.tool));
-      const failures = [];
-      for (const rec of connectors) {
-        try {
-          const text = await this._call(rec, o);
+      const failures = [], controllers = connectors.map(() => new AbortController());
+      // AI requests are intentionally fanned out: every enabled provider gets the
+      // same prompt, and the first valid answer wins. Losing browser requests are
+      // aborted as soon as possible; providers may still bill a request already received.
+      const attempts = connectors.map((rec, index) => this._call(rec, Object.assign({}, o, { signal:controllers[index].signal }))
+        .then(text => {
           Policy.consume(rec);
-          return { text, connector:rec.id, name:rec.name, provider:rec.ai.provider, model:rec.ai.model || '', attempted:failures.map(x => x.name) };
-        } catch (error) {
+          return { text, rec };
+        })
+        .catch(error => {
           failures.push({ id:rec.id, name:rec.name, provider:rec.ai.provider, error:String(error && error.message || error) });
-        }
+          throw error;
+        }));
+      try {
+        const winner = await Promise.any(attempts);
+        controllers.forEach((controller, index) => { if (connectors[index].id !== winner.rec.id) controller.abort(); });
+        return { text:winner.text, connector:winner.rec.id, name:winner.rec.name, provider:winner.rec.ai.provider,
+          model:winner.rec.ai.model || '', parallel:true, providers:connectors.map(r => r.name), failed:failures };
+      } catch (_) {
+        const summary = failures.map(x => x.name + ' (' + x.provider + '): ' + x.error).join(' | ');
+        throw NexusError('all-connectors-failed', 'All enabled AI connectors failed. ' + summary, { attempted:failures });
       }
-      const summary = failures.map(x => x.name + ' (' + x.provider + '): ' + x.error).join(' | ');
-      throw NexusError('all-connectors-failed', 'All enabled AI connectors failed. ' + summary, { attempted:failures });
     },
     async test(id) { // does not consume "once"
       const rec = Store.get(id); if (!rec) throw NexusError('missing', 'Connector not found');
@@ -289,13 +299,22 @@
       const key = await Vault.open(rec.secrets && rec.secrets.apiKey);
       let r;
       const body = JSON.stringify({ model, messages: o.messages, max_tokens: o.max_tokens || 1200, temperature: o.temperature == null ? 0.7 : o.temperature });
+      const controller = new AbortController();
+      let timedOut = false;
+      const timeoutId = setTimeout(() => { timedOut = true; controller.abort(); }, o.timeout || 30000);
+      const onCancel = () => controller.abort();
+      if (o.signal) {
+        if (o.signal.aborted) onCancel();
+        else o.signal.addEventListener('abort', onCancel, { once:true });
+      }
       try {
         r = await fetch(url, {
           method: 'POST', headers: { 'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json' },
-          body, signal: AbortSignal.timeout(o.timeout || 30000),
+          body, signal: controller.signal,
         });
       } catch (e) {
-        if (e.name !== 'TimeoutError') {
+        if (o.signal && o.signal.aborted) throw NexusError('aborted', 'Request cancelled after another AI provider returned a response');
+        if (!timedOut) {
           try {
             const proxied = await Bridge.proxy({ url, method:'POST', headers:{'Authorization':'Bearer '+key,'Content-Type':'application/json'}, body, timeout:o.timeout ? Math.round(o.timeout/1000) : 30 });
             if (proxied.status >= 200 && proxied.status < 300) {
@@ -309,6 +328,9 @@
           }
         }
         throw NexusError('network', 'Could not reach ' + new URL(url).host + ' (timeout)');
+      } finally {
+        clearTimeout(timeoutId);
+        if (o.signal) o.signal.removeEventListener('abort', onCancel);
       }
       let d = {}; try { d = await r.json(); } catch (e) {}
       if (!r.ok) throw NexusError('api', (d.error && (d.error.message || d.error)) || ('API HTTP ' + r.status), { status: r.status });

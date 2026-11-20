@@ -63,3 +63,8 @@ Ollama can be added as a custom OpenAI-compatible endpoint only when that endpoi
 ## Built-in AI provider endpoints
 
 The shared connector core must define a built-in endpoint and default model for every provider exposed by the connector form. The supported built-ins are DeepSeek, Groq, Cerebras, Mistral, OpenAI, and OpenRouter. The `other` provider uses the user-supplied HTTPS base URL. This prevents a connector from being saved successfully while its provider has no runtime endpoint. Multiple enabled AI connectors are still attempted sequentially in saved priority order; they are not fanned out in parallel, avoiding duplicate requests and charges.
+
+
+## Parallel AI execution
+
+When multiple AI connectors are enabled, `ai.chat()` sends the same request to all enabled providers concurrently and returns the first valid response. It aborts losing browser-side requests where possible. A provider may already have received and billed a request before cancellation, so enabling multiple providers can incur usage on more than one account. Each successful one-shot connector is consumed. This parallel race applies only to AI text generation. External hardware and other side-effecting APIs retain guarded sequential failover; the same experiment or write is never broadcast to multiple services automatically.
