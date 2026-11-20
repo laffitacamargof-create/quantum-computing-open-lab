@@ -1292,7 +1292,9 @@ class QuOLabNexusConfigSyncReader {
         notify('All Nexus AI connectors failed; using the approved Founder gateway fallback.');
       }
     }
-    if (aiCfg.provider === 'gateway') return callMultiModelGateway(messages, o.tokens, o.temp);
+    const savedUserAI = (() => { try { const nx=NXC(); return !!(nx && nx.Store && nx.Store.byKind('ai').length); } catch (_) { return false; } })();
+    if (savedUserAI && !aiFallbackApproved()) throw new Error('Your AI connector is currently disabled or consumed. Enable it or explicitly approve Founder gateway fallback in QNexusAi settings.');
+    if (aiCfg.provider === 'gateway' && (!savedUserAI || aiFallbackApproved())) return callMultiModelGateway(messages, o.tokens, o.temp);
     return null;
   }
   async function handleModuleMsg(event, data) {
