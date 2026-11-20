@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <script src="quolab-nexus-core.js"></script>
-<script src="quolab-nexus-connectors-core.js?v=20261119-routing-1"></script>
+<script src="quolab-nexus-connectors-core.js?v=20261120-connectors-fix-1"></script>
 <script src="quolab-nexus-tool-connector.js?v=1.9.2"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
@@ -673,7 +673,7 @@ document.addEventListener('DOMContentLoaded', async function initQuantumSync() {
             <span>🌀 QUANTUM APP STUDIO · Quantum application editor</span>
             <button class="btn-cancel" onclick="closeStudioModal()" style="margin:0;">CLOSE</button>
         </div>
-        <iframe id="studioIframe" class="studio-iframe" src="quolab-nexus-app-studio.html?v=20261118-health-retry-1" sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-modals allow-same-origin"></iframe>
+        <iframe id="studioIframe" class="studio-iframe" src="quolab-nexus-app-studio.html?v=20261118-health-retry-1" sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-modals"></iframe>
     </div>
 </div>
 
@@ -693,7 +693,7 @@ document.addEventListener('DOMContentLoaded', async function initQuantumSync() {
             <span>🔬 App preview</span>
             <button class="btn-cancel" onclick="closePreviewModal()">CLOSE</button>
         </div>
-        <iframe id="previewIframe" class="preview-iframe" sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-modals"></iframe>
+        <iframe id="previewIframe" class="preview-iframe" sandbox="allow-scripts allow-popups allow-forms allow-modals"></iframe>
     </div>
 </div>
 
@@ -706,7 +706,7 @@ document.addEventListener('DOMContentLoaded', async function initQuantumSync() {
         </div>
         <div class="exec-content">
             <div id="execRunPanel" style="width:100%;height:100%;">
-                <iframe id="execIframe" class="exec-iframe" sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-modals"></iframe>
+                <iframe id="execIframe" class="exec-iframe" sandbox="allow-scripts allow-popups allow-forms allow-modals"></iframe>
                 <div id="execLoading" class="loading-overlay" style="display: none;">
                     <div class="loading-spinner"></div>
                 </div>
@@ -1433,6 +1433,8 @@ function executeWithStudio(app) {
 
     const serverUrl = resolvePuzzleServerUrl(app.server_url || app.serverUrl || '');
     const nexusRoute = { slot:app.nexusSlot || app.nexus_slot || 'cpu', connector:app.nexusConnectorId || app.nexus_connector_id || '', module:app.nexusModule || app.nexus_module || 'quantum-puzzle' };
+    const selectedAppSlot = nexusRoute.slot === 'engine' ? 'cpu' : nexusRoute.slot === 'quantum' ? 'qpu' : String(nexusRoute.slot || 'cpu');
+    window.__QNEXUS_ACTIVE_APP_CONTEXT = { id:String(app.id || ''), name:String(app.name || app.title || 'Quantum App').slice(0,100), connectorId:String(nexusRoute.connector || ''), slot:selectedAppSlot, module:'apps' };
 
     // ✅ Verificación mejorada
     if (!app.python_code && !app.html_code && !app.pythonCode && !app.htmlCode) {
@@ -1475,6 +1477,7 @@ function executeWithStudio(app) {
 }
 
 function closeExecModal() {
+    window.__QNEXUS_ACTIVE_APP_CONTEXT = null;
     const modal = document.getElementById('execAppModal');
     if (modal) modal.classList.remove('open');
     const iframe = document.getElementById('execIframe');

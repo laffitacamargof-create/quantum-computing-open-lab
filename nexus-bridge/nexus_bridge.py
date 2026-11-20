@@ -16,8 +16,9 @@ Design (read this before trusting it):
   * Connector code never imports Bluetooth/OS libraries: it asks `ctx` and the bridge checks the
     permissions the connector declared in its code (@connector.tool("tool", allow=[...])).
   * Community connectors are additionally checked with a strict AST validator before installing.
-  * IMPORTANT: this is permission enforcement, not an operating-system sandbox. Only install
-    connectors you trust or that were reviewed by an administrator.
+  * Community code uses a strict AST, runtime audit restrictions and Linux bwrap isolation when available,
+    with CPU/memory/file limits where supported. Other operating systems retain the audit restrictions only;
+    this is defense-in-depth, not a universal replacement for an OS sandbox. Only install code you trust.
 Python >= 3.9, standard library only. Bluetooth needs `pip install bleak` in the bridge's Python.
 """
 import argparse, ast, asyncio, base64, concurrent.futures as cf, hmac, http.client, http.server
@@ -34,14 +35,15 @@ OP_PERM = {
     "fs.list": "file.read", "fs.read": "file.read", "fs.write": "file.write", "fs.delete": "file.write",
     "http.request": "net.http", "proc.run": "proc.run", "emit": None, "log": None,
 }
-COMMUNITY_REQUIRES = {"numpy", "scipy"}
-SAFE_IMPORTS = {"nexus", "numpy", "scipy", "math", "cmath", "json", "re", "time", "asyncio", "typing", "dataclasses", "collections",
+COMMUNITY_REQUIRES = {"numpy"}
+SAFE_IMPORTS = {"nexus", "numpy", "math", "cmath", "json", "re", "time", "typing", "dataclasses", "collections",
                 "itertools", "functools", "statistics", "random", "base64", "hashlib", "datetime", "struct", "enum", "decimal", "fractions", "string", "textwrap"}
 FORBIDDEN_CALLS = {"eval", "exec", "compile", "__import__", "open", "globals", "locals", "vars", "getattr", "setattr", "delattr", "input", "breakpoint", "memoryview"}
 ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 REQ_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._\-\[\],<>=!~ ]{0,80}$")
 MAX_CODE = 60000
-LOCAL_ORIGIN = re.compile(r"^http://(localhost|127\.0\.0\.1)(:\d+)?$")
+LOCAL_ORIGIN = re.compile(r"^http://(localhost|127\.0\.0\.1)(:(\d+))?$")
+LOCAL_PORTS = {3000, 4173, 5173, 5500, 5501, 8000, 8080, 8765, 8888}
 
 
 class BridgeError(Exception):
@@ -111,8 +113,12 @@ def analyze(code, mode):
             elif isinstance(node, ast.Call):
                 f = node.func
                 if isinstance(f, ast.Name) and f.id in FORBIDDEN_CALLS: res["errors"].append("Line %d: %s() is not allowed in community connectors" % (node.lineno, f.id))
+                elif isinstance(f, ast.Attribute) and f.attr == "format" and isinstance(f.value, ast.Constant) and isinstance(f.value.value, str):
+                    if re.search(r"\{[^{}]*(?:\.|\[)", f.value.value):
+                        res["errors"].append("Line %d: format fields cannot access object attributes or indexes in community connectors" % node.lineno)
             elif isinstance(node, ast.Attribute):
-                if node.attr.startswith("__") and node.attr.endswith("__"): res["errors"].append("Line %d: access to %s is not allowed in community connectors" % (node.lineno, node.attr))
+                if (node.attr.startswith("__") and node.attr.endswith("__")) or node.attr in {"sys","os","subprocess","socket","modules","loader","builtins","system","popen","connect","load","save","savetxt","loadtxt","genfromtxt","fromfile","memmap","ctypeslib","f2py"}:
+                    res["errors"].append("Line %d: access to %s is not allowed in community connectors" % (node.lineno, node.attr))
             elif isinstance(node, ast.Name):
                 if node.id in ("__builtins__", "__loader__", "__spec__"): res["errors"].append("Line %d: %s is not allowed in community connectors" % (node.lineno, node.id))
     res["errors"] = list(dict.fromkeys(res["errors"]))
@@ -127,7 +133,10 @@ def _public(ip):
 
 
 def _resolve_public(host, port):
-    ips = [i[4][0] for i in socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)]
+    try:
+        ips = [i[4][0] for i in socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)]
+    except socket.gaierror:
+        raise BridgeError("The service hostname could not be resolved", "dns", 502)
     if not ips or not all(_public(ip) for ip in ips):
         raise BridgeError("Blocked: that address points to this computer or a private network", "denied", 403)
     return ips[0]
@@ -382,6 +391,41 @@ def _reader():
     os._exit(0)  # bridge closed the pipe
 
 def main(path):
+    if os.environ.get("NEXUS_COMMUNITY_CONNECTOR") == "1":
+        if os.environ.get("NEXUS_BWRAP_ACTIVE") != "1":
+            import builtins
+            _original_import = builtins.__import__
+            def _restricted_import(name, globals=None, locals=None, fromlist=(), level=0):
+                if str(name).split(".")[0] in {"numpy", "scipy"}:
+                    raise ImportError("Native numerical packages require the Linux bwrap community sandbox")
+                return _original_import(name, globals, locals, fromlist, level)
+            builtins.__import__ = _restricted_import
+        data_root = os.path.realpath(os.environ.get("NEXUS_CONNECTOR_DATA", os.getcwd()))
+        python_root = os.path.realpath(sys.prefix)
+        connector_root = os.path.realpath(os.path.dirname(path))
+        try:
+            import resource
+            resource.setrlimit(resource.RLIMIT_CPU, (60, 60))
+            resource.setrlimit(resource.RLIMIT_AS, (768 * 1024 * 1024, 768 * 1024 * 1024))
+            resource.setrlimit(resource.RLIMIT_FSIZE, (10 * 1024 * 1024, 10 * 1024 * 1024))
+            resource.setrlimit(resource.RLIMIT_NOFILE, (64, 64))
+            resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
+        except (ImportError, AttributeError, OSError, ValueError):
+            pass
+        def _community_audit(event, args):
+            if event in ("subprocess.Popen", "os.system", "os.posix_spawn", "socket.connect", "socket.getaddrinfo"):
+                raise PermissionError("Community connector blocked by runtime security policy: " + event)
+            if event == "open" and args:
+                target = args[0]
+                if isinstance(target, (str, bytes, os.PathLike)):
+                    real = os.path.realpath(os.fsdecode(target))
+                    try:
+                        allowed = (os.path.commonpath((real, data_root)) == data_root or os.path.commonpath((real, python_root)) == python_root or os.path.commonpath((real, connector_root)) == connector_root)
+                    except ValueError:
+                        allowed = False
+                    if not allowed:
+                        raise PermissionError("Community connector file access is restricted to its data folder")
+        sys.addaudithook(_community_audit)
     try:
         spec = importlib.util.spec_from_file_location("connector_main", path)
         mod = importlib.util.module_from_spec(spec); spec.loader.exec_module(mod)
@@ -408,8 +452,44 @@ class Worker:
         data = self.br.ddir(self.cid); os.makedirs(data, exist_ok=True)
         env = {k: v for k, v in os.environ.items() if k in ("PATH", "SYSTEMROOT", "TEMP", "TMP", "LANG", "LC_ALL", "PYTHONPATH_NEXUS")}
         env["PYTHONIOENCODING"] = "utf-8"
-        self.proc = subprocess.Popen([py, "-u", os.path.join(self.br.home, "runner.py"), os.path.join(d, "connector.py")], stdin=subprocess.PIPE,
-                                     stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=data, env=env, text=True, encoding="utf-8", bufsize=1)
+        meta = self.br.meta(self.cid) or {}
+        env["NEXUS_COMMUNITY_CONNECTOR"] = "1" if meta.get("origin") == "community" else "0"
+        env["NEXUS_CONNECTOR_DATA"] = os.path.realpath(data)
+        if meta.get("origin") == "community":
+            env["HOME"] = os.path.realpath(data)
+            env["TMPDIR"] = os.path.realpath(data)
+        runner_path = os.path.join(self.br.home, "runner.py")
+        runner_fd = None
+        command = [py, "-u", runner_path, os.path.join(d, "connector.py")]
+        if meta.get("origin") == "community" and sys.platform.startswith("linux"):
+            bwrap = shutil.which("bwrap")
+            if bwrap:
+                env["NEXUS_BWRAP_ACTIVE"] = "1"
+                env["NEXUS_CONNECTOR_DATA"] = "/workspace"
+                env["HOME"] = "/workspace"
+                env["TMPDIR"] = "/tmp"
+                sandbox_py = py
+                try:
+                    if os.path.commonpath((os.path.abspath(py), os.path.abspath(d))) == os.path.abspath(d):
+                        sandbox_py = "/connector/" + os.path.relpath(os.path.abspath(py), os.path.abspath(d))
+                except ValueError:
+                    pass
+                mount_dirs = [item for target in ("/connector", "/workspace") if not os.path.exists(target) for item in ("--dir", target)]
+                hidden_homes = [item for target in ("/home", "/root") if os.path.isdir(target) for item in ("--tmpfs", target)]
+                runner_fd = os.open(runner_path, os.O_RDONLY)
+                command = [bwrap, "--unshare-all", "--die-with-parent", "--ro-bind", "/", "/"] + mount_dirs + [
+                           "--ro-bind", d, "/connector", "--bind", data, "/workspace",
+                           "--ro-bind-data", str(runner_fd), "/runner.py"] + hidden_homes + [
+                           "--proc", "/proc", "--dev", "/dev", "--tmpfs", "/tmp", "--chdir", "/workspace", "--",
+                           sandbox_py, "-u", "/runner.py", "/connector/connector.py"]
+        try:
+            self.proc = subprocess.Popen(command, stdin=subprocess.PIPE,
+                                         stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=data, env=env,
+                                         text=True, encoding="utf-8", bufsize=1,
+                                         pass_fds=(runner_fd,) if runner_fd is not None else ())
+        finally:
+            if runner_fd is not None:
+                os.close(runner_fd)
         threading.Thread(target=self._read, daemon=True).start(); threading.Thread(target=self._err, daemon=True).start()
         if not self.ready.wait(25) or self.fatal:
             err = self.fatal or "The connector did not start. " + " | ".join(self.tail[-3:])
@@ -486,7 +566,10 @@ class Bridge:
     def cdir(self, cid): return os.path.join(self.home, "connectors", cid)
     def ddir(self, cid): return os.path.join(self.home, "data", cid)
 
-    def origin_ok(self, o): return o in self.origins or bool(LOCAL_ORIGIN.match(o))
+    def origin_ok(self, o):
+        if o in self.origins: return True
+        m = LOCAL_ORIGIN.match(o or "")
+        return bool(m and int(m.group(3) or 80) in LOCAL_PORTS)
 
     def meta(self, cid):
         try:
@@ -694,6 +777,11 @@ def make_handler(br, port):
                     raw = self.rfile.read(n) if n else b""
                     body = json.loads(raw.decode("utf-8")) if raw else {}
                     if not isinstance(body, dict): raise BridgeError("JSON object expected")
+                if path == "/analyze" and method == "POST":
+                    code = body.get("code", "")
+                    if not isinstance(code, str): raise BridgeError("Python code must be text", "bad-args")
+                    result = analyze(code, "community")
+                    return self._send(200, {"ok": not result["errors"], "tools": result["tools"], "actions": result["actions"], "requires": result["requires"], "errors": result["errors"], "validator": "python-ast"}, o)
                 if path == "/info" and method == "GET":
                     ok, why = br.ble.available()
                     return self._send(200, {"version": VERSION, "platform": platform.system() + " " + platform.release(), "python": platform.python_version(),

@@ -99,7 +99,7 @@
       text = String(text == null ? '' : text);
       const iv = crypto.getRandomValues(new Uint8Array(12));
       const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, await this.key(), enc.encode(text));
-      return { iv: b64(iv), ct: b64(ct), hint: text.length > 8 ? text.slice(0, 3) + '••••' + text.slice(-4) : '••••••••' };
+      return { iv: b64(iv), ct: b64(ct), hint: text.length >= 16 ? '••••' + text.slice(-4) : '••••••••' };
     },
     async open(o) {
       if (!o || !o.ct) return '';
@@ -126,7 +126,7 @@
       this.save(l); return rec;
     },
     patch(id, fn) { const r = this.get(id); if (!r) return null; fn(r); return this.upsert(r); },
-    remove(id) { this.save(this.all().filter(r => r.id !== id)); },
+    remove(id) { this.save(this.all().filter(r => r.id !== id)); try { Assignments.remove(id); } catch (_) {} },
     byKind(k) { return this.all().filter(r => r.kind === k); },
     subscribe(f) { listeners.add(f); return () => listeners.delete(f); },
   };
@@ -186,12 +186,19 @@
   };
 
   /* ───────────────────────── Policy ───────────────────────── */
+  const onceLocks = new Set();
   const Policy = {
     allowed(rec, tool) {
       if (!rec) return false;
       if (rec.usage === 'off') return false;
       if (rec.kind === 'ai') return tool === 'chat';
       if (tool === 'chat') return false;
+      if (rec.kind === 'ext') {
+        const slot = rec.ext && rec.ext.category === 'classical' ? 'cpu' : rec.ext && rec.ext.category === 'quantum' ? 'qpu' : rec.ext && rec.ext.category === 'storage' ? 'storage' : '';
+        if (!slot || !Assignments) return false;
+        const value = Assignments.get(tool, slot), ids = Array.isArray(value) ? value : value === 'founder' ? [] : [value];
+        return ids.includes(rec.id) && (rec.tools || []).includes(tool);
+      }
       return (rec.tools || []).includes(tool);
     },
     list(kind, tool, id) {
@@ -200,7 +207,9 @@
           String(a.createdAt || '').localeCompare(String(b.createdAt || '')));
     },
     pick(kind, tool, id) { return this.list(kind, tool, id)[0] || null; },
-    consume(rec) { if (rec && rec.usage === 'once') Store.patch(rec.id, r => { r.usage = 'off'; r.usedAt = now(); }); },
+    reserve(rec) { if (!rec || rec.usage !== 'once') return true; if (onceLocks.has(rec.id)) return false; onceLocks.add(rec.id); return true; },
+    release(rec) { if (rec) onceLocks.delete(rec.id); },
+    consume(rec) { if (rec && rec.usage === 'once') { onceLocks.delete(rec.id); Store.patch(rec.id, r => { r.usage = 'off'; r.usedAt = now(); }); } },
   };
 
   /* ───────────────────────── Bridge client ───────────────────────── */
@@ -261,24 +270,26 @@
     async chat(o) {
       const connectors = Policy.list('ai', o.tool || 'chat', o.connector);
       if (!connectors.length) throw NexusError('no-connector', 'No AI connector is enabled for ' + (TOOLS[o.tool] || o.tool));
-      const failures = [], controllers = connectors.map(() => new AbortController());
+      const failures = [], reserved = connectors.filter(rec => Policy.reserve(rec));
+      if (!reserved.length) throw NexusError('once-busy', 'The one-use AI connector is already handling another request.');
+      const active = reserved, controllers = active.map(() => new AbortController());
       // AI requests are intentionally fanned out: every enabled provider gets the
-      // same prompt, and the first valid answer wins. Losing browser requests are
-      // aborted as soon as possible; providers may still bill a request already received.
-      const attempts = connectors.map((rec, index) => this._call(rec, Object.assign({}, o, { signal:controllers[index].signal }))
+      // same prompt, and the first valid answer wins.
+      const attempts = active.map((rec, index) => this._call(rec, Object.assign({}, o, { signal:controllers[index].signal }))
         .then(text => {
           Policy.consume(rec);
           return { text, rec };
         })
         .catch(error => {
+          Policy.release(rec);
           failures.push({ id:rec.id, name:rec.name, provider:rec.ai.provider, error:String(error && error.message || error) });
           throw error;
         }));
       try {
         const winner = await Promise.any(attempts);
-        controllers.forEach((controller, index) => { if (connectors[index].id !== winner.rec.id) controller.abort(); });
+        controllers.forEach((controller, index) => { if (active[index].id !== winner.rec.id) { controller.abort(); Policy.release(active[index]); } });
         return { text:winner.text, connector:winner.rec.id, name:winner.rec.name, provider:winner.rec.ai.provider,
-          model:winner.rec.ai.model || '', parallel:true, providers:connectors.map(r => r.name), failed:failures };
+          model:winner.rec.ai.model || '', parallel:true, providers:active.map(r => r.name), failed:failures };
       } catch (_) {
         const summary = failures.map(x => x.name + ' (' + x.provider + '): ' + x.error).join(' | ');
         throw NexusError('all-connectors-failed', 'All enabled AI connectors failed. ' + summary, { attempted:failures });
@@ -352,16 +363,28 @@
     },
     _url(rec, path) { // the credentials can only ever travel to the registered address
       const base = new URL(rec.ext.baseUrl);
-      const u = new URL(path || '', base.href.endsWith('/') ? base.href : base.href + '/');
-      if (u.origin !== base.origin) throw NexusError('scope', 'This connector can only call ' + base.origin);
+      if (base.username || base.password) throw NexusError('scope', 'Credentials are not allowed in connector URLs.');
+      const rootPath = (base.pathname || '/').replace(/\/+$/, '') + '/';
+      const rawPath = String(path || '').trim();
+      if (/^[a-z][a-z0-9+.-]*:/i.test(rawPath) || rawPath.startsWith('//') || rawPath.startsWith('/') || rawPath.includes('\\\\') || /%(?:2e|2f|5c)/i.test(rawPath)) throw NexusError('scope', 'Connector paths must be relative and cannot contain encoded traversal or slash characters.');
+      const u = new URL(rawPath, base.origin + rootPath);
+      if (u.origin !== base.origin || !(u.pathname + '/').startsWith(rootPath)) throw NexusError('scope', 'This connector can only call paths under ' + rootPath);
       return u.href;
     },
     async request(o) {
+      if (!o || !['cpu','qpu','storage'].includes(String(o.kind || '').toLowerCase())) throw NexusError('route', 'External requests must specify kind: cpu, qpu or storage. Use requestAssigned() for tool routing.');
+      const kind = String(o.kind).toLowerCase();
+      const expected = kind === 'cpu' ? 'classical' : kind === 'qpu' ? 'quantum' : 'storage';
+      if (!o.connector) throw NexusError('route', 'An explicit connector id is required. Use requestAssigned() for module routing.');
       const rec = Policy.pick('ext', o.tool, o.connector);
+      if (rec && (!rec.ext || rec.ext.category !== expected)) throw NexusError('route', 'Connector category does not match the requested ' + o.kind + ' slot.');
       if (!rec) throw NexusError('no-connector', 'No external connector is enabled for ' + (TOOLS[o.tool] || o.tool));
-      const out = await this._do(rec, o);
-      if (out && out.ok) Policy.consume(rec);
-      return out;
+      if (!Policy.reserve(rec)) throw NexusError('once-busy', 'This one-use connector is already handling another request.');
+      try {
+        const out = await this._do(rec, o);
+        if (out && out.ok) Policy.consume(rec); else Policy.release(rec);
+        return out;
+      } catch (error) { Policy.release(rec); throw error; }
     },
     async _do(rec, o) {
       const method = (o.method || 'GET').toUpperCase(), url = this._url(rec, o.path);
@@ -494,14 +517,14 @@
   /* ───────────────────────── record builders ───────────────────────── */
   const Make = {
     async ai(f) {
-      const rec = { id: f.id || uid(), kind: 'ai', name: f.name, usage: f.usage || 'always', tools: ['chat'], createdAt: f.createdAt,
-        ai: { provider: f.provider, model: f.model || '', baseUrl: f.baseUrl || '' }, secrets: f.secrets || {} };
+      const rec = { id: f.id || uid(), kind: 'ai', name: f.name, usage: f.usage === 'off' ? 'off' : 'always', tools: ['chat'], createdAt: f.createdAt,
+        ai: { provider: f.provider, model: f.model || '', baseUrl: f.baseUrl || '' }, secrets: Object.assign({}, f.secrets || {}) };
       if (f.apiKey) rec.secrets.apiKey = await Vault.seal(f.apiKey);
       return rec;
     },
     async ext(f) {
       const rec = { id: f.id || uid(), kind: 'ext', name: f.name, usage: f.usage || 'always', tools: (f.tools || []).filter(tool => tool !== 'chat'), createdAt: f.createdAt,
-        ext: { category: f.category, baseUrl: f.baseUrl, auth: f.auth, headerName: f.headerName || '', via: f.via || 'auto' }, secrets: f.secrets || {} };
+        ext: { category: f.category, baseUrl: f.baseUrl, auth: f.auth, headerName: f.headerName || '', via: f.via || 'auto' }, secrets: Object.assign({}, f.secrets || {}) };
       if (f.secret) rec.secrets.secret = await Vault.seal(f.secret);
       if (f.user) rec.secrets.user = await Vault.seal(f.user);
       if (f.pass) rec.secrets.pass = await Vault.seal(f.pass);
@@ -515,12 +538,59 @@
     },
   };
 
+  const SLOT_RULES = {
+    open_lab:{cpu:1,qpu:1,storage:Infinity}, notebook:{cpu:1,storage:Infinity},
+    apps:{cpu:Infinity,qpu:Infinity}, app_studio:{cpu:1,qpu:1,storage:1},
+    chat:{ai:Infinity}
+  };
+  const SLOT_CATEGORY = {cpu:'classical',qpu:'quantum',storage:'storage'};
   const Assignments = {
     all() { try { return JSON.parse(localStorage.getItem(LS_ASSIGNMENTS) || '{}') || {}; } catch (_) { return {}; } },
-    get(moduleId, kind) { const a = this.all(); const v = a[moduleId] && a[moduleId][kind]; return v == null ? 'founder' : v; },
-    set(moduleId, kind, value) { const a = this.all(); a[moduleId] = Object.assign({}, a[moduleId] || {}, { [kind]: value }); localStorage.setItem(LS_ASSIGNMENTS, JSON.stringify(a)); emitChange(false); return value; },
-    resolve(moduleId, kind) { const value = this.get(moduleId, kind); if (value === 'founder') return null; if (Array.isArray(value)) return value.map(id => Store.get(id)).filter(Boolean); return Store.get(value) || null; }
+    get(moduleId, kind) { const a=this.all(),v=a[moduleId]&&a[moduleId][kind]; return v == null ? 'founder' : v; },
+    set(moduleId, kind, value) {
+      const tool=String(moduleId||''),slot=String(kind||''),rule=SLOT_RULES[tool]&&SLOT_RULES[tool][slot];
+      if(rule==null) throw NexusError('assignment','Unsupported tool slot.');
+      if(value!=='founder'){
+        const ids=Array.isArray(value)?value:[value];
+        if(!ids.length||ids.length>rule) throw NexusError('slot-limit',(TOOLS[tool]||tool)+' allows at most '+rule+' '+slot.toUpperCase()+' connector(s).');
+        ids.forEach(id=>{const rec=Store.get(id);if(!rec||rec.kind!=='ext'||rec.ext.category!==SLOT_CATEGORY[slot]||!(rec.tools||[]).includes(tool)||rec.usage==='off')throw NexusError('assignment','Invalid, disabled or incompatible connector in '+tool+' / '+slot+'.');});
+        value=rule===1?ids[0]:ids;
+      }
+      const a=this.all();a[tool]=Object.assign({},a[tool]||{},{[slot]:value});localStorage.setItem(LS_ASSIGNMENTS,JSON.stringify(a));emitChange(false);return value;
+    },
+    bind(id,moduleId,kind) {
+      const rec=Store.get(id), tool=String(moduleId||''), slot=String(kind||'');
+      if(!rec||rec.kind!=='ext'||!SLOT_CATEGORY[slot]||!SLOT_RULES[tool]||!(slot in SLOT_RULES[tool])) throw NexusError('assignment','This connector cannot be assigned to that tool slot.');
+      if(rec.ext.category!==SLOT_CATEGORY[slot]) throw NexusError('assignment','Connector category does not match '+slot.toUpperCase()+'.');
+      if(!(rec.tools||[]).includes(tool)||rec.usage==='off') throw NexusError('assignment','Enable this connector for '+(TOOLS[tool]||tool)+' first.');
+      const current=this.get(tool,slot),ids=Array.isArray(current)?current.slice():current==='founder'?[]:[current];
+      if(!ids.includes(id)) ids.push(id);
+      const max=SLOT_RULES[tool][slot];
+      if(ids.length>max) throw NexusError('slot-limit',(TOOLS[tool]||tool)+' allows only '+max+' '+slot.toUpperCase()+' connector(s).');
+      return this.set(tool,slot,max===1?ids[0]:ids);
+    },
+    unbind(id,moduleId,kind) { const v=this.get(moduleId,kind),ids=Array.isArray(v)?v:[v]; const next=ids.filter(x=>x!=='founder'&&x!==id); return this.set(moduleId,kind,next.length?(SLOT_RULES[moduleId]&&SLOT_RULES[moduleId][kind]===1?next[0]:next):'founder'); },
+    remove(id) { const a=this.all(); Object.keys(a).forEach(tool=>Object.keys(a[tool]||{}).forEach(kind=>{const v=a[tool][kind],ids=Array.isArray(v)?v:[v],next=ids.filter(x=>x!==id&&x!=='founder');a[tool][kind]=next.length?(SLOT_RULES[tool]&&SLOT_RULES[tool][kind]===1?next[0]:next):'founder';}));localStorage.setItem(LS_ASSIGNMENTS,JSON.stringify(a));emitChange(false); },
+    migrate() {
+      const a=this.all();
+      Object.keys(SLOT_RULES).forEach(tool=>Object.keys(SLOT_RULES[tool]).forEach(kind=>{
+        const v=a[tool]&&a[tool][kind];if(v==null)return;
+        const ids=(Array.isArray(v)?v:[v]).map(id=>Store.get(id)).filter(rec=>rec&&rec.kind==='ext'&&rec.ext&&rec.ext.category===SLOT_CATEGORY[kind]&&rec.usage!=='off'&&(rec.tools||[]).includes(tool)).sort((x,y)=>String(x.createdAt||'').localeCompare(String(y.createdAt||'')));
+        const max=SLOT_RULES[tool][kind],keep=ids.slice(0,max);
+        a[tool][kind]=keep.length?(max===1?keep[0].id:keep.map(x=>x.id)):'founder';
+      }));
+      localStorage.setItem(LS_ASSIGNMENTS,JSON.stringify(a));
+      Store.byKind('ext').sort((x,y)=>String(x.createdAt||'').localeCompare(String(y.createdAt||''))).forEach(rec=>{
+        if(rec.usage==='off')return;
+        const kind=rec.ext&&rec.ext.category==='classical'?'cpu':rec.ext&&rec.ext.category==='quantum'?'qpu':rec.ext&&rec.ext.category==='storage'?'storage':'';
+        if(!kind)return;
+        (rec.tools||[]).forEach(tool=>{try{const v=this.get(tool,kind),ids=Array.isArray(v)?v:v==='founder'?[]:[v];if(!ids.includes(rec.id))this.bind(rec.id,tool,kind);}catch(_){}});
+      });
+      return this.all();
+    },
+    resolve(moduleId,kind) { const v=this.get(moduleId,kind); if(v==='founder')return null; return (Array.isArray(v)?v:[v]).map(id=>Store.get(id)).filter(Boolean); }
   };
+  Assignments.migrate();
   // Single egress for module engines: resolve assigned connectors here,
   // and keep the legacy Founder endpoint behind the same broker.
   async function requestAssigned(o) {
@@ -531,18 +601,28 @@
     const ids = Array.isArray(assigned) ? assigned : (assigned && assigned !== 'founder' ? [assigned] : []);
     const expected = kind === 'cpu' ? 'classical' : kind === 'qpu' ? 'quantum' : 'storage';
     const compatible = rec => rec && rec.kind === 'ext' && Policy.allowed(rec, tool) && rec.ext && rec.ext.category === expected;
-    const assignedRecords = ids.map(id => Store.get(id)).filter(compatible);
-    // Multiple APIs may serve the same tool. Keep every enabled compatible connector
-    // and try them in stable priority order instead of silently discarding all but one.
-    let candidates = assignedRecords.length ? assignedRecords : Policy.list('ext', tool).filter(compatible);
-    if (o.connector) candidates = candidates.slice().sort((a,b) => (a.id === o.connector ? -1 : 0) - (b.id === o.connector ? -1 : 0));
+    let assignedRecords = ids.map(id => Store.get(id)).filter(compatible);
+    const slotMax = SLOT_RULES[moduleId] && SLOT_RULES[moduleId][kind] != null ? SLOT_RULES[moduleId][kind] : 1;
+    if (assignedRecords.length > slotMax) {
+      assignedRecords.sort((a,b)=>String(a.createdAt||'').localeCompare(String(b.createdAt||'')));
+      assignedRecords = assignedRecords.slice(0,slotMax);
+      Assignments.set(moduleId,kind,slotMax===1?assignedRecords[0].id:assignedRecords.map(r=>r.id));
+    }
+    if (assigned !== 'founder' && !assignedRecords.length) throw NexusError('no-route', 'The connector assigned to '+tool+' / '+kind+' is disabled, deleted or incompatible. Select another connector or choose Founder explicitly.');
+    let candidates = assigned === 'founder' ? [] : assignedRecords;
+    if (o.connector) {
+      candidates = candidates.filter(rec => rec.id === o.connector);
+      if (!candidates.length) throw NexusError('no-route', 'The explicitly requested connector is not assigned and enabled for ' + tool + ' / ' + kind + '.');
+    }
     if (!candidates.length) throw NexusError('no-route', 'No compatible external API is enabled for ' + tool + ' (' + kind + '). Connect and enable one or more APIs in Nexus Connectors.');
     const method = String(o.method || 'GET').toUpperCase();
     const safeToRetry = ['GET','HEAD','OPTIONS'].includes(method);
-    const failures = [];
+    const failures = [], deadline = Date.now() + 60000;
     for (const rec of candidates) {
+      const remaining = deadline - Date.now();
+      if (remaining <= 0) throw NexusError('route-timeout', 'Connector failover reached the 60-second total limit.');
       try {
-        const result = await ext.request({ tool, connector:rec.id, method, path:o.path, headers:o.headers, body:o.body, timeout:o.timeout });
+        const result = await ext.request({ tool, kind, connector:rec.id, method, path:o.path, headers:o.headers, body:o.body, timeout:Math.min(Number(o.timeout)||30000, remaining) });
         if (result && result.ok) return Object.assign({}, result, { source:'nexus', connector:rec.id, attempted:failures.map(x => x.name) });
         const status = Number(result && result.status || 0);
         failures.push({ name:rec.name, status });

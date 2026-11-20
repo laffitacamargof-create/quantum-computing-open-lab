@@ -28,10 +28,11 @@
   }
   let apiRequestSeq = 0;
   function brokerWindow() { return global.top && global.top !== global ? global.top : (global.parent && global.parent !== global ? global.parent : null); }
+  function brokerOrigin() { return global.location && global.location.origin === 'null' ? (global.__parentOrigin || '*') : global.location.origin; }
   function sendToBroker(type, payload) {
     const broker = brokerWindow();
     if (!broker) return false;
-    try { broker.postMessage(envelope(type, payload), global.location.origin); return true; } catch (_) { return false; }
+    try { broker.postMessage(envelope(type, payload), brokerOrigin()); return true; } catch (_) { return false; }
   }
   function requestParent(type, responseType, payload, timeout) {
     return new Promise((resolve, reject) => {
@@ -40,7 +41,7 @@
       const id = 'nexus-' + Date.now().toString(36) + '-' + (++apiRequestSeq).toString(36);
       const limit = Math.max(1000, Math.min(Number(timeout) || 30000, 120000));
       const handler = event => {
-        if (event.source !== broker || event.origin !== global.location.origin) return;
+        if (event.source !== broker || (brokerOrigin() !== '*' && event.origin !== brokerOrigin())) return;
         const data = normalizeIncoming(event.data || {});
         if (data.type !== responseType || data.id !== id) return;
         global.removeEventListener('message', handler);
@@ -71,9 +72,7 @@
       if (!['cpu','qpu','storage'].includes(String(slot))) return Promise.reject(new Error('Unsupported Nexus API slot'));
       return requestParent('NEXUS_API_REQUEST', 'NEXUS_API_RESULT', Object.assign({ module:global.__QUOLAB_NEXUS_MODULE || '' }, options || {}, { slot }), options && options.timeout);
     },
-    chat(messages, options) {
-      return requestParent('NEXUS_AI_CHAT', 'NEXUS_AI_RESULT', Object.assign({ module:global.__QUOLAB_NEXUS_MODULE || '' }, options || {}, { messages }), options && options.timeout);
-    },
+    chat() { return Promise.reject(new Error('AI APIs are reserved exclusively for QNexusAi.')); },
     storage: {
       save(options) { return api.request('storage', Object.assign({ method:'PUT' }, options || {})); },
       load(options) { return api.request('storage', Object.assign({ method:'GET' }, options || {})); },
@@ -85,7 +84,7 @@
   }
   function sendToParent(type, payload) {
     if (global.parent && global.parent !== global) {
-      global.parent.postMessage(envelope(type, payload), global.location.origin);
+      global.parent.postMessage(envelope(type, payload), brokerOrigin());
       return true;
     }
     return false;

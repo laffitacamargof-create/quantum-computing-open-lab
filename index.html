@@ -2,7 +2,7 @@
 <html lang="en" id="root">
 <head>
 <script src="quolab-nexus-core.js"></script>
-<script src="quolab-nexus-connectors-core.js?v=20261120-ai-parallel-1"></script>
+<script src="quolab-nexus-connectors-core.js?v=20261120-connectors-fix-1"></script>
 <script defer src="quolab-nexus-agent.js?v=1.9.0"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -541,6 +541,7 @@ body::before{content:'';position:fixed;inset:0;
       <span id="ai-stxt">Not connected — demo mode</span>
       <span style="margin-left:auto;display:flex;gap:.7rem;">
         <label class="ai-opt" title="Share what you are doing (screen, code, last output) with the assistant so it can advise you"><input type="checkbox" id="ai-opt-ctx" onchange="QuOLabNexus.aiOpt('ctx',this.checked)"> 👁 Context</label>
+        <label class="ai-opt" title="Allow QNexusAi to use the explicitly configured Founder gateway only when Nexus AI providers are unavailable"><input type="checkbox" id="ai-opt-founder-fallback" onchange="QuOLabNexus.aiFallbackOpt(this.checked)"> Founder fallback</label>
         <span id="ai-specialist-count" style="color:var(--mu)">One agent · all tools</span>
       </span>
     </div>
@@ -1172,6 +1173,33 @@ class QuOLabNexusConfigSyncReader {
   const aiFallbackApproved = () => { try { return localStorage.getItem(AI_FALLBACK_KEY) === 'yes'; } catch (_) { return false; } };
   function aiNexusRecs(tool) { const nx=NXC(); return nx && nx.Policy ? (typeof nx.Policy.list === 'function' ? nx.Policy.list('ai', tool || 'chat') : [nx.Policy.pick('ai', tool || 'chat')].filter(Boolean)) : []; }
   function aiNexusRec(tool) { return aiNexusRecs(tool)[0] || null; }
+  function quantumAppFrameFor(source) {
+    const puzzle = iframes['quantum-puzzle'];
+    try { const frame = puzzle && puzzle.contentDocument && puzzle.contentDocument.getElementById('execIframe'); return frame && frame.contentWindow === source ? frame : null; }
+    catch (_) { return null; }
+  }
+  function quantumAppConnectorConsent(app, connector) {
+    const key = String(app.id) + ':' + String(connector.id);
+    let grants = {};
+    try { grants = JSON.parse(localStorage.getItem('nexus_app_connector_consents') || '{}') || {}; } catch (_) {}
+    if (grants[key] === true) return true;
+    const label = String(app.name || 'Quantum App').slice(0,100);
+    if (!confirm('Allow Quantum App "' + label + '" to use connector "' + connector.name + '" for this device? The app will be able to send requests to this provider.')) throw new Error('Connector permission denied for this Quantum App.');
+    grants[key] = true;
+    localStorage.setItem('nexus_app_connector_consents', JSON.stringify(grants));
+    return true;
+  }
+  function quantumAppFounderConsent(app, slot) {
+    const key = String(app.id) + ':founder:' + String(slot);
+    let grants = {};
+    try { grants = JSON.parse(localStorage.getItem('nexus_app_connector_consents') || '{}') || {}; } catch (_) {}
+    if (grants[key] === true) return true;
+    const label = String(app.name || 'Quantum App').slice(0,100);
+    if (!confirm('Allow Quantum App "' + label + '" to use the explicitly configured Founder ' + String(slot).toUpperCase() + ' service?')) throw new Error('Founder service permission denied for this Quantum App.');
+    grants[key] = true;
+    localStorage.setItem('nexus_app_connector_consents', JSON.stringify(grants));
+    return true;
+  }
   function moduleOf(win) {
     for (const key of Object.keys(iframes)) {
       const rootFrame = iframes[key]; if (!rootFrame || !rootFrame.contentWindow) continue;
@@ -1188,7 +1216,7 @@ class QuOLabNexusConfigSyncReader {
   }
   function assignedConnector(mod, kind, requested) {
     const nx = NXC(); if (!nx) return null;
-    const value = nx.Assignments.get(mod, kind);
+    const value = nx.Assignments.get(TOOL_OF[mod] || mod, kind);
     const ids = Array.isArray(value) ? value : (value && value !== 'founder' ? [value] : []);
     const ordered = requested && ids.includes(requested)
       ? [requested].concat(ids.filter(id => id !== requested)) : ids;
@@ -1203,7 +1231,6 @@ class QuOLabNexusConfigSyncReader {
     const slot = apiSlots[mod + '.' + kind];
     let engineBase = '';
     try { engineBase = localStorage.getItem('nexus_colab_url') || localStorage.getItem('qcol_colab_url') || localStorage.getItem('openq_colab_url') || ''; } catch (_) {}
-    if (!engineBase) engineBase = 'https://francilaffita1027-qcol-motor.hf.space';
     if (slot && slot.founder === 'engine' || (!slot?.founder && ['cpu','qpu'].includes(kind))) {
       return engineBase && /^https:\/\//i.test(engineBase) ? { type:'engine', base:engineBase.replace(/\/$/, ''), name:'Founder · Quantum Engine' } : null;
     }
@@ -1219,28 +1246,24 @@ class QuOLabNexusConfigSyncReader {
   function hasNexusRoute(mod, kind, requested) {
     const nx = NXC(), tool = TOOL_OF[mod] || 'chat', expected = connectorCategory(kind);
     if (!nx || !nx.Store || !nx.Assignments || !nx.Policy) return false;
-    const value = nx.Assignments.get(mod, kind);
+    const value = nx.Assignments.get(TOOL_OF[mod] || mod, kind);
     const ids = Array.isArray(value) ? value : (value && value !== 'founder' ? [value] : []);
     const ordered = requested && ids.includes(requested) ? [requested].concat(ids.filter(id => id !== requested)) : ids;
-    const compatible = id => {
-      const rec = nx.Store.get(id);
-      return rec && rec.kind === 'ext' && nx.Policy.allowed(rec, tool) && rec.ext && rec.ext.category === expected;
-    };
-    if (ordered.some(compatible)) return true;
-    const automatic = nx.Policy.pick('ext', tool, requested);
-    return !!(automatic && automatic.ext && automatic.ext.category === expected);
+    // Any explicit assignment is authoritative. If it is disabled or stale,
+    // requestAssigned must return a visible error instead of silently using Founder.
+    return value !== 'founder' && ordered.length > 0;
   }
   function routesFor(mod) {
     const out = {}, nx = NXC();
     ['cpu','qpu','storage'].forEach(kind => {
-      const value = nx ? nx.Assignments.get(mod, kind) : 'founder';
+      const assignmentModule = TOOL_OF[mod] || mod;
+      const value = nx ? nx.Assignments.get(assignmentModule, kind) : 'founder';
       const ids = Array.isArray(value) ? value : (value && value !== 'founder' ? [value] : []);
       const expected = connectorCategory(kind);
       const records = nx ? ids.map(id => nx.Store.get(id)).filter(r =>
-        r && r.kind === 'ext' && (!expected || (r.ext && r.ext.category === expected))) : [];
-      const automatic = nx ? nx.Policy.pick('ext', TOOL_OF[mod] || 'chat') : null;
-      const selected = records[0] || (automatic && automatic.ext && automatic.ext.category === expected ? automatic : null);
-      const founder = founderRouteFor(mod, kind);
+        r && r.kind === 'ext' && (!expected || (r.ext && r.ext.category === expected)) && (!nx || nx.Policy.allowed(r, TOOL_OF[mod] || 'chat'))) : [];
+      const selected = records[0] || null;
+      const founder = value === 'founder' ? founderRouteFor(mod, kind) : null;
       const route = selected ? 'nexus' : (founder ? 'founder' : 'unconfigured');
       out[kind] = { source:route, name:selected ? selected.name : (founder ? founder.name : 'No connector or Founder service configured'),
         options:records.map(r => ({ id:r.id, name:r.name, category:r.ext.category })) };
@@ -1282,6 +1305,7 @@ class QuOLabNexusConfigSyncReader {
   }
   async function aiComplete(messages, options) {
     const o = options || {}, connectors = aiNexusRecs(o.tool || 'chat');
+    const nxConfigured = !!(NXC() && NXC().Store && NXC().Store.byKind('ai').length);
     if (connectors.length) {
       try {
         // Do not pin the request to the first connector: the broker rotates through
@@ -1293,22 +1317,29 @@ class QuOLabNexusConfigSyncReader {
         notify('All Nexus AI connectors failed; using the approved Founder gateway fallback.');
       }
     }
-    if (aiCfg.provider === 'gateway') return callMultiModelGateway(messages, o.tokens, o.temp);
+    if (nxConfigured && !aiFallbackApproved()) throw new Error('Your Nexus AI connector is unavailable or consumed. Enable it again or explicitly approve Founder gateway fallback.');
+    if (aiCfg.provider === 'gateway') { if (!aiFallbackApproved()) throw new Error('Founder gateway is not enabled for automatic use. Explicitly approve it in AI settings or connect a Nexus AI provider.'); return callMultiModelGateway(messages, o.tokens, o.temp); }
     return null;
   }
   async function handleModuleMsg(event, data) {
     const rootMod = moduleOf(event.source); if (!rootMod) return;
-    // A nested App Studio iframe is physically inside Quantum Puzzle. Trust its
-    // declared identity only when the message really comes from that exact iframe.
+    const rootFrame = iframes[rootMod], puzzle = iframes['quantum-puzzle'];
+    const appFrame = rootMod === 'quantum-puzzle' ? quantumAppFrameFor(event.source) : null;
+    const nestedApp = !!appFrame;
+    const isRoot = !!(rootFrame && event.source === rootFrame.contentWindow);
+    const studio = puzzle && puzzle.contentDocument && puzzle.contentDocument.getElementById('studioIframe');
+    const isStudio = rootMod === 'quantum-puzzle' && !!(studio && event.source === studio.contentWindow);
+    if (!isRoot && !isStudio && !nestedApp) return;
+    if (nestedApp && event.origin !== 'null') return;
+    // Only the trusted nested Studio frame may claim the App Studio module identity.
     let mod = rootMod;
     if (data.module && TOOL_OF[data.module] && data.module !== rootMod) {
-      const puzzle = iframes['quantum-puzzle'];
-      const studio = puzzle && puzzle.contentDocument && puzzle.contentDocument.getElementById('studioIframe');
-      if (data.module !== 'quantum-app-studio' || rootMod !== 'quantum-puzzle' || !studio || event.source !== studio.contentWindow) return;
+      if (data.module !== 'quantum-app-studio' || !isStudio) return;
       mod = data.module;
     }
-    const reply = payload => { try { event.source.postMessage(payload, location.origin); } catch (_) {} };
+    const reply = payload => { try { event.source.postMessage(payload, nestedApp ? '*' : location.origin); } catch (_) {} };
     if (data.type === 'OPENQ_API_REGISTER') {
+      if (nestedApp) { reply({type:'OPENQ_API_ROUTES',id:data.id,ok:false,error:'Quantum Apps cannot register shell API slots.'}); return; }
       const apiMod = mod;
       const slot = String(data.slot || '').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 32);
       if (!['cpu','qpu','storage','engine','quantum'].includes(slot)) return;
@@ -1317,17 +1348,19 @@ class QuOLabNexusConfigSyncReader {
       apiSlots[apiMod + '.' + kind] = { label:String(data.label || (apiMod + ' · ' + kind.toUpperCase())).slice(0,80), founder };
       reply({ type:'OPENQ_API_ROUTES', id:data.id, routes:routesFor(apiMod) }); return;
     }
-    if (data.type === 'OPENQ_GET_API_ROUTES') { const apiMod = mod; reply({ type:'OPENQ_API_ROUTES', id:data.id, ok:true, routes:routesFor(apiMod) }); return; }
-    if (data.type === 'OPENQ_AI_CHAT') {
-      try {
-        const messages = Array.isArray(data.messages) ? data.messages.slice(0,40) : [];
-        if (!messages.length || !messages.every(m => m && ['system','user','assistant'].includes(m.role) && typeof m.content === 'string' && m.content.length < 60000)) throw new Error('Invalid AI messages');
+    if (data.type === 'OPENQ_GET_API_ROUTES') {
+      if (nestedApp) {
+        const app = puzzle && puzzle.contentWindow && puzzle.contentWindow.__QNEXUS_ACTIVE_APP_CONTEXT;
+        const nx = NXC(), rec = app && nx && nx.Store.get(app.connectorId);
+        const kind = app && app.slot;
+        const route = rec && rec.kind === 'ext' && rec.ext && rec.ext.category === connectorCategory(kind) && nx.Policy.allowed(rec,'apps')
+          ? {source:'app-selected',name:rec.name,options:[{id:rec.id,name:rec.name,category:rec.ext.category}]}
+          : {source:'unconfigured',name:'Select a connector for this Quantum App',options:[]};
+        reply({type:'OPENQ_API_ROUTES',id:data.id,ok:true,routes:{[kind||'cpu']:route}});
+      } else {
         const apiMod = mod;
-        const tool = TOOL_OF[apiMod] || 'chat';
-        const text = await aiComplete(messages, { tool, tokens:data.max_tokens, temp:data.temperature });
-        const result = text == null ? await callAI(messages[messages.length-1].content, null, { historyLimit:0, systemSuffix:messages[0] && messages[0].role === 'system' ? messages[0].content : '' }) : text;
-        reply({ type:'OPENQ_AI_RESULT', id:data.id, ok:true, text:result, source:aiNexusRec(tool) ? 'nexus' : 'founder' });
-      } catch (error) { reply({ type:'OPENQ_AI_RESULT', id:data.id, ok:false, error:String(error.message || error) }); }
+        reply({ type:'OPENQ_API_ROUTES', id:data.id, ok:true, routes:routesFor(apiMod) });
+      }
       return;
     }
     if (data.type === 'OPENQ_API_REQUEST') {
@@ -1337,13 +1370,30 @@ class QuOLabNexusConfigSyncReader {
       const slot = slotInput === 'engine' ? 'cpu' : slotInput === 'quantum' ? 'qpu' : slotInput;
       const key = apiMod + '.' + slot, method = String(data.method || 'GET').toUpperCase();
       try {
-        if (!apiSlots[key]) throw new Error('Unknown API slot "' + slot + '"');
+        if (!['cpu','qpu','storage'].includes(slot)) throw new Error('Unknown API slot "' + slot + '"');
+        if (!nestedApp && !apiSlots[key]) throw new Error('Unknown API slot "' + slot + '"');
         let result;
         const nx = NXC();
-        if (hasNexusRoute(apiMod, slot, data.connector)) {
+        if (nestedApp) {
+          const app = puzzle && puzzle.contentWindow && puzzle.contentWindow.__QNEXUS_ACTIVE_APP_CONTEXT;
+          if (!app || !app.id) throw new Error('The active Quantum App identity is unavailable.');
+          if (data.connector && data.connector !== app.connectorId) throw new Error('A Quantum App may use only its explicitly selected connector.');
+          if (app.slot && app.slot !== slot) throw new Error('This Quantum App is configured for ' + app.slot.toUpperCase() + ', not ' + slot.toUpperCase() + '.');
+          if (app.connectorId) {
+            const rec = nx && nx.Store && nx.Store.get(app.connectorId);
+            const expected = connectorCategory(slot);
+            if (!rec || rec.kind !== 'ext' || !rec.ext || rec.ext.category !== expected || !nx.Policy.allowed(rec, 'apps')) throw new Error('The Quantum App connector is unavailable, disabled or incompatible.');
+            quantumAppConnectorConsent(app, rec);
+            result = await nx.ext.request({tool:'apps',kind:slot,connector:rec.id,method,path:data.path||'',headers:data.headers,body:data.body,timeout:data.timeout});
+          } else {
+            if (!founderRouteFor('quantum-puzzle', slot)) throw new Error('No connector or explicitly configured Founder service is available for this Quantum App.');
+            quantumAppFounderConsent(app, slot);
+            result = await requestFounderFallback('quantum-puzzle', slot, data, method);
+          }
+        } else if (hasNexusRoute(apiMod, slot, data.connector)) {
           if (!nx || typeof nx.requestAssigned !== 'function') throw new Error('Nexus Connectors broker is unavailable');
           result = await nx.requestAssigned({
-            moduleId:apiMod, kind:slot, tool:TOOL_OF[apiMod] || 'chat',
+            moduleId:TOOL_OF[apiMod] || apiMod, kind:slot, tool:TOOL_OF[apiMod] || 'chat',
             connector:data.connector, method,
             path:data.path || '', headers:data.headers, body:data.body, timeout:data.timeout
           });
@@ -1356,7 +1406,7 @@ class QuOLabNexusConfigSyncReader {
   }
   window.addEventListener('message', e => {
     const d = e.data; if (!d?.type) return;
-    if (e.origin !== location.origin) return;
+    if (e.origin !== location.origin && !(e.origin === 'null' && quantumAppFrameFor(e.source))) return;
     // Canonicalize legacy module messages, then adapt them for the shell's established handlers.
     if (window.QuOLabNexusCore) {
       Object.assign(d, window.QuOLabNexusCore.normalizeIncoming(d));
@@ -1365,7 +1415,7 @@ class QuOLabNexusConfigSyncReader {
 
     // API/AI broker: these messages must be dispatched explicitly. Without this
     // bridge, tool requests wait for their timeout even when the HF Space is healthy.
-    if (['OPENQ_API_REGISTER','OPENQ_GET_API_ROUTES','OPENQ_API_REQUEST','OPENQ_AI_CHAT'].includes(d.type)) {
+    if (['OPENQ_API_REGISTER','OPENQ_GET_API_ROUTES','OPENQ_API_REQUEST'].includes(d.type)) {
       void handleModuleMsg(e, d);
       return;
     }
@@ -2387,7 +2437,8 @@ class QuOLabNexusConfigSyncReader {
   const AI_TARGET  = { architect: 'architect', notebook: 'architect-pro' };
   function aiOptGet(k) { try { const v = localStorage.getItem('openq_ai_' + k); return k === 'ctx' ? v !== '0' : v === '1'; } catch (e) { return k === 'ctx'; } }
   function aiOpt(k, on) { try { localStorage.setItem('openq_ai_' + k, on ? '1' : '0'); } catch (e) {} notify(on ? '👁 Context sharing enabled' : '👁 Context sharing disabled'); }
-  function aiOptsInit() { const c = document.getElementById('ai-opt-ctx'), a = document.getElementById('ai-opt-auto'); if (c) c.checked = aiOptGet('ctx'); if (a) a.checked = aiOptGet('auto'); }
+  function aiFallbackOpt(on) { try { if (on) localStorage.setItem(AI_FALLBACK_KEY, 'yes'); else localStorage.removeItem(AI_FALLBACK_KEY); } catch (e) {} notify(on ? 'Founder AI gateway fallback explicitly enabled' : 'Founder AI gateway fallback disabled'); }
+  function aiOptsInit() { const c = document.getElementById('ai-opt-ctx'), a = document.getElementById('ai-opt-auto'), f = document.getElementById('ai-opt-founder-fallback'); if (c) c.checked = aiOptGet('ctx'); if (a) a.checked = aiOptGet('auto'); if (f) f.checked = aiFallbackApproved(); }
 
   function askModule(screen) {
     return new Promise(resolve=>{
@@ -3186,6 +3237,7 @@ CONTEXT (staged and size-limited): ${c}`;
   }
 
   async function init() {
+    aiOptsInit();
     const storedAI = JSON.parse(localStorage.getItem('openq_ai') || '{}');
     if (!storedAI.lang || storedAI.lang === 'es') {
       storedAI.lang = 'en';
@@ -3291,7 +3343,7 @@ CONTEXT (staged and size-limited): ${c}`;
   }
 
   return { 
-    nav, toggleShare, share, shareScreen, addShortcut, aiOpt, openAuth, closeAuth, doLogin, doRegister, doFounder, doLogout,
+    nav, toggleShare, share, shareScreen, addShortcut, aiOpt, aiFallbackOpt, openAuth, closeAuth, doLogin, doRegister, doFounder, doLogout,
     toggleAI, toggleAIMinimized, toggleAIMax, sendAI, notify, init, getUser:()=>curUser,
     _refreshUI: refreshUIFromConfig,
     _broadcastConfig: broadcastConfigToModules
