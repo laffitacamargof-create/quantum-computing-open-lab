@@ -394,6 +394,15 @@ def main(path):
         data_root = os.path.realpath(os.environ.get("NEXUS_CONNECTOR_DATA", os.getcwd()))
         python_root = os.path.realpath(sys.prefix)
         connector_root = os.path.realpath(os.path.dirname(path))
+        try:
+            import resource
+            resource.setrlimit(resource.RLIMIT_CPU, (60, 60))
+            resource.setrlimit(resource.RLIMIT_AS, (768 * 1024 * 1024, 768 * 1024 * 1024))
+            resource.setrlimit(resource.RLIMIT_FSIZE, (10 * 1024 * 1024, 10 * 1024 * 1024))
+            resource.setrlimit(resource.RLIMIT_NOFILE, (64, 64))
+            resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
+        except (ImportError, AttributeError, OSError, ValueError):
+            pass
         def _community_audit(event, args):
             if event in ("subprocess.Popen", "os.system", "os.posix_spawn", "socket.connect", "socket.getaddrinfo"):
                 raise PermissionError("Community connector blocked by runtime security policy: " + event)
@@ -437,7 +446,13 @@ class Worker:
         meta = self.br.meta(self.cid) or {}
         env["NEXUS_COMMUNITY_CONNECTOR"] = "1" if meta.get("origin") == "community" else "0"
         env["NEXUS_CONNECTOR_DATA"] = os.path.realpath(data)
-        self.proc = subprocess.Popen([py, "-u", os.path.join(self.br.home, "runner.py"), os.path.join(d, "connector.py")], stdin=subprocess.PIPE,
+        command = [py, "-u", os.path.join(self.br.home, "runner.py"), os.path.join(d, "connector.py")]
+        if meta.get("origin") == "community" and sys.platform.startswith("linux"):
+            bwrap = shutil.which("bwrap")
+            if bwrap:
+                command = [bwrap, "--unshare-all", "--die-with-parent", "--ro-bind", "/", "/", "--bind", data, data,
+                           "--proc", "/proc", "--dev", "/dev", "--chdir", data, "--"] + command
+        self.proc = subprocess.Popen(command, stdin=subprocess.PIPE,
                                      stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=data, env=env, text=True, encoding="utf-8", bufsize=1)
         threading.Thread(target=self._read, daemon=True).start(); threading.Thread(target=self._err, daemon=True).start()
         if not self.ready.wait(25) or self.fatal:
