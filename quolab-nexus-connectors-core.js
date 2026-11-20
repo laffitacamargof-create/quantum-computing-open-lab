@@ -429,6 +429,14 @@
 
   /* ───────────────────────── loc (local connectors) ───────────────────────── */
   const loc = {
+    list(tool) {
+      if (!tool || tool === 'chat') return [];
+      return Policy.list('loc', tool).map(r => ({
+        id:r.id, name:r.name, version:r.loc && r.loc.version || '0.1.0',
+        description:r.loc && r.loc.description || '', installed:!!(r.loc && r.loc.installed),
+        tools:Object.keys(r.loc && r.loc.perms || {}), actions:Analyze.actions(r.loc && r.loc.py || '')
+      }));
+    },
     async call(o) {
       const rec = Store.get(o.connector) || Store.all().find(r => r.kind === 'loc' && (r.id === o.connector || r.loc.catalogId === o.connector || r.name.toLowerCase() === String(o.connector).toLowerCase()));
       if (!rec || rec.kind !== 'loc') throw NexusError('no-connector', 'Local connector not found');
@@ -544,10 +552,15 @@
       return rec;
     },
     loc(f) {
-      const a = Analyze.python(f.py);
+      const a = Analyze.python(f.py), previous = f.loc || {};
+      const ui = f.ui || '', web = f.web || '', py = f.py || '';
+      const codeUnchanged = previous.ui === ui && previous.web === web && previous.py === py;
       return { id: f.id || uid(), kind: 'loc', name: f.name, usage: 'always', tools: Object.keys(a.tools), createdAt: f.createdAt,
-        loc: Object.assign({ version: f.version || '0.1.0', description: f.description || '', ui: f.ui || '', web: f.web || '', py: f.py || '', perms: a.tools, requires: a.requires,
-          installed: false, origin: 'private', share: 'none' }, f.loc || {}) };
+        loc: Object.assign({}, previous, {
+          version: f.version || '0.1.0', description: f.description || '', ui, web, py,
+          perms: a.tools, requires: a.requires,
+          installed: !!(codeUnchanged && previous.installed), origin: previous.origin || 'private', share: previous.share || 'none'
+        }) };
     },
   };
 
