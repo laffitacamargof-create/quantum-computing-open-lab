@@ -315,7 +315,7 @@
     let pendingReviewApps = [];
     const PENDING_REVIEW_STORAGE_KEY = 'quolab_nexus_pending_review_apps_v1';
     let currentEditId = null;
-    let currentNexusRoute = { module:'quantum-app-studio', slot:'cpu', connector:'' };
+    let currentNexusRoute = { module:'quantum-puzzle', slot:'cpu', connector:'' };
     let remoteSessionStatus = false;
     let isEmbedded = false;
     let parentOrigin = null;          // trusted origin when embedded
@@ -390,13 +390,13 @@
     function nexusRouteFrom(app) {
         const r = app || {};
         return {
-            module: r.nexusModule || r.nexus_module || 'quantum-app-studio',
+            module: r.nexusModule || r.nexus_module || 'quantum-puzzle',
             slot: r.nexusSlot || r.nexus_slot || 'cpu',
             connector: r.nexusConnectorId || r.nexus_connector_id || ''
         };
     }
     function selectedNexusRoute() {
-        return Object.assign({ module:'quantum-app-studio', slot:'cpu', connector:'' }, currentNexusRoute || {});
+        return Object.assign({ module:'quantum-puzzle', slot:'cpu', connector:'' }, currentNexusRoute || {});
     }
     async function refreshNexusRouteSelector() {
         const slotSelect = document.getElementById('nexus-hardware-select');
@@ -405,7 +405,7 @@
         const slot = slotSelect.value || 'cpu';
         let routes = {};
         try {
-            const response = await window.QuOLabNexusCore.api.getRoutes('quantum-app-studio');
+            const response = await window.QuOLabNexusCore.api.getRoutes('quantum-puzzle');
             routes = response && response.routes || {};
         } catch (_) {}
         const route = routes[slot] || {source:'unconfigured',options:[]};
@@ -1386,7 +1386,7 @@
         }
         currentEditId = null;
         externalEditContext = null;
-        setNexusRoute({nexusModule:'quantum-app-studio',nexusSlot:'cpu',nexusConnectorId:''});
+        setNexusRoute({nexusModule:'quantum-puzzle',nexusSlot:'cpu',nexusConnectorId:''});
         document.getElementById('project-name-input').value = 'New quantum app';
         document.getElementById('python-editor').value = '# Remote Python code\ndef my_function(param):\n    return f"Result: {param}"';
         document.getElementById('html-editor').value = '<!DOCTYPE html>\n<html>\n<head><meta charset="UTF-8"></head>\n<body style="background:#0a0e1a;color:white;font-family:sans-serif;padding:1.5rem;">\n<h2>⚛️ My Quantum App</h2>\n<button onclick="call()">Execute</button>\n<p id="out"></p>\n<script>\nasync function call(){\n  const r = await window.pyCall("my_function","hello");\n  document.getElementById("out").innerText = r;\n}\n<\/script>\n</body>\n</html>';
