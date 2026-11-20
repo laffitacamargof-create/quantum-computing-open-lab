@@ -53,6 +53,37 @@ require('../../quolab-nexus-connectors-core.js');
   NC.Store.remove(cpu2.id);
   assert.equal(NC.Assignments.get('quantum-puzzle','cpu').includes(cpu2.id), false);
 
+  const routeCpu = await make('Route CPU','classical');
+  NC.Assignments.set('architect','cpu','founder');
+  NC.Assignments.bind(routeCpu.id,'open_lab','cpu');
+  let fetchedUrl = '';
+  global.fetch = async url => { fetchedUrl=String(url); return new Response('ok',{status:200}); };
+  await NC.ext.request({tool:'open_lab',connector:routeCpu.id,kind:'cpu',path:'/admin'});
+  assert.equal(fetchedUrl,'https://api.example.test/v1/admin');
+  await assert.rejects(
+    NC.ext.request({tool:'open_lab',connector:routeCpu.id,path:'/run'}),
+    e => e.code === 'assignment-required'
+  );
+  NC.Store.remove(routeCpu.id);
+
+  const privateUrl = await make('Private URL','classical');
+  NC.Store.patch(privateUrl.id,r=>{r.ext.baseUrl='https://127.0.0.1/v1';});
+  NC.Assignments.bind(privateUrl.id,'open_lab','cpu');
+  await assert.rejects(
+    NC.ext.request({tool:'open_lab',connector:privateUrl.id,kind:'cpu',path:'/run'}),
+    e => e.code === 'scope'
+  );
+  NC.Store.remove(privateUrl.id);
+
+  const credentialUrl = await make('Credential URL','classical');
+  NC.Store.patch(credentialUrl.id,r=>{r.ext.baseUrl='https://user:pw@api.example.test/v1';});
+  NC.Assignments.bind(credentialUrl.id,'open_lab','cpu');
+  await assert.rejects(
+    NC.ext.request({tool:'open_lab',connector:credentialUrl.id,kind:'cpu',path:'/run'}),
+    e => e.code === 'scope'
+  );
+  NC.Store.remove(credentialUrl.id);
+
   const ai = await NC.Make.ai({name:'AI once',provider:'other',usage:'once'});
   assert.equal(ai.usage,'always');
   assert.equal(typeof NC.Vault.open,'undefined');
