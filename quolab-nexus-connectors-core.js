@@ -354,7 +354,7 @@
     _url(rec, path) { // the credentials can only ever travel to the registered address
       const base = new URL(rec.ext.baseUrl);
       const u = new URL(path || '', base.href.endsWith('/') ? base.href : base.href + '/');
-      if (u.origin !== base.origin || (base.pathname !== '/' && !(u.pathname === base.pathname || u.pathname.startsWith(base.pathname.replace(/\\/$/,'') + '/')))) throw NexusError('scope', 'This connector can only call within ' + base.origin + base.pathname);
+      if (u.origin !== base.origin || (base.pathname !== '/' && !(u.pathname === base.pathname || u.pathname.startsWith(base.pathname.replace(/\/$/,'') + '/')))) throw NexusError('scope', 'This connector can only call within ' + base.origin + base.pathname);
       return u.href;
     },
     async request(o) {
