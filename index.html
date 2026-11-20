@@ -1172,6 +1172,22 @@ class QuOLabNexusConfigSyncReader {
   const aiFallbackApproved = () => { try { return localStorage.getItem(AI_FALLBACK_KEY) === 'yes'; } catch (_) { return false; } };
   function aiNexusRecs(tool) { const nx=NXC(); return nx && nx.Policy ? (typeof nx.Policy.list === 'function' ? nx.Policy.list('ai', tool || 'chat') : [nx.Policy.pick('ai', tool || 'chat')].filter(Boolean)) : []; }
   function aiNexusRec(tool) { return aiNexusRecs(tool)[0] || null; }
+  function quantumAppFrameFor(source) {
+    const puzzle = iframes['quantum-puzzle'];
+    try { const frame = puzzle && puzzle.contentDocument && puzzle.contentDocument.getElementById('execIframe'); return frame && frame.contentWindow === source ? frame : null; }
+    catch (_) { return null; }
+  }
+  function quantumAppConnectorConsent(app, connector) {
+    const key = String(app.id) + ':' + String(connector.id);
+    let grants = {};
+    try { grants = JSON.parse(localStorage.getItem('nexus_app_connector_consents') || '{}') || {}; } catch (_) {}
+    if (grants[key] === true) return true;
+    const label = String(app.name || 'Quantum App').slice(0,100);
+    if (!confirm('Allow Quantum App "' + label + '" to use connector "' + connector.name + '" for this device? The app will be able to send requests to this provider.')) throw new Error('Connector permission denied for this Quantum App.');
+    grants[key] = true;
+    localStorage.setItem('nexus_app_connector_consents', JSON.stringify(grants));
+    return true;
+  }
   function moduleOf(win) {
     for (const key of Object.keys(iframes)) {
       const rootFrame = iframes[key]; if (!rootFrame || !rootFrame.contentWindow) continue;
@@ -1298,17 +1314,23 @@ class QuOLabNexusConfigSyncReader {
   }
   async function handleModuleMsg(event, data) {
     const rootMod = moduleOf(event.source); if (!rootMod) return;
-    // A nested App Studio iframe is physically inside Quantum Puzzle. Trust its
-    // declared identity only when the message really comes from that exact iframe.
+    const rootFrame = iframes[rootMod], puzzle = iframes['quantum-puzzle'];
+    const appFrame = rootMod === 'quantum-puzzle' ? quantumAppFrameFor(event.source) : null;
+    const nestedApp = !!appFrame;
+    const isRoot = !!(rootFrame && event.source === rootFrame.contentWindow);
+    const studio = puzzle && puzzle.contentDocument && puzzle.contentDocument.getElementById('studioIframe');
+    const isStudio = rootMod === 'quantum-puzzle' && !!(studio && event.source === studio.contentWindow);
+    if (!isRoot && !isStudio && !nestedApp) return;
+    if (nestedApp && event.origin !== 'null') return;
+    // Only the trusted nested Studio frame may claim the App Studio module identity.
     let mod = rootMod;
     if (data.module && TOOL_OF[data.module] && data.module !== rootMod) {
-      const puzzle = iframes['quantum-puzzle'];
-      const studio = puzzle && puzzle.contentDocument && puzzle.contentDocument.getElementById('studioIframe');
-      if (data.module !== 'quantum-app-studio' || rootMod !== 'quantum-puzzle' || !studio || event.source !== studio.contentWindow) return;
+      if (data.module !== 'quantum-app-studio' || !isStudio) return;
       mod = data.module;
     }
-    const reply = payload => { try { event.source.postMessage(payload, location.origin); } catch (_) {} };
+    const reply = payload => { try { event.source.postMessage(payload, nestedApp ? '*' : location.origin); } catch (_) {} };
     if (data.type === 'OPENQ_API_REGISTER') {
+      if (nestedApp) { reply({type:'OPENQ_API_ROUTES',id:data.id,ok:false,error:'Quantum Apps cannot register shell API slots.'}); return; }
       const apiMod = mod;
       const slot = String(data.slot || '').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 32);
       if (!['cpu','qpu','storage','engine','quantum'].includes(slot)) return;
@@ -1325,10 +1347,20 @@ class QuOLabNexusConfigSyncReader {
       const slot = slotInput === 'engine' ? 'cpu' : slotInput === 'quantum' ? 'qpu' : slotInput;
       const key = apiMod + '.' + slot, method = String(data.method || 'GET').toUpperCase();
       try {
-        if (!apiSlots[key]) throw new Error('Unknown API slot "' + slot + '"');
+        if (!['cpu','qpu','storage'].includes(slot)) throw new Error('Unknown API slot "' + slot + '"');
         let result;
         const nx = NXC();
-        if (hasNexusRoute(apiMod, slot, data.connector)) {
+        if (nestedApp) {
+          const app = puzzle && puzzle.contentWindow && puzzle.contentWindow.__QNEXUS_ACTIVE_APP_CONTEXT;
+          if (!app || !app.id || !app.connectorId) throw new Error('Select a CPU/QPU connector for this Quantum App in Quantum Puzzle before execution.');
+          if (data.connector && data.connector !== app.connectorId) throw new Error('A Quantum App may use only its explicitly selected connector.');
+          if (app.slot && app.slot !== slot) throw new Error('This Quantum App is configured for ' + app.slot.toUpperCase() + ', not ' + slot.toUpperCase() + '.');
+          const rec = nx && nx.Store && nx.Store.get(app.connectorId);
+          const expected = connectorCategory(slot);
+          if (!rec || rec.kind !== 'ext' || !rec.ext || rec.ext.category !== expected || !nx.Policy.allowed(rec, 'apps')) throw new Error('The Quantum App connector is unavailable, disabled or incompatible.');
+          quantumAppConnectorConsent(app, rec);
+          result = await nx.ext.request({tool:'apps',kind:slot,connector:rec.id,method,path:data.path||'',headers:data.headers,body:data.body,timeout:data.timeout});
+        } else if (hasNexusRoute(apiMod, slot, data.connector)) {
           if (!nx || typeof nx.requestAssigned !== 'function') throw new Error('Nexus Connectors broker is unavailable');
           result = await nx.requestAssigned({
             moduleId:apiMod, kind:slot, tool:TOOL_OF[apiMod] || 'chat',
@@ -1344,7 +1376,7 @@ class QuOLabNexusConfigSyncReader {
   }
   window.addEventListener('message', e => {
     const d = e.data; if (!d?.type) return;
-    if (e.origin !== location.origin) return;
+    if (e.origin !== location.origin && !(e.origin === 'null' && quantumAppFrameFor(e.source))) return;
     // Canonicalize legacy module messages, then adapt them for the shell's established handlers.
     if (window.QuOLabNexusCore) {
       Object.assign(d, window.QuOLabNexusCore.normalizeIncoming(d));
