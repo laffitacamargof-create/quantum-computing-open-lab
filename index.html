@@ -1243,7 +1243,7 @@ class QuOLabNexusConfigSyncReader {
       const ids = Array.isArray(value) ? value : (value && value !== 'founder' ? [value] : []);
       const expected = connectorCategory(kind);
       const records = nx ? ids.map(id => nx.Store.get(id)).filter(r =>
-        r && r.kind === 'ext' && (!expected || (r.ext && r.ext.category === expected))) : [];
+        r && r.kind === 'ext' && (!expected || (r.ext && r.ext.category === expected)) && nx.Policy.allowed(r, TOOL_OF[mod] || 'chat')) : [];
       const explicitlyAssigned = value !== 'founder';
       const selected = records[0] || null;
       const founder = explicitlyAssigned ? null : founderRouteFor(mod, kind);
