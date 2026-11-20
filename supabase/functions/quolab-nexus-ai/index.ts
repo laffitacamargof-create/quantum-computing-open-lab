@@ -8,7 +8,7 @@ const allowedOrigins = new Set([
   "http://127.0.0.1:5173",
 ]);
 const rateBuckets = new Map<string, { startedAt: number; count: number }>();
-const DEFAULT_ORDER = ["gemini", "groq", "openrouter", "deepseek"];
+const DEFAULT_ORDER = ["gemini", "groq", "deepseek", "openrouter"];
 
 type Message = { role: "system" | "user" | "assistant"; content: string };
 type Provider = {
@@ -35,7 +35,7 @@ function withinRateLimit(userId: string) {
   if (!current || now - current.startedAt >= 60_000) {
     rateBuckets.set(userId, { startedAt: now, count: 1 }); return true;
   }
-  if (current.count >= 20) return false;
+  if (current.count >= 60) return false;
   current.count += 1; return true;
 }
 function env(name: string, fallback = "") { return Deno.env.get(name)?.trim() || fallback; }
@@ -45,7 +45,7 @@ function configuredProviders(): Provider[] {
   const providers: Provider[] = [];
   const addOpenAI = (id: string, endpoint: string, secret: string, model: string) => {
     const key = env(secret);
-    if (key) providers.push({ id, kind: "openai", endpoint, key, model: modelFor(id, model), timeoutMs: 25_000 });
+    if (key) providers.push({ id, kind: "openai", endpoint, key, model: modelFor(id, model), timeoutMs: 10_000 });
   };
   const geminiKey = env("GEMINI_API_KEY");
   if (geminiKey) providers.push({
@@ -106,7 +106,7 @@ async function readLimitedText(req: Request, maxBytes = 100_000) {
   return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
 }
 async function invoke(provider: Provider, messages: Message[], maxTokens: number, temperature: number) {
-  const controller = AbortSignal.timeout(provider.timeoutMs || 25_000);
+  const controller = AbortSignal.timeout(Math.min(provider.timeoutMs || 10_000, 10_000));
   let response: Response;
   if (provider.kind === "gemini") {
     const system = messages.filter(m => m.role === "system").map(m => m.content).join("\n\n");
@@ -193,7 +193,10 @@ Deno.serve(async (req: Request) => {
     if (!providers.length) return reply(503, { error: "no_ai_provider_configured", setup: ["GEMINI_API_KEY", "GROQ_API_KEY", "OPENROUTER_API_KEY", "DEEPSEEK_API_KEY"] }, origin);
 
     const failures: string[] = [];
+    const providerDeadline = Date.now() + 40_000;
     for (const provider of providers) {
+      if (Date.now() >= providerDeadline) break;
+      provider.timeoutMs = Math.min(provider.timeoutMs || 10_000, Math.max(1000, providerDeadline - Date.now()));
       try {
         const result = await invoke(provider, safeMessages, maxTokens, temperature);
         console.log("AI provider succeeded", { provider: provider.id, model: result.model, userId: user.id });
