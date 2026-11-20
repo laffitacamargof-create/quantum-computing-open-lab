@@ -2472,7 +2472,10 @@ class QuOLabNexusConfigSyncReader {
     } else if (!aiOptGet('ctx')) {
       ctx.note='Optional conversation extras are disabled; sanitized operational tool state remains available.';
     }
-    return window.QuOLabNexusAgent ? window.QuOLabNexusAgent.collectContext(ctx, {consumeEventDelta:true}) : ctx;
+    const collected = window.QuOLabNexusAgent ? window.QuOLabNexusAgent.collectContext(ctx, {consumeEventDelta:true}) : ctx;
+    if (collected && Array.isArray(collected.tools) && collected.tools.some(tool => tool.id === 'quantum-app-studio' && tool.loaded)) collected.active_tool = 'quantum-app-studio';
+    else collected.active_tool = screen;
+    return collected;
   }
 
   function inferAIContextTools(prompt, ctx, turn = 0) {
@@ -2796,7 +2799,22 @@ CONTEXT (staged and size-limited): ${c}`;
   async function execAIAction(a) {
     if (!validAIAction(a)) return { ok: false, message: 'Invalid action.' };
     switch (a.type) {
-      case 'nav': nav(a.screen); return { ok: true, message: 'Opened ' + a.screen + '.' };
+      case 'nav':
+        if (a.screen === 'quantum-app-studio') {
+          nav('quantum-puzzle');
+          for (let attempt = 0; attempt < 40; attempt++) {
+            const puzzleFrame = iframes['quantum-puzzle'];
+            const openStudio = puzzleFrame && puzzleFrame.contentWindow && puzzleFrame.contentWindow.openQuantumAppStudio;
+            if (typeof openStudio === 'function') {
+              openStudio.call(puzzleFrame.contentWindow);
+              return { ok: true, message: 'Opened Quantum App Studio through its supported Quantum Puzzle iframe route.' };
+            }
+            await waitFor(150);
+          }
+          return { ok: false, message: 'Quantum Puzzle loaded, but its supported App Studio opener was not available.' };
+        }
+        nav(a.screen);
+        return { ok: true, message: 'Opened ' + a.screen + '.' };
       case 'open_notebook': location.hash = 'notebook/' + a.id; return { ok: true, message: 'Opening notebook ' + a.id + '.' };
       case 'open_app': location.hash = 'app/' + a.id; return { ok: true, message: 'Opening app ' + a.id + '.' };
       case 'add_cell': case 'open_circuit_editor': case 'set_code': case 'set_markdown': case 'run': case 'noise': return await dispatchToolCommand(a.target, a);
