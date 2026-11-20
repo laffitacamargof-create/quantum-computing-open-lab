@@ -3073,7 +3073,9 @@ CONTEXT (staged and size-limited): ${c}`;
         const provider = data.provider ? ' · provider: ' + data.provider : '';
         const attempted = Array.isArray(data.attempted_providers)&&data.attempted_providers.length
           ? ' · attempted: '+data.attempted_providers.join(', ') : '';
+        const retryAfter = response.headers.get('Retry-After');
         lastError = new Error('QuOLab AI gateway HTTP '+response.status+': '+(data.error||data.message||'request_failed')+provider+attempted+
+          (retryAfter?' · retry after '+retryAfter+' seconds':'')+
           (data.gateway_received===true?' · gateway received request '+requestId:''));
         const retryable = [500,502,503,504].includes(response.status); // Never retry 429 or a request already received by the gateway.
         if (!retryable || gatewayReceived || attempt===2) throw lastError;

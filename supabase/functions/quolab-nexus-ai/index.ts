@@ -27,8 +27,8 @@ function corsHeaders(origin: string | null) {
     "Cache-Control": "no-store",
   };
 }
-function reply(status: number, body: Record<string, unknown>, origin: string | null) {
-  return new Response(JSON.stringify(body), { status, headers: corsHeaders(origin) });
+function reply(status: number, body: Record<string, unknown>, origin: string | null, extraHeaders: Record<string, string> = {}) {
+  return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders(origin), ...extraHeaders } });
 }
 function withinRateLimit(userId: string) {
   const now = Date.now(), current = rateBuckets.get(userId);
@@ -123,7 +123,7 @@ async function invoke(provider: Provider, messages: Message[], maxTokens: number
       }), signal: controller,
     });
     const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw Object.assign(new Error("provider_http_error"), { status: response.status });
+    if (!response.ok) throw Object.assign(new Error("provider_http_error"), { status: response.status, retryAfter: response.headers.get("retry-after") || "" });
     const content = data.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text || "").join("") || "";
     if (!content) throw Object.assign(new Error("provider_empty_response"), { status: 502 });
     return { content, model: provider.model, usage: data.usageMetadata || null };
@@ -164,7 +164,7 @@ Deno.serve(async (req: Request) => {
     const user = userData?.user;
     if (userError || !user) return reply(401, { error: "invalid_user_session" }, origin);
     if (user.is_anonymous !== true) return reply(403, { error: "anonymous_session_required" }, origin);
-    if (!withinRateLimit(user.id)) return reply(429, { error: "rate_limit_exceeded" }, origin);
+    if (!withinRateLimit(user.id)) return reply(429, { error: "rate_limit_exceeded", retry_after_seconds: 60 }, origin, { "Retry-After": "60" });
 
     let raw: string;
     try { raw = await readLimitedText(req); }
@@ -193,6 +193,7 @@ Deno.serve(async (req: Request) => {
     if (!providers.length) return reply(503, { error: "no_ai_provider_configured", setup: ["GEMINI_API_KEY", "GROQ_API_KEY", "OPENROUTER_API_KEY", "DEEPSEEK_API_KEY"] }, origin);
 
     const failures: string[] = [];
+    let providerRateLimited = false, providerRetryAfter = "";
     const providerDeadline = Date.now() + 40_000;
     for (const provider of providers) {
       if (Date.now() >= providerDeadline) break;
@@ -211,6 +212,8 @@ Deno.serve(async (req: Request) => {
         }, origin);
       } catch (error) {
         const status = Number((error as { status?: number })?.status || 502);
+        const retryAfter = String((error as { retryAfter?: string })?.retryAfter || "");
+        if (status === 429) { providerRateLimited = true; if (/^\\d{1,5}$/.test(retryAfter)) providerRetryAfter = retryAfter; }
         console.error("AI provider failed", { provider: provider.id, status, userId: user.id });
         failures.push(provider.id);
         if (!retryable(status)) return reply(status >= 400 && status < 500 ? status : 502, {
@@ -219,6 +222,11 @@ Deno.serve(async (req: Request) => {
         }, origin);
       }
     }
+    if (providerRateLimited) return reply(429, {
+      error: "provider_rate_limited", attempted_providers: failures,
+      retry_after_seconds: Number(providerRetryAfter || 60),
+      gateway_received: true, provider_completed: false, request_id: requestId,
+    }, origin, { "Retry-After": providerRetryAfter || "60" });
     return reply(503, { error: "all_ai_providers_unavailable", attempted_providers: failures,
       gateway_received: true, provider_completed: false, request_id: requestId }, origin);
   } catch (error) {
