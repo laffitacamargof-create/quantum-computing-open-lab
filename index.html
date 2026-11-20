@@ -541,6 +541,7 @@ body::before{content:'';position:fixed;inset:0;
       <span id="ai-stxt">Not connected — demo mode</span>
       <span style="margin-left:auto;display:flex;gap:.7rem;">
         <label class="ai-opt" title="Share what you are doing (screen, code, last output) with the assistant so it can advise you"><input type="checkbox" id="ai-opt-ctx" onchange="QuOLabNexus.aiOpt('ctx',this.checked)"> 👁 Context</label>
+        <label class="ai-opt" title="Allow QNexusAi to use the explicitly configured Founder gateway only when Nexus AI providers are unavailable"><input type="checkbox" id="ai-opt-founder-fallback" onchange="QuOLabNexus.aiFallbackOpt(this.checked)"> Founder fallback</label>
         <span id="ai-specialist-count" style="color:var(--mu)">One agent · all tools</span>
       </span>
     </div>
@@ -2419,7 +2420,8 @@ class QuOLabNexusConfigSyncReader {
   const AI_TARGET  = { architect: 'architect', notebook: 'architect-pro' };
   function aiOptGet(k) { try { const v = localStorage.getItem('openq_ai_' + k); return k === 'ctx' ? v !== '0' : v === '1'; } catch (e) { return k === 'ctx'; } }
   function aiOpt(k, on) { try { localStorage.setItem('openq_ai_' + k, on ? '1' : '0'); } catch (e) {} notify(on ? '👁 Context sharing enabled' : '👁 Context sharing disabled'); }
-  function aiOptsInit() { const c = document.getElementById('ai-opt-ctx'), a = document.getElementById('ai-opt-auto'); if (c) c.checked = aiOptGet('ctx'); if (a) a.checked = aiOptGet('auto'); }
+  function aiFallbackOpt(on) { try { if (on) localStorage.setItem(AI_FALLBACK_KEY, 'yes'); else localStorage.removeItem(AI_FALLBACK_KEY); } catch (e) {} notify(on ? 'Founder AI gateway fallback explicitly enabled' : 'Founder AI gateway fallback disabled'); }
+  function aiOptsInit() { const c = document.getElementById('ai-opt-ctx'), a = document.getElementById('ai-opt-auto'), f = document.getElementById('ai-opt-founder-fallback'); if (c) c.checked = aiOptGet('ctx'); if (a) a.checked = aiOptGet('auto'); if (f) f.checked = aiFallbackApproved(); }
 
   function askModule(screen) {
     return new Promise(resolve=>{
@@ -3218,6 +3220,7 @@ CONTEXT (staged and size-limited): ${c}`;
   }
 
   async function init() {
+    aiOptsInit();
     const storedAI = JSON.parse(localStorage.getItem('openq_ai') || '{}');
     if (!storedAI.lang || storedAI.lang === 'es') {
       storedAI.lang = 'en';
@@ -3323,7 +3326,7 @@ CONTEXT (staged and size-limited): ${c}`;
   }
 
   return { 
-    nav, toggleShare, share, shareScreen, addShortcut, aiOpt, openAuth, closeAuth, doLogin, doRegister, doFounder, doLogout,
+    nav, toggleShare, share, shareScreen, addShortcut, aiOpt, aiFallbackOpt, openAuth, closeAuth, doLogin, doRegister, doFounder, doLogout,
     toggleAI, toggleAIMinimized, toggleAIMax, sendAI, notify, init, getUser:()=>curUser,
     _refreshUI: refreshUIFromConfig,
     _broadcastConfig: broadcastConfigToModules
