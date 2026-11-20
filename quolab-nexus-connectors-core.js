@@ -536,7 +536,18 @@
   const Assignments = {
     all() { try { return JSON.parse(localStorage.getItem(LS_ASSIGNMENTS) || '{}') || {}; } catch (_) { return {}; } },
     get(moduleId, kind) { const a = this.all(); const v = a[moduleId] && a[moduleId][kind]; return v == null ? 'founder' : v; },
-    set(moduleId, kind, value) { const a = this.all(); a[moduleId] = Object.assign({}, a[moduleId] || {}, { [kind]: value }); localStorage.setItem(LS_ASSIGNMENTS, JSON.stringify(a)); emitChange(false); return value; },
+    set(moduleId, kind, value) {
+      const tool = Object.keys(TOOL_MODULE).find(t => TOOL_MODULE[t] === moduleId), rule = tool && SLOT_RULES[tool];
+      if (!rule || !Object.prototype.hasOwnProperty.call(rule, kind)) throw NexusError('slot', 'This tool does not support the ' + kind + ' slot.');
+      if (value !== 'founder') {
+        const ids = Array.isArray(value) ? Array.from(new Set(value)) : [value], max = rule[kind];
+        const expected = kind === 'cpu' ? 'classical' : kind === 'qpu' ? 'quantum' : 'storage';
+        if (ids.length > max) throw NexusError('slot-full', tool + ' only allows ' + max + ' ' + kind.toUpperCase() + ' connector(s).');
+        for (const id of ids) { const rec = Store.get(id); if (!rec || rec.kind !== 'ext' || !rec.ext || rec.ext.category !== expected || rec.usage === 'off') throw NexusError('assignment', 'The assigned connector is missing, disabled, or has the wrong category.'); }
+        value = max === 1 ? (ids[0] || 'founder') : ids;
+      }
+      const a = this.all(); a[moduleId] = Object.assign({}, a[moduleId] || {}, { [kind]: value }); localStorage.setItem(LS_ASSIGNMENTS, JSON.stringify(a)); emitChange(false); return value;
+    },
     bind(connectorId, tool, kind) {
       const moduleId = TOOL_MODULE[tool], rec = Store.get(connectorId), rule = SLOT_RULES[tool];
       if (!moduleId || !rule || !Object.prototype.hasOwnProperty.call(rule, kind)) throw NexusError('slot', 'This tool does not support the ' + kind + ' slot.');
@@ -594,7 +605,7 @@
     if (invalid) throw NexusError('assigned-unavailable', 'The connector assigned to this slot is disabled, deleted, or incompatible. Reassign it in Nexus Connectors.');
     let candidates = allIds.map(id => Store.get(id)).filter(compatible);
     const max = (SLOT_RULES[tool] && SLOT_RULES[tool][kind]) ?? 1;
-    if (candidates.length > max) candidates = candidates.slice(0, max);
+    if (candidates.length > max) throw NexusError('slot-overflow', tool + ' has more assigned connectors than its allowed slot count. Reconcile assignments in Nexus Connectors.');
     if (o.connector) candidates = candidates.slice().sort((a,b) => (a.id === o.connector ? -1 : 0) - (b.id === o.connector ? -1 : 0));
     if (!candidates.length) throw NexusError('no-route', 'No compatible external API is enabled for ' + tool + ' (' + kind + '). Connect and enable one or more APIs in Nexus Connectors.');
     const method = String(o.method || 'GET').toUpperCase();
