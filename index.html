@@ -1298,7 +1298,7 @@ class QuOLabNexusConfigSyncReader {
         return result.text;
       } catch (error) {
         if (!aiFallbackApproved()) throw new Error('All enabled Nexus AI connectors failed: ' + (error.message || error) + '. Enable Founder gateway fallback only if you want it used after every connector fails.');
-        notify('All Nexus AI connectors failed; using the approved Founder gateway fallback.');
+        notify('All Nexus AI connectors failed; using the approved Founder gateway fallback. This is the founder gateway as approved fallback.');
       }
     }
     if (aiCfg.provider === 'gateway') return callMultiModelGateway(messages, o.tokens, o.temp);

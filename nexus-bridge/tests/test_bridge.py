@@ -95,9 +95,11 @@ class BridgeValidationTests(unittest.TestCase):
         code = "# requires: requests>=2.0\n" + VALID
         self.assertTrue(any("not allowed in community" in e.lower() for e in bridge.analyze(code, "community")["errors"]))
 
-    def test_community_rejects_numpy_requirement(self):
+    def test_community_allows_numpy_requirement(self):
         code = "# requires: numpy>=1.0\n" + VALID
-        self.assertTrue(any("not allowed in community" in e.lower() for e in bridge.analyze(code, "community")["errors"]))
+        result = bridge.analyze(code, "community")
+        self.assertEqual([], result["errors"])
+        self.assertIn("numpy>=1.0", result["requires"])
 
     def test_duplicate_requirements_are_collapsed(self):
         code = "# requires: numpy>=1.0, numpy>=1.0\n" + VALID

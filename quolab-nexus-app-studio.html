@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <script src="quolab-nexus-core.js"></script>
-<script src="quolab-nexus-connectors-core.js?v=20261119-routing-1"></script>
+<script src="quolab-nexus-connectors-core.js?v=20261120-connectors-hardening-1"></script>
 <script src="quolab-nexus-tool-connector.js?v=1.9.2"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
@@ -267,6 +267,15 @@
         <button class="btn-secondary" id="preview-run-btn">▶ Test run</button>
         <button class="btn-secondary" id="back-to-repo-editor">← Back</button>
     </div>
+    <div class="route-picker" style="display:flex;align-items:center;gap:.8rem;padding:.65rem .8rem;background:#060912;border-bottom:1px solid var(--b);">
+        <label for="nexus-hardware-select" style="margin:0;color:var(--cy);">APP STUDIO EXECUTION SLOT</label>
+        <select id="nexus-hardware-select" aria-label="Select App Studio hardware slot" style="max-width:260px;">
+            <option value="cpu">Classical CPU</option>
+            <option value="qpu">Quantum QPU</option>
+            <option value="storage">Cloud storage</option>
+        </select>
+        <small style="color:var(--mu);">Uses the connector assigned to this App Studio slot in Nexus Connectors.</small>
+    </div>
     <div class="editor-container">
         <div class="editor-pane">
             <div class="pane-header">🐍 PYTHON LOGIC (remote backend)</div>
@@ -391,10 +400,15 @@
         };
     }
     function selectedNexusRoute() {
-        return Object.assign({ module:'quantum-app-studio', slot:'cpu', connector:'' }, currentNexusRoute || {});
+        const route = Object.assign({ module:'quantum-app-studio', slot:'cpu', connector:'' }, currentNexusRoute || {});
+        const select = document.getElementById('nexus-hardware-select');
+        if (select && ['cpu','qpu','storage'].includes(select.value)) route.slot = select.value;
+        return route;
     }
     function setNexusRoute(app) {
         currentNexusRoute = nexusRouteFrom(app);
+        const select = document.getElementById('nexus-hardware-select');
+        if (select) select.value = ['cpu','qpu','storage'].includes(currentNexusRoute.slot) ? currentNexusRoute.slot : 'cpu';
     }
 
     // ================== OVER-READING PROTECTION ==================
@@ -1371,6 +1385,10 @@
                 }
             };
         }
+        const hardwareSelect = document.getElementById('nexus-hardware-select');
+        if (hardwareSelect) hardwareSelect.addEventListener('change', () => {
+            currentNexusRoute = Object.assign({module:'quantum-app-studio',slot:'cpu',connector:''}, currentNexusRoute || {}, {slot:hardwareSelect.value,connector:''});
+        });
         document.getElementById('save-project-editor').onclick = saveCurrentEdit;
         document.getElementById('back-to-repo-editor').onclick = () => showScreen('repo');
         document.getElementById('back-to-repo-runner').onclick = () => showScreen('repo');
