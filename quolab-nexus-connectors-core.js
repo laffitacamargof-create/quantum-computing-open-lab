@@ -636,7 +636,11 @@
     throw NexusError('no-route', 'All compatible external APIs failed for ' + tool + ' (' + kind + '): ' +
       failures.map(x => x.name + (x.status ? ' HTTP ' + x.status : ': ' + x.error)).join(' | '), { attempted:failures });
   }
-  const api = { VERSION, TOOLS, PERMS, PROVIDERS, COMMUNITY_REQUIRES, MAX_CODE, Vault, Store, Policy, Analyze, Bridge, ai, ext, loc, Catalog, Community, Installer, Make, Assignments, SLOT_RULES, requestAssigned, util: { uid, slug, sha256, now, NexusError } };
+  // Do not publish Vault.open(), key derivation, or raw credential-header helpers.
+  // Secret decryption remains inside this closure and is used only by connector requests.
+  const publicVault = Object.freeze({ seal: Vault.seal.bind(Vault) });
+  const publicExt = Object.freeze({ pick: ext.pick.bind(ext), request: ext.request.bind(ext), test: ext.test.bind(ext) });
+  const api = { VERSION, TOOLS, PERMS, PROVIDERS, COMMUNITY_REQUIRES, MAX_CODE, Vault:publicVault, Store, Policy, Analyze, Bridge, ai, ext:publicExt, loc, Catalog, Community, Installer, Make, Assignments, SLOT_RULES, requestAssigned, util: { uid, slug, sha256, now, NexusError } };
   root.QuOLabNexusConnectors = api;
   if (root.QuOLabNexusCore && !Object.isFrozen(root.QuOLabNexusCore)) root.QuOLabNexusCore.connectors = api;
 })(typeof window !== 'undefined' ? window : globalThis);
