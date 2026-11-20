@@ -29,7 +29,9 @@ class NexusConnectorsModuleTests(unittest.TestCase):
     def test_local_connector_share_action_exists(self): self.assertIn("SHARE", self.ui)
     def test_pending_review_panel_exists(self): self.assertIn("PENDING", self.ui)
     def test_founder_approval_action_exists(self): self.assertIn("APPROVE", self.ui)
-    def test_assignment_panel_exists(self): self.assertIn("TOOL ASSIGNMENTS", self.ui); self.assertIn("renderAssignments", self.ui)
+    def test_assignment_panel_is_removed(self): self.assertNotIn("TOOL ASSIGNMENTS", self.ui); self.assertNotIn("renderAssignments", self.ui)
+    def test_external_tool_assignment_is_card_only(self): self.assertNotIn('id="ext-tools"', self.ui); self.assertIn("data-card-tool", self.ui); self.assertIn("Assign it to a tool later using the selector on its connector card", self.ui)
+    def test_ai_route_is_exclusive(self): self.assertIn("return kind === 'ai' ? records.slice(0, 1) : records", self.core)
     def test_tool_selector_lives_on_connector_cards(self): self.assertIn("data-card-tool", self.ui); self.assertIn("function toolPicker(r)", self.ui)
     def test_api_creation_forms_do_not_choose_tools(self):
         ai = self.ui[self.ui.index('id="p-ai"'):self.ui.index('id="p-ext"')]
