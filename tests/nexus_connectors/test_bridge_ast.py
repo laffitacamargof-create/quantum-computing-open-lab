@@ -91,7 +91,7 @@ class CommunityASTSecurityTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             with mock.patch.object(nexus_bridge.shutil, "which", return_value="/usr/bin/bwrap"):
                 command = nexus_bridge._community_sandbox_command(
-                    sys.executable, str(pathlib.Path(folder) / "runner.py"), folder, folder
+                    os.path.join(folder, "venv", "bin", "python"), str(pathlib.Path(folder) / "runner.py"), folder, folder
                 )
             self.assertIn("--unshare-all", command)
             self.assertIn("--ro-bind", command)
