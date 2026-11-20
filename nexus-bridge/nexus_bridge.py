@@ -41,7 +41,7 @@ FORBIDDEN_CALLS = {"eval", "exec", "compile", "__import__", "open", "globals", "
 ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 REQ_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._\-\[\],<>=!~ ]{0,80}$")
 MAX_CODE = 60000
-LOCAL_ORIGIN = re.compile(r"^http://(localhost|127\\.0\\.0\\.1)(:(\\d+))?$")
+LOCAL_ORIGIN = re.compile(r"^http://(localhost|127\.0\.0\.1)(:(\d+))?$")
 LOCAL_PORTS = {3000, 4173, 5173, 5500, 5501, 8000, 8080, 8765, 8888}
 
 
