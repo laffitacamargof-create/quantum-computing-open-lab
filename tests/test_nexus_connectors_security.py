@@ -1,4 +1,8 @@
+import json
+import os
+import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -71,6 +75,55 @@ class CommunityASTSecurityTests(unittest.TestCase):
         for address in ("1.1.1.1", "8.8.8.8", "2606:4700:4700::1111"):
             with self.subTest(address=address):
                 self.assertTrue(bridge._public(address))
+
+
+    def test_community_audit_blocks_external_reads_and_rename_escape(self):
+        with tempfile.TemporaryDirectory() as root:
+            data = Path(root) / "data"
+            data.mkdir()
+            outside = Path(root) / "outside.txt"
+            source = data / "source.txt"
+            source.write_text("inside", encoding="utf-8")
+            outside.write_text("outside", encoding="utf-8")
+            runner = Path(root) / "runner.py"
+            runner.write_text(bridge.RUNNER, encoding="utf-8")
+            connector_file = data / "connector.py"
+            connector_file.write_text(
+                "import os\n"
+                "from nexus import connector\n"
+                "@connector.tool('apps', allow=['net.http'])\n"
+                "async def run(ctx):\n"
+                "    read_blocked = False\n"
+                "    try: open(" + repr(str(outside)) + ", 'r').read()\n"
+                "    except PermissionError: read_blocked = True\n"
+                "    rename_blocked = False\n"
+                "    try: os.rename(" + repr(str(source)) + ", " + repr(str(outside)) + ")\n"
+                "    except PermissionError: rename_blocked = True\n"
+                "    return {'read_blocked': read_blocked, 'rename_blocked': rename_blocked}\n",
+                encoding="utf-8"
+            )
+            env = dict(os.environ)
+            env["NEXUS_CONNECTOR_ORIGIN"] = "community"
+            proc = subprocess.Popen(
+                [sys.executable, str(runner), str(connector_file)],
+                cwd=str(data), env=env, text=True,
+                stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+            )
+            try:
+                ready = json.loads(proc.stdout.readline())
+                self.assertEqual("ready", ready.get("t"))
+                request = {"t": "call", "id": 1, "tool": "apps", "action": "run", "args": {}}
+                proc.stdin.write(json.dumps(request) + "\n")
+                proc.stdin.flush()
+                response = json.loads(proc.stdout.readline())
+                self.assertTrue(response.get("ok"), response)
+                self.assertEqual({"read_blocked": True, "rename_blocked": True}, response.get("result"))
+                self.assertEqual("outside", outside.read_text(encoding="utf-8"))
+                self.assertTrue(source.exists())
+            finally:
+                if proc.stdin:
+                    proc.stdin.close()
+                proc.wait(timeout=10)
 
 
 if __name__ == "__main__":
