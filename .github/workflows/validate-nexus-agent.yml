@@ -6,6 +6,7 @@ on:
       - feature/quolab-nexus-five-specialists
       - feature/quolab-nexus-real-specialist-dispatch
       - feature/nexus-connectors-remove-library
+      - fix/nexus-connectors-integration-final-20261120-a
   pull_request:
     paths:
       - "index.html"
