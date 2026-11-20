@@ -566,10 +566,12 @@
     if (!candidates.length) throw NexusError('no-route', 'No compatible external API is enabled for ' + tool + ' (' + kind + '). Connect and enable one or more APIs in Nexus Connectors.');
     const method = String(o.method || 'GET').toUpperCase();
     const safeToRetry = ['GET','HEAD','OPTIONS'].includes(method);
-    const failures = [];
+    const failures = [], deadline = Date.now() + 60000;
     for (const rec of candidates) {
+      const remaining = deadline - Date.now();
+      if (remaining <= 0) throw NexusError('route-timeout', 'Connector failover reached the 60-second total limit.');
       try {
-        const result = await ext.request({ tool, kind, connector:rec.id, method, path:o.path, headers:o.headers, body:o.body, timeout:o.timeout });
+        const result = await ext.request({ tool, kind, connector:rec.id, method, path:o.path, headers:o.headers, body:o.body, timeout:Math.min(Number(o.timeout)||30000, remaining) });
         if (result && result.ok) return Object.assign({}, result, { source:'nexus', connector:rec.id, attempted:failures.map(x => x.name) });
         const status = Number(result && result.status || 0);
         failures.push({ name:rec.name, status });
