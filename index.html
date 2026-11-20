@@ -1226,9 +1226,8 @@ class QuOLabNexusConfigSyncReader {
       const rec = nx.Store.get(id);
       return rec && rec.kind === 'ext' && nx.Policy.allowed(rec, tool) && rec.ext && rec.ext.category === expected;
     };
-    if (ordered.some(compatible)) return true;
-    const automatic = nx.Policy.pick('ext', tool, requested);
-    return !!(automatic && automatic.ext && automatic.ext.category === expected);
+    if (value === 'founder') return false;
+    return ordered.some(compatible);
   }
   function routesFor(mod) {
     const out = {}, nx = NXC();
@@ -1238,9 +1237,8 @@ class QuOLabNexusConfigSyncReader {
       const expected = connectorCategory(kind);
       const records = nx ? ids.map(id => nx.Store.get(id)).filter(r =>
         r && r.kind === 'ext' && (!expected || (r.ext && r.ext.category === expected))) : [];
-      const automatic = nx ? nx.Policy.pick('ext', TOOL_OF[mod] || 'chat') : null;
-      const selected = records[0] || (automatic && automatic.ext && automatic.ext.category === expected ? automatic : null);
-      const founder = founderRouteFor(mod, kind);
+      const selected = records[0] || null;
+      const founder = value === 'founder' ? founderRouteFor(mod, kind) : null;
       const route = selected ? 'nexus' : (founder ? 'founder' : 'unconfigured');
       out[kind] = { source:route, name:selected ? selected.name : (founder ? founder.name : 'No connector or Founder service configured'),
         options:records.map(r => ({ id:r.id, name:r.name, category:r.ext.category })) };
@@ -1282,6 +1280,7 @@ class QuOLabNexusConfigSyncReader {
   }
   async function aiComplete(messages, options) {
     const o = options || {}, connectors = aiNexusRecs(o.tool || 'chat');
+    const nxConfigured = !!(NXC() && NXC().Store && NXC().Store.byKind('ai').length);
     if (connectors.length) {
       try {
         // Do not pin the request to the first connector: the broker rotates through
@@ -1293,6 +1292,7 @@ class QuOLabNexusConfigSyncReader {
         notify('All Nexus AI connectors failed; using the approved Founder gateway fallback.');
       }
     }
+    if (nxConfigured && !aiFallbackApproved()) throw new Error('Your Nexus AI connector is unavailable or consumed. Enable it again or explicitly approve Founder gateway fallback.');
     if (aiCfg.provider === 'gateway') return callMultiModelGateway(messages, o.tokens, o.temp);
     return null;
   }
@@ -1318,18 +1318,6 @@ class QuOLabNexusConfigSyncReader {
       reply({ type:'OPENQ_API_ROUTES', id:data.id, routes:routesFor(apiMod) }); return;
     }
     if (data.type === 'OPENQ_GET_API_ROUTES') { const apiMod = mod; reply({ type:'OPENQ_API_ROUTES', id:data.id, ok:true, routes:routesFor(apiMod) }); return; }
-    if (data.type === 'OPENQ_AI_CHAT') {
-      try {
-        const messages = Array.isArray(data.messages) ? data.messages.slice(0,40) : [];
-        if (!messages.length || !messages.every(m => m && ['system','user','assistant'].includes(m.role) && typeof m.content === 'string' && m.content.length < 60000)) throw new Error('Invalid AI messages');
-        const apiMod = mod;
-        const tool = TOOL_OF[apiMod] || 'chat';
-        const text = await aiComplete(messages, { tool, tokens:data.max_tokens, temp:data.temperature });
-        const result = text == null ? await callAI(messages[messages.length-1].content, null, { historyLimit:0, systemSuffix:messages[0] && messages[0].role === 'system' ? messages[0].content : '' }) : text;
-        reply({ type:'OPENQ_AI_RESULT', id:data.id, ok:true, text:result, source:aiNexusRec(tool) ? 'nexus' : 'founder' });
-      } catch (error) { reply({ type:'OPENQ_AI_RESULT', id:data.id, ok:false, error:String(error.message || error) }); }
-      return;
-    }
     if (data.type === 'OPENQ_API_REQUEST') {
       const apiMod = mod;
       const slotInput = String(data.slot || '').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 32);
@@ -1365,7 +1353,7 @@ class QuOLabNexusConfigSyncReader {
 
     // API/AI broker: these messages must be dispatched explicitly. Without this
     // bridge, tool requests wait for their timeout even when the HF Space is healthy.
-    if (['OPENQ_API_REGISTER','OPENQ_GET_API_ROUTES','OPENQ_API_REQUEST','OPENQ_AI_CHAT'].includes(d.type)) {
+    if (['OPENQ_API_REGISTER','OPENQ_GET_API_ROUTES','OPENQ_API_REQUEST'].includes(d.type)) {
       void handleModuleMsg(e, d);
       return;
     }
