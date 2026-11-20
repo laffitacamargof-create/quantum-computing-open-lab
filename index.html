@@ -1189,6 +1189,17 @@ class QuOLabNexusConfigSyncReader {
     localStorage.setItem('nexus_app_connector_consents', JSON.stringify(grants));
     return true;
   }
+  function quantumAppFounderConsent(app, slot) {
+    const key = String(app.id) + ':founder:' + String(slot);
+    let grants = {};
+    try { grants = JSON.parse(localStorage.getItem('nexus_app_connector_consents') || '{}') || {}; } catch (_) {}
+    if (grants[key] === true) return true;
+    const label = String(app.name || 'Quantum App').slice(0,100);
+    if (!confirm('Allow Quantum App "' + label + '" to use the explicitly configured Founder ' + String(slot).toUpperCase() + ' service?')) throw new Error('Founder service permission denied for this Quantum App.');
+    grants[key] = true;
+    localStorage.setItem('nexus_app_connector_consents', JSON.stringify(grants));
+    return true;
+  }
   function moduleOf(win) {
     for (const key of Object.keys(iframes)) {
       const rootFrame = iframes[key]; if (!rootFrame || !rootFrame.contentWindow) continue;
@@ -1365,14 +1376,20 @@ class QuOLabNexusConfigSyncReader {
         const nx = NXC();
         if (nestedApp) {
           const app = puzzle && puzzle.contentWindow && puzzle.contentWindow.__QNEXUS_ACTIVE_APP_CONTEXT;
-          if (!app || !app.id || !app.connectorId) throw new Error('Select a CPU/QPU connector for this Quantum App in Quantum Puzzle before execution.');
+          if (!app || !app.id) throw new Error('The active Quantum App identity is unavailable.');
           if (data.connector && data.connector !== app.connectorId) throw new Error('A Quantum App may use only its explicitly selected connector.');
           if (app.slot && app.slot !== slot) throw new Error('This Quantum App is configured for ' + app.slot.toUpperCase() + ', not ' + slot.toUpperCase() + '.');
-          const rec = nx && nx.Store && nx.Store.get(app.connectorId);
-          const expected = connectorCategory(slot);
-          if (!rec || rec.kind !== 'ext' || !rec.ext || rec.ext.category !== expected || !nx.Policy.allowed(rec, 'apps')) throw new Error('The Quantum App connector is unavailable, disabled or incompatible.');
-          quantumAppConnectorConsent(app, rec);
-          result = await nx.ext.request({tool:'apps',kind:slot,connector:rec.id,method,path:data.path||'',headers:data.headers,body:data.body,timeout:data.timeout});
+          if (app.connectorId) {
+            const rec = nx && nx.Store && nx.Store.get(app.connectorId);
+            const expected = connectorCategory(slot);
+            if (!rec || rec.kind !== 'ext' || !rec.ext || rec.ext.category !== expected || !nx.Policy.allowed(rec, 'apps')) throw new Error('The Quantum App connector is unavailable, disabled or incompatible.');
+            quantumAppConnectorConsent(app, rec);
+            result = await nx.ext.request({tool:'apps',kind:slot,connector:rec.id,method,path:data.path||'',headers:data.headers,body:data.body,timeout:data.timeout});
+          } else {
+            if (!founderRouteFor('quantum-puzzle', slot)) throw new Error('No connector or explicitly configured Founder service is available for this Quantum App.');
+            quantumAppFounderConsent(app, slot);
+            result = await requestFounderFallback('quantum-puzzle', slot, data, method);
+          }
         } else if (hasNexusRoute(apiMod, slot, data.connector)) {
           if (!nx || typeof nx.requestAssigned !== 'function') throw new Error('Nexus Connectors broker is unavailable');
           result = await nx.requestAssigned({
