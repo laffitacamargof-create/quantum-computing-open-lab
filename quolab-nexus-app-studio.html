@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
     <script src="quolab-nexus-core.js"></script>
-<script src="quolab-nexus-connectors-core.js?v=20261120-founder-fallback-2"></script>
-<script src="quolab-nexus-tool-connector.js?v=1.9.2"></script>
+<script src="quolab-nexus-connectors-core.js?v=20261121-routing-broker-2"></script>
+<script src="quolab-nexus-tool-connector.js?v=20261121-routing-broker-2"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <title>QuOLab Nexus — Quantum App Studio</title>
@@ -1093,7 +1093,7 @@
     });
 
     async function buildAppBlob(pythonCode, htmlCode, serverUrl, nexusRoute) {
-        const connectorUrl = new URL('quolab-nexus-tool-connector.js?v=1.9.2', location.href).href;
+        const connectorUrl = new URL('quolab-nexus-tool-connector.js?v=20261121-routing-broker-2', location.href).href;
         const bridge = `
         <script>window.__QUOLAB_NEXUS_TOOL='quantum-app-studio';<\/script>
         <script src="${connectorUrl}"><\/script>
