@@ -1167,7 +1167,7 @@ class QuOLabNexusConfigSyncReader {
   const NXC = () => window.QuOLabNexusConnectors || null;
   const TOOL_OF = { architect:'open_lab', 'architect-pro':'notebook', 'quantum-puzzle':'apps', 'quantum-app-studio':'app_studio', 'nexus-connectors':'chat' };
   const apiSlots = Object.create(null);
-  [['architect',['cpu','qpu','storage']],['architect-pro',['cpu','storage']],['quantum-puzzle',['cpu','qpu']],['quantum-app-studio',['cpu','qpu','storage']]].forEach(item => item[1].forEach(kind => { apiSlots[item[0]+'.'+kind] = { label:item[0]+' · '+kind.toUpperCase(), founder:kind==='cpu'?'engine':'' }; }));
+  [['architect',['cpu','qpu','storage']],['architect-pro',['cpu','qpu','storage']],['quantum-puzzle',['cpu','qpu']],['quantum-app-studio',['cpu','qpu','storage']]].forEach(item => item[1].forEach(kind => { apiSlots[item[0]+'.'+kind] = { label:item[0]+' · '+kind.toUpperCase(), founder:kind==='cpu'?'engine':'' }; }));
   function aiNexusRecs(tool) { const nx=NXC(); return nx && nx.Policy ? (typeof nx.Policy.list === 'function' ? nx.Policy.list('ai', tool || 'chat') : [nx.Policy.pick('ai', tool || 'chat')].filter(Boolean)) : []; }
   function aiNexusRec(tool) { return aiNexusRecs(tool)[0] || null; }
   function moduleOf(win) {
