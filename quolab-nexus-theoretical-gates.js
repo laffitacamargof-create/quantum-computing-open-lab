@@ -861,7 +861,7 @@
       '            from qiskit.circuit import Gate as _Gate',
       '            sub = _QC(nq, name="qtg_" + gid)',
       '            build(sub, *prm)',
-      '            g = _Gate("qtg_" + gid, nq, list(prm), label=label)',
+      '            g = _Gate("qtg_" + gid, nq, list(prm), label=label + "@" + str(ver))',
       '            g.definition = sub',
       '            return self.append(g, qs)',
       '        return call',

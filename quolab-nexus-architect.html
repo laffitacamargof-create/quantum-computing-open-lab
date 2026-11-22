@@ -10,6 +10,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=JetBrains+Mono:wght@400;500;600&family=Exo+2:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
 <script src="quolab-nexus-noise.js"></script>
+<script src="quolab-nexus-theoretical-gates.js?v=1"></script>
+<script src="quolab-nexus-tg-ui.js?v=1"></script>
 <style>
 /* ══════════════════════════════════════════════════
    QUANTUM ARCHITECT — Hybrid automatic
@@ -749,10 +751,11 @@ function buildPalette() {
   GATES['2q'].forEach(g => { html += `<div class="pal-gate" tabindex="0" role="button" aria-label="Gate ${g.id}: Enter to select" draggable="true" data-gate="${g.id}" style="background:${g.bg};box-shadow:0 0 6px ${g.glow}" ondragstart="onDragStartPalette(event)" ondragend="onDragEndPalette()"><span class="pal-gate-sym">${g.sym}</span><span class="pal-gate-lbl">${g.id}</span></div>`; });
   html += '</div></div><div class="pal-sec"><div class="pal-sec-lbl">3 QUBITS</div><div class="pal-grid">';
   GATES['3q'].forEach(g => { html += `<div class="pal-gate" tabindex="0" role="button" aria-label="Gate ${g.id}: Enter to select" draggable="true" data-gate="${g.id}" style="background:${g.bg};box-shadow:0 0 6px ${g.glow}" ondragstart="onDragStartPalette(event)" ondragend="onDragEndPalette()"><span class="pal-gate-sym">${g.sym}</span><span class="pal-gate-lbl">${g.id}</span></div>`; });
-  html += '</div></div><div class="pal-sec"><div class="pal-sec-lbl">MEASUREMENT</div><div class="pal-grid">';
+  html += '</div></div><div id="tg-section"></div><div class="pal-sec"><div class="pal-sec-lbl">MEASUREMENT</div><div class="pal-grid">';
   GATES['meas'].forEach(g => { html += `<div class="pal-gate" tabindex="0" role="button" aria-label="Gate ${g.id}: Enter to select" draggable="true" data-gate="${g.id}" style="background:${g.bg};box-shadow:0 0 6px ${g.glow}" ondragstart="onDragStartPalette(event)" ondragend="onDragEndPalette()"><span class="pal-gate-sym">${g.sym}</span><span class="pal-gate-lbl">${g.id}</span></div>`; });
   html += '</div></div>';
   container.innerHTML = html;
+  if (typeof tgMountPanel === 'function') tgMountPanel();
 }
 
 function onDragStartPalette(e) { dragPaletteGate = e.target.closest('.pal-gate')?.dataset.gate; if (dragPaletteGate) e.dataTransfer.setData('text/plain', dragPaletteGate); }
@@ -806,6 +809,7 @@ function findGateDef(id) { for (const cat of Object.values(GATES)) { const g = c
 function placeGate(gateId, qubit) {
   if (isUpdatingFromCode) return;
   if (nexusLocked()) { nexusLockMsg(); return; }
+  if (String(gateId).startsWith('TG:')) return tgPlace(gateId.slice(3), qubit);
   isUpdatingFromCircuit = true;
   const def = findGateDef(gateId);
   if (!def) { isUpdatingFromCircuit = false; return; }
@@ -838,7 +842,7 @@ function placeGate(gateId, qubit) {
     circuit.gates.push({ id: gateId, q: Math.min(qubit, q2), q2: Math.max(qubit, q2), def: def, uid: nextId++ });
   } else {
     if (gateId === 'M') {
-      if (!circuit.gates.some(g => g.id !== 'M' && (g.q === qubit || g.q2 === qubit || g.q3 === qubit))) {
+      if (!circuit.gates.some(g => g.id !== 'M' && tgOn(g, qubit))) {
         isUpdatingFromCircuit = false; notify(`❌ q[${qubit}] has no gate yet. Place its gates before the measurement.`); return;
       }
       const _existingMeasurement = circuit.gates.find(g => g.id === 'M' && g.q === qubit);
@@ -848,7 +852,7 @@ function placeGate(gateId, qubit) {
       }
       circuit.gates.push({ id: gateId, q: qubit, def: def, uid: nextId++ });
     } else {
-      if (circuit.gates.some(g => g.id === 'M' && !g.autoMeasurement && (g.q === qubit || g.q2 === qubit || g.q3 === qubit))) {
+      if (circuit.gates.some(g => g.id === 'M' && !g.autoMeasurement && tgOn(g, qubit))) {
         isUpdatingFromCircuit = false; notify(`❌ q[${qubit}] is already measured. A gate cannot be placed after its measurement.`); return;
       }
       removeAutoMeasurementsForWires([qubit]);
@@ -883,6 +887,7 @@ function moveExistingGate(uid, newQubit) {
   if (idx === -1) { isUpdatingFromCircuit = false; return; }
   const gate = circuit.gates[idx];
   
+  if (gate.tg) { notify('Theoretical gates are moved by editing their qubits (click the gate)'); isUpdatingFromCircuit = false; return; }
   if (gate.q2 !== undefined || gate.q3 !== undefined) {
     notify('2 and 3 qubit gates cannot be dragged');
     isUpdatingFromCircuit = false;
@@ -890,7 +895,7 @@ function moveExistingGate(uid, newQubit) {
   }
   
   if (gate.id === 'M') {
-    if (!circuit.gates.some((g, i) => i !== idx && g.id !== 'M' && (g.q === newQubit || g.q2 === newQubit || g.q3 === newQubit))) {
+    if (!circuit.gates.some((g, i) => i !== idx && g.id !== 'M' && tgOn(g, newQubit))) {
       isUpdatingFromCircuit = false;
       notify('❌ A measurement must be placed after a gate on that wire.');
       return;
@@ -900,7 +905,7 @@ function moveExistingGate(uid, newQubit) {
       notify('This wire already has a measurement.');
       return;
     }
-  } else if (circuit.gates.some((g, i) => i !== idx && g.id === 'M' && !g.autoMeasurement && (g.q === newQubit || g.q2 === newQubit || g.q3 === newQubit))) {
+  } else if (circuit.gates.some((g, i) => i !== idx && g.id === 'M' && !g.autoMeasurement && tgOn(g, newQubit))) {
     isUpdatingFromCircuit = false;
     notify('❌ A gate cannot be placed after a measurement.');
     return;
@@ -951,6 +956,7 @@ function normalizeMeasurements(gates) {
 function computeRequiredQubits() {
   let maxQ = 0;
   for (const g of circuit.gates) {
+    if (g.qs) for (const x of g.qs) if (x > maxQ) maxQ = x;
     if (typeof g.q === 'number' && g.q > maxQ) maxQ = g.q;
     if (typeof g.q2 === 'number' && g.q2 > maxQ) maxQ = g.q2;
     if (typeof g.q3 === 'number' && g.q3 > maxQ) maxQ = g.q3;
@@ -978,6 +984,7 @@ function renderCircuit() {
   const placed = circuit.gates.map(g => {
     let col;
     if (g.block) { col = 0; for (let k = g.q; k <= g.q2; k++) col = Math.max(col, depth[k] || 0); const w = g.block.w || 1; for (let k = g.q; k <= g.q2; k++) depth[k] = col + w; }
+    else if (g.tg) { col = 0; for (let k = g.q; k <= (g.q2 ?? g.q); k++) col = Math.max(col, depth[k] || 0); for (let k = g.q; k <= (g.q2 ?? g.q); k++) depth[k] = col + 1; }
     else if (g.q3 !== undefined) { col = Math.max(depth[g.q], depth[g.q2], depth[g.q3]); depth[g.q] = col + 1; depth[g.q2] = col + 1; depth[g.q3] = col + 1; }
     else if (g.q2 !== undefined) { col = Math.max(depth[g.q], depth[g.q2]); depth[g.q] = col + 1; depth[g.q2] = col + 1; }
     else { col = depth[g.q]; depth[g.q]++; }
@@ -992,7 +999,8 @@ function renderCircuit() {
   }
   placed.forEach(g => {
     const left = g.col * step + 15;
-    if (g.block) {
+    if (g.tg) { html += tgRenderGate(g, left); }
+    else if (g.block) {
       const bw = (g.block.w || 1) * step - 10, bh = (g.q2 - g.q + 1) * ROW_HEIGHT - 8;
       html += `<div class="qcol-block" title="${escapeHtml(g.block.tip)}" aria-label="${escapeHtml(g.block.tip)}" tabindex="0" role="button" onclick="nexusBlockInfo(${g.uid})"
         style="position:absolute;left:${left}px;top:${g.q * ROW_HEIGHT + 4}px;width:${bw}px;height:${bh}px;box-sizing:border-box;background:linear-gradient(135deg,#4a148c,#8e24aa);border:1.5px solid #ce93d8;border-radius:8px;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;font:700 12px monospace;text-align:center;cursor:help;overflow:hidden;padding:2px;">${escapeHtml(g.block.label)}<span style="font-weight:400;font-size:9px;opacity:.85;">${escapeHtml(g.block.sub)}</span></div>`;
@@ -1199,15 +1207,15 @@ function validateAndCompleteMeasurements(source) {
   while ((m = re.exec(code)) !== null) {
     const lineStart = code.lastIndexOf('\n', m.index) + 1;
     if (code.slice(lineStart, m.index).includes('#')) continue;
-    calls.push({name:m[1].toLowerCase(),args:_splitTopLevel(m[2]),index:m.index,line:code.slice(0,m.index).split('\n').length});
+    calls.push({raw:m[1],name:m[1].toLowerCase(),args:_splitTopLevel(m[2]),index:m.index,line:code.slice(0,m.index).split('\n').length});
   }
   const measured=new Set(), used=new Set(), errors=[];
   const wires = arg => { const a=String(arg||'').trim(); let q=_argIndices(a); if(!q.length){const x=a.match(/\bq\s*\[\s*(\d+)\s*\]/);if(x)q=[Number(x[1])];} return q; };
   for(const c of calls){
     if(c.name==='measure'){for(const q of wires(c.args[0])){if(measured.has(q))errors.push({line:c.line,message:`q[${q}] already has a measurement`});measured.add(q);}continue;}
     if(['measure_all','draw','barrier','save_statevector','save_counts'].includes(c.name))continue;
-    const n=_GQ1.has(c.name)?1:(_GQ2.has(c.name)?2:(_GQ3.has(c.name)?3:0)); if(!n)continue;
-    for(const q of c.args.slice(0,n).flatMap(wires)){used.add(q);if(measured.has(q))errors.push({line:c.line,message:`q[${q}] has a gate after its measurement; move the measurement to the end of that wire`});}
+    const _ta=tgArity(c.raw); const n=_ta?_ta.nq:(_GQ1.has(c.name)?1:(_GQ2.has(c.name)?2:(_GQ3.has(c.name)?3:0))); if(!n)continue;
+    for(const q of c.args.slice(_ta?_ta.np:0,(_ta?_ta.np:0)+n).flatMap(wires)){used.add(q);if(measured.has(q))errors.push({line:c.line,message:`q[${q}] has a gate after its measurement; move the measurement to the end of that wire`});}
   }
   if(errors.length)return {ok:false,code,error:errors[0].message,line:errors[0].line};
   const missing=[...used].filter(q=>!measured.has(q)).sort((a,b)=>a-b);if(!missing.length)return {ok:true,code,added:false};
@@ -1220,7 +1228,7 @@ function validateAndCompleteMeasurements(source) {
 
 function syncVisualMeasurementMarkers() {
   const used = new Set();
-  circuit.gates.filter(g => g.id !== 'M').forEach(g => { used.add(g.q); if (g.q2 !== undefined) used.add(g.q2); if (g.q3 !== undefined) used.add(g.q3); });
+  circuit.gates.filter(g => g.id !== 'M').forEach(g => { used.add(g.q); if (g.q2 !== undefined) used.add(g.q2); if (g.q3 !== undefined) used.add(g.q3); if (g.qs) g.qs.forEach(x => used.add(x)); });
   const before = circuit.gates.length;
   circuit.gates = circuit.gates.filter(g => !(g.id === 'M' && g.autoMeasurement && !used.has(g.q)));
   let changed = circuit.gates.length !== before;
@@ -1251,8 +1259,9 @@ function updateCodeFromCircuit() {
   const usedWires = new Set();
   const hasExplicitMeasurements = circuit.gates.some(g => g.id === 'M' && !g.autoMeasurement);
   circuit.gates.forEach(g => {
-    if (g.id !== 'M') { usedWires.add(g.q); if (g.q2 !== undefined) usedWires.add(g.q2); if (g.q3 !== undefined) usedWires.add(g.q3); }
+    if (g.id !== 'M') { usedWires.add(g.q); if (g.q2 !== undefined) usedWires.add(g.q2); if (g.q3 !== undefined) usedWires.add(g.q3); if (g.qs) g.qs.forEach(x => usedWires.add(x)); }
     if (g.id === 'M' && g.autoMeasurement && !hasExplicitMeasurements) return;
+    if (g.tg) { code += tgCall(g) + '\n'; return; }
     let line = g.def.code.replace(/\{q2\}/g, g.q2 !== undefined ? g.q2 : 0).replace(/\{q3\}/g, g.q3 !== undefined ? g.q3 : 0).replace(/\{q\}/g, g.q);
     code += line + '\n';
   });
@@ -1864,6 +1873,9 @@ const QCOL_PROBE_PY = [
   "            if __op.name in ('barrier', 'delay'):",
   '                continue',
   "            __d = {'n': __op.name, 'q': [__qc.find_bit(__q).index for __q in __ci.qubits]}",
+  "            if __op.name.startswith('qtg_'):",
+  "                __lb = str(getattr(__op, 'label', '') or '')",
+  "                __d['info'] = {'qtg': __op.name[4:], 'v': int(__lb.split('@')[1]) if '@' in __lb else None, 'p': [float(__x) for __x in __op.params]}",
   "            if __op.name == 'PauliEvolution':",
   "                __info = {'label': 'exp(-iHt)'}",
   '                try:',
@@ -1950,6 +1962,7 @@ function nexusOpsToGates(ops) {
     if (!qs.length) continue;
     const uid = nextId++;
     if (real === 'measure') { gates.push({ id: 'M', q: qs[0], def: findGateDef('M'), uid }); continue; }
+    if (real.startsWith('qtg_') || (o.info && o.info.qtg)) { const tgG = tgFromOp(o, qs, uid); if (tgG) { gates.push(tgG); continue; } }
     const id = o.info ? null : mapOpStrict(String(o.d || real).toLowerCase());
     if (!id) {
       const lo = Math.min(...qs), hi = Math.max(...qs), bt = _blockText(o);
@@ -1981,7 +1994,8 @@ function nexusCanon(struct, opts) {
     if (n === 'barrier' || n === 'delay') continue;
     if (n === 'measure') { (o.q || []).forEach(q => meas.push(q)); continue; }
     let k = (n === 'pauli_evolution' ? 'PauliEvolution' : n).toLowerCase() + ':' + (o.q || []).join(',');
-    if (o.info) k += '|terms=' + (o.info.terms != null ? o.info.terms : '?') + '|reps=' + (o.info.reps != null ? o.info.reps : '?') + '|t=' + (o.info.time != null ? (+o.info.time).toFixed(4) : '?');
+    if (o.info && o.info.qtg) k += '|v' + o.info.v + '|' + (o.info.p || []).map(x => (+x).toFixed(5)).join(',');
+    else if (o.info) k += '|terms=' + (o.info.terms != null ? o.info.terms : '?') + '|reps=' + (o.info.reps != null ? o.info.reps : '?') + '|t=' + (o.info.time != null ? (+o.info.time).toFixed(4) : '?');
     seq.push(k);
   }
   meas.sort((a, b) => a - b);
@@ -2204,7 +2218,7 @@ async function syncFromServer(reason) {
     const out = document.getElementById('out-body');
     out.innerHTML += `<span class="inf">🔧 Corrector active (${reason}) — running on server...</span>\n`;
     const _ensC = ensureMeasurements(_cleanCodeForServer(rawCode));
-    const cleanCode = nexusAppendProbe(_ensC.code);
+    const cleanCode = nexusAppendProbe(tgInject(_ensC.code));
     const isHF = engineURL.includes('hf.space') || engineURL.includes('huggingface') || engineURL.includes('nexus-connectors.invalid');
     try {
         const res = await fetchWithRetry(
@@ -2290,7 +2304,7 @@ async function syncWithPyodide(retryCount = 0) {
     out.innerHTML += '<span class="inf">🔄 Syncing code → visual circuit... (v4)</span>\n';
     try {
         const py = await initPyodide();
-        const code = robustPreprocess(rawCode);
+        const code = tgInject(robustPreprocess(rawCode));
         py.globals.set('_pending_user_code', code);
         try { await py.loadPackagesFromImports(code); } catch (e) { console.warn('pyodide pkgs', e); }
         const result = await py.runPythonAsync(`
@@ -2589,7 +2603,7 @@ function scanMaxQubitIndex(code) {
     let maxIdx = -1, maxClbit = -1, usesMeasure = false, m;
     const re = /\bqc\.(\w+)\s*\(/g;
     while ((m = re.exec(clean))) {
-        const name = m[1].toLowerCase();
+        const name = m[1].toLowerCase(); const _ta = tgArity(m[1]);
         let depth = 1, i = re.lastIndex;
         while (i < clean.length && depth > 0) {
             const c = clean[i];
@@ -2604,6 +2618,7 @@ function scanMaxQubitIndex(code) {
             if (args[0]) for (const ix of _argIndices(args[0])) if (ix > maxIdx) maxIdx = ix;      // qubit
             if (args[1]) for (const ix of _argIndices(args[1])) if (ix > maxClbit) maxClbit = ix;  // bit clásico
         }
+        else if (_ta) picked = args.slice(_ta.np, _ta.np + _ta.nq);
         else if (_GQ1.has(name)) picked = args.slice(-1);
         else if (_GQ2.has(name)) picked = args.slice(-2);
         else if (_GQ3.has(name)) picked = args.slice(-3);
@@ -2710,7 +2725,7 @@ async function runServerCode() {
     out.innerHTML = `<span class="inf">Sending code to quantum compiler (Qiskit 1.0+)...\n</span>`;
 
     const _ens = ensureMeasurements(code);
-    const sendCode = nexusAppendProbe(nexusWithPlotCapture(_ens.code));
+    const sendCode = nexusAppendProbe(nexusWithPlotCapture(tgInject(_ens.code)));
     if (_ens.added) out.innerHTML += `<span class="inf">ℹ️ No measurements found — measuring all qubits for this run.\n</span>`;
     const isHF = engineURL.includes('hf.space') || engineURL.includes('huggingface') || engineURL.includes('nexus-connectors.invalid');
     try {
@@ -3106,7 +3121,7 @@ function applyBlochGate(gate) {
 function addQubit() { if (circuit.qubits < MAX_QUBITS) { circuit.qubits++; if (!blochStates[circuit.qubits-1]) blochStates[circuit.qubits-1] = { theta: 0, phi: 0 }; renderCircuit(); updateCircuitInfo(); updateCodeFromCircuit(); notify(`${circuit.qubits} qubits`); } else notify(`Maximum ${MAX_QUBITS} qubits`); }
 function removeQubit() {
     if (circuit.qubits > 1) {
-        circuit.gates = circuit.gates.filter(g => g.q < circuit.qubits-1 && (!g.q2 || g.q2 < circuit.qubits-1) && (!g.q3 || g.q3 < circuit.qubits-1));
+        circuit.gates = circuit.gates.filter(g => g.q < circuit.qubits-1 && (!g.q2 || g.q2 < circuit.qubits-1) && (!g.q3 || g.q3 < circuit.qubits-1) && (!g.qs || g.qs.every(x => x < circuit.qubits-1)));
         circuit.qubits--;
         circuit.gates = normalizeMeasurements(circuit.gates);
         if (currentBlochQubit >= circuit.qubits) currentBlochQubit = circuit.qubits-1;
@@ -3679,6 +3694,100 @@ setTimeout(() => {
 }, 800);
 
 init();
+</script>
+
+<script>
+// ═══ Theoretical gates — Open Lab glue ═══
+const TGL = window.QuOLabTheoreticalGates, TGUI = window.QuOLabTGUI;
+function tgCat() { return TGL && TGL.catalog(); }
+function tgOn(g, q) { return g.qs ? g.qs.includes(q) : (g.q === q || g.q2 === q || g.q3 === q); }
+function tgArity(raw) { try { return TGL ? TGL.arityOf(raw, tgCat()) : null; } catch (e) { return null; } }
+function tgInject(code) { try { return TGL ? TGL.injectPrelude(code, tgCat()) : code; } catch (e) { console.warn('tg prelude', e); return code; } }
+function tgCall(g) { return TGL.callFor({ tg: g.tg, qs: g.qs }, tgCat()) || ('# missing theoretical gate ' + g.tg.id); }
+function tgMountPanel() {
+  const el = document.getElementById('tg-section'); if (!el || !TGUI) return;
+  TGUI.init({
+    notify: m => notify(m, 3500),
+    useGate: g => { kbdStart('TG:' + g.id); },
+    onChange: () => { try { renderCircuit(); } catch (e) {} },
+    onUseU: mode => { if (window.QuOLabUGate) window.QuOLabUGate.open(mode, { notify }); else notify('The U gate module is loading…'); }
+  });
+  const cat = tgCat();
+  cat.hooks.savedCircuits = {
+    list() { const out = []; for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (!k || !k.startsWith('qcol_circuits_')) continue; try { JSON.parse(localStorage.getItem(k) || '[]').forEach((c, j) => out.push({ name: c.name, code: c.code, k, j })); } catch (e) {} } return out; },
+    replace(i, code) { const it = this.list()[i]; if (!it) return; const arr = JSON.parse(localStorage.getItem(it.k)); arr[it.j].code = code; localStorage.setItem(it.k, JSON.stringify(arr)); }
+  };
+  TGUI.renderPanel(el);
+}
+function tgPlace(id, qubit) {
+  const cat = tgCat(), g = cat.get(id); if (!g || g.archived) { notify('This theoretical gate is not available'); return; }
+  const ver = cat.version(g); if (ver.status === 'invalid') { notify('⛔ ' + g.name + ' is not valid — fix it in the editor first'); return; }
+  const k = ver.nq; if (k > MAX_QUBITS) { notify('Too many qubits'); return; }
+  if (circuit.gates.length >= MAX_GATES) { notify(`⛔ Limit of ${MAX_GATES} gates reached`); return; }
+  if (k > circuit.qubits) { circuit.qubits = k; }
+  const start = Math.max(0, Math.min(qubit, circuit.qubits - k)), qs = Array.from({ length: k }, (_, i) => start + i);
+  if (circuit.gates.some(x => x.id === 'M' && !x.autoMeasurement && qs.some(q => tgOn(x, q)))) { notify('❌ A gate cannot be placed after a measurement.'); return; }
+  isUpdatingFromCircuit = true;
+  removeAutoMeasurementsForWires(qs);
+  circuit.gates.push(tgMake(g.id, ver.v, ver.params.map(p => p.def), qs, nextId++));
+  circuit.gates = normalizeMeasurements(circuit.gates);
+  renderCircuit(); updateCircuitInfo(); updateCodeFromCircuit();
+  isUpdatingFromCircuit = false;
+  cat.touch(g.id);
+  notify(`${g.label} → q[${qs.join(',')}]`);
+}
+function tgMake(id, v, params, qs, uid) {
+  const cat = tgCat(), g = cat.get(id);
+  const lo = Math.min(...qs), hi = Math.max(...qs);
+  const o = { id: 'TG', tg: { id, v, params: params.slice() }, q: lo, qs: qs.slice(), def: { bg: '#fff', glow: '#fff', sym: g ? g.label : '?', code: '' }, uid };
+  if (qs.length > 1) o.q2 = hi;
+  return o;
+}
+function tgFromOp(o, qs, uid) {
+  const cat = tgCat(), id = (o.info && o.info.qtg) || String(o.n).slice(4), g = cat && cat.get(id); if (!g) return null;
+  const v = (o.info && o.info.v) || g.current;
+  if (!cat.version(g, v)) return null;
+  return tgMake(id, v, (o.info && o.info.p) || [], qs, uid);
+}
+function tgRenderGate(g, left) {
+  const cat = tgCat(), gt = cat.get(g.tg.id), name = gt ? gt.name : 'missing gate', ver = gt ? cat.version(gt, g.tg.v) : null;
+  const lo = Math.min(...g.qs), hi = Math.max(...g.qs), top = lo * ROW_HEIGHT, h = (hi - lo + 1) * ROW_HEIGHT;
+  const label = gt ? gt.label : '?', multi = g.qs.length > 1;
+  const tip = `${name}${ver ? ' · v' + ver.v : ''} — click to edit qubits/parameters, right-click for matrix`;
+  let inner = multi ? `<div style="position:absolute;left:50%;top:${ROW_HEIGHT / 2}px;bottom:${ROW_HEIGHT / 2}px;width:2px;background:#9aa7bd;transform:translateX(-1px)"></div>` : '';
+  g.qs.forEach((q, i) => {
+    inner += `<div style="position:absolute;left:50%;top:${(q - lo) * ROW_HEIGHT + ROW_HEIGHT / 2}px;transform:translate(-50%,-50%);width:36px;height:32px;border-radius:6px;background:#fff;border:2px solid ${gt && ver && ver.status !== 'invalid' ? '#9aa7bd' : '#ff4466'};color:#0a0e1a;font:800 12px monospace;display:flex;align-items:center;justify-content:center">${escapeHtml(label)}${multi ? `<sub style="font-size:8px;margin-left:1px;color:#5a6a88">${i + 1}</sub>` : ''}</div>`;
+  });
+  return `<div class="tg-placed" title="${escapeHtml(tip)}" aria-label="${escapeHtml(tip)}" tabindex="0" role="button" data-tg="${escapeHtml(g.tg.id)}" onclick="tgClick(${g.uid})" oncontextmenu="event.preventDefault();tgDetail(${g.uid})" style="position:absolute;left:${left - 2}px;top:${top}px;width:40px;height:${h}px;cursor:pointer">${inner}</div>`;
+}
+function tgDetail(uid) { const g = circuit.gates.find(x => x.uid === uid); if (g && g.tg) TGUI.openDetail(g.tg.id, g.tg.v); }
+function tgClick(uid) {
+  if (isUpdatingFromCode) return;
+  const g = circuit.gates.find(x => x.uid === uid); if (!g || !g.tg) return;
+  const cat = tgCat(), gt = cat.get(g.tg.id), ver = gt && cat.version(gt, g.tg.v);
+  const m = TGUI.modal({ title: (gt ? gt.name : 'Missing gate') + ' · placed gate', cls: 'sm' });
+  const esc = TGUI.esc;
+  m.body.innerHTML = `<div class="tgu-row"><span class="tgu-lbl">QUBITS (in order, ${ver ? ver.nq : '?'})</span><input id="tc-q" class="tgu-in" value="${g.qs.join(', ')}" style="flex:1"></div>` +
+    (ver ? ver.params.map((p, i) => `<div class="tgu-row"><span class="tgu-lbl">${esc(p.name)}</span><input class="tgu-in tc-p" data-i="${i}" value="${esc(g.tg.params[i] != null ? g.tg.params[i] : p.def)}"></div>`).join('') : '') +
+    (gt && gt.versions.length > 1 ? `<div class="tgu-row"><span class="tgu-lbl">VERSION</span><select id="tc-v" class="tgu-in">${gt.versions.map(v => `<option value="${v.v}"${v.v === g.tg.v ? ' selected' : ''}>v${v.v}${v.v === gt.current ? ' (current)' : ''}</option>`).join('')}</select></div>` : '') +
+    '<div id="tc-m"></div>';
+  const say = t => { m.body.querySelector('#tc-m').innerHTML = `<div class="tgu-msg er">${esc(t)}</div>`; };
+  m.foot.appendChild(TGUI.btn('Apply', 'pri', () => {
+    const qs = m.body.querySelector('#tc-q').value.split(/[ ,]+/).filter(Boolean).map(Number);
+    if (!ver || qs.length !== ver.nq || qs.some(x => !Number.isInteger(x) || x < 0 || x >= MAX_QUBITS) || new Set(qs).size !== qs.length) { say(`Enter ${ver ? ver.nq : '?'} different qubit numbers between 0 and ${MAX_QUBITS - 1}.`); return; }
+    const vsel = m.body.querySelector('#tc-v'), nv = vsel ? +vsel.value : g.tg.v, nver = cat.version(gt, nv);
+    const ps = nver.params.map((p, i) => { const el = m.body.querySelector(`.tc-p[data-i="${i}"]`); const x = el && nv === g.tg.v ? parseFloat(el.value) : p.def; return Number.isFinite(x) ? x : p.def; });
+    if (circuit.gates.some(x => x.id === 'M' && !x.autoMeasurement && qs.some(q => tgOn(x, q)))) { say('A gate cannot be placed after a measurement.'); return; }
+    const i = circuit.gates.indexOf(g); isUpdatingFromCircuit = true;
+    removeAutoMeasurementsForWires(qs);
+    circuit.gates[circuit.gates.indexOf(g)] = tgMake(g.tg.id, nv, ps, qs, g.uid);
+    renderCircuit(); updateCircuitInfo(); updateCodeFromCircuit(); isUpdatingFromCircuit = false; m.close();
+  }));
+  m.foot.appendChild(TGUI.btn('Remove', 'dng', () => { m.close(); removeGate(uid); }));
+  m.foot.appendChild(TGUI.btn('Matrix / circuit', '', () => { TGUI.openDetail(g.tg.id, g.tg.v); }));
+  const sp = document.createElement('span'); sp.className = 'sp'; m.foot.appendChild(sp); m.foot.appendChild(TGUI.btn('Cancel', '', m.close));
+}
+try { tgMountPanel(); renderCircuit(); } catch (e) { console.error(e); }
 </script>
 </body>
 </html>
