@@ -1092,7 +1092,7 @@ class QuOLabNexusConfigSyncReader {
           type: 'OPENQ_CONFIG',
           user: curUser,
           version: VERSION,
-          engineReady: !!localStorage.getItem('openq_colab_url'),
+          engineReady: !!(window.QuOLabNexusCore && window.QuOLabNexusCore.getEngineUrl && window.QuOLabNexusCore.getEngineUrl()),
           ghUser: (JSON.parse(localStorage.getItem('openq_gh')||'{}').user)||'laffitacamargof-create',
           ghRepo: (JSON.parse(localStorage.getItem('openq_gh')||'{}').repo)||'quantum-computing-open-lab',
         }, '*');
@@ -1157,7 +1157,7 @@ class QuOLabNexusConfigSyncReader {
       }
       if (data?.config) {
           const c = data.config;
-          if (c.colab_url)       localStorage.setItem('openq_colab_url',         c.colab_url);
+          if (c.colab_url) { localStorage.setItem('openq_colab_url', c.colab_url); localStorage.setItem('qcol_colab_url', c.colab_url); localStorage.setItem('nexus_colab_url', c.colab_url); }
           if (c.mistral_key)     localStorage.setItem('openq_mistral_key',        c.mistral_key);
           if (c.mistral_model)   localStorage.setItem('openq_mistral_model',      c.mistral_model);
           if (c.mistral_enabled !== undefined) localStorage.setItem('openq_mistral_enabled', c.mistral_enabled);
@@ -1565,6 +1565,10 @@ class QuOLabNexusConfigSyncReader {
     if (d.type === 'OPENQ_SAVE') {
       const val = typeof d.val === 'object' ? JSON.stringify(d.val) : d.val;
       localStorage.setItem(d.key, val);
+      if (['openq_colab_url','qcol_colab_url','nexus_colab_url'].includes(d.key)) {
+        const engineValue = String(val || '').trim();
+        if (engineValue) { localStorage.setItem('openq_colab_url', engineValue); localStorage.setItem('qcol_colab_url', engineValue); localStorage.setItem('nexus_colab_url', engineValue); }
+      }
       const CONFIG_KEYS = {
           'openq_colab_url': 'colab_url',
           'openq_mistral_key': 'mistral_key',
@@ -1645,10 +1649,8 @@ class QuOLabNexusConfigSyncReader {
   function sendCfg(src) {
     try {
       const compilerUrl = String(
-        (window.configSync && window.configSync.getConfig('colab_url')) ||
-        localStorage.getItem('qcol_colab_url') ||
-        localStorage.getItem('openq_colab_url') ||
-        ''
+        (window.QuOLabNexusCore && window.QuOLabNexusCore.getEngineUrl && window.QuOLabNexusCore.getEngineUrl()) ||
+        (window.configSync && window.configSync.getConfig('colab_url')) || ''
       ).trim();
       src.postMessage({
         type: 'OPENQ_CONFIG',
@@ -3397,7 +3399,6 @@ CONTEXT (staged and size-limited): ${c}`;
             localStorage.setItem('openq_colab_url', compilerUrl);
             localStorage.setItem('qcol_colab_url', compilerUrl);
             localStorage.setItem('nexus_colab_url', compilerUrl);
-            localStorage.setItem('nexus_colab_url', compilerUrl);
             broadcast({
               type: 'OPENQ_CONFIG',
               user: curUser,
@@ -3437,8 +3438,8 @@ CONTEXT (staged and size-limited): ${c}`;
 
 })();
 
-window.QUOLAB_NEXUS_BUILD = '2026-11-15-qnexusai-v1.9.0';
-window.OPENQ_BUILD = window.QUOLAB_NEXUS_BUILD; // Compatibilidad temporal
+window.QUOLAB_NEXUS_BUILD = NEXUS_BUILD;
+window.OPENQ_BUILD = NEXUS_BUILD; // Compatibilidad temporal
 console.log('%cQuOLab Nexus build ' + window.QUOLAB_NEXUS_BUILD, 'color:#00ffdd');
 window.QuOLabNexus = QuOLabNexus;
 window.OpenQ = QuOLabNexus; // Alias temporal para módulos externos aún no migrados
