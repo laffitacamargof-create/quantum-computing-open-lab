@@ -642,6 +642,34 @@
     },
     resolve(moduleId, kind) { const value = this.get(moduleId, kind); if (value === 'founder') return null; return (Array.isArray(value) ? value : [value]).map(id => Store.get(id)).filter(Boolean); }
   };
+  async function validateAssignedRoute(moduleId, kind, tool) {
+    const assigned = Assignments.get(moduleId, kind);
+    if (assigned === 'founder') return { source:'founder', name:'Founder' };
+    const ids = Array.isArray(assigned) ? assigned : (assigned ? [assigned] : []);
+    const expected = kind === 'cpu' ? 'classical' : kind === 'qpu' ? 'quantum' : kind === 'storage' ? 'storage' : '';
+    if (!expected || !ids.length) return { source:'unavailable', reason:'No connector is assigned to this slot.' };
+    const options = [];
+    for (const id of ids) {
+      const rec = Store.get(id);
+      if (!rec) return { source:'unavailable', reason:'Assigned connector ' + id + ' no longer exists on this device. Reassign the slot.' };
+      if (rec.usage === 'off') return { source:'unavailable', reason:'Connector "' + rec.name + '" is disabled. Enable it or reassign the slot.' };
+      if (rec.kind !== 'ext' || !rec.ext || rec.ext.category !== expected || !Policy.allowed(rec, tool)) {
+        return { source:'unavailable', reason:'Connector "' + rec.name + '" is not compatible with ' + tool + ' (' + kind + '). Reassign the slot.' };
+      }
+      try {
+        const auth = String(rec.ext.auth || 'none').toLowerCase(), secrets = rec.secrets || {};
+        if (auth === 'apikey' || auth === 'bearer') {
+          if (!await Vault.open(secrets.secret)) throw new Error('The saved credential is empty.');
+        } else if (auth === 'basic') {
+          if (!await Vault.open(secrets.user) || !await Vault.open(secrets.pass)) throw new Error('The saved username or password is empty.');
+        }
+      } catch (error) {
+        return { source:'unavailable', reason:'The secret for "' + rec.name + '" cannot be decrypted in this browser. Edit the connector and enter its credentials again. ' + String(error && error.message || error) };
+      }
+      options.push({ id:rec.id, name:rec.name, category:rec.ext.category });
+    }
+    return { source:'nexus', name:options[0] ? options[0].name : 'Nexus connector', options };
+  }
   const onceLocks = new Set();
   function reserveOnce(rec) {
     if (rec.usage !== 'once') return {commit(){},release(){}};
@@ -695,7 +723,7 @@
   // Secret decryption remains inside this closure and is used only by connector requests.
   const publicVault = Object.freeze({ seal: Vault.seal.bind(Vault) });
   const publicExt = Object.freeze({ pick: ext.pick.bind(ext), request: ext.request.bind(ext), test: ext.test.bind(ext) });
-  const api = { VERSION, TOOLS, PERMS, PROVIDERS, COMMUNITY_REQUIRES, MAX_CODE, Vault:publicVault, Store, Policy, Analyze, Bridge, ai, ext:publicExt, loc, Catalog, Community, Installer, Make, Assignments, SLOT_RULES, requestAssigned, util: { uid, slug, sha256, now, NexusError } };
+  const api = { VERSION, TOOLS, PERMS, PROVIDERS, COMMUNITY_REQUIRES, MAX_CODE, Vault:publicVault, Store, Policy, Analyze, Bridge, ai, ext:publicExt, loc, Catalog, Community, Installer, Make, Assignments, SLOT_RULES, requestAssigned, validateAssignedRoute, util: { uid, slug, sha256, now, NexusError } };
   root.QuOLabNexusConnectors = api;
   if (root.QuOLabNexusCore && !Object.isFrozen(root.QuOLabNexusCore)) root.QuOLabNexusCore.connectors = api;
 })(typeof window !== 'undefined' ? window : globalThis);
