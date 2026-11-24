@@ -119,6 +119,10 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--bl2)}
 </header>
 <main>
   <p class="intro">Manage AI, hardware, storage APIs and local connectors. Only one AI API can be active for QNexusAi, and only one external API can be assigned to each tool outside Quantum Puzzle. Different connector types can coexist; Quantum Puzzle keeps its own multi-connector routing. Secrets remain encrypted in this browser vault.</p>
+  <section id="routeWarnings" aria-live="polite" style="display:none;margin:1rem 0;padding:.9rem 1rem;border:1px solid rgba(255,68,102,.45);background:rgba(255,68,102,.06);border-radius:9px">
+    <strong style="display:block;color:var(--rd);font-family:var(--orb);font-size:.62rem;letter-spacing:.1em;margin-bottom:.55rem">NEXUS ROUTING NEEDS ATTENTION</strong>
+    <div id="routeWarningsList" style="display:grid;gap:.65rem"></div>
+  </section>
 
   <div class="sec"><h2 style="color:var(--pu)">◉ API · AI</h2><span class="n" id="n-ai">0</span><span class="line"></span></div>
   <div class="grid" id="g-ai"></div>
@@ -278,6 +282,42 @@ async function share(id){const r=S.get(id);if(!(await NC.Community.init()))throw
 async function installCommunity(id){const x=published.find(y=>y.id===id);if(!x)throw Error('Community connector not found');if(bridge.state!=='ok'){openBridge();throw Error('Pair the local bridge first');}if(!(await NC.Community.verify(x)))throw Error('Checksum mismatch');const a=await NC.Bridge.post('/analyze',{code:x.py,mode:'community'});if(!a||!Array.isArray(a.errors)||a.errors.length)throw Error((a&&a.errors||['Authoritative bridge AST validation failed']).join(' · '));let r=S.all().find(y=>y.kind==='loc'&&y.loc.catalogId===id);if(!r){r=NC.Make.loc({name:x.name,version:x.version,description:x.description,ui:x.ui,web:x.web,py:x.py,loc:{origin:'community',catalogId:id,author:x.author}});S.upsert(r);}await NC.Installer.install(r.id);render();}
 async function refreshBridge(){bridge=await NC.Bridge.status();$('bBridge').textContent=bridge.state==='ok'?'BRIDGE · CONNECTED':bridge.state==='unpaired'?'BRIDGE · PAIR IT':'BRIDGE · OFFLINE';if($('brState')){$('brState').className='vmsg '+(bridge.state==='ok'?'ok':'bad');$('brState').textContent=bridge.state==='ok'?'✓ Connected and paired':bridge.state==='unpaired'?'Bridge found; enter pairing code':'Bridge is not responding on this device';}if($('brInfo'))$('brInfo').textContent=bridge.info?(bridge.info.platform+' · Python '+bridge.info.python):'';}
 function openBridge(){const c=NC.Bridge.cfg();$('brUrl').value=c.url;$('brTok').value=c.token||'';$('bridgeOv').classList.add('show');refreshBridge();}
+
+const ROUTE_TOOLS={open_lab:{module:'architect',name:'Quantum Open Lab',slots:['cpu','qpu','storage']},notebook:{module:'architect-pro',name:'Quantum Notebook',slots:['cpu','qpu','storage']},apps:{module:'quantum-puzzle',name:'Quantum Puzzle',slots:['cpu','qpu']},app_studio:{module:'quantum-app-studio',name:'Quantum App Studio',slots:['cpu','qpu','storage']}};
+function founderOptInKey(moduleId,kind){return 'nexus_founder_fallback_v1:'+moduleId+':'+kind;}
+async function renderRouteWarnings(){
+ const host=$('routeWarnings'),list=$('routeWarningsList');if(!host||!list)return;
+ const warnings=[];
+ for(const [tool,cfg] of Object.entries(ROUTE_TOOLS)){
+  for(const kind of cfg.slots){
+   const assigned=NC.Assignments.get(cfg.module,kind);
+   if(assigned==='founder'){
+    if(localStorage.getItem(founderOptInKey(cfg.module,kind))!=='1')warnings.push({tool,cfg,kind,reason:'No connector is assigned. Founder routing is disabled until you authorize it explicitly.'});
+    continue;
+   }
+   const status=await NC.validateAssignedRoute(cfg.module,kind,tool);
+   if(status.source==='unavailable')warnings.push({tool,cfg,kind,reason:status.reason||'The assigned connector is unavailable.'});
+  }
+ }
+ list.innerHTML=warnings.map(w=>'<div style="display:flex;gap:.65rem;align-items:flex-start;flex-wrap:wrap;border-top:1px solid var(--b);padding-top:.6rem"><div style="flex:1;min-width:220px"><div style="font-family:var(--mono);font-size:.67rem;color:var(--tx)">'+esc(w.cfg.name)+' · '+esc(w.kind.toUpperCase())+'</div><div style="font-size:.72rem;color:var(--mu);margin-top:.2rem">'+esc(w.reason)+'</div></div><button class="btn" data-route-action="reassign" data-module="'+esc(w.cfg.module)+'" data-kind="'+esc(w.kind)+'">REASSIGN</button><button class="btn" data-route-action="founder" data-module="'+esc(w.cfg.module)+'" data-kind="'+esc(w.kind)+'">RETURN TO FOUNDER</button></div>').join('');
+ host.style.display=warnings.length?'block':'none';
+}
+document.addEventListener('click',async event=>{
+ const button=event.target.closest('[data-route-action]');if(!button)return;
+ const moduleId=button.dataset.module,kind=button.dataset.kind,action=button.dataset.routeAction;
+ if(action==='reassign'){
+  localStorage.removeItem(founderOptInKey(moduleId,kind));
+  $('g-ext')?.scrollIntoView({behavior:'smooth',block:'start'});
+  toast('Choose an enabled connector card and assign it to the requested tool. No Founder fallback was enabled.');
+ }else if(action==='founder'){
+  const approved=confirm('Authorize the Founder-configured service for this tool and slot? This is an explicit routing choice; no external connector will be changed.');
+  if(!approved)return;
+  NC.Assignments.set(moduleId,kind,'founder');
+  localStorage.setItem(founderOptInKey(moduleId,kind),'1');
+  toast('Founder route explicitly authorized for this tool and slot.');
+  await renderRouteWarnings();
+ }
+});
 document.addEventListener('click',async e=>{
 const seg=e.target.closest('.seg button');if(seg){const id=seg.parentElement.dataset.id,record=id&&S.get(id),next=seg.dataset.v;if(!record)return;const snapshot=S.all(),assignments=NC.Assignments.all();try{if(record.kind==='ai')NC.ai.setActive(id,next==='always');if(record.kind==='ext'&&next!=='off')(record.tools||[]).filter(tool=>tool!=='apps').forEach(tool=>snapshot.filter(r=>r.kind==='ext'&&r.id!==id&&(r.tools||[]).includes(tool)).forEach(other=>NC.Assignments.unbind(other.id,tool)));if(record.kind!=='ai')S.patch(id,r=>{r.usage=next;if(next!=='off')delete r.usedAt;});if(record.kind==='ai'&&next==='always'&&!NC.ai.list('chat').some(x=>x.id===id))throw Error('AI API was not registered as active for QNexusAi.');render();toast(record.kind==='ai'?(next==='always'?'AI API activated for QNexusAi.':'AI API deactivated.'):'Connector usage updated.');}catch(err){snapshot.forEach(r=>S.upsert(r));Object.entries(assignments||{}).forEach(([mod,slots])=>Object.entries(slots||{}).forEach(([kind,value])=>{try{NC.Assignments.set(mod,kind,value);}catch(_){}}));fail(err);render();}return;}
  const cardTool=e.target.closest('[data-card-tool]');if(cardTool){const card=cardTool.closest('[data-id]');if(card)setCardTool(card.dataset.id,cardTool.dataset.cardTool,!cardTool.classList.contains('on'));return;}
@@ -294,7 +334,7 @@ $('pendingX').onclick=()=>$('pendingOv').classList.remove('show');$('pendingOv')
 $('bridgeX').onclick=$('brClose').onclick=()=>$('bridgeOv').classList.remove('show');$('bridgeOv').onclick=e=>{if(e.target===$('bridgeOv'))$('bridgeOv').classList.remove('show');};$('brGo').onclick=async()=>{NC.Bridge.setCfg({url:$('brUrl').value.trim()||'http://127.0.0.1:8765',token:$('brTok').value.trim()});await refreshBridge();toast('Bridge state: '+bridge.state,bridge.state!=='ok');};
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeDialog();$('pendingOv').classList.remove('show');$('bridgeOv').classList.remove('show');}});
 window.addEventListener('message',e=>{if(e.source!==parent||e.origin!==location.origin)return;const d=window.QuOLabNexusCore.normalizeIncoming(e.data||{});if(['NEXUS_USER','NEXUS_USER_UPDATE'].includes(d.type)){user=d.user||null;pendingCount();}});
-NC.Assignments.normalize();normalizeExclusiveState();analyze();render();refreshBridge();loadCommunity();setInterval(()=>{if(navigator.onLine)refreshBridge();},15000);
+NC.Assignments.normalize();normalizeExclusiveState();analyze();render();refreshBridge();loadCommunity();renderRouteWarnings();NC.Store.subscribe(()=>renderRouteWarnings());setInterval(()=>{if(navigator.onLine)refreshBridge();},15000);
 })();
 </script>
 </body>
