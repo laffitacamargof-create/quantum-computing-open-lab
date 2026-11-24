@@ -1,9 +1,30 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<script src="quolab-nexus-core.js?v=20261121-routing-broker-2"></script>
-<script src="quolab-nexus-connectors-core.js?v=20261121-routing-broker-2"></script>
-<script src="quolab-nexus-tool-connector.js?v=20261121-routing-broker-2"></script>
+<script>
+window.NEXUS_MODULE_BUILD='20261124-desktop-routing-2';
+document.write('<script src="quolab-nexus-core.js?v='+window.NEXUS_MODULE_BUILD+'"><\/script>');
+document.write('<script src="quolab-nexus-connectors-core.js?v='+window.NEXUS_MODULE_BUILD+'"><\/script>');
+document.write('<script src="quolab-nexus-tool-connector.js?v='+window.NEXUS_MODULE_BUILD+'"><\/script>');
+</script>
+<script>
+window.__nexusStudioBuildSeen = false;
+window.addEventListener('message', function nexusStudioBuildRelay(event) {
+    if (event.origin !== window.location.origin || !event.data) return;
+    const studio = document.getElementById('studioIframe');
+    if (!studio) return;
+    if (event.source === studio.contentWindow && event.data.type === 'NEXUS_MODULE_BUILD') {
+        window.__nexusStudioBuildSeen = true;
+        studio.dataset.nexusBuildSeen = '1';
+        try { window.parent.postMessage(Object.assign({}, event.data, { __nexusNestedBuild:true }), window.location.origin); } catch (_) {}
+        return;
+    }
+    if (event.source === window.parent && event.data.type === 'NEXUS_BUILD_MISMATCH' &&
+        event.data.module === 'quolab-nexus-app-studio.html' && studio.contentWindow) {
+        try { studio.contentWindow.postMessage(event.data, window.location.origin); } catch (_) {}
+    }
+}, true);
+</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 <title>QuOLab Nexus — Quantum Puzzle</title>
@@ -673,7 +694,7 @@ document.addEventListener('DOMContentLoaded', async function initQuantumSync() {
             <span>🌀 QUANTUM APP STUDIO · Quantum application editor</span>
             <button class="btn-cancel" onclick="closeStudioModal()" style="margin:0;">CLOSE</button>
         </div>
-        <iframe id="studioIframe" class="studio-iframe" src="quolab-nexus-app-studio.html?v=20261118-health-retry-1" sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-modals allow-same-origin"></iframe>
+        <iframe id="studioIframe" class="studio-iframe" src="quolab-nexus-app-studio.html?v=20261124-desktop-routing-2" sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-modals allow-same-origin"></iframe>
     </div>
 </div>
 
@@ -739,17 +760,11 @@ let compilerUrl = '';
 
 // Resolve the same CPU backend configuration used by the embedded App Studio.
 // Keep legacy and current storage keys compatible during the branding migration.
-// Canonical QuOLab Nexus execution Space. Published apps created before the
-// server_url field existed can still execute through the ecosystem's configured motor.
-const DEFAULT_QUANTUM_SERVER_URL = 'https://francilaffita1027-qcol-motor.hf.space';
-
 function resolvePuzzleServerUrl(appUrl) {
     const candidates = [
         appUrl,
         compilerUrl,
-        (() => { try { return localStorage.getItem('qcol_colab_url'); } catch (e) { return ''; } })(),
-        (() => { try { return localStorage.getItem('openq_colab_url'); } catch (e) { return ''; } })(),
-        DEFAULT_QUANTUM_SERVER_URL
+        (() => { try { return window.QuOLabNexusCore && window.QuOLabNexusCore.getEngineUrl ? window.QuOLabNexusCore.getEngineUrl() : ''; } catch (e) { return ''; } })()
     ];
     for (const value of candidates) {
         if (typeof value !== 'string' || !value.trim()) continue;
@@ -770,8 +785,9 @@ function acceptPuzzleCompilerUrl(value) {
     while (normalized.endsWith('/')) normalized = normalized.slice(0, -1);
     compilerUrl = normalized;
     try {
-        localStorage.setItem('qcol_colab_url', compilerUrl);
         localStorage.setItem('openq_colab_url', compilerUrl);
+        localStorage.setItem('qcol_colab_url', compilerUrl);
+        localStorage.setItem('nexus_colab_url', compilerUrl);
     } catch (e) { console.warn('[Quantum Puzzle] Could not persist CPU server URL:', e); }
     return true;
 }
@@ -1515,7 +1531,7 @@ function openQuantumAppStudio() {
             sf.contentWindow.postMessage({ type: 'QCOL_REQUEST_STUDIO_CONNECTION' }, location.origin);
             if (window.quantumSync && window.quantumSync.isReady) {
                 window.quantumSync.connectStudio(sf);
-                const url = compilerUrl || localStorage.getItem('qcol_colab_url') || '';
+                const url = compilerUrl || (window.QuOLabNexusCore && window.QuOLabNexusCore.getEngineUrl ? window.QuOLabNexusCore.getEngineUrl() : '') || '';
                 if (url) sf.contentWindow.postMessage({ type: 'QCOL_SET_COMPILER_URL', url }, location.origin);
             }
         } catch (error) {
@@ -1867,7 +1883,7 @@ window.addEventListener('message', function _openqCompat(ev) {
     ask();
 })();
 // URL del compilador: el núcleo la guarda como openq_colab_url
-try { const u = localStorage.getItem('openq_colab_url') || localStorage.getItem('qcol_colab_url'); if (u) acceptPuzzleCompilerUrl(u); } catch (e) {}
+try { const u = window.QuOLabNexusCore && window.QuOLabNexusCore.getEngineUrl ? window.QuOLabNexusCore.getEngineUrl() : ''; if (u) acceptPuzzleCompilerUrl(u); } catch (e) {}
 
 // ===== DEEP LINK: #app/ID -> abre la Quantum App publicada ya ejecutándose =====
 window.addEventListener('message', function _openqDeepLinkApp(ev) {
@@ -1892,6 +1908,24 @@ window.addEventListener('message', function _openqDeepLinkApp(ev) {
 document.getElementById('studioModalReal')?.addEventListener('click', (e) => { if(e.target === document.getElementById('studioModalReal')) closeStudioModal(); });
 document.getElementById('pendingModal')?.addEventListener('click', (e) => { if(e.target === document.getElementById('pendingModal')) closePendingModal(); });
 document.getElementById('execAppModal')?.addEventListener('click', (e) => { if(e.target === document.getElementById('execAppModal')) closeExecModal(); });
+
+const nexusStudioFrame = document.getElementById('studioIframe');
+if (nexusStudioFrame) {
+    const retryUnconfirmedStudio = () => setTimeout(() => {
+        if (window.__nexusStudioBuildSeen || nexusStudioFrame.dataset.nexusBuildRetry === '1') return;
+        nexusStudioFrame.dataset.nexusBuildRetry = '1';
+        try {
+            const fresh = new URL(nexusStudioFrame.src, location.href);
+            fresh.searchParams.set('v', window.NEXUS_MODULE_BUILD || new URLSearchParams(location.search).get('v') || '');
+            fresh.searchParams.set('cb', String(Date.now()));
+            nexusStudioFrame.src = fresh.href;
+            showNotification('App Studio build was not confirmed. Reloading with a cache-busting URL.', 4500);
+        } catch (_) {}
+    }, 1400);
+    if (nexusStudioFrame.contentDocument && nexusStudioFrame.contentDocument.readyState === 'complete') retryUnconfirmedStudio();
+    else nexusStudioFrame.addEventListener('load', retryUnconfirmedStudio);
+}
+
 </script>
 </body>
 </html>

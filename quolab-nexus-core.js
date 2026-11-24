@@ -90,8 +90,32 @@
     }
     return false;
   }
+  function getEngineUrl() {
+    try {
+      const keys = ['openq_colab_url', 'qcol_colab_url', 'nexus_colab_url'];
+      for (const key of keys) { const value = String(global.localStorage.getItem(key) || '').trim(); if (value) return value.replace(/\/+$/, ''); }
+    } catch (_) {}
+    return '';
+  }
+  function sendBuildHandshake() {
+    if (!global.parent || global.parent === global) return;
+    const params = new URLSearchParams(global.location.search || '');
+    const build = global.NEXUS_MODULE_BUILD || params.get('v') || 'unversioned';
+    const module = global.__QUOLAB_NEXUS_MODULE || global.location.pathname.split('/').pop() || 'module';
+    try { global.parent.postMessage({ type:'NEXUS_MODULE_BUILD', build, module, href:global.location.pathname + global.location.search }, global.location.origin); } catch (_) {}
+    global.addEventListener('message', event => {
+      if (event.source !== global.parent || event.origin !== global.location.origin || !event.data || event.data.type !== 'NEXUS_BUILD_MISMATCH') return;
+      const expected = String(event.data.build || '');
+      if (!expected || build === expected) return;
+      const next = new URL(global.location.href);
+      next.searchParams.set('v', expected);
+      next.searchParams.set('cb', String(Date.now()));
+      global.location.replace(next.href);
+    });
+  }
   global.QuOLabNexusCore = {
     protocol: 'QUOLAB_NEXUS_V1',
+    getEngineUrl,
     canonicalType,
     legacyType,
     normalizeIncoming,
@@ -100,4 +124,5 @@
     envelope,
     sendToParent
   };
+  sendBuildHandshake();
 })(window);

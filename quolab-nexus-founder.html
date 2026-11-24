@@ -1,6 +1,12 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+<script>
+window.NEXUS_MODULE_BUILD='20261124-desktop-routing-2';
+document.write('<script src="quolab-nexus-core.js?v='+window.NEXUS_MODULE_BUILD+'"><\/script>');
+document.write('<script src="quolab-nexus-connectors-core.js?v='+window.NEXUS_MODULE_BUILD+'"><\/script>');
+document.write('<script src="quolab-nexus-tool-connector.js?v='+window.NEXUS_MODULE_BUILD+'"><\/script>');
+</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>QuOLab Nexus — Panel Fundador</title>
@@ -282,6 +288,7 @@ class QuOLabNexusConfigSyncCloud {
                             const value = configMap[key];
                             const storeValue = typeof value === 'string' ? value : JSON.stringify(value);
                             localStorage.setItem(localKey, storeValue);
+                            if (key === 'colab_url' && value) { localStorage.setItem('openq_colab_url', String(value)); localStorage.setItem('qcol_colab_url', String(value)); localStorage.setItem('nexus_colab_url', String(value)); }
                             localStorage.setItem(localKey + '_timestamp', new Date().toISOString());
                         }
                     });
@@ -319,6 +326,7 @@ class QuOLabNexusConfigSyncCloud {
             if (localKey) {
                 const storeValue = typeof value === 'string' ? value : JSON.stringify(value);
                 localStorage.setItem(localKey, storeValue);
+                if (key === 'colab_url' && value) { localStorage.setItem('openq_colab_url', String(value)); localStorage.setItem('qcol_colab_url', String(value)); localStorage.setItem('nexus_colab_url', String(value)); }
                 localStorage.setItem(localKey + '_timestamp', new Date().toISOString());
             }
             
@@ -726,7 +734,7 @@ window.addEventListener('message', (e) => {
     sendFullConfigTo(e.source);
   }
   if (d.type === 'QCOL_GET_COMPILER_URL') {
-    const compilerUrl = localStorage.getItem('qcol_colab_url') || '';
+    const compilerUrl = (window.QuOLabNexusCore && window.QuOLabNexusCore.getEngineUrl ? window.QuOLabNexusCore.getEngineUrl() : '') || '';
     if (compilerUrl && e.source) {
       e.source.postMessage({ type: 'QCOL_COMPILER_URL', url: compilerUrl }, '*');
     }
@@ -740,7 +748,7 @@ function sendFullConfigTo(targetWindow) {
   if (!targetWindow) return;
   const gh = getGH();
   const ai = getAI();
-  const compilerUrl = localStorage.getItem('qcol_colab_url') || '';
+  const compilerUrl = (window.QuOLabNexusCore && window.QuOLabNexusCore.getEngineUrl ? window.QuOLabNexusCore.getEngineUrl() : '') || '';
   targetWindow.postMessage({
     type: 'QCOL_CONFIG',
     user: currentUser,
@@ -1041,7 +1049,7 @@ function resetMistralCalls() {
 }
 
 function syncIgnoredAttrsWithCloud() {
-  const engineURL = localStorage.getItem('qcol_colab_url');
+  const engineURL = (window.QuOLabNexusCore && window.QuOLabNexusCore.getEngineUrl ? window.QuOLabNexusCore.getEngineUrl() : '');
   if (!engineURL) { notify('❌ No hay URL del compilador configurada'); return; }
   notify('☁️ Sincronizando con la nube...');
   fetch(engineURL.replace(/\/$/, '') + '/run/get_ignored_attrs', {
@@ -1102,7 +1110,7 @@ async function loadSaved(forceReload = false) {
   
   const cu = document.getElementById('colab-url');
   if (cu) {
-    const colabUrl = localStorage.getItem('qcol_colab_url') || '';
+    const colabUrl = (window.QuOLabNexusCore && window.QuOLabNexusCore.getEngineUrl ? window.QuOLabNexusCore.getEngineUrl() : '') || '';
     if (colabUrl) cu.value = colabUrl;
   }
   
@@ -1115,7 +1123,7 @@ async function loadSaved(forceReload = false) {
   }
   
   loadMistralSettings();
-  const savedUrl = localStorage.getItem('qcol_colab_url') || '';
+  const savedUrl = (window.QuOLabNexusCore && window.QuOLabNexusCore.getEngineUrl ? window.QuOLabNexusCore.getEngineUrl() : '') || '';
   if (savedUrl) {
     document.getElementById('colab-url').value = savedUrl;
     setTimeout(() => checkEngine(), 1000);
@@ -1295,7 +1303,7 @@ function loadMonitorConfig(){
   if(mq) mq.value = cfg.maxQubits||20; 
   if(mt) mt.value = cfg.maxTime||60; 
   if(mm) mm.value = cfg.mode||'open'; 
-  if(eu) eu.textContent = (localStorage.getItem('qcol_colab_url')||'').substring(0,35)+'...';
+  if(eu) eu.textContent = ((window.QuOLabNexusCore && window.QuOLabNexusCore.getEngineUrl ? window.QuOLabNexusCore.getEngineUrl() : '')||'').substring(0,35)+'...';
 }
 
 function refreshMonitor(){
@@ -1446,7 +1454,7 @@ if (toggle) toggle.addEventListener('change', saveMistralSettings);
 updateMistralUI();
 
 function broadcastCompilerUrlToModules() {
-    const compilerUrl = localStorage.getItem('qcol_colab_url');
+    const compilerUrl = (window.QuOLabNexusCore && window.QuOLabNexusCore.getEngineUrl ? window.QuOLabNexusCore.getEngineUrl() : '');
     if (!compilerUrl) return;
     const allIframes = document.querySelectorAll('iframe');
     allIframes.forEach(iframe => {
@@ -1541,7 +1549,7 @@ window.addEventListener('message', function(e) {
     console.log('[Fundador] App recibida:', data);
     const { appMetadata, appTitle } = data;
     if (appMetadata && appMetadata.pythonCode && appMetadata.htmlCode) {
-        const serverUrl = appMetadata.serverUrl || localStorage.getItem('qcol_colab_url') || '';
+        const serverUrl = appMetadata.serverUrl || (window.QuOLabNexusCore && window.QuOLabNexusCore.getEngineUrl ? window.QuOLabNexusCore.getEngineUrl() : '') || '';
         if (!serverUrl) { notify(`❌ No hay URL del servidor. Configúrala en la pestaña 🤗 Compilador HuggingFace.`); return; }
         launchQuantumAppModal(appMetadata.pythonCode, appMetadata.htmlCode, serverUrl, appTitle || 'Aplicación cuántica');
     } else { notify(`❌ La app "${appTitle}" no contiene código Python o HTML. No se puede ejecutar.`); }
