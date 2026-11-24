@@ -750,8 +750,7 @@ function resolvePuzzleServerUrl(appUrl) {
     const candidates = [
         appUrl,
         compilerUrl,
-        (() => { try { return localStorage.getItem('qcol_colab_url'); } catch (e) { return ''; } })(),
-        (() => { try { return localStorage.getItem('openq_colab_url'); } catch (e) { return ''; } })(),
+        (() => { try { return window.QuOLabNexusCore && window.QuOLabNexusCore.getEngineUrl ? window.QuOLabNexusCore.getEngineUrl() : ''; } catch (e) { return ''; } })(),
         DEFAULT_QUANTUM_SERVER_URL
     ];
     for (const value of candidates) {
@@ -773,8 +772,9 @@ function acceptPuzzleCompilerUrl(value) {
     while (normalized.endsWith('/')) normalized = normalized.slice(0, -1);
     compilerUrl = normalized;
     try {
-        localStorage.setItem('qcol_colab_url', compilerUrl);
         localStorage.setItem('openq_colab_url', compilerUrl);
+        localStorage.setItem('qcol_colab_url', compilerUrl);
+        localStorage.setItem('nexus_colab_url', compilerUrl);
     } catch (e) { console.warn('[Quantum Puzzle] Could not persist CPU server URL:', e); }
     return true;
 }
@@ -1870,7 +1870,7 @@ window.addEventListener('message', function _openqCompat(ev) {
     ask();
 })();
 // URL del compilador: el núcleo la guarda como openq_colab_url
-try { const u = localStorage.getItem('openq_colab_url') || localStorage.getItem('qcol_colab_url'); if (u) acceptPuzzleCompilerUrl(u); } catch (e) {}
+try { const u = window.QuOLabNexusCore && window.QuOLabNexusCore.getEngineUrl ? window.QuOLabNexusCore.getEngineUrl() : ''; if (u) acceptPuzzleCompilerUrl(u); } catch (e) {}
 
 // ===== DEEP LINK: #app/ID -> abre la Quantum App publicada ya ejecutándose =====
 window.addEventListener('message', function _openqDeepLinkApp(ev) {
@@ -1895,6 +1895,22 @@ window.addEventListener('message', function _openqDeepLinkApp(ev) {
 document.getElementById('studioModalReal')?.addEventListener('click', (e) => { if(e.target === document.getElementById('studioModalReal')) closeStudioModal(); });
 document.getElementById('pendingModal')?.addEventListener('click', (e) => { if(e.target === document.getElementById('pendingModal')) closePendingModal(); });
 document.getElementById('execAppModal')?.addEventListener('click', (e) => { if(e.target === document.getElementById('execAppModal')) closeExecModal(); });
+
+/* Relay nested App Studio build handshakes through Quantum Puzzle to the shell. */
+window.addEventListener('message', function nexusStudioBuildRelay(event) {
+    if (event.origin !== window.location.origin || !event.data) return;
+    const studio = document.getElementById('studioIframe');
+    if (!studio) return;
+    if (event.source === studio.contentWindow && event.data.type === 'NEXUS_MODULE_BUILD') {
+        try { window.parent.postMessage(Object.assign({}, event.data, { __nexusNestedBuild:true }), window.location.origin); } catch (_) {}
+        return;
+    }
+    if (event.source === window.parent && event.data.type === 'NEXUS_BUILD_MISMATCH' &&
+        event.data.module === 'quolab-nexus-app-studio.html' && studio.contentWindow) {
+        try { studio.contentWindow.postMessage(event.data, window.location.origin); } catch (_) {}
+    }
+}, true);
+
 </script>
 </body>
 </html>
