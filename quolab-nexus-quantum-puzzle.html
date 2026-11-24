@@ -760,16 +760,11 @@ let compilerUrl = '';
 
 // Resolve the same CPU backend configuration used by the embedded App Studio.
 // Keep legacy and current storage keys compatible during the branding migration.
-// Canonical QuOLab Nexus execution Space. Published apps created before the
-// server_url field existed can still execute through the ecosystem's configured motor.
-const DEFAULT_QUANTUM_SERVER_URL = 'https://francilaffita1027-qcol-motor.hf.space';
-
 function resolvePuzzleServerUrl(appUrl) {
     const candidates = [
         appUrl,
         compilerUrl,
-        (() => { try { return window.QuOLabNexusCore && window.QuOLabNexusCore.getEngineUrl ? window.QuOLabNexusCore.getEngineUrl() : ''; } catch (e) { return ''; } })(),
-        DEFAULT_QUANTUM_SERVER_URL
+        (() => { try { return window.QuOLabNexusCore && window.QuOLabNexusCore.getEngineUrl ? window.QuOLabNexusCore.getEngineUrl() : ''; } catch (e) { return ''; } })()
     ];
     for (const value of candidates) {
         if (typeof value !== 'string' || !value.trim()) continue;
