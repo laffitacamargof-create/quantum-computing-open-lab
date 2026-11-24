@@ -1211,7 +1211,6 @@ class QuOLabNexusConfigSyncReader {
   function founderRouteFor(mod, kind) {
     const slot = apiSlots[mod + '.' + kind];
     let engineBase = window.QuOLabNexusCore && window.QuOLabNexusCore.getEngineUrl ? window.QuOLabNexusCore.getEngineUrl() : '';
-    if (!engineBase) engineBase = 'https://francilaffita1027-qcol-motor.hf.space';
     if (slot && slot.founder === 'engine' || (!slot?.founder && ['cpu','qpu'].includes(kind))) {
       return engineBase && /^https:\/\//i.test(engineBase) ? { type:'engine', base:engineBase.replace(/\/$/, ''), name:'Founder · Quantum Engine' } : null;
     }
