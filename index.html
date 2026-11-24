@@ -1412,6 +1412,21 @@ class QuOLabNexusConfigSyncReader {
   }
   window.addEventListener('message', e => {
     const d = e.data; if (!d?.type) return;
+    if (d.type === 'NEXUS_MODULE_BUILD') {
+      const puzzle = iframes['quantum-puzzle'];
+      const studio = puzzle && puzzle.contentDocument && puzzle.contentDocument.getElementById('studioIframe');
+      const topLevelModule = Object.values(iframes).some(frame => frame && frame.contentWindow === e.source);
+      const nestedStudio = !!studio && e.source === studio.contentWindow;
+      const relayedStudio = !!d.__nexusNestedBuild && !!puzzle && e.source === puzzle.contentWindow;
+      if (!topLevelModule && !nestedStudio && !relayedStudio) return;
+      if (String(d.build || '') !== NEXUS_BUILD) {
+        notify('Nexus module build mismatch: ' + String(d.module || 'module') + '. Reloading the current version.');
+        try { e.source.postMessage({ type:'NEXUS_BUILD_MISMATCH', build:NEXUS_BUILD, module:d.module || '' }, location.origin); } catch (_) {}
+      } else {
+        try { e.source.postMessage({ type:'NEXUS_BUILD_OK', build:NEXUS_BUILD }, location.origin); } catch (_) {}
+      }
+      return;
+    }
     // Sandboxed published apps have an opaque origin ("null"). Only broker
     // messages are admitted from them; handleModuleMsg verifies the exact iframe.
     const opaqueBrokerMessage = e.origin === 'null' && ['OPENQ_API_REQUEST','OPENQ_GET_API_ROUTES','OPENQ_AI_CHAT','OPENQ_API_REGISTER'].includes(d.type);
