@@ -582,7 +582,9 @@
         for (const id of ids) { const rec = Store.get(id); if (!rec || rec.kind !== 'ext' || !rec.ext || rec.ext.category !== expected || rec.usage === 'off') throw NexusError('assignment', 'The assigned connector is missing, disabled, or has the wrong category.'); }
         value = max === 1 ? (ids[0] || 'founder') : ids;
       }
-      const a = this.all(); a[moduleId] = Object.assign({}, a[moduleId] || {}, { [kind]: value }); localStorage.setItem(LS_ASSIGNMENTS, JSON.stringify(a)); emitChange(false); return value;
+      const a = this.all(); a[moduleId] = Object.assign({}, a[moduleId] || {}, { [kind]: value }); localStorage.setItem(LS_ASSIGNMENTS, JSON.stringify(a));
+      if (value !== 'founder') { try { localStorage.removeItem('nexus_founder_fallback_v1:' + moduleId + ':' + kind); } catch (_) {} }
+      emitChange(false); return value;
     },
     bind(connectorId, tool, kind) {
       const moduleId = TOOL_MODULE[tool], rec = Store.get(connectorId), rule = SLOT_RULES[tool];
