@@ -1419,6 +1419,9 @@ class QuOLabNexusConfigSyncReader {
       const nestedStudio = !!studio && e.source === studio.contentWindow;
       const relayedStudio = !!d.__nexusNestedBuild && !!puzzle && e.source === puzzle.contentWindow;
       if (!topLevelModule && !nestedStudio && !relayedStudio) return;
+      if (topLevelModule) { const frame = Object.values(iframes).find(item => item && item.contentWindow === e.source); if (frame) frame.dataset.nexusBuildSeen = '1'; }
+      if (nestedStudio) studio.dataset.nexusBuildSeen = '1';
+      if (relayedStudio && studio) studio.dataset.nexusBuildSeen = '1';
       if (String(d.build || '') !== NEXUS_BUILD) {
         notify('Nexus module build mismatch: ' + String(d.module || 'module') + '. Reloading the current version.');
         try { e.source.postMessage({ type:'NEXUS_BUILD_MISMATCH', build:NEXUS_BUILD, module:d.module || '' }, location.origin); } catch (_) {}
@@ -2025,6 +2028,15 @@ class QuOLabNexusConfigSyncReader {
     iframe.src = file + '?v=' + NEXUS_BUILD;
     iframe.onload = () => {
       attachKeys(iframe);
+      setTimeout(() => {
+        if (iframes[screen] !== iframe || iframe.dataset.nexusBuildSeen === '1' || iframe.dataset.nexusBuildRetry === '1') return;
+        iframe.dataset.nexusBuildRetry = '1';
+        notify('Nexus module did not confirm its build. Reloading with a cache-busting URL.');
+        const fresh = new URL(iframe.src, location.href);
+        fresh.searchParams.set('v', NEXUS_BUILD);
+        fresh.searchParams.set('cb', String(Date.now()));
+        iframe.src = fresh.href;
+      }, 1400);
       setTimeout(() => {
           sendCfg(iframe.contentWindow);
           iframe.contentWindow.postMessage({ type: 'OPENQ_USER_UPDATE', user: curUser }, '*');
