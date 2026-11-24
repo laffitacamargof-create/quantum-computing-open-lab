@@ -100,7 +100,7 @@
   function sendBuildHandshake() {
     if (!global.parent || global.parent === global) return;
     const params = new URLSearchParams(global.location.search || '');
-    const build = params.get('v') || 'unversioned';
+    const build = global.NEXUS_MODULE_BUILD || params.get('v') || 'unversioned';
     const module = global.__QUOLAB_NEXUS_MODULE || global.location.pathname.split('/').pop() || 'module';
     try { global.parent.postMessage({ type:'NEXUS_MODULE_BUILD', build, module, href:global.location.pathname + global.location.search }, global.location.origin); } catch (_) {}
     global.addEventListener('message', event => {
