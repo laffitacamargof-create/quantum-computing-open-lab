@@ -1,9 +1,13 @@
 <!DOCTYPE html>
 <html lang="en" id="root">
 <head>
-<script src="quolab-nexus-core.js?v=20261121-routing-broker-2"></script>
-<script src="quolab-nexus-connectors-core.js?v=20261121-routing-broker-2"></script>
-<script defer src="quolab-nexus-agent.js?v=1.9.0"></script>
+<script>
+const NEXUS_BUILD = '20261124-desktop-routing-1';
+window.NEXUS_BUILD = NEXUS_BUILD;
+document.write('<script src="quolab-nexus-core.js?v=' + NEXUS_BUILD + '"><\\/script>');
+document.write('<script src="quolab-nexus-connectors-core.js?v=' + NEXUS_BUILD + '"><\\/script>');
+document.write('<script defer src="quolab-nexus-agent.js?v=' + NEXUS_BUILD + '"><\\/script>');
+</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>QuOLab Nexus — Quantum Computing Open Lab</title>
@@ -935,6 +939,7 @@ class QuOLabNexusConfigSyncReader {
                 // while older modules still read openq_colab_url.
                 if (cloudKey === 'colab_url') {
                     localStorage.setItem('qcol_colab_url', stringValue);
+                    localStorage.setItem('nexus_colab_url', stringValue);
                     localStorage.setItem('qcol_colab_url_timestamp', new Date().toISOString());
                 }
                 console.log(`📥 Config ${cloudKey} → ${localKey}: aplicada desde la nube`);
@@ -1067,7 +1072,7 @@ class QuOLabNexusConfigSyncReader {
       try { aiCfg = loadAICfg(); setupAI(); } catch(e) {}
     }
     
-    const colabUrl = localStorage.getItem('openq_colab_url');
+    const colabUrl = window.QuOLabNexusCore && window.QuOLabNexusCore.getEngineUrl ? window.QuOLabNexusCore.getEngineUrl() : '';
     if (colabUrl) {
       checkEngine();
     }
@@ -1134,7 +1139,7 @@ class QuOLabNexusConfigSyncReader {
           const empty = {
               version: 1,
               config: {
-                  colab_url: localStorage.getItem('openq_colab_url') || '',
+                  colab_url: (window.QuOLabNexusCore && window.QuOLabNexusCore.getEngineUrl ? window.QuOLabNexusCore.getEngineUrl() : ''),
                   mistral_key: localStorage.getItem('openq_mistral_key') || '',
                   mistral_enabled: localStorage.getItem('openq_mistral_enabled') === 'true',
                   mistral_model: localStorage.getItem('openq_mistral_model') || 'deepseek-chat',
@@ -1205,8 +1210,7 @@ class QuOLabNexusConfigSyncReader {
   }
   function founderRouteFor(mod, kind) {
     const slot = apiSlots[mod + '.' + kind];
-    let engineBase = '';
-    try { engineBase = localStorage.getItem('nexus_colab_url') || localStorage.getItem('qcol_colab_url') || localStorage.getItem('openq_colab_url') || ''; } catch (_) {}
+    let engineBase = window.QuOLabNexusCore && window.QuOLabNexusCore.getEngineUrl ? window.QuOLabNexusCore.getEngineUrl() : '';
     if (!engineBase) engineBase = 'https://francilaffita1027-qcol-motor.hf.space';
     if (slot && slot.founder === 'engine' || (!slot?.founder && ['cpu','qpu'].includes(kind))) {
       return engineBase && /^https:\/\//i.test(engineBase) ? { type:'engine', base:engineBase.replace(/\/$/, ''), name:'Founder · Quantum Engine' } : null;
@@ -1234,21 +1238,24 @@ class QuOLabNexusConfigSyncReader {
     // deleted connector. Never silently route to another connector or Founder.
     return value !== 'founder' && ordered.length > 0;
   }
-  function routesFor(mod) {
+  function founderFallbackAllowed(mod, kind) { try { return localStorage.getItem('nexus_founder_fallback_v1:' + mod + ':' + kind) === '1'; } catch (_) { return false; } }
+  async function routesFor(mod) {
     const out = {}, nx = NXC();
-    ['cpu','qpu','storage'].forEach(kind => {
+    for (const kind of ['cpu','qpu','storage']) {
       const value = nx ? nx.Assignments.get(mod, kind) : 'founder';
-      const ids = Array.isArray(value) ? value : (value && value !== 'founder' ? [value] : []);
-      const expected = connectorCategory(kind);
-      const records = nx ? ids.map(id => nx.Store.get(id)).filter(r =>
-        r && r.kind === 'ext' && (!expected || (r.ext && r.ext.category === expected)) && nx.Policy.allowed(r, TOOL_OF[mod] || 'chat')) : [];
-      const explicitlyAssigned = value !== 'founder';
-      const selected = records[0] || null;
-      const founder = explicitlyAssigned ? null : founderRouteFor(mod, kind);
-      const route = selected ? 'nexus' : (founder ? 'founder' : 'unconfigured');
-      out[kind] = { source:route, name:selected ? selected.name : (explicitlyAssigned ? 'Assigned connector unavailable' : (founder ? founder.name : 'No connector or Founder service configured')),
-        options:records.map(r => ({ id:r.id, name:r.name, category:r.ext.category })) };
-    });
+      if (value !== 'founder') {
+        if (!nx || typeof nx.validateAssignedRoute !== 'function') { out[kind] = { source:'unavailable', name:'Connector validation unavailable', reason:'Reload Nexus Connectors and try again.', options:[] }; continue; }
+        const status = await nx.validateAssignedRoute(mod, kind, TOOL_OF[mod] || 'chat');
+        out[kind] = status.source === 'nexus' ? status : { source:'unavailable', name:'Assigned connector unavailable', reason:status.reason || 'The assigned connector is not usable in this browser.', options:[] };
+        continue;
+      }
+      if (founderFallbackAllowed(mod, kind)) {
+        const founder = founderRouteFor(mod, kind);
+        out[kind] = founder ? { source:'founder', name:founder.name, options:[] } : { source:'unavailable', name:'Founder route unavailable', reason:'No Founder service is configured for this slot.', options:[] };
+      } else {
+        out[kind] = { source:'unavailable', name:'Founder route requires approval', reason:'No Nexus connector is assigned. Choose “Return to Founder” explicitly in Nexus Connectors to authorize this route.', options:[] };
+      }
+    }
     return out;
   }
   async function requestFounderFallback(mod, kind, data, method) {
@@ -1353,9 +1360,9 @@ class QuOLabNexusConfigSyncReader {
       const kind = slot === 'engine' ? 'cpu' : slot === 'quantum' ? 'qpu' : slot;
       const founder = data.founder === 'engine' || /^https:\/\//i.test(data.founder || '') ? data.founder : '';
       apiSlots[apiMod + '.' + kind] = { label:String(data.label || (apiMod + ' · ' + kind.toUpperCase())).slice(0,80), founder };
-      reply({ type:'OPENQ_API_ROUTES', id:data.id, routes:routesFor(apiMod) }); return;
+      reply({ type:'OPENQ_API_ROUTES', id:data.id, routes:await routesFor(apiMod) }); return;
     }
-    if (data.type === 'OPENQ_GET_API_ROUTES') { const apiMod = mod; reply({ type:'OPENQ_API_ROUTES', id:data.id, ok:true, routes:routesFor(apiMod) }); return; }
+    if (data.type === 'OPENQ_GET_API_ROUTES') { const apiMod = mod; reply({ type:'OPENQ_API_ROUTES', id:data.id, ok:true, routes:await routesFor(apiMod) }); return; }
     if (data.type === 'OPENQ_AI_CHAT') {
       reply({ type:'OPENQ_AI_RESULT', id:data.id, ok:false, error:'AI access is restricted to QNexusAi. Module and app messages cannot invoke AI providers.' });
       return;
@@ -1396,6 +1403,7 @@ class QuOLabNexusConfigSyncReader {
             path:data.path || '', headers:data.headers, body:data.body, timeout:data.timeout
           });
         } else {
+          if (!founderFallbackAllowed(apiMod, slot)) throw new Error('No automatic Founder fallback is permitted. Assign a Nexus connector or explicitly authorize “Return to Founder” in Nexus Connectors.');
           result = await requestFounderFallback(apiMod, slot, data, method);
         }
         reply({ type:'OPENQ_API_RESULT', id:data.id, ok:true, status:result.status, headers:result.headers, text:result.text, source:result.source, connector:result.connector });
@@ -1997,7 +2005,7 @@ class QuOLabNexusConfigSyncReader {
     // broker identifies senders through this map, so waiting for onload drops
     // early connector registration messages on slower desktop connections.
     iframes[screen] = iframe;
-    iframe.src = file + '?v=' + Date.now();
+    iframe.src = file + '?v=' + NEXUS_BUILD;
     iframe.onload = () => {
       attachKeys(iframe);
       setTimeout(() => {
@@ -3223,7 +3231,7 @@ CONTEXT (staged and size-limited): ${c}`;
   }
 
   async function checkEngine() {
-    const url = localStorage.getItem('openq_colab_url');
+    const url = window.QuOLabNexusCore && window.QuOLabNexusCore.getEngineUrl ? window.QuOLabNexusCore.getEngineUrl() : '';
     if (!url) return;
     try {
       const r = await fetch(url + '/health', { signal:AbortSignal.timeout(5000) });
@@ -3373,6 +3381,8 @@ CONTEXT (staged and size-limited): ${c}`;
             // Mirror the database value into both storage namespaces used by the tools.
             localStorage.setItem('openq_colab_url', compilerUrl);
             localStorage.setItem('qcol_colab_url', compilerUrl);
+            localStorage.setItem('nexus_colab_url', compilerUrl);
+            localStorage.setItem('nexus_colab_url', compilerUrl);
             broadcast({
               type: 'OPENQ_CONFIG',
               user: curUser,
