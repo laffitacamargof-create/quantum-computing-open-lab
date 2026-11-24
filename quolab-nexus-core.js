@@ -106,7 +106,7 @@
     global.addEventListener('message', event => {
       if (event.source !== global.parent || event.origin !== global.location.origin || !event.data || event.data.type !== 'NEXUS_BUILD_MISMATCH') return;
       const expected = String(event.data.build || '');
-      if (!expected || params.get('v') === expected) return;
+      if (!expected || build === expected) return;
       const next = new URL(global.location.href);
       next.searchParams.set('v', expected);
       next.searchParams.set('cb', String(Date.now()));
