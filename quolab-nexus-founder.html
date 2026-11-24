@@ -288,6 +288,7 @@ class QuOLabNexusConfigSyncCloud {
                             const value = configMap[key];
                             const storeValue = typeof value === 'string' ? value : JSON.stringify(value);
                             localStorage.setItem(localKey, storeValue);
+                            if (key === 'colab_url' && value) { localStorage.setItem('openq_colab_url', String(value)); localStorage.setItem('qcol_colab_url', String(value)); localStorage.setItem('nexus_colab_url', String(value)); }
                             localStorage.setItem(localKey + '_timestamp', new Date().toISOString());
                         }
                     });
@@ -325,6 +326,7 @@ class QuOLabNexusConfigSyncCloud {
             if (localKey) {
                 const storeValue = typeof value === 'string' ? value : JSON.stringify(value);
                 localStorage.setItem(localKey, storeValue);
+                if (key === 'colab_url' && value) { localStorage.setItem('openq_colab_url', String(value)); localStorage.setItem('qcol_colab_url', String(value)); localStorage.setItem('nexus_colab_url', String(value)); }
                 localStorage.setItem(localKey + '_timestamp', new Date().toISOString());
             }
             
