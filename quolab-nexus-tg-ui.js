@@ -517,6 +517,6 @@
     if (!init._bound) { init._bound = true; bindPanelEvents(); }
     return API;
   }
-  var API = { init: init, renderPanel: renderPanel, refreshPanels: refreshPanels, openEditor: openEditor, openInventory: openInventory, openDetail: openDetail, showBasicMatrix: showBasicMatrix, showMatrixModal: showMatrixModal, tileHTML: tileHTML, modal: modal, btn: btn, esc: esc, catalog: cat, PAL: PAL, matrixHTML: matrixHTML };
+  var API = { init: init, renderPanel: renderPanel, refreshPanels: refreshPanels, openEditor: openEditor, openInventory: openInventory, openDetail: openDetail, showBasicMatrix: showBasicMatrix, showMatrixModal: showMatrixModal, tileHTML: tileHTML, circuitSVG: circuitSVG, opLabel: opLabel, copy: copy, modal: modal, btn: btn, esc: esc, catalog: cat, PAL: PAL, matrixHTML: matrixHTML };
   root.QuOLabTGUI = API;
 })(typeof window !== 'undefined' ? window : globalThis);

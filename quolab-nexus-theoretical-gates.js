@@ -314,7 +314,7 @@
     m.reserved.forEach(function (a) { used[a] = 1; });
     Object.keys(m.gates).forEach(function (id) { used[m.gates[id].label] = 1; });
     var label = ini, n = 1;
-    while (used[label] || PY_RESERVED.test(label)) { n++; label = ini + n; }
+    while (used[label] || label === 'U' || PY_RESERVED.test(label)) { n++; label = ini + n; }
     return label;
   };
   Catalog.prototype.get = function (id) { return this.mem.gates[id] || null; };

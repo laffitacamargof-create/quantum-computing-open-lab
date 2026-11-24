@@ -82,3 +82,21 @@ t('matrix too large is explained, not fabricated', ()=>{
   const g=c.create({name:'Big',nq:10,ops}).gate; assert.throws(()=>T.matrixOfGate(g.id,null,[],c),/not computed/);
 });
 console.log(n+' passed');
+t('import keeps nested gates and re-labels collisions', ()=>{
+  const a=new T.Catalog(mem()); const g1=a.create({name:'Alpha',nq:1,ops:[{g:'x',q:[0],p:[]}]}).gate;
+  const g2=a.create({name:'Beta',nq:2,ops:[{g:'@'+g1.id,v:1,q:[1],p:[]},{g:'cx',q:[0,1],p:[]}]}).gate;
+  const b=new T.Catalog(mem()); b.create({name:'Apple',nq:1,ops:[{g:'h',q:[0],p:[]}]});
+  const r=b.importJSON(a.exportJSON()); assert(r.ok&&r.added===2&&r.invalid===0,JSON.stringify(r));
+  const U=T.matrixOfGate(g2.id,null,[],b); assert(U.dim===4);
+  assert.strictEqual(new Set(b.list().map(g=>g.label)).size,3);
+});
+t('label U is reserved for the U synthesis gate', ()=>{
+  const c=new T.Catalog(mem()); assert.notStrictEqual(c.create({name:'Unity',nq:1,ops:[]}).gate.label,'U');
+});
+t('archive keeps dependents working; remove(force) leaves label reserved', ()=>{
+  const c=new T.Catalog(mem()); const a=c.create({name:'Alpha',nq:1,ops:[{g:'x',q:[0],p:[]}]}).gate;
+  c.create({name:'Beta',nq:1,ops:[{g:'@'+a.id,v:1,q:[0],p:[]}]});
+  assert(c.archive(a.id,true)); assert.strictEqual(T.matrixOfGate(a.id,null,[],c).dim,2);
+  c.remove(a.id,true); assert.strictEqual(c.create({name:'Another',nq:1,ops:[]}).gate.label,'A2');
+});
+console.log(n+' passed (total)');

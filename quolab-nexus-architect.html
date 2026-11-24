@@ -12,6 +12,8 @@
 <script src="quolab-nexus-noise.js"></script>
 <script src="quolab-nexus-theoretical-gates.js?v=1"></script>
 <script src="quolab-nexus-tg-ui.js?v=1"></script>
+<script src="quolab-nexus-u-synthesis.js?v=1"></script>
+<script src="quolab-nexus-u-gate.js?v=1"></script>
 <style>
 /* ══════════════════════════════════════════════════
    QUANTUM ARCHITECT — Hybrid automatic
@@ -3444,7 +3446,7 @@ function returnToNotebook(){
             q2:  g.q2,
             q3:  g.q3,
             uid: g.uid,
-            qs:  g.qs, block: g.block || null,
+            qs:  g.qs, block: g.block || null, tg: g.tg || null,
             def: {
                 bg:   g.def?.bg   || '#1a4a8a',
                 sym:  g.def?.sym  || g.id || '?',
