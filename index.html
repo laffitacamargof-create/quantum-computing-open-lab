@@ -2,7 +2,7 @@
 <html lang="en" id="root">
 <head>
 <script>
-const NEXUS_BUILD = '20261124-desktop-routing-2';
+const NEXUS_BUILD = '20261124-founder-defaults-1';
 window.NEXUS_BUILD = NEXUS_BUILD;
 document.write('<script src="quolab-nexus-core.js?v=' + NEXUS_BUILD + '"><\/script>');
 document.write('<script src="quolab-nexus-connectors-core.js?v=' + NEXUS_BUILD + '"><\/script>');
@@ -1237,7 +1237,15 @@ class QuOLabNexusConfigSyncReader {
     // deleted connector. Never silently route to another connector or Founder.
     return value !== 'founder' && ordered.length > 0;
   }
-  function founderFallbackAllowed(mod, kind) { try { return localStorage.getItem('nexus_founder_fallback_v1:' + mod + ':' + kind) === '1'; } catch (_) { return false; } }
+  function founderFallbackAllowed(mod, kind) {
+    try {
+      const key = localStorage.getItem('nexus_founder_fallback_v1:' + mod + ':' + kind);
+      if (key === '1') return true;
+      if (key === '0') return false;
+      // First-run behavior: Founder is the default whenever its service is configured.
+      return !!founderRouteFor(mod, kind);
+    } catch (_) { return false; }
+  }
   async function routesFor(mod) {
     const out = {}, nx = NXC();
     for (const kind of ['cpu','qpu','storage']) {
