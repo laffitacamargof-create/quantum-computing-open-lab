@@ -1242,7 +1242,7 @@ class QuOLabNexusConfigSyncReader {
       const key = localStorage.getItem('nexus_founder_fallback_v1:' + mod + ':' + kind);
       if (key === '1') return true;
       if (key === '0') return false;
-      // First-run behavior: Founder is the default whenever its service is configured.
+      // First-run default: use the configured Founder endpoint whenever no per-slot connector is assigned.
       return !!founderRouteFor(mod, kind);
     } catch (_) { return false; }
   }
