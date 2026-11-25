@@ -571,7 +571,21 @@
   const ASSIGN_KIND = {classical:'cpu',quantum:'qpu',storage:'storage'};
   const Assignments = {
     all() { try { return JSON.parse(localStorage.getItem(LS_ASSIGNMENTS) || '{}') || {}; } catch (_) { return {}; } },
-    get(moduleId, kind) { const a = this.all(); const v = a[moduleId] && a[moduleId][kind]; return v == null ? 'founder' : v; },
+    // Effective route of a tool slot. An explicit assignment wins. When the slot is unassigned (or only
+    // says 'founder') but the user enabled an external connector for this tool (record.tools), that
+    // connector is used; Founder is used only when no connector is attached to the tool.
+    get(moduleId, kind) {
+      const a = this.all(); const v = a[moduleId] && a[moduleId][kind];
+      if (v != null && v !== 'founder' && !(Array.isArray(v) && !v.length)) return v;
+      const tool = Object.keys(TOOL_MODULE).find(t => TOOL_MODULE[t] === moduleId), rule = tool && SLOT_RULES[tool];
+      if (rule && Object.prototype.hasOwnProperty.call(rule, kind)) {
+        const expected = kind === 'cpu' ? 'classical' : kind === 'qpu' ? 'quantum' : 'storage';
+        const ids = Store.byKind('ext').filter(r => r.usage !== 'off' && r.ext && r.ext.category === expected && (r.tools || []).includes(tool))
+          .sort((x, y) => String(x.createdAt || '').localeCompare(String(y.createdAt || ''))).map(r => r.id).slice(0, rule[kind]);
+        if (ids.length) return rule[kind] === 1 ? ids[0] : ids;
+      }
+      return 'founder';
+    },
     set(moduleId, kind, value) {
       const tool = Object.keys(TOOL_MODULE).find(t => TOOL_MODULE[t] === moduleId), rule = tool && SLOT_RULES[tool];
       if (!rule || !Object.prototype.hasOwnProperty.call(rule, kind)) throw NexusError('slot', 'This tool does not support the ' + kind + ' slot.');
@@ -581,6 +595,10 @@
         if (ids.length > max) throw NexusError('slot-full', tool + ' only allows ' + max + ' ' + kind.toUpperCase() + ' connector(s).');
         for (const id of ids) { const rec = Store.get(id); if (!rec || rec.kind !== 'ext' || !rec.ext || rec.ext.category !== expected || rec.usage === 'off') throw NexusError('assignment', 'The assigned connector is missing, disabled, or has the wrong category.'); }
         value = max === 1 ? (ids[0] || 'founder') : ids;
+      }
+      if (value === 'founder') { // returning to Founder detaches every connector of that slot from the tool
+        const expected = kind === 'cpu' ? 'classical' : kind === 'qpu' ? 'quantum' : 'storage';
+        Store.byKind('ext').filter(r => r.ext && r.ext.category === expected && (r.tools || []).includes(tool)).forEach(r => Store.patch(r.id, x => { x.tools = (x.tools || []).filter(t => t !== tool); }));
       }
       const a = this.all(); a[moduleId] = Object.assign({}, a[moduleId] || {}, { [kind]: value }); localStorage.setItem(LS_ASSIGNMENTS, JSON.stringify(a));
       if (value !== 'founder') { try { localStorage.removeItem('nexus_founder_fallback_v1:' + moduleId + ':' + kind); } catch (_) {} }

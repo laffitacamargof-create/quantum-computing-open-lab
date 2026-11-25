@@ -2,7 +2,7 @@
 <html lang="en" id="root">
 <head>
 <script>
-const NEXUS_BUILD = '20261125-nexus-routing-api-2';
+const NEXUS_BUILD = '20261125-nexus-routing-api-3';
 window.NEXUS_BUILD = NEXUS_BUILD;
 document.write('<script src="quolab-nexus-core.js?v=' + NEXUS_BUILD + '"><\/script>');
 document.write('<script src="quolab-nexus-connectors-core.js?v=' + NEXUS_BUILD + '"><\/script>');
@@ -1238,17 +1238,10 @@ class QuOLabNexusConfigSyncReader {
     // deleted connector. Never silently route to another connector or Founder.
     return value !== 'founder' && ordered.length > 0;
   }
-  // Founder route: explicit '1' = allowed, explicit '0' = denied. With no stored choice
-  // (e.g. a new/cleared browser) the signed-in founder is allowed by default, so the
-  // setting no longer depends on per-browser localStorage. Everyone else still needs opt-in.
+  // Founder route is the default for any tool slot that has no connector assigned.
+  // Only an explicit '0' (user pressed "Reassign"/disabled it) turns it off.
   function founderFallbackAllowed(mod, kind) {
-    try {
-      const v = localStorage.getItem('nexus_founder_fallback_v1:' + mod + ':' + kind);
-      if (v === '1') return true;
-      if (v === '0') return false;
-      const u = JSON.parse(localStorage.getItem('openq_cur_user') || 'null');
-      return !!(u && u.role === 'founder');
-    } catch (_) { return false; }
+    try { return localStorage.getItem('nexus_founder_fallback_v1:' + mod + ':' + kind) !== '0'; } catch (_) { return true; }
   }
   async function routesFor(mod) {
     const out = {}, nx = NXC();

@@ -191,7 +191,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--bl2)}
 <div class="ov" id="bridgeOv"><div class="win" style="max-width:520px"><div class="wh"><h3>LOCAL BRIDGE PAIRING</h3><div style="flex:1"></div><button class="x" id="bridgeX">×</button></div><div class="pane show"><p class="note">The bridge listens only on 127.0.0.1. Start it on the computer that owns the local connector, then enter its pairing code.</p><label>BRIDGE URL</label><input id="brUrl" value="http://127.0.0.1:8765"><label>PAIRING CODE</label><input id="brTok" type="password" autocomplete="off"><div class="wf"><button class="btn" id="brGo">PAIR BRIDGE</button><button class="btn" id="brClose">CLOSE</button></div></div></div></div><div class="ov" id="pendingOv"><div class="win"><div class="wh"><h3>CONNECTOR APPROVAL QUEUE</h3><div style="flex:1"></div><button class="x" id="pendingX">×</button></div><div class="pane show"><div id="pendList"></div></div></div></div><div id="toast" style="position:fixed;right:1rem;bottom:1rem;z-index:100;color:var(--tx);background:var(--s2);border:1px solid var(--b2);padding:.7rem 1rem;border-radius:8px;display:none;max-width:min(420px,90vw);font-family:var(--mono);font-size:.68rem">
 </div>
 <script>
-window.NEXUS_MODULE_BUILD='20261125-nexus-routing-api-2';
+window.NEXUS_MODULE_BUILD='20261125-nexus-routing-api-3';
 document.write('<script src="quolab-nexus-core.js?v='+window.NEXUS_MODULE_BUILD+'"><\/script>');
 document.write('<script src="quolab-nexus-connectors-core.js?v='+window.NEXUS_MODULE_BUILD+'"><\/script>');
 document.write('<script src="quolab-nexus-tool-connector.js?v='+window.NEXUS_MODULE_BUILD+'"><\/script>');
@@ -286,7 +286,7 @@ function openBridge(){const c=NC.Bridge.cfg();$('brUrl').value=c.url;$('brTok').
 
 const ROUTE_TOOLS={open_lab:{module:'architect',name:'Quantum Open Lab',slots:['cpu','qpu','storage']},notebook:{module:'architect-pro',name:'Quantum Notebook',slots:['cpu','qpu','storage']},apps:{module:'quantum-puzzle',name:'Quantum Puzzle',slots:['cpu','qpu']},app_studio:{module:'quantum-app-studio',name:'Quantum App Studio',slots:['cpu','qpu','storage']}};
 function founderOptInKey(moduleId,kind){return 'nexus_founder_fallback_v1:'+moduleId+':'+kind;}
-function founderAllowedHere(m,k){try{const v=localStorage.getItem(founderOptInKey(m,k));if(v==='1')return true;if(v==='0')return false;const u=JSON.parse(localStorage.getItem('openq_cur_user')||'null');return !!(u&&u.role==='founder');}catch(_){return false;}}
+function founderAllowedHere(m,k){try{return localStorage.getItem(founderOptInKey(m,k))!=='0';}catch(_){return true;}}
 async function renderRouteWarnings(){
  const host=$('routeWarnings'),list=$('routeWarningsList');if(!host||!list)return;
  const warnings=[];
