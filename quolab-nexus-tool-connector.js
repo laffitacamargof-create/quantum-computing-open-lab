@@ -153,7 +153,7 @@
     const filename = global.location.pathname.split('/').pop();
     const modules = {
       'quolab-nexus-architect.html': { slots:['cpu','qpu','storage'], tool:'architect' },
-      'quolab-nexus-quantum-notebook.html': { slots:['cpu','qpu','storage'], tool:'architect-pro' },
+      'quolab-nexus-quantum-notebook.html': { slots:['cpu','storage'], tool:'architect-pro' },
       'quolab-nexus-quantum-puzzle.html': { slots:['cpu','qpu'], tool:'quantum-puzzle' },
       'quolab-nexus-app-studio.html': { slots:['cpu','qpu','storage'], tool:'quantum-app-studio' }
     };
