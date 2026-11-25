@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 <html lang="en" id="root">
 <head>
-<script src="quolab-nexus-core.js?v=20261121-routing-broker-2"></script>
-<script src="quolab-nexus-connectors-core.js?v=20261121-routing-broker-2"></script>
-<script defer src="quolab-nexus-agent.js?v=1.9.0"></script>
+<script>window.NEXUS_BUILD='20261125-pc-routing-1';</script>
+<script src="quolab-nexus-core.js?v=20261125-pc-routing-1"></script>
+<script src="quolab-nexus-connectors-core.js?v=20261125-pc-routing-1"></script>
+<script defer src="quolab-nexus-agent.js?v=20261125-pc-routing-1"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>QuOLab Nexus — Quantum Computing Open Lab</title>
@@ -1997,7 +1998,7 @@ class QuOLabNexusConfigSyncReader {
     // broker identifies senders through this map, so waiting for onload drops
     // early connector registration messages on slower desktop connections.
     iframes[screen] = iframe;
-    iframe.src = file + '?v=' + Date.now();
+    iframe.src = file + '?v=' + NEXUS_BUILD + '&cb=' + Date.now();
     iframe.onload = () => {
       attachKeys(iframe);
       setTimeout(() => {
