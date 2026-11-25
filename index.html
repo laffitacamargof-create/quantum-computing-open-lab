@@ -1217,7 +1217,7 @@ class QuOLabNexusConfigSyncReader {
     if (slot && /^https:\/\//i.test(slot.founder)) return { type:'url', base:slot.founder.replace(/\/$/, ''), name:'Founder · Configured API' };
     if (kind === 'storage') {
       try {
-        const github = JSON.parse(localStorage.getItem('qcol_gh') || '{}');
+        const github = JSON.parse(localStorage.getItem('openq_gh') || localStorage.getItem('qcol_gh') || '{}');
         if (github.token && github.user && github.repo) return { type:'github', base:'https://api.github.com', name:'Founder · GitHub Storage', github };
       } catch (_) {}
     }
