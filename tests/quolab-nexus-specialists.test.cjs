@@ -134,7 +134,7 @@ assert.ok(index.includes('const compactModuleContext = moduleState ?'));
 assert.ok(index.includes('cell_indices:allCells.map'));
 assert.ok(index.includes('packed.module_context.cells = packed.module_context.cells.slice(0,3)'));
 assert.ok(!index.includes("c = c.slice(0,16000)"));
-assert.ok(index.includes('gateway receipt confirmed, but no provider completed the request'));
+assert.ok(index.includes('Gateway did not confirm receipt and provider completion for request '));
 assert.ok(index.includes('a.selector.length <= 180'));
 assert.ok(index.includes('received:true,acknowledged:true'));
 assert.ok(index.includes('result.received===true'));
