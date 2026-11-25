@@ -1206,8 +1206,7 @@ class QuOLabNexusConfigSyncReader {
   }
   function founderRouteFor(mod, kind) {
     const slot = apiSlots[mod + '.' + kind];
-    let engineBase = '';
-    try { engineBase = localStorage.getItem('nexus_colab_url') || localStorage.getItem('qcol_colab_url') || localStorage.getItem('openq_colab_url') || ''; } catch (_) {}
+    const engineBase = window.QuOLabNexusCore && window.QuOLabNexusCore.getEngineUrl ? window.QuOLabNexusCore.getEngineUrl() : '';
     if (!engineBase) engineBase = 'https://francilaffita1027-qcol-motor.hf.space';
     if (slot && slot.founder === 'engine' || (!slot?.founder && ['cpu','qpu'].includes(kind))) {
       return engineBase && /^https:\/\//i.test(engineBase) ? { type:'engine', base:engineBase.replace(/\/$/, ''), name:'Founder · Quantum Engine' } : null;
@@ -1235,21 +1234,20 @@ class QuOLabNexusConfigSyncReader {
     // deleted connector. Never silently route to another connector or Founder.
     return value !== 'founder' && ordered.length > 0;
   }
-  function routesFor(mod) {
+  async function routesFor(mod) {
     const out = {}, nx = NXC();
-    ['cpu','qpu','storage'].forEach(kind => {
+    for (const kind of ['cpu','qpu','storage']) {
       const value = nx ? nx.Assignments.get(mod, kind) : 'founder';
       const ids = Array.isArray(value) ? value : (value && value !== 'founder' ? [value] : []);
       const expected = connectorCategory(kind);
-      const records = nx ? ids.map(id => nx.Store.get(id)).filter(r =>
-        r && r.kind === 'ext' && (!expected || (r.ext && r.ext.category === expected)) && nx.Policy.allowed(r, TOOL_OF[mod] || 'chat')) : [];
-      const explicitlyAssigned = value !== 'founder';
-      const selected = records[0] || null;
+      const records = nx ? ids.map(id => nx.Store.get(id)).filter(r => r && r.kind === 'ext' && (!expected || (r.ext && r.ext.category === expected)) && nx.Policy.allowed(r, TOOL_OF[mod] || 'chat')) : [];
+      const explicitlyAssigned = value !== 'founder', selected = records[0] || null;
+      const validation = selected && nx.validateConnector ? await nx.validateConnector(selected, kind, TOOL_OF[mod] || 'chat') : (selected ? {ok:true} : null);
+      const reason = explicitlyAssigned ? (!selected ? 'El conector asignado no existe, está desactivado o no coincide con la categoría.' : (!validation.ok ? validation.reason : '')) : '';
       const founder = explicitlyAssigned ? null : founderRouteFor(mod, kind);
-      const route = selected ? 'nexus' : (founder ? 'founder' : 'unconfigured');
-      out[kind] = { source:route, name:selected ? selected.name : (explicitlyAssigned ? 'Assigned connector unavailable' : (founder ? founder.name : 'No connector or Founder service configured')),
-        options:records.map(r => ({ id:r.id, name:r.name, category:r.ext.category })) };
-    });
+      const route = explicitlyAssigned ? (validation && validation.ok ? 'nexus' : 'unavailable') : (founder ? 'founder' : 'unconfigured');
+      out[kind] = { source:route, name:selected && validation && validation.ok ? selected.name : (explicitlyAssigned ? (reason || 'Conector no disponible') : (founder ? founder.name : 'No connector or Founder service configured')), reason, options:records.map(r => ({ id:r.id, name:r.name, category:r.ext.category })) };
+    }
     return out;
   }
   async function requestFounderFallback(mod, kind, data, method) {
@@ -1354,7 +1352,7 @@ class QuOLabNexusConfigSyncReader {
       const kind = slot === 'engine' ? 'cpu' : slot === 'quantum' ? 'qpu' : slot;
       const founder = data.founder === 'engine' || /^https:\/\//i.test(data.founder || '') ? data.founder : '';
       apiSlots[apiMod + '.' + kind] = { label:String(data.label || (apiMod + ' · ' + kind.toUpperCase())).slice(0,80), founder };
-      reply({ type:'OPENQ_API_ROUTES', id:data.id, routes:routesFor(apiMod) }); return;
+      reply({ type:'OPENQ_API_ROUTES', id:data.id, routes:await routesFor(apiMod) }); return;
     }
     if (data.type === 'OPENQ_GET_API_ROUTES') { const apiMod = mod; reply({ type:'OPENQ_API_ROUTES', id:data.id, ok:true, routes:routesFor(apiMod) }); return; }
     if (data.type === 'OPENQ_AI_CHAT') {
@@ -1415,6 +1413,7 @@ class QuOLabNexusConfigSyncReader {
       d.type = window.QuOLabNexusCore.legacyType(d.type);
     }
 
+    if (d.type === 'OPENQ_MODULE_BUILD') { const moduleId=moduleOf(e.source); if(!moduleId)return; if(d.build!==NEXUS_BUILD){try{e.source.postMessage({type:'NEXUS_BUILD_MISMATCH',build:NEXUS_BUILD},location.origin);}catch(_){} notify('Módulo '+moduleId+' con caché antigua. Recargando versión '+NEXUS_BUILD+'.');} return; }
     // API/AI broker: these messages must be dispatched explicitly. Without this
     // bridge, tool requests wait for their timeout even when the HF Space is healthy.
     if (['OPENQ_API_REGISTER','OPENQ_GET_API_ROUTES','OPENQ_API_REQUEST','OPENQ_AI_CHAT'].includes(d.type)) {
