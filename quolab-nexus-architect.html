@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<script src="quolab-nexus-core.js?v=20261121-routing-broker-2"></script>
-<script src="quolab-nexus-connectors-core.js?v=20261121-routing-broker-2"></script>
-<script src="quolab-nexus-tool-connector.js?v=20261121-routing-broker-2"></script>
+<script src="quolab-nexus-core.js?v=20261125-pc-routing-1"></script>
+<script src="quolab-nexus-connectors-core.js?v=20261125-pc-routing-1"></script>
+<script src="quolab-nexus-tool-connector.js?v=20261125-pc-routing-1"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>QuOLab Nexus — Quantum Architect</title>
@@ -3659,7 +3659,7 @@ window.addEventListener('message', e => {
         renderSaveList();
     }
     if (d.type === 'QCOL_CONFIG' || d.type === 'QCOL_CONFIG_UPDATED') {
-        const url = localStorage.getItem('nexus_colab_url') || localStorage.getItem('qcol_colab_url') || localStorage.getItem('openq_colab_url') || '';
+        const url = (window.QuOLabNexusCore && window.QuOLabNexusCore.getEngineUrl ? window.QuOLabNexusCore.getEngineUrl() : '');
         if (url && url !== engineURL) { engineURL = url; checkEngine(); }
         else if (!url && !engineURL) useNexusExternalEngine();
     }
@@ -3673,7 +3673,7 @@ postCore('OPENQ_GET_CONFIG');
 setTimeout(() => {
     const stored = localStorage.getItem('qcol_cur_user');
     if (stored && !curUser) { try { curUser = JSON.parse(stored); renderSaveList(); } catch(e){} }
-    const url = localStorage.getItem('nexus_colab_url') || localStorage.getItem('qcol_colab_url') || localStorage.getItem('openq_colab_url') || '';
+    const url = (window.QuOLabNexusCore && window.QuOLabNexusCore.getEngineUrl ? window.QuOLabNexusCore.getEngineUrl() : '');
     if (url) { engineURL = url; checkEngine(); }
     else useNexusExternalEngine();
 }, 800);
