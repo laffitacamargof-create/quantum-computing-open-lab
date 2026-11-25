@@ -2,6 +2,28 @@
 (function (global) {
   'use strict';
   const PREFIX = 'NEXUS_';
+  const BUILD = '20261125-pc-routing-1';
+  function getEngineUrl() {
+    try {
+      return ['openq_colab_url','qcol_colab_url','nexus_colab_url'].map(k => String(global.localStorage.getItem(k) || '').trim()).find(Boolean) || '';
+    } catch (_) { return ''; }
+  }
+  function announceBuild() {
+    if (!global.parent || global.parent === global) return;
+    try { global.top.postMessage({ type:'NEXUS_MODULE_BUILD', build:BUILD, href:global.location.href }, global.location.origin); } catch (_) {}
+  }
+  global.addEventListener('message', event => {
+    if (event.source !== (global.parent || global.top) || event.origin !== global.location.origin) return;
+    const data = event.data || {};
+    if (data.type !== 'NEXUS_BUILD_MISMATCH' || !data.build || data.build === BUILD) return;
+    const notice = global.document.createElement('div');
+    notice.textContent = 'QuOLab Nexus se está actualizando para corregir una versión antigua en caché…';
+    notice.style.cssText = 'position:fixed;z-index:2147483647;top:0;left:0;right:0;padding:14px;background:#7a3e00;color:white;font:14px sans-serif;text-align:center';
+    global.document.body ? global.document.body.appendChild(notice) : global.document.addEventListener('DOMContentLoaded',()=>global.document.body.appendChild(notice),{once:true});
+    const url = new URL(global.location.href); url.searchParams.set('v', data.build); url.searchParams.set('cb', String(Date.now()));
+    global.location.replace(url.href);
+  });
+  global.addEventListener('load', announceBuild, { once:true });
   const LEGACY = /^(?:OPENQ|QCOL|NEXUS)_(.+)$/;
   function canonicalType(type) {
     if (typeof type !== 'string') return type;
@@ -92,6 +114,8 @@
   }
   global.QuOLabNexusCore = {
     protocol: 'QUOLAB_NEXUS_V1',
+    build: BUILD,
+    getEngineUrl,
     canonicalType,
     legacyType,
     normalizeIncoming,
