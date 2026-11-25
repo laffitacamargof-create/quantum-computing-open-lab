@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <script src="quolab-nexus-core.js?v=20261121-routing-broker-2"></script>
-<script src="quolab-nexus-connectors-core.js?v=20261121-routing-broker-2"></script>
-<script src="quolab-nexus-tool-connector.js?v=20261121-routing-broker-2"></script>
+    <script src="quolab-nexus-core.js?v=20261125-pc-routing-1"></script>
+<script src="quolab-nexus-connectors-core.js?v=20261125-pc-routing-1"></script>
+<script src="quolab-nexus-tool-connector.js?v=20261125-pc-routing-1"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <title>QuOLab Nexus — Quantum App Studio</title>
@@ -556,7 +556,7 @@
         if (data.type === 'QCOL_REQUEST_COMPILE') {
             const { requestId, appId, appName, pythonCode, htmlCode, serverUrl } = data;
             try {
-                const finalServerUrl = serverUrl || localStorage.getItem('qcol_colab_url') || '';
+                const finalServerUrl = serverUrl || window.QuOLabNexusCore.getEngineUrl() || '';
                 
                 const bridge = `
                 <script>
@@ -684,7 +684,7 @@
         const modal = document.getElementById('preview-modal');
         if (!iframe || !modal) { notify('Preview interface is unavailable'); return; }
         try {
-            const { srcdoc } = await buildAppBlob(app.pythonCode || '', app.htmlCode || '', app.serverUrl || localStorage.getItem('qcol_colab_url') || '', nexusRouteFrom(app));
+            const { srcdoc } = await buildAppBlob(app.pythonCode || '', app.htmlCode || '', app.serverUrl || window.QuOLabNexusCore.getEngineUrl() || '', nexusRouteFrom(app));
             iframe.removeAttribute('src');
             iframe.srcdoc = srcdoc;
             modal.classList.add('open');
@@ -862,7 +862,7 @@
                     tags: '',
                     pythonCode: proj.pythonCode || '',
                     htmlCode: proj.htmlCode || '',
-                    serverUrl: proj.serverUrl || localStorage.getItem('qcol_colab_url') || '',
+                    serverUrl: proj.serverUrl || window.QuOLabNexusCore.getEngineUrl() || '',
                     duration: 8
                 }
             };
@@ -887,7 +887,7 @@
                         tags: '',
                         pythonCode: proj.pythonCode || '',
                         htmlCode: proj.htmlCode || '',
-                        serverUrl: proj.serverUrl || localStorage.getItem('qcol_colab_url') || '',
+                        serverUrl: proj.serverUrl || window.QuOLabNexusCore.getEngineUrl() || '',
                         duration: 8
                     }).then(() => {
                         notify(`☁️ App "${proj.name}" enviada a la nube (pendiente)`);
@@ -914,7 +914,7 @@
                     name: proj.name,
                     pythonCode: proj.pythonCode,
                     htmlCode: proj.htmlCode,
-                    serverUrl: proj.serverUrl || localStorage.getItem('qcol_colab_url') || '',
+                    serverUrl: proj.serverUrl || window.QuOLabNexusCore.getEngineUrl() || '',
                     createdAt: proj.createdAt
                 }
             };
@@ -1093,7 +1093,7 @@
     });
 
     async function buildAppBlob(pythonCode, htmlCode, serverUrl, nexusRoute) {
-        const connectorUrl = new URL('quolab-nexus-tool-connector.js?v=20261121-routing-broker-2', location.href).href;
+        const connectorUrl = new URL('quolab-nexus-tool-connector.js?v=20261125-pc-routing-1', location.href).href;
         const bridge = `
         <script>window.__QUOLAB_NEXUS_TOOL='quantum-app-studio';<\/script>
         <script src="${connectorUrl}"><\/script>
@@ -1163,7 +1163,7 @@
             return;
         }
 
-        let serverToUse = proj.serverUrl || localStorage.getItem('qcol_colab_url') || '';
+        let serverToUse = proj.serverUrl || window.QuOLabNexusCore.getEngineUrl() || '';
         
         const serverActive = serverToUse && await testBackendConnection(serverToUse);
         if (serverActive) {
@@ -1179,7 +1179,7 @@
     }
 
     async function runPreview() {
-        const serverUrl = localStorage.getItem('qcol_colab_url') || '';
+        const serverUrl = window.QuOLabNexusCore.getEngineUrl() || '';
         const { srcdoc } = await buildAppBlob(
             document.getElementById('python-editor').value,
             document.getElementById('html-editor').value,
@@ -1237,7 +1237,7 @@
                 duration: reviewed.duration || 8,
                 pythonCode: document.getElementById('python-editor').value,
                 htmlCode: document.getElementById('html-editor').value,
-                serverUrl: localStorage.getItem('qcol_colab_url') || reviewed.serverUrl || '',
+                serverUrl: window.QuOLabNexusCore.getEngineUrl() || reviewed.serverUrl || '',
                 nexusModule:selectedNexusRoute().module, nexusSlot:selectedNexusRoute().slot, nexusConnectorId:selectedNexusRoute().connector
             };
             pendingSaveDraft = draft;
@@ -1261,7 +1261,7 @@
                 tags: externalEditContext.tags || '', duration: externalEditContext.duration || 8,
                 pythonCode: document.getElementById('python-editor').value,
                 htmlCode: document.getElementById('html-editor').value,
-                serverUrl: localStorage.getItem('qcol_colab_url') || externalEditContext.serverUrl || '',
+                serverUrl: window.QuOLabNexusCore.getEngineUrl() || externalEditContext.serverUrl || '',
                 nexusModule:selectedNexusRoute().module, nexusSlot:selectedNexusRoute().slot, nexusConnectorId:selectedNexusRoute().connector,
                 nexusModule:selectedNexusRoute().module, nexusSlot:selectedNexusRoute().slot, nexusConnectorId:selectedNexusRoute().connector
             };
@@ -1280,7 +1280,7 @@
         }
         const pyVal = document.getElementById('python-editor').value;
         const htmlVal = document.getElementById('html-editor').value;
-        const urlVal = localStorage.getItem('qcol_colab_url') || (projects.find(p => p.id === currentEditId)?.serverUrl || '');
+        const urlVal = window.QuOLabNexusCore.getEngineUrl() || (projects.find(p => p.id === currentEditId)?.serverUrl || '');
         if (!nameVal) { notify('Enter a name'); return; }
 
         let idx = projects.findIndex(p => p.id === currentEditId);
@@ -1412,11 +1412,11 @@
             sendToParent({ type: 'QCOL_STUDIO_OPENED', version: '2.2', status: 'ready' });
             notify('Connected to Founder Panel (origin validated)', 1500);
             sendToParent({ type: 'QCOL_REQUEST_COMPILER_URL' });
-            const savedUrl = localStorage.getItem('qcol_colab_url');
+            const savedUrl = window.QuOLabNexusCore.getEngineUrl();
             if (savedUrl && !receivedUrl) setServerUrl(savedUrl);
         }, 500);
     } else {
-        const savedUrl = localStorage.getItem('qcol_colab_url');
+        const savedUrl = window.QuOLabNexusCore.getEngineUrl();
         if (savedUrl) setServerUrl(savedUrl);
     }
     
