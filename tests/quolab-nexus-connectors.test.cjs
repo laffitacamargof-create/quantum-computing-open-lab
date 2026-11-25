@@ -72,6 +72,8 @@ assert.match(core, /assignments\[moduleId\]\[kind\] = 'founder'/);
 assert.match(core, /rule\[kind\] === 0 \|\| assignments\[moduleId\]\[kind\] != null/);
 assert.match(ui, /MODULE ROUTING/);
 assert.match(ui, /FOUNDER · DEFAULT/);
+assert.match(ui, /function founderConfigured\(kind\)/);
+assert.match(ui, /FOUNDER · NOT CONFIGURED/);
 assert.match(index, /return !!founderRouteFor\(mod, kind\)/);
 assert.match(index, /'architect-pro':\['cpu','storage'\]/);
 assert.match(index, /const supportedSlots = Object\.keys\(apiSlots\)/);
