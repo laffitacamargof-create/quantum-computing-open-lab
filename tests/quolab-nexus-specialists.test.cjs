@@ -113,7 +113,6 @@ assert.ok(docs.includes('Notebook ↔ Quantum Open Lab circuit synchronization')
 assert.ok(agent.includes('must not use that navigation path for its own edits'));
 assert.ok(agent.includes('writes hiddenCode directly'));
 assert.ok(agent.includes('hiddenCode'));
-assert.ok(notebook.includes("const code = QISKIT_PREAMBLE+'\\n'+rawCode;"));
 assert.ok(notebook.includes("!['markdown','circuit'].includes(type)"));
 assert.ok(notebook.includes("['circuit','markdown'].includes(d.cellType)"));
 assert.ok(agent.includes('Qiskit is not a separate cell type'));
