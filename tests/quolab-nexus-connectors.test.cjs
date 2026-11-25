@@ -66,7 +66,7 @@ assert.match(core, /nexus_connectors_v1/);
 assert.match(core, /Bridge\.proxy/);
 assert.match(core, /list\(kind, tool, id\)/);
 assert.match(core, /setActive\(id, active\)/);
-assert.match(core, /open_lab:\{cpu:1,qpu:1,storage:1\}, notebook:\{cpu:1,qpu:0,storage:1\}/);
+assert.match(core, /open_lab:\{cpu:1,qpu:1,storage:1\}, notebook:\{cpu:1,qpu:1,storage:1\}/);
 assert.match(core, /replaced\.forEach\(oldId/);
 assert.match(core, /normalize\(\) \{/);
 assert.match(core, /All enabled AI connectors failed/);
