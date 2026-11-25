@@ -73,6 +73,7 @@ assert.match(core, /rule\[kind\] === 0 \|\| assignments\[moduleId\]\[kind\] != n
 assert.match(ui, /MODULE ROUTING/);
 assert.match(ui, /FOUNDER · DEFAULT/);
 assert.match(index, /return !!founderRouteFor\(mod, kind\)/);
+assert.match(index, /localStorage\.getItem\('openq_gh'\) \|\| localStorage\.getItem\('qcol_gh'\)/);
 assert.match(index, /if \(key === '0'\) return false/);
 assert.match(core, /replaced\.forEach\(oldId/);
 assert.match(core, /normalize\(\) \{/);
