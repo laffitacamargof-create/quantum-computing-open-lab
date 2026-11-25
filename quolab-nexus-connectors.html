@@ -286,6 +286,7 @@ function openBridge(){const c=NC.Bridge.cfg();$('brUrl').value=c.url;$('brTok').
 
 const ROUTE_TOOLS={open_lab:{module:'architect',name:'Quantum Open Lab',slots:['cpu','qpu','storage']},notebook:{module:'architect-pro',name:'Quantum Notebook',slots:['cpu','qpu','storage']},apps:{module:'quantum-puzzle',name:'Quantum Puzzle',slots:['cpu','qpu']},app_studio:{module:'quantum-app-studio',name:'Quantum App Studio',slots:['cpu','qpu','storage']}};
 function founderOptInKey(moduleId,kind){return 'nexus_founder_fallback_v1:'+moduleId+':'+kind;}
+function founderAllowedHere(m,k){try{const v=localStorage.getItem(founderOptInKey(m,k));if(v==='1')return true;if(v==='0')return false;const u=JSON.parse(localStorage.getItem('openq_cur_user')||'null');return !!(u&&u.role==='founder');}catch(_){return false;}}
 async function renderRouteWarnings(){
  const host=$('routeWarnings'),list=$('routeWarningsList');if(!host||!list)return;
  const warnings=[];
@@ -293,7 +294,7 @@ async function renderRouteWarnings(){
   for(const kind of cfg.slots){
    const assigned=NC.Assignments.get(cfg.module,kind);
    if(assigned==='founder'){
-    if(localStorage.getItem(founderOptInKey(cfg.module,kind))!=='1')warnings.push({tool,cfg,kind,reason:'No connector is assigned. Founder routing is disabled until you authorize it explicitly.'});
+    if(!founderAllowedHere(cfg.module,kind))warnings.push({tool,cfg,kind,reason:'No connector is assigned. Founder routing is disabled until you authorize it explicitly.'});
     continue;
    }
    const status=await NC.validateAssignedRoute(cfg.module,kind,tool);
@@ -307,7 +308,7 @@ document.addEventListener('click',async event=>{
  const button=event.target.closest('[data-route-action]');if(!button)return;
  const moduleId=button.dataset.module,kind=button.dataset.kind,action=button.dataset.routeAction;
  if(action==='reassign'){
-  localStorage.removeItem(founderOptInKey(moduleId,kind));
+  localStorage.setItem(founderOptInKey(moduleId,kind),'0');
   $('g-ext')?.scrollIntoView({behavior:'smooth',block:'start'});
   toast('Choose an enabled connector card and assign it to the requested tool. No Founder fallback was enabled.');
  }else if(action==='founder'){

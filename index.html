@@ -1238,7 +1238,18 @@ class QuOLabNexusConfigSyncReader {
     // deleted connector. Never silently route to another connector or Founder.
     return value !== 'founder' && ordered.length > 0;
   }
-  function founderFallbackAllowed(mod, kind) { try { return localStorage.getItem('nexus_founder_fallback_v1:' + mod + ':' + kind) === '1'; } catch (_) { return false; } }
+  // Founder route: explicit '1' = allowed, explicit '0' = denied. With no stored choice
+  // (e.g. a new/cleared browser) the signed-in founder is allowed by default, so the
+  // setting no longer depends on per-browser localStorage. Everyone else still needs opt-in.
+  function founderFallbackAllowed(mod, kind) {
+    try {
+      const v = localStorage.getItem('nexus_founder_fallback_v1:' + mod + ':' + kind);
+      if (v === '1') return true;
+      if (v === '0') return false;
+      const u = JSON.parse(localStorage.getItem('openq_cur_user') || 'null');
+      return !!(u && u.role === 'founder');
+    } catch (_) { return false; }
+  }
   async function routesFor(mod) {
     const out = {}, nx = NXC();
     for (const kind of ['cpu','qpu','storage']) {
