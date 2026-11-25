@@ -35,7 +35,7 @@ require('../../quolab-nexus-connectors-core.js');
 
   const qpu1 = await make('QPU-1','quantum');
   const qpu2 = await make('QPU-2','quantum');
-  assert.throws(() => NC.Assignments.bind(qpu1.id,'notebook','qpu'), /only allows 0 QPU/);
+  assert.throws(() => NC.Assignments.bind(qpu1.id,'notebook','qpu'), /only allows 1 QPU/);
   NC.Assignments.bind(qpu1.id,'open_lab','qpu');
   NC.Assignments.bind(qpu1.id,'apps','qpu');
   NC.Assignments.bind(qpu2.id,'apps','qpu');
