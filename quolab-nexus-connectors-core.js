@@ -571,6 +571,23 @@
   const ASSIGN_KIND = {classical:'cpu',quantum:'qpu',storage:'storage'};
   const Assignments = {
     all() { try { return JSON.parse(localStorage.getItem(LS_ASSIGNMENTS) || '{}') || {}; } catch (_) { return {}; } },
+    // Materialize Founder as the first-run default without overwriting any user choice.
+    // Unsupported slots (limit 0) stay outside the persisted routing matrix.
+    initializeDefaults() {
+      const assignments = this.all();
+      let changed = false;
+      Object.keys(TOOL_MODULE).forEach(tool => {
+        const moduleId = TOOL_MODULE[tool], rule = SLOT_RULES[tool];
+        assignments[moduleId] = Object.assign({}, assignments[moduleId] || {});
+        Object.keys(rule).forEach(kind => {
+          if (rule[kind] === 0 || assignments[moduleId][kind] != null) return;
+          assignments[moduleId][kind] = 'founder';
+          changed = true;
+        });
+      });
+      if (changed) localStorage.setItem(LS_ASSIGNMENTS, JSON.stringify(assignments));
+      return assignments;
+    },
     get(moduleId, kind) { const a = this.all(); const v = a[moduleId] && a[moduleId][kind]; return v == null ? 'founder' : v; },
     set(moduleId, kind, value) {
       const tool = Object.keys(TOOL_MODULE).find(t => TOOL_MODULE[t] === moduleId), rule = tool && SLOT_RULES[tool];
