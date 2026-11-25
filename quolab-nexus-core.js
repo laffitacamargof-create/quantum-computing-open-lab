@@ -110,7 +110,11 @@
       const next = new URL(global.location.href);
       next.searchParams.set('v', expected);
       next.searchParams.set('cb', String(Date.now()));
-      global.location.replace(next.href);
+      const notice = global.document.createElement('div');
+      notice.textContent = 'Versión antigua de QuOLab Nexus detectada. Recargando el módulo actualizado…';
+      notice.style.cssText = 'position:fixed;z-index:2147483647;top:0;left:0;right:0;padding:12px;background:#7a3e00;color:#fff;font:14px sans-serif;text-align:center';
+      (global.document.body || global.document.documentElement).appendChild(notice);
+      global.setTimeout(() => global.location.replace(next.href), 250);
     });
   }
   global.QuOLabNexusCore = {
