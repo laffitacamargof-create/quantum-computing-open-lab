@@ -119,7 +119,7 @@ assert.ok(notebook.includes("['circuit','markdown'].includes(d.cellType)"));
 assert.ok(agent.includes('Qiskit is not a separate cell type'));
 assert.ok(index.includes('c.length > 14500'));
 assert.ok(index.includes('historyLimit:0'));
-assert.ok(index.includes('up to 3 valid actions'));
+assert.ok(index.includes('Emit no more than 3 actions per model turn'));
 assert.ok(index.includes('x-quolab-request-id'));
 assert.ok(index.includes('function fitGatewayMessages(input)'));
 assert.ok(index.includes('messages=fitGatewayMessages(messages)'));
