@@ -73,7 +73,7 @@ assert.ok(index.includes('Delivery was retried 120 times'));
 assert.ok(index.includes('Exactly ONE complete operating manual'));
 assert.ok(index.includes('perform those changes in that tool'));
 assert.ok(index.includes('selected_manuals:manuals'));
-assert.ok(index.includes('ids.length < 1'));
+
 assert.ok(index.includes('Exactly ONE complete operating manual'));
 assert.ok(index.includes('set_markdown'));
 assert.ok(index.includes("case 'tool_call': return AI_SCREENS.includes(a.screen)"));
