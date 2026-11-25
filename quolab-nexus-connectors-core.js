@@ -564,7 +564,7 @@
   Store.byKind('ai').forEach(r => { if (r.usage === 'once') Store.patch(r.id, x => { x.usage = 'always'; }); });
 
   const SLOT_RULES = {
-    open_lab:{cpu:1,qpu:1,storage:1}, notebook:{cpu:1,qpu:0,storage:1},
+    open_lab:{cpu:1,qpu:1,storage:1}, notebook:{cpu:1,qpu:1,storage:1},
     apps:{cpu:Infinity,qpu:Infinity,storage:0}, app_studio:{cpu:1,qpu:1,storage:1}
   };
   const TOOL_MODULE = {open_lab:'architect',notebook:'architect-pro',apps:'quantum-puzzle',app_studio:'quantum-app-studio'};
