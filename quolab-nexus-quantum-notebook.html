@@ -2572,7 +2572,7 @@ window.addEventListener('message',e=>{
     loadCompilerUrlFromCloud().then(url => {
       if(url && url !== engineURL) {
         engineURL = url;
-        localStorage.setItem('openq_colab_url', url);
+        persistEngineURL(url);
         checkEngine();
       }
     });
@@ -2678,7 +2678,7 @@ function initEngine(){
   loadCompilerUrlFromCloud().then(url => {
     if(url) {
       engineURL = url;
-      localStorage.setItem('openq_colab_url', url);
+      persistEngineURL(url);
       checkEngine();
     } else {
       const s=window.QuOLabNexusCore && window.QuOLabNexusCore.getEngineUrl ? window.QuOLabNexusCore.getEngineUrl() : localStorage.getItem('openq_colab_url');
