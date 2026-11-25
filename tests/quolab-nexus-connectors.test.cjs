@@ -35,7 +35,7 @@ assert.match(ui, /function setCardTool\(id,tool,enabled\).*NC\.Assignments\.bind
 assert.match(ui, /NC\.ai\.list\('chat'\)\.some/);
 assert.match(ui, /AI API activated for QNexusAi/);
 assert.match(ui, /keptAI/);
-assert.match(ui, /active\.slice\(1\)\.forEach/);
+assert.match(ui, /let keptAI=false;[\s\S]*?if\(keptAI\)S\.patch\(r\.id,x=>\{x\.usage='off';\}\);else keptAI=true;/);
 assert.match(core, /return kind === 'ai' \? records\.slice\(0, 1\) : records/);
 assert.match(ui, /if\(tool!==\x27apps\x27\)records\.filter/);
 assert.match(ui, /record\.kind==='ext'&&next!==\x27off\x27/);
@@ -66,7 +66,7 @@ assert.match(core, /nexus_connectors_v1/);
 assert.match(core, /Bridge\.proxy/);
 assert.match(core, /list\(kind, tool, id\)/);
 assert.match(core, /setActive\(id, active\)/);
-assert.match(core, /open_lab:\{cpu:1,qpu:1,storage:1\}, notebook:\{cpu:1,qpu:0,storage:1\}/);
+assert.match(core, /open_lab:\{cpu:1,qpu:1,storage:1\}, notebook:\{cpu:1,qpu:1,storage:1\}/);
 assert.match(core, /replaced\.forEach\(oldId/);
 assert.match(core, /normalize\(\) \{/);
 assert.match(core, /All enabled AI connectors failed/);
