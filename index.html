@@ -936,6 +936,7 @@ class QuOLabNexusConfigSyncReader {
                 // while older modules still read openq_colab_url.
                 if (cloudKey === 'colab_url') {
                     localStorage.setItem('qcol_colab_url', stringValue);
+                    localStorage.setItem('nexus_colab_url', stringValue);
                     localStorage.setItem('qcol_colab_url_timestamp', new Date().toISOString());
                 }
                 console.log(`📥 Config ${cloudKey} → ${localKey}: aplicada desde la nube`);
