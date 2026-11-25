@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<script src="quolab-nexus-core.js?v=20261121-routing-broker-2"></script>
-<script src="quolab-nexus-connectors-core.js?v=20261121-routing-broker-2"></script>
-<script src="quolab-nexus-tool-connector.js?v=20261121-routing-broker-2"></script>
+<script src="quolab-nexus-core.js?v=20261125-pc-routing-1"></script>
+<script src="quolab-nexus-connectors-core.js?v=20261125-pc-routing-1"></script>
+<script src="quolab-nexus-tool-connector.js?v=20261125-pc-routing-1"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>QuOLab Nexus — Quantum Notebook</title>
@@ -781,7 +781,7 @@ function useNexusExternalEngine(){
   if(badge){badge.textContent='● NEXUS CONNECTOR ACTIVE';badge.className='eng-pill on';}
   return true;
 }
-function setEngineURL(url){engineURL=url;localStorage.setItem('openq_colab_url',url);checkEngine();notify('🌐 Engine updated');}
+function setEngineURL(url){engineURL=url;localStorage.setItem('openq_colab_url',url);localStorage.setItem('qcol_colab_url',url);localStorage.setItem('nexus_colab_url',url);checkEngine();notify('🌐 Engine updated');}
 
 // ── QISKIT PREAMBLE ───────────────────────────────────────────
 const QISKIT_PREAMBLE=`from qiskit import QuantumCircuit, QuantumRegister, ClassicalRegister, transpile
