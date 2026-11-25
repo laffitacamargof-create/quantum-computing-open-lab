@@ -1242,7 +1242,7 @@ class QuOLabNexusConfigSyncReader {
       const key = localStorage.getItem('nexus_founder_fallback_v1:' + mod + ':' + kind);
       if (key === '1') return true;
       if (key === '0') return false;
-      // First-run default: use the configured Founder endpoint when the slot has no saved external assignment.
+      // First-run default: resolve the saved slot first, then use Founder only when no external connector is selected.
       return !!founderRouteFor(mod, kind);
     } catch (_) { return false; }
   }
