@@ -1172,7 +1172,8 @@ class QuOLabNexusConfigSyncReader {
   const NXC = () => window.QuOLabNexusConnectors || null;
   const TOOL_OF = { architect:'open_lab', 'architect-pro':'notebook', 'quantum-puzzle':'apps', 'quantum-app-studio':'app_studio', 'nexus-connectors':'chat' };
   const apiSlots = Object.create(null);
-  [['architect',['cpu','qpu','storage']],['architect-pro',['cpu','qpu','storage']],['quantum-puzzle',['cpu','qpu']],['quantum-app-studio',['cpu','qpu','storage']]].forEach(item => item[1].forEach(kind => { apiSlots[item[0]+'.'+kind] = { label:item[0]+' · '+kind.toUpperCase(), founder:kind==='cpu'?'engine':'' }; }));
+  const API_SLOTS_BY_MODULE = { architect:['cpu','qpu','storage'], 'architect-pro':['cpu','storage'], 'quantum-puzzle':['cpu','qpu'], 'quantum-app-studio':['cpu','qpu','storage'] };
+  Object.entries(API_SLOTS_BY_MODULE).forEach(([moduleId, slots]) => slots.forEach(kind => { apiSlots[moduleId+'.'+kind] = { label:moduleId+' · '+kind.toUpperCase(), founder:kind==='cpu'?'engine':'' }; }));
   function aiNexusRecs(tool) { const nx=NXC(); return nx && nx.Policy ? (typeof nx.Policy.list === 'function' ? nx.Policy.list('ai', tool || 'chat') : [nx.Policy.pick('ai', tool || 'chat')].filter(Boolean)) : []; }
   function aiNexusRec(tool) { return aiNexusRecs(tool)[0] || null; }
   function moduleOf(win) {
@@ -1249,7 +1250,8 @@ class QuOLabNexusConfigSyncReader {
   }
   async function routesFor(mod) {
     const out = {}, nx = NXC();
-    for (const kind of ['cpu','qpu','storage']) {
+    const supportedSlots = Object.keys(apiSlots).filter(key => key.startsWith(mod + '.')).map(key => key.slice(mod.length + 1));
+    for (const kind of supportedSlots) {
       const value = nx ? nx.Assignments.get(mod, kind) : 'founder';
       if (value !== 'founder') {
         if (!nx || typeof nx.validateAssignedRoute !== 'function') { out[kind] = { source:'unavailable', name:'Connector validation unavailable', reason:'Reload Nexus Connectors and try again.', options:[] }; continue; }
@@ -1366,6 +1368,7 @@ class QuOLabNexusConfigSyncReader {
       const slot = String(data.slot || '').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 32);
       if (!['cpu','qpu','storage','engine','quantum'].includes(slot)) return;
       const kind = slot === 'engine' ? 'cpu' : slot === 'quantum' ? 'qpu' : slot;
+      if (!apiSlots[apiMod + '.' + kind]) { reply({ type:'OPENQ_API_ROUTES', id:data.id, ok:false, error:'Unsupported API slot for ' + apiMod + ': ' + kind }); return; }
       const founder = data.founder === 'engine' || /^https:\/\//i.test(data.founder || '') ? data.founder : '';
       apiSlots[apiMod + '.' + kind] = { label:String(data.label || (apiMod + ' · ' + kind.toUpperCase())).slice(0,80), founder };
       reply({ type:'OPENQ_API_ROUTES', id:data.id, routes:await routesFor(apiMod) }); return;
