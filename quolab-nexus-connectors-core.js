@@ -691,11 +691,31 @@
     throw NexusError('no-route', 'All compatible external APIs failed for ' + tool + ' (' + kind + '): ' +
       failures.map(x => x.name + (x.status ? ' HTTP ' + x.status : ': ' + x.error)).join(' | '), { attempted:failures });
   }
+  async function validateConnector(id, kind, tool) {
+    const rec = typeof id === 'string' ? Store.get(id) : id;
+    if (!rec || rec.kind !== 'ext' || !rec.ext) return { ok:false, reason:'El conector asignado ya no existe.' };
+    if (rec.usage === 'off') return { ok:false, reason:'El conector está desactivado (usage=off).' };
+    const expected = kind === 'cpu' ? 'classical' : kind === 'qpu' ? 'quantum' : kind === 'storage' ? 'storage' : '';
+    if (!expected || rec.ext.category !== expected) return { ok:false, reason:'La categoría del conector no coincide con el slot.' };
+    if (tool && !Policy.allowed(rec, tool)) return { ok:false, reason:'El conector no está autorizado para este módulo.' };
+    try {
+      if (!rec.ext.baseUrl || !/^https:\\/\\//i.test(rec.ext.baseUrl)) return { ok:false, reason:'La URL base del conector no es HTTPS.' };
+      const auth = rec.ext.auth || 'none', secrets = rec.secrets || {};
+      if (auth === 'apikey' || auth === 'bearer') {
+        if (!secrets.secret) return { ok:false, reason:'Falta el secreto cifrado.' };
+        if (!await Vault.open(secrets.secret)) return { ok:false, reason:'El secreto está vacío o no se puede descifrar.' };
+      } else if (auth === 'basic') {
+        if (!secrets.user || !secrets.pass) return { ok:false, reason:'Faltan usuario/contraseña cifrados.' };
+        if (!await Vault.open(secrets.user) || !await Vault.open(secrets.pass)) return { ok:false, reason:'Las credenciales Basic no se pueden descifrar.' };
+      }
+      return { ok:true, reason:'' };
+    } catch (error) { return { ok:false, reason:String(error && error.message || 'No se pudo descifrar el secreto.') }; }
+  }
   // Do not publish Vault.open(), key derivation, or raw credential-header helpers.
   // Secret decryption remains inside this closure and is used only by connector requests.
   const publicVault = Object.freeze({ seal: Vault.seal.bind(Vault) });
   const publicExt = Object.freeze({ pick: ext.pick.bind(ext), request: ext.request.bind(ext), test: ext.test.bind(ext) });
-  const api = { VERSION, TOOLS, PERMS, PROVIDERS, COMMUNITY_REQUIRES, MAX_CODE, Vault:publicVault, Store, Policy, Analyze, Bridge, ai, ext:publicExt, loc, Catalog, Community, Installer, Make, Assignments, SLOT_RULES, requestAssigned, util: { uid, slug, sha256, now, NexusError } };
+  const api = { VERSION, TOOLS, PERMS, PROVIDERS, COMMUNITY_REQUIRES, MAX_CODE, Vault:publicVault, Store, Policy, Analyze, Bridge, ai, ext:publicExt, loc, Catalog, Community, Installer, Make, Assignments, SLOT_RULES, requestAssigned, validateConnector, util: { uid, slug, sha256, now, NexusError } };
   root.QuOLabNexusConnectors = api;
   if (root.QuOLabNexusCore && !Object.isFrozen(root.QuOLabNexusCore)) root.QuOLabNexusCore.connectors = api;
 })(typeof window !== 'undefined' ? window : globalThis);
