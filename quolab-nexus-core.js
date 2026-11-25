@@ -10,10 +10,10 @@
   }
   function announceBuild() {
     if (!global.parent || global.parent === global) return;
-    try { global.top.postMessage({ type:'NEXUS_MODULE_BUILD', build:BUILD, href:global.location.href }, global.location.origin); } catch (_) {}
+    try { global.top.postMessage({ type:'OPENQ_MODULE_BUILD', build:BUILD, href:global.location.href }, global.location.origin); } catch (_) {}
   }
   global.addEventListener('message', event => {
-    if (event.source !== (global.parent || global.top) || event.origin !== global.location.origin) return;
+    if ((event.source !== global.parent && event.source !== global.top) || event.origin !== global.location.origin) return;
     const data = event.data || {};
     if (data.type !== 'NEXUS_BUILD_MISMATCH' || !data.build || data.build === BUILD) return;
     const notice = global.document.createElement('div');
