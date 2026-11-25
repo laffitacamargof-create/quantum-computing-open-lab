@@ -303,13 +303,23 @@ function openBridge(){const c=NC.Bridge.cfg();$('brUrl').value=c.url;$('brTok').
 
 const ROUTE_TOOLS={open_lab:{module:'architect',name:'Quantum Open Lab',slots:['cpu','qpu','storage']},notebook:{module:'architect-pro',name:'Quantum Notebook',slots:['cpu','storage']},apps:{module:'quantum-puzzle',name:'Quantum Puzzle',slots:['cpu','qpu']},app_studio:{module:'quantum-app-studio',name:'Quantum App Studio',slots:['cpu','qpu','storage']}};
 function founderOptInKey(moduleId,kind){return 'nexus_founder_fallback_v1:'+moduleId+':'+kind;}
+function founderConfigured(kind){
+ if(kind==='cpu'||kind==='qpu'){
+  const url=window.QuOLabNexusCore&&window.QuOLabNexusCore.getEngineUrl?window.QuOLabNexusCore.getEngineUrl():'';
+  return /^https:\/\//i.test(String(url||''));
+ }
+ if(kind==='storage'){
+  try{const cfg=JSON.parse(localStorage.getItem('openq_gh')||localStorage.getItem('qcol_gh')||'{}');return !!(cfg.token&&cfg.user&&cfg.repo);}catch(_){return false;}
+ }
+ return false;
+}
 async function renderRouteWarnings(){
  const host=$('routeWarnings'),list=$('routeWarningsList');if(!host||!list)return;
  const warnings=[];
  for(const [tool,cfg] of Object.entries(ROUTE_TOOLS)){
   for(const kind of cfg.slots){
    const assigned=NC.Assignments.get(cfg.module,kind);
-   if(assigned==='founder') continue;
+   if(assigned==='founder'){if(!founderConfigured(kind))warnings.push({tool,cfg,kind,reason:'Founder is the default, but its service is not configured for this slot. Complete the engine URL or GitHub storage settings in Founder panel.'});continue;}
    const status=await NC.validateAssignedRoute(cfg.module,kind,tool);
    if(status.source==='unavailable')warnings.push({tool,cfg,kind,reason:status.reason||'The assigned connector is unavailable.'});
   }
@@ -325,7 +335,7 @@ async function renderRoutingOverview(){
   for(const kind of cfg.slots){
    const assigned=NC.Assignments.get(cfg.module,kind);
    if(assigned==='founder'){
-    rows.push('<div class="route-slot"><span>'+esc(kind.toUpperCase())+'</span><span class="route-source">FOUNDER · DEFAULT</span></div>');
+    const configured=founderConfigured(kind);rows.push('<div class="route-slot"><span>'+esc(kind.toUpperCase())+'</span><span class="route-source '+(configured?'':'bad')+'">'+(configured?'FOUNDER · DEFAULT':'FOUNDER · NOT CONFIGURED')+'</span></div>');
     continue;
    }
    const status=await NC.validateAssignedRoute(cfg.module,kind,tool);
