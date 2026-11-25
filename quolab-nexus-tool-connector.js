@@ -131,9 +131,8 @@
     try {
       const url = new URL(typeof rawUrl === 'string' ? rawUrl : (rawUrl && rawUrl.url) || '', global.location.href);
       if (!/\/(?:run|health)(?:\/|$)/i.test(url.pathname)) return null;
-      const saved = ['nexus_colab_url','qcol_colab_url','openq_colab_url'].map(k => {
-        try { return global.localStorage.getItem(k); } catch (_) { return ''; }
-      }).filter(Boolean);
+      const canonical = global.QuOLabNexusCore && global.QuOLabNexusCore.getEngineUrl ? global.QuOLabNexusCore.getEngineUrl() : '';
+      const saved = canonical ? [canonical] : [];
       const known = saved.some(value => { try { return new URL(value).origin === url.origin; } catch (_) { return false; } });
       const virtualNexusEndpoint = url.hostname === 'nexus-connectors.invalid';
       if (!known && !/\.hf\.space$/i.test(url.hostname) && !virtualNexusEndpoint) return null;
