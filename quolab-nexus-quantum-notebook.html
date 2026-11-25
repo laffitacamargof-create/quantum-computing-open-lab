@@ -789,7 +789,8 @@ function useNexusExternalEngine(){
   if(badge){badge.textContent='● NEXUS CONNECTOR ACTIVE';badge.className='eng-pill on';}
   return true;
 }
-function setEngineURL(url){engineURL=url;localStorage.setItem('openq_colab_url',url);checkEngine();notify('🌐 Engine updated');}
+function persistEngineURL(url){const value=String(url||'').trim();if(!value)return '';['openq_colab_url','qcol_colab_url','nexus_colab_url'].forEach(key=>localStorage.setItem(key,value));return value;}
+function setEngineURL(url){engineURL=persistEngineURL(url);checkEngine();notify('🌐 Engine updated');}
 
 // ── QISKIT PREAMBLE ───────────────────────────────────────────
 const QISKIT_PREAMBLE=`from qiskit import QuantumCircuit, QuantumRegister, ClassicalRegister, transpile
@@ -2526,11 +2527,11 @@ function showUI(user){
   loadCompilerUrlFromCloud().then(url => {
     if(url) {
       engineURL = url;
-      localStorage.setItem('openq_colab_url', url);
+      persistEngineURL(url);
       checkEngine();
     } else {
       // Fallback: try localStorage as last resort
-      const stored = localStorage.getItem('openq_colab_url') || '';
+      const stored = window.QuOLabNexusCore && window.QuOLabNexusCore.getEngineUrl ? window.QuOLabNexusCore.getEngineUrl() : '';
       if(stored) { engineURL=stored; checkEngine(); }
       else useNexusExternalEngine();
     }
@@ -2570,7 +2571,7 @@ window.addEventListener('message',e=>{
     loadCompilerUrlFromCloud().then(url => {
       if(url && url !== engineURL) {
         engineURL = url;
-        localStorage.setItem('openq_colab_url', url);
+        persistEngineURL(url);
         checkEngine();
       }
     });
@@ -2659,7 +2660,7 @@ window.addEventListener('message',e=>{
 
 window.addEventListener('storage',e=>{
   if(e.key==='openq_colab_url'&&e.newValue){
-    engineURL=e.newValue;
+    engineURL=window.QuOLabNexusCore && window.QuOLabNexusCore.getEngineUrl ? window.QuOLabNexusCore.getEngineUrl() : e.newValue;
     checkEngine();
   }
 });
@@ -2676,7 +2677,7 @@ function initEngine(){
   loadCompilerUrlFromCloud().then(url => {
     if(url) {
       engineURL = url;
-      localStorage.setItem('openq_colab_url', url);
+      persistEngineURL(url);
       checkEngine();
     } else {
       const s=localStorage.getItem('openq_colab_url');
