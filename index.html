@@ -3294,6 +3294,8 @@ CONTEXT (staged and size-limited): ${c}`;
       const message = String(detail.message || 'An unexpected error occurred.').slice(0, 240);
       const safeMessage = message.replace(/[&<>]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[ch]));
       if (/^(network_error|console_error)$/i.test(kind) && /Failed to fetch/i.test(message) && /colab_url|config-sync/i.test(String(detail.source||detail.url||''))) return;
+      // The optional local bridge (127.0.0.1:8765) is probed continuously; being offline is a normal state, not an ecosystem error.
+      if (/^(network_error|console_error|http_error)$/i.test(kind) && /^https?:\/\/(127\.0\.0\.1|localhost):8765(\/|$)/i.test(String(detail.url||detail.source||''))) return;
       const signature = tool + '|' + kind + '|' + message;
       const now = Date.now();
       if (now - (proactiveAlertTimes.get(signature) || 0) < 15000) return;

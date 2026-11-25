@@ -206,7 +206,7 @@
         } catch (_) {}
         return response;
       }, error => {
-        send('network_error', { method, url: safeUrl(url), message: error && error.message || 'Request failed' });
+        if (!/^https?:\/\/(127\.0\.0\.1|localhost):8765(\/|$)/i.test(String(url))) send('network_error', { method, url: safeUrl(url), message: error && error.message || 'Request failed' });
         throw error;
       });
     };
