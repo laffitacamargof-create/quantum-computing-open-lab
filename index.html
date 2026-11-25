@@ -1237,6 +1237,7 @@ class QuOLabNexusConfigSyncReader {
     // deleted connector. Never silently route to another connector or Founder.
     return value !== 'founder' && ordered.length > 0;
   }
+  // Founder is the first-run fallback only when the matching Founder service is configured.
   function founderFallbackAllowed(mod, kind) {
     try {
       const key = localStorage.getItem('nexus_founder_fallback_v1:' + mod + ':' + kind);
