@@ -2068,9 +2068,18 @@ class QuOLabNexusConfigSyncReader {
         iframe.src = fresh.href;
       }, 1400);
       setTimeout(() => {
-          sendCfg(iframe.contentWindow);
-          iframe.contentWindow.postMessage({ type: 'OPENQ_USER_UPDATE', user: curUser }, '*');
-          iframe.contentWindow.postMessage({ type: 'OPENQ_USER', user: curUser }, '*');
+          // Desktop navigation can remove a just-loaded iframe before this delayed
+          // handshake runs. Never post to a detached frame or a replacement route.
+          if (iframes[screen] !== iframe || !iframe.isConnected) return;
+          const target = iframe.contentWindow;
+          if (!target) return;
+          try {
+            sendCfg(target);
+            target.postMessage({ type: 'OPENQ_USER_UPDATE', user: curUser }, '*');
+            target.postMessage({ type: 'OPENQ_USER', user: curUser }, '*');
+          } catch (error) {
+            console.warn('Nexus module handshake skipped after iframe teardown:', error);
+          }
       }, 300);
     };
     iframe.onerror = () => {
