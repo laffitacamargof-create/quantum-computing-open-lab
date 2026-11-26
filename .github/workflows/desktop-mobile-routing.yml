@@ -31,6 +31,6 @@ jobs:
       - name: Install Playwright
         run: npm install --no-save --no-package-lock playwright@1.55.0
       - name: Install Chromium
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install chromium
       - name: Simulate desktop and mobile browsers
         run: node tests/browser/desktop-mobile-routing.cjs
