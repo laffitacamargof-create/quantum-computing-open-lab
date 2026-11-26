@@ -1,0 +1,36 @@
+name: Desktop and mobile routing browser regression
+
+on:
+  pull_request:
+    paths:
+      - 'index.html'
+      - 'tests/browser/**'
+      - '.github/workflows/desktop-mobile-routing.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'index.html'
+      - 'tests/browser/**'
+      - '.github/workflows/desktop-mobile-routing.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  browser-routing:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Playwright
+        run: npm install --no-save --no-package-lock playwright@1.55.0
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Simulate desktop and mobile browsers
+        run: node tests/browser/desktop-mobile-routing.cjs
