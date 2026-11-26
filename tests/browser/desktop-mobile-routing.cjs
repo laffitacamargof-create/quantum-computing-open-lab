@@ -36,6 +36,7 @@ async function exerciseProfile(browser, profile) {
     !!window.QuOLabNexus &&
     document.querySelectorAll('#menu-grid .menu-card').length >= 5 &&
     document.getElementById('splash')?.classList.contains('hidden'),
+    undefined,
     { timeout: 20000 }
   );
 
@@ -68,7 +69,7 @@ async function exerciseProfile(browser, profile) {
 
     results.push({ module: item.screen, route: 'ok', iframe: 'loaded' });
     await page.locator('#screen-' + item.screen + ' .btn-back').click();
-    await page.waitForFunction(() => document.getElementById('screen-home')?.classList.contains('active'), { timeout: 5000 });
+    await page.waitForFunction(() => document.getElementById('screen-home')?.classList.contains('active'), undefined, { timeout: 5000 });
   }
 
   if (profile.blockEditorCDN) {
