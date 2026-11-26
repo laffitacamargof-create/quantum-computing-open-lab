@@ -25,7 +25,7 @@ async function exerciseProfile(browser, profile) {
   });
   const page = await context.newPage();
   const pageErrors = [];
-  page.on('pageerror', error => pageErrors.push(error.message));
+  page.on('pageerror', error => pageErrors.push({ message: error.message, stack: error.stack }));
 
   if (profile.blockEditorCDN) {
     await page.route('https://esm.sh/**', route => route.abort());
@@ -80,7 +80,7 @@ async function exerciseProfile(browser, profile) {
     }
   }
 
-  if (pageErrors.length) throw new Error(profile.name + ': browser errors: ' + pageErrors.join(' | '));
+  if (pageErrors.length) throw new Error(profile.name + ': browser errors: ' + JSON.stringify(pageErrors));
   await context.close();
   return { profile: profile.name, viewport: profile.viewport, editorCDNBlocked: profile.blockEditorCDN, results };
 }
