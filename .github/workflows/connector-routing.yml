@@ -1,0 +1,48 @@
+name: Connector routing (desktop + mobile)
+
+on:
+  pull_request:
+    paths:
+      - 'quolab-nexus-*.js'
+      - 'quolab-nexus-*.html'
+      - 'index.html'
+      - 'tests/browser/**'
+      - '.github/workflows/connector-routing.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'quolab-nexus-*.js'
+      - 'quolab-nexus-*.html'
+      - 'index.html'
+      - 'tests/browser/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  routing:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Apply routing patch
+        run: node scripts/apply-routing-fix.cjs
+      - name: Static connector checks
+        run: node tests/quolab-nexus-connectors.test.cjs
+      - run: npm install --no-save --no-package-lock playwright@1.55.0
+      - run: npx playwright install --with-deps chromium
+      - name: Per-tool routing, PC vs mobile
+        env:
+          CI_RESULTS_DIR: ci-results
+        run: node tests/browser/connector-routing.cjs
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: connector-routing-results
+          path: ci-results/
+          if-no-files-found: ignore
