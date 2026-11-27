@@ -98,6 +98,9 @@ async function runProfile(browser, profile) {
 
   await bootShell(page);
   await page.evaluate(async url => {
+    // Legacy aliases are deliberately stale: the canonical Nexus key must win.
+    localStorage.setItem('openq_colab_url', 'https://legacy-openq.test');
+    localStorage.setItem('qcol_colab_url', 'https://legacy-qcol.test');
     localStorage.setItem('nexus_colab_url', url);
     const NC = window.QuOLabNexusConnectors;
     const mk = async (name, base) => NC.Store.upsert(await NC.Make.ext({ name, category: 'classical', baseUrl: base, auth: 'apikey', secret: 'clave-de-prueba-no-real', usage: 'always', tools: [] })).id;
@@ -122,8 +125,10 @@ async function runProfile(browser, profile) {
   await page.evaluate(id => window.QuOLabNexusConnectors.Assignments.unbind(id, 'notebook'), ids.a);
   resetHits();
   r = await call(page, NOTEBOOK, probe);
-  cases.caso2 = { source: r.source, marcador: marker(r), founderHits: hits.founder, engineUrl: await page.evaluate(() => window.QuOLabNexusCore.getEngineUrl()), trace: networkTrace.slice(-8) };
-  check('caso2 usa Founder', r.ok && r.source === 'founder' && marker(r) === 'founder' && hits.founder === 1, Object.assign({}, r, { founderHits: hits.founder, engineUrl: await page.evaluate(() => window.QuOLabNexusCore.getEngineUrl()), trace: networkTrace.slice(-8) }));
+  const founderTrace = networkTrace.filter(x => x.url.includes('founder.test')).slice(-2);
+  const effectiveEngineUrl = await page.evaluate(() => window.QuOLabNexusCore.getEngineUrl());
+  cases.caso2 = { source: r.source, marcador: marker(r), founderHits: hits.founder, engineUrl: effectiveEngineUrl, founderTrace };
+  check('caso2 usa Founder', r.ok && r.source === 'founder' && marker(r) === 'founder' && hits.founder === 1 && effectiveEngineUrl === FOUNDER, Object.assign({}, r, { founderHits: hits.founder, engineUrl: effectiveEngineUrl, founderTrace }));
   check('caso2 no usa A', hits.a === 0, hits);
 
   // Caso 3: proveedores distintos por herramienta, sin mezclarse.
@@ -163,9 +168,15 @@ async function runProfile(browser, profile) {
   resetHits();
   const rb = await call(page, NOTEBOOK, probe);
   const alerts = await page.evaluate(() => window.__alerts.map(a => JSON.stringify(a)));
-  cases.caso5 = { marcador: marker(rb), alertasBridge: alerts.filter(a => /8765/.test(a)).length };
+  const bridgeRequestsBeforeFailure = bridgeHits.length;
+  behavior = 'abort'; resetHits();
+  const failedExternalGet = await call(page, NOTEBOOK, { method:'GET', path:'/route-probe' });
+  behavior = 'ok';
+  const bridgeFallbackRequests = bridgeHits.length - bridgeRequestsBeforeFailure;
+  cases.caso5 = { marcador: marker(rb), alertasBridge: alerts.filter(a => /8765/.test(a)).length, bridgeFallbackRequests };
   check('caso5 conector externo funciona con bridge offline', rb.ok && marker(rb) === 'a', rb);
   check('caso5 sin alertas del bridge', cases.caso5.alertasBridge === 0, alerts);
+  check('caso5 no intenta bridge sin emparejar', failedExternalGet.ok === false && bridgeFallbackRequests === 0, { failedExternalGet, bridgeFallbackRequests });
 
   // Caso 6: QNexusAi consulta las rutas y elige el conector correcto.
   const route = await page.evaluate(() => {
