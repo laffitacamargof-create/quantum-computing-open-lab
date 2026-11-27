@@ -70,9 +70,12 @@ async function runProfile(browser, profile) {
   const page = await context.newPage();
   const failures = [], jsErrors = [], cases = {}, pending = [];
   const hits = { a: 0, b: 0, founder: 0 };
+  const networkTrace = [];
   let behavior = 'ok';
   const check = (name, cond, detail) => { if (!cond) failures.push(profile.name + ' · ' + name + (detail ? ' → ' + JSON.stringify(detail) : '')); };
   page.on('pageerror', e => jsErrors.push(e.message));
+  page.on('request', req => { try { const u = new URL(req.url()); if (u.hostname.endsWith('.test')) networkTrace.push({ event:'request', url:req.url(), method:req.method() }); } catch (_) {} });
+  page.on('response', res => { try { const u = new URL(res.url()); if (u.hostname.endsWith('.test')) networkTrace.push({ event:'response', url:res.url(), status:res.status() }); } catch (_) {} });
 
   const cors = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': '*' };
   await context.route(/^https:\/\/(a|b|founder)\.test\//, async route => {
@@ -119,8 +122,8 @@ async function runProfile(browser, profile) {
   await page.evaluate(id => window.QuOLabNexusConnectors.Assignments.unbind(id, 'notebook'), ids.a);
   resetHits();
   r = await call(page, NOTEBOOK, probe);
-  cases.caso2 = { source: r.source, marcador: marker(r) };
-  check('caso2 usa Founder', r.ok && r.source === 'founder' && marker(r) === 'founder', r);
+  cases.caso2 = { source: r.source, marcador: marker(r), founderHits: hits.founder, engineUrl: await page.evaluate(() => window.QuOLabNexusCore.getEngineUrl()), trace: networkTrace.slice(-8) };
+  check('caso2 usa Founder', r.ok && r.source === 'founder' && marker(r) === 'founder' && hits.founder === 1, Object.assign({}, r, { founderHits: hits.founder, engineUrl: await page.evaluate(() => window.QuOLabNexusCore.getEngineUrl()), trace: networkTrace.slice(-8) }));
   check('caso2 no usa A', hits.a === 0, hits);
 
   // Caso 3: proveedores distintos por herramienta, sin mezclarse.
