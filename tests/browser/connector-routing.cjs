@@ -27,6 +27,7 @@ async function bootShell(page) {
   await page.goto(BASE, { waitUntil: 'domcontentloaded', timeout: 30000 });
   await page.waitForFunction(() => !!window.QuOLabNexusConnectors && document.querySelectorAll('#menu-grid .menu-card').length >= 5 &&
     document.getElementById('splash')?.classList.contains('hidden'), undefined, { timeout: 30000 });
+  await page.waitForFunction(() => !!window.configSync && window.configSync.isReady === true, undefined, { timeout: 20000 });
 }
 
 async function openModule(page, m) {
@@ -78,6 +79,10 @@ async function runProfile(browser, profile) {
   page.on('response', res => { try { const u = new URL(res.url()); if (u.hostname.endsWith('.test')) networkTrace.push({ event:'response', url:res.url(), status:res.status() }); } catch (_) {} });
 
   const cors = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': '*' };
+  // Isolate the browser test from the user's live Supabase configuration.
+  // Empty cloud rows let the fixture set nexus_colab_url deterministically.
+  await context.route(/^https:\/\/rtkcfbnoqbivylejhspv\.supabase\.co\//, route =>
+    route.fulfill({ status: 200, headers: cors, contentType: 'application/json', body: '[]' }));
   await context.route(/^https:\/\/(a|b|founder)\.test\//, async route => {
     const req = route.request(), url = new URL(req.url()), who = url.hostname.split('.')[0];
     if (req.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: cors });
