@@ -92,7 +92,7 @@
   }
   function getEngineUrl() {
     try {
-      const keys = ['openq_colab_url', 'qcol_colab_url', 'nexus_colab_url'];
+      const keys = ['nexus_colab_url', 'qcol_colab_url', 'openq_colab_url'];
       for (const key of keys) { const value = String(global.localStorage.getItem(key) || '').trim(); if (value) return value.replace(/\/+$/, ''); }
     } catch (_) {}
     return '';
