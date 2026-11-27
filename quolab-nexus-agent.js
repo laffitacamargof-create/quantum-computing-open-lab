@@ -237,6 +237,24 @@
     return item;
   }
 
+  function connectorRouting() {
+    const rules = [
+      '1. Identify the tool you need.',
+      '2. Look up that tool and slot in connector_routing.routes.',
+      '3. source "nexus": use the listed connector; never Founder.',
+      '4. source "founder": no connector is assigned, so the general Nexus configuration is the fallback.',
+      '5. source "unavailable": report the concrete reason; do not silently switch to Founder or another connector.',
+      '6. Opening or selecting a tool is not execution: verify real output before claiming completion.',
+      '7. Report concrete errors (timeout, network, HTTP 401/403/429/500) and never repeat the same diagnostic in a loop.'
+    ];
+    try {
+      const nx = global.QuOLabNexusConnectors;
+      if (!nx || typeof nx.describeRoutes !== 'function') return { available: false, rules };
+      const described = nx.describeRoutes();
+      return { available: true, rules, routes: described.routes, ai_active: described.ai_active };
+    } catch (error) { return { available: false, rules, error: cleanText(error && error.message || error, 200) }; }
+  }
+
   function snapshot(base, options = {}) {
     const active = activeScreen();
     const managedScreens = Object.keys(TOOL_CATALOG);
@@ -261,7 +279,8 @@
       tool_catalog: Object.keys(TOOL_CATALOG).map(id => ({ id, ...TOOL_CATALOG[id] })),
       recent_events: groupEventDelta(recentEvents.filter(event => event.sequence > lastDeliveredEventSequence)),
       event_delta: {from_sequence:lastDeliveredEventSequence+1,to_sequence:eventSequence,dropped:recentEvents.length>0&&lastDeliveredEventSequence+1<recentEvents[0].sequence},
-      user_context: base || {}
+      user_context: base || {},
+      connector_routing: connectorRouting()
     };
     return result;
   }
@@ -291,6 +310,10 @@
       status: /ERROR|FAIL|REJECT/i.test(type) || /error/i.test(nestedKind) || (details.details && (details.details.ok===false || (Number(details.details.status)>=400))) ? 'error' : /RESULT|OUTPUT|SUCCESS|READY/i.test(type) || /response|output|result/i.test(nestedKind) ? 'result' : 'event',
       timestamp: Number(event.data.timestamp)||Date.now()
     };
+    if (record.status === 'error' && /(?:127\.0\.0\.1|localhost):8765|bridge-offline|local bridge does not answer/i.test(record.details + ' ' + record.kind)) {
+      record.status = 'event';
+      record.details = 'Optional local bridge is offline (informational; external API connectors do not depend on it).';
+    }
     storeEvent(record);
     global.dispatchEvent(new CustomEvent('quolab:nexus-activity',{detail:record}));
     if (record.status === 'error') {
