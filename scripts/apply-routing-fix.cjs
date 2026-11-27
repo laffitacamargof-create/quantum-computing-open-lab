@@ -8,8 +8,14 @@ const fs = require('node:fs');
 const HTML = 'quolab-nexus-connectors.html';
 const CORE = 'quolab-nexus-connectors-core.js';
 const AGENT = 'quolab-nexus-agent.js';
+const PROTOCOL = 'quolab-nexus-core.js';
 
 const edits = [
+  // 0. La clave canonica de Nexus tiene prioridad sobre aliases legacy potencialmente obsoletos.
+  { file: PROTOCOL,
+    find: `const keys = ['openq_colab_url', 'qcol_colab_url', 'nexus_colab_url'];`,
+    replace: `const keys = ['nexus_colab_url', 'qcol_colab_url', 'openq_colab_url'];` },
+
   // 1. Asignar un conector ya no desasigna los de OTRA categoria (CPU/QPU/storage) de la misma herramienta.
   { file: HTML,
     find: `records.filter(r=>r.id!==id&&r.kind==='ext'&&(r.tools||[]).includes(tool))`,
@@ -34,6 +40,11 @@ const edits = [
   { file: CORE,
     find: `if (!timedOut) {`,
     replace: `if (!timedOut && Bridge.cfg().token) {` },
+
+  // 3b. El bridge externo solo puede actuar como proxy si el equipo esta emparejado.
+  { file: CORE,
+    find: `if ((method === 'GET' || method === 'HEAD') && e.name !== 'TimeoutError') { // blocked by CORS? retry through the bridge (safe: reads only)`,
+    replace: `if ((method === 'GET' || method === 'HEAD') && e.name !== 'TimeoutError' && Bridge.cfg().token) { // retry read-only requests only through a paired local bridge` },
 
   // 4. Al desasignar, se borra el bloqueo antiguo de Founder: sin conector => configuracion general de Nexus.
   { file: CORE,
